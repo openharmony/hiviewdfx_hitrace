@@ -1,0 +1,46 @@
+{
+    "name": "@ohos/hitrace",
+    "description": "cross-thread, cross-process, and cross-device service call chain",
+    "version": "3.1",
+    "license": "Apache License 2.0",
+    "publishAs": "code-segment",
+    "segment": {
+        "destPath": "base/hiviewdfx/hitrace"
+    },
+    "dirs": {},
+    "scripts": {},
+    "component": {
+        "name": "hitrace_native",
+        "subsystem": "hiviewdfx",
+        "adapted_system_type": [
+            "standard"
+        ],
+        "rom": "",
+        "ram": "",
+        "deps": {
+            "components": [
+                "hilog_native",
+                "utils_base"
+            ],
+            "third_party": []
+        },
+        "build": {
+            "sub_component": [ "//base/hiviewdfx/hitrace/interfaces/native/innerkits:libhitrace" ],
+            "inner_kits": [
+                {
+                    "name": "//base/hiviewdfx/hitrace/interfaces/native/innerkits:libhitrace",
+                    "header": {
+                        "header_base": "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/",
+                        "header_files": [
+                        "hitrace/trace.h",
+                        "hitrace/hitracec.h",
+                        "hitrace/hitraceid.h",
+                        "hitrace/hitrace.h"
+                        ]
+                    }
+                }
+            ],
+            "test": [ "//base/hiviewdfx/hitrace/frameworks/native/test:unittest"]
+        }
+    }
+}
