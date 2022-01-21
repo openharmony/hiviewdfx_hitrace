@@ -1,5 +1,5 @@
 {
-    "name": "@ohos/hitrace",
+    "name": "@ohos/hitrace_native",
     "description": "cross-thread, cross-process, and cross-device service call chain",
     "version": "3.1",
     "license": "Apache License 2.0",
@@ -32,10 +32,10 @@
                     "header": {
                         "header_base": "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/",
                         "header_files": [
-                        "hitrace/trace.h",
-                        "hitrace/hitracec.h",
-                        "hitrace/hitraceid.h",
-                        "hitrace/hitrace.h"
+                            "hitrace/trace.h",
+                            "hitrace/hitracec.h",
+                            "hitrace/hitraceid.h",
+                            "hitrace/hitrace.h"
                         ]
                     }
                 }
