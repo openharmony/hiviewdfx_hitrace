@@ -38,7 +38,7 @@ ohos_shared_library("hitrace_napi") {
 
   relative_install_dir = "module"
 
-  part_name = "hitrace_js"
+  part_name = "hitrace_native"
 
   subsystem_name = "hiviewdfx"
 }

@@ -37,7 +37,10 @@
                     "header": {
                         "header_base": "//base/hiviewdfx/hitrace/interfaces/js/innerkits/napi/include/",
                         "header_files": [
-                        "napi_hitrace_init.h"
+                            "napi_hitrace_init.h",
+                            "napi_hitrace_native_call_wrapper.h",
+                            "napi_hitrace_param.h",
+                            "napi_hitrace_util.h"
                         ]
                     }
                 },
