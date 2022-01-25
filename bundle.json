@@ -22,11 +22,28 @@
                 "hilog_native",
                 "utils_base"
             ],
-            "third_party": []
+            "third_party": [
+                "node"
+            ]
         },
         "build": {
-            "sub_component": [ "//base/hiviewdfx/hitrace/interfaces/native/innerkits:libhitrace" ],
+            "sub_component": [
+                "//base/hiviewdfx/hitrace/interfaces/js/innerkits/napi:hitrace_napi",
+                "//base/hiviewdfx/hitrace/interfaces/native/innerkits:libhitrace"
+            ],
             "inner_kits": [
+                {
+                    "name": "//base/hiviewdfx/hitrace/interfaces/js/innerkits/napi:hitrace_napi",
+                    "header": {
+                        "header_base": "//base/hiviewdfx/hitrace/interfaces/js/innerkits/napi/include/",
+                        "header_files": [
+                            "napi_hitrace_init.h",
+                            "napi_hitrace_native_call_wrapper.h",
+                            "napi_hitrace_param.h",
+                            "napi_hitrace_util.h"
+                        ]
+                    }
+                },
                 {
                     "name": "//base/hiviewdfx/hitrace/interfaces/native/innerkits:libhitrace",
                     "header": {
