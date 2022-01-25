@@ -15,13 +15,12 @@ import("//build/ohos.gni")
 
 ohos_shared_library("hitrace_napi") {
   include_dirs = [
-      ".",
-      "include/",
-      "//third_party/node/src",
+    ".",
+    "include/",
+    "//third_party/node/src",
   ]
 
-   configs = [
-   ]
+  configs = []
 
   sources = [
     "./src/napi_hitrace_init.cpp",
@@ -30,9 +29,7 @@ ohos_shared_library("hitrace_napi") {
     "./src/napi_hitrace_util.cpp",
   ]
 
-  deps = [
-    "//foundation/ace/napi:ace_napi",
-  ]
+  deps = [ "//foundation/ace/napi:ace_napi" ]
 
   external_deps = [
     "hilog_native:libhilog",
