@@ -44,12 +44,12 @@ void NapiHitraceUtil::CreateHiTraceIdObject(const napi_env env, HiTraceId& trace
 {
     napi_create_object(env, &valueObject);
     NapiHitraceUtil::SetPropertyInt64(env, valueObject, "chainId", traceId.GetChainId());
-    NapiHitraceUtil::SetPropertyInt64(env, valueObject, "spandId", traceId.GetSpanId());
-    NapiHitraceUtil::SetPropertyInt64(env, valueObject, "parentSpanId", traceId.GetParentSpanId());
+    NapiHitraceUtil::SetPropertyInt32(env, valueObject, "spandId", traceId.GetSpanId());
+    NapiHitraceUtil::SetPropertyInt32(env, valueObject, "parentSpanId", traceId.GetParentSpanId());
     NapiHitraceUtil::SetPropertyInt32(env, valueObject, "flags", traceId.GetFlags());
 }
 
-void NapiHitraceUtil::SetPropertyInt32(napi_env env, napi_value& object,
+void NapiHitraceUtil::SetPropertyInt32(const napi_env env, napi_value& object,
     std::string propertyName, int32_t value)
 {
     napi_value propertyValue = InitUndefinedObj(env);
@@ -57,7 +57,7 @@ void NapiHitraceUtil::SetPropertyInt32(napi_env env, napi_value& object,
     napi_set_named_property(env, object, propertyName.c_str(), propertyValue);
 }
 
-void NapiHitraceUtil::SetPropertyInt64(napi_env env, napi_value& object,
+void NapiHitraceUtil::SetPropertyInt64(const napi_env env, napi_value& object,
     std::string propertyName, int64_t value)
 {
     napi_value propertyValue = InitUndefinedObj(env);
@@ -65,14 +65,7 @@ void NapiHitraceUtil::SetPropertyInt64(napi_env env, napi_value& object,
     napi_set_named_property(env, object, propertyName.c_str(), propertyValue);
 }
 
-void NapiHitraceUtil::SetPropertyStringUtf8(napi_env env, napi_value& object,
-    std::string propertyName, std::string value)
-{
-    napi_value propertyValue = InitUndefinedObj(env);
-    napi_set_named_property(env, object, propertyName.c_str(), propertyValue);
-}
-
-uint32_t NapiHitraceUtil::GetPropertyInt32(napi_env env, napi_value& object,
+uint32_t NapiHitraceUtil::GetPropertyInt32(const napi_env env, napi_value& object,
     std::string propertyName)
 {
     napi_value propertyValue = InitUndefinedObj(env);
@@ -82,7 +75,7 @@ uint32_t NapiHitraceUtil::GetPropertyInt32(napi_env env, napi_value& object,
     return value;
 }
 
-uint64_t NapiHitraceUtil::GetPropertyInt64(napi_env env, napi_value& object,
+uint64_t NapiHitraceUtil::GetPropertyInt64(const napi_env env, napi_value& object,
     std::string propertyName)
 {
     napi_value propertyValue = InitUndefinedObj(env);
@@ -92,20 +85,20 @@ uint64_t NapiHitraceUtil::GetPropertyInt64(napi_env env, napi_value& object,
     return value;
 }
 
-void NapiHitraceUtil::TransHiTraceIdObjectToNative(napi_env env, HiTraceId& traceId,
+void NapiHitraceUtil::TransHiTraceIdObjectToNative(const napi_env env, HiTraceId& traceId,
     napi_value& valueObject)
 {
     uint64_t chainId = NapiHitraceUtil::GetPropertyInt64(env, valueObject, "chainId");
     traceId.SetChainId(chainId);
-    uint32_t spanId = NapiHitraceUtil::GetPropertyInt64(env, valueObject, "spanId");
+    uint64_t spanId = NapiHitraceUtil::GetPropertyInt32(env, valueObject, "spanId");
     traceId.SetSpanId(spanId);
-    uint32_t parentSpanId = NapiHitraceUtil::GetPropertyInt64(env, valueObject, "parentSpanId");
+    uint64_t parentSpanId = NapiHitraceUtil::GetPropertyInt32(env, valueObject, "parentSpanId");
     traceId.SetParentSpanId(parentSpanId);
     uint32_t flags = NapiHitraceUtil::GetPropertyInt32(env, valueObject, "flags");
     traceId.SetFlags(flags);
 }
 
-void NapiHitraceUtil::EnableTraceIdObjectFlag(napi_env env, HiTraceId& traceId,
+void NapiHitraceUtil::EnableTraceIdObjectFlag(const napi_env env, HiTraceId& traceId,
     napi_value& traceIdObject)
 {
     NapiHitraceUtil::SetPropertyInt32(env, traceIdObject, "flags", traceId.GetFlags());

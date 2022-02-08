@@ -97,7 +97,7 @@ void NapiHiTraceNativeCallWrapper::CreateSpan(napi_env env, napi_value& result)
     NapiHitraceUtil::CreateHiTraceIdObject(env, traceId, result);
 }
 
-void NapiHiTraceNativeCallWrapper::TracePoint(napi_env env, napi_value* params, napi_value& result)
+void NapiHiTraceNativeCallWrapper::Tracepoint(napi_env env, napi_value* params, napi_value& result)
 {
     if (!NapiHitraceUtil::NapiTypeCheck(env, params[ParamIndex::PARAM_FIRST],
         napi_valuetype::napi_number)) {

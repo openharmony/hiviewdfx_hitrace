@@ -101,7 +101,7 @@ static napi_value CreateSpan(napi_env env, napi_callback_info info)
     return result;
 }
 
-static napi_value TracePoint(napi_env env, napi_callback_info info)
+static napi_value Tracepoint(napi_env env, napi_callback_info info)
 {
     size_t paramNum = ParamNum::TOTAL_FOUR;
     napi_value params[ParamNum::TOTAL_FOUR] = {0};
@@ -115,7 +115,7 @@ static napi_value TracePoint(napi_env env, napi_callback_info info)
             "failed to trace point, count of parameters is not 4.");
         return result;
     }
-    NapiHiTraceNativeCallWrapper::TracePoint(env, params, result);
+    NapiHiTraceNativeCallWrapper::Tracepoint(env, params, result);
     return result;
 }
 
@@ -183,7 +183,7 @@ static napi_value TraceNapiInit(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("setId", SetId),
         DECLARE_NAPI_FUNCTION("clearId", ClearId),
         DECLARE_NAPI_FUNCTION("createSpan", CreateSpan),
-        DECLARE_NAPI_FUNCTION("tracepoint", TracePoint),
+        DECLARE_NAPI_FUNCTION("tracepoint", Tracepoint),
         DECLARE_NAPI_FUNCTION("isValid", IsValid),
         DECLARE_NAPI_FUNCTION("isFlagEnabled", IsFlagEnabled),
         DECLARE_NAPI_FUNCTION("enableFlag", EnableFlag),
