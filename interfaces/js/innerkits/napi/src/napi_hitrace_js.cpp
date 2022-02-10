@@ -201,7 +201,7 @@ static napi_module hitrace_module = {
     .nm_flags = 0,
     .nm_filename = nullptr,
     .nm_register_func = TraceNapiInit,
-    .nm_modname = "hitrace",
+    .nm_modname = "hiTraceChain",
     .nm_priv = ((void *)0),
     .reserved = {0}
 };
