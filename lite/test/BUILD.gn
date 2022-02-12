@@ -14,9 +14,9 @@
 import("//build/lite/config/component/lite_component.gni")
 import("//build/lite/config/test.gni")
 
-hitrace_root_dir="//base/hiviewdfx/hitrace"
-hitrace_code_dir="${hitrace_root_dir}/frameworks/native"
-hitrace_test_dir="${hitrace_root_dir}/test/unittest"
+hitrace_root_dir = "//base/hiviewdfx/hitrace"
+hitrace_code_dir = "${hitrace_root_dir}/frameworks/native"
+hitrace_test_dir = "${hitrace_root_dir}/test/unittest"
 
 config("module_private_config") {
   visibility = [ ":*" ]
@@ -37,8 +37,8 @@ unittest("HitraceCTest") {
   configs = [ ":module_private_config" ]
 
   public_deps = [
-      "//third_party/bounds_checking_function:libsec_shared",
-      "//base/hiviewdfx/hilog_lite/frameworks/featured:hilog_shared"
+    "//base/hiviewdfx/hilog_lite/frameworks/featured:hilog_shared",
+    "//third_party/bounds_checking_function:libsec_shared",
   ]
 }
 
@@ -53,8 +53,8 @@ unittest("HitraceCppTest") {
   configs = [ ":module_private_config" ]
 
   public_deps = [
-      "//third_party/bounds_checking_function:libsec_shared",
-      "//base/hiviewdfx/hilog_lite/frameworks/featured:hilog_shared"
+    "//base/hiviewdfx/hilog_lite/frameworks/featured:hilog_shared",
+    "//third_party/bounds_checking_function:libsec_shared",
   ]
 }
 

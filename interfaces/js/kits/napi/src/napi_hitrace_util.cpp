@@ -21,10 +21,10 @@ namespace OHOS {
 namespace HiviewDFX {
 namespace {
     constexpr HiLogLabel LABEL = { LOG_CORE, 0xD002D03, "NapiHitraceUtil" };
-    const std::string CHAIN_ID_ATTR{"chainId"};
-    const std::string SPAN_ID_ATTR{"spanId"};
-    const std::string PARENT_SPAN_ID_ATTR{"parentSpanId"};
-    const std::string FLAGS_ATTR{"flags"};
+    const std::string CHAIN_ID_ATTR = "chainId";
+    const std::string SPAN_ID_ATTR = "spanId";
+    const std::string PARENT_SPAN_ID_ATTR = "parentSpanId";
+    const std::string FLAGS_ATTR = "flags";
 }
 
 napi_value NapiHitraceUtil::InitUndefinedObj(const napi_env env)
