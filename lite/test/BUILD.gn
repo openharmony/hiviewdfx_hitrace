@@ -16,7 +16,7 @@ import("//build/lite/config/test.gni")
 
 hitrace_root_dir="//base/hiviewdfx/hitrace"
 hitrace_code_dir="${hitrace_root_dir}/frameworks/native"
-hitrace_test_dir="${hitrace_root_dir}/frameworks/native/test/unittest"
+hitrace_test_dir="${hitrace_root_dir}/test/unittest"
 
 config("module_private_config") {
   visibility = [ ":*" ]
@@ -31,7 +31,7 @@ config("module_private_config") {
 unittest("HitraceCTest") {
   sources = [
     "${hitrace_code_dir}/hitracec.c",
-    "${hitrace_test_dir}/common/hitracec_test.cpp",
+    "${hitrace_test_dir}/common/native/hitracec_test.cpp",
   ]
 
   configs = [ ":module_private_config" ]
@@ -47,7 +47,7 @@ unittest("HitraceCppTest") {
     "${hitrace_code_dir}/hitrace.cpp",
     "${hitrace_code_dir}/hitracec.c",
     "${hitrace_code_dir}/hitraceid.cpp",
-    "${hitrace_test_dir}/common/hitracecpp_test.cpp",
+    "${hitrace_test_dir}/common/native/hitracecpp_test.cpp",
   ]
 
   configs = [ ":module_private_config" ]

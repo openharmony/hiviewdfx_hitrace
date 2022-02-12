@@ -13,32 +13,10 @@
 
 import("//build/ohos.gni")
 
-ohos_shared_library("hitrace_napi") {
-  include_dirs = [
-    ".",
-    "include/",
-    "//third_party/node/src",
-  ]
-
-  configs = []
-
-  sources = [
-    "./src/napi_hitrace_init.cpp",
-    "./src/napi_hitrace_js.cpp",
-    "./src/napi_hitrace_native_call_wrapper.cpp",
-    "./src/napi_hitrace_util.cpp",
-  ]
-
-  deps = [ "//foundation/ace/napi:ace_napi" ]
-
-  external_deps = [
-    "hilog_native:libhilog",
-    "hitrace_native:libhitrace",
-  ]
-
-  relative_install_dir = "module"
-
-  part_name = "hitrace_native"
-
-  subsystem_name = "hiviewdfx"
+group("hitracechain_napi") {
+  deps = []
+  if (support_jsapi) {
+    deps +=
+        [ "//base/hiviewdfx/hitrace/interfaces/js/kits/napi:hitracechain_napi" ]
+  }
 }

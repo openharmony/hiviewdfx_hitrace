@@ -19,7 +19,14 @@
 
 namespace OHOS {
 namespace HiviewDFX {
-constexpr HiLogLabel LABEL = { LOG_CORE, 0xD002D03, "NapiHitraceUtil" };
+namespace {
+    constexpr HiLogLabel LABEL = { LOG_CORE, 0xD002D03, "NapiHitraceUtil" };
+    const std::string CHAIN_ID_ATTR{"chainId"};
+    const std::string SPAN_ID_ATTR{"spanId"};
+    const std::string PARENT_SPAN_ID_ATTR{"parentSpanId"};
+    const std::string FLAGS_ATTR{"flags"};
+}
+
 napi_value NapiHitraceUtil::InitUndefinedObj(const napi_env env)
 {
     napi_value result = nullptr;
@@ -43,14 +50,14 @@ void NapiHitraceUtil::CreateHiTraceIdObject(const napi_env env, HiTraceId& trace
     napi_value& valueObject)
 {
     napi_create_object(env, &valueObject);
-    NapiHitraceUtil::SetPropertyInt64(env, valueObject, "chainId", traceId.GetChainId());
-    NapiHitraceUtil::SetPropertyInt32(env, valueObject, "spandId", traceId.GetSpanId());
-    NapiHitraceUtil::SetPropertyInt32(env, valueObject, "parentSpanId", traceId.GetParentSpanId());
-    NapiHitraceUtil::SetPropertyInt32(env, valueObject, "flags", traceId.GetFlags());
+    NapiHitraceUtil::SetPropertyInt64(env, valueObject, CHAIN_ID_ATTR, traceId.GetChainId());
+    NapiHitraceUtil::SetPropertyInt32(env, valueObject, SPAN_ID_ATTR, traceId.GetSpanId());
+    NapiHitraceUtil::SetPropertyInt32(env, valueObject, PARENT_SPAN_ID_ATTR, traceId.GetParentSpanId());
+    NapiHitraceUtil::SetPropertyInt32(env, valueObject, FLAGS_ATTR, traceId.GetFlags());
 }
 
 void NapiHitraceUtil::SetPropertyInt32(const napi_env env, napi_value& object,
-    std::string propertyName, int32_t value)
+    const std::string& propertyName, int32_t value)
 {
     napi_value propertyValue = InitUndefinedObj(env);
     napi_create_int32(env, value, &propertyValue);
@@ -58,7 +65,7 @@ void NapiHitraceUtil::SetPropertyInt32(const napi_env env, napi_value& object,
 }
 
 void NapiHitraceUtil::SetPropertyInt64(const napi_env env, napi_value& object,
-    std::string propertyName, int64_t value)
+    const std::string& propertyName, int64_t value)
 {
     napi_value propertyValue = InitUndefinedObj(env);
     napi_create_int64(env, value, &propertyValue);
@@ -66,7 +73,7 @@ void NapiHitraceUtil::SetPropertyInt64(const napi_env env, napi_value& object,
 }
 
 uint32_t NapiHitraceUtil::GetPropertyInt32(const napi_env env, napi_value& object,
-    std::string propertyName)
+    const std::string& propertyName)
 {
     napi_value propertyValue = InitUndefinedObj(env);
     napi_get_named_property(env, object, propertyName.c_str(), &propertyValue);
@@ -76,7 +83,7 @@ uint32_t NapiHitraceUtil::GetPropertyInt32(const napi_env env, napi_value& objec
 }
 
 uint64_t NapiHitraceUtil::GetPropertyInt64(const napi_env env, napi_value& object,
-    std::string propertyName)
+    const std::string& propertyName)
 {
     napi_value propertyValue = InitUndefinedObj(env);
     napi_get_named_property(env, object, propertyName.c_str(), &propertyValue);
@@ -88,20 +95,20 @@ uint64_t NapiHitraceUtil::GetPropertyInt64(const napi_env env, napi_value& objec
 void NapiHitraceUtil::TransHiTraceIdObjectToNative(const napi_env env, HiTraceId& traceId,
     napi_value& valueObject)
 {
-    uint64_t chainId = NapiHitraceUtil::GetPropertyInt64(env, valueObject, "chainId");
+    uint64_t chainId = NapiHitraceUtil::GetPropertyInt64(env, valueObject, CHAIN_ID_ATTR);
     traceId.SetChainId(chainId);
-    uint64_t spanId = NapiHitraceUtil::GetPropertyInt32(env, valueObject, "spanId");
+    uint64_t spanId = NapiHitraceUtil::GetPropertyInt32(env, valueObject, SPAN_ID_ATTR);
     traceId.SetSpanId(spanId);
-    uint64_t parentSpanId = NapiHitraceUtil::GetPropertyInt32(env, valueObject, "parentSpanId");
+    uint64_t parentSpanId = NapiHitraceUtil::GetPropertyInt32(env, valueObject, PARENT_SPAN_ID_ATTR);
     traceId.SetParentSpanId(parentSpanId);
-    uint32_t flags = NapiHitraceUtil::GetPropertyInt32(env, valueObject, "flags");
+    uint32_t flags = NapiHitraceUtil::GetPropertyInt32(env, valueObject, FLAGS_ATTR);
     traceId.SetFlags(flags);
 }
 
 void NapiHitraceUtil::EnableTraceIdObjectFlag(const napi_env env, HiTraceId& traceId,
     napi_value& traceIdObject)
 {
-    NapiHitraceUtil::SetPropertyInt32(env, traceIdObject, "flags", traceId.GetFlags());
+    NapiHitraceUtil::SetPropertyInt32(env, traceIdObject, FLAGS_ATTR, traceId.GetFlags());
 }
 } // namespace HiviewDFX
 } // namespace OHOS

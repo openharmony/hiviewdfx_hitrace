@@ -28,8 +28,8 @@ ohos_unittest("HitraceCTest") {
   module_out_path = module_output_path
 
   sources = [
-    "../hitracec.c",
-    "unittest/common/hitracec_test.cpp",
+    "//base/hiviewdfx/hitrace/frameworks/native/hitracec.c",
+    "unittest/common/native/hitracec_test.cpp",
   ]
 
   configs = [ ":module_private_config" ]
@@ -46,10 +46,10 @@ ohos_unittest("HitraceCppTest") {
   module_out_path = module_output_path
 
   sources = [
-    "../hitrace.cpp",
-    "../hitracec.c",
-    "../hitraceid.cpp",
-    "unittest/common/hitracecpp_test.cpp",
+    "//base/hiviewdfx/hitrace/frameworks/native/hitrace.cpp",
+    "//base/hiviewdfx/hitrace/frameworks/native/hitracec.c",
+    "//base/hiviewdfx/hitrace/frameworks/native/hitraceid.cpp",
+    "unittest/common/native/hitracecpp_test.cpp",
   ]
 
   configs = [ ":module_private_config" ]
@@ -67,5 +67,6 @@ group("unittest") {
   deps = [
     ":HitraceCTest",
     ":HitraceCppTest",
+    "unittest/common/napi:unittest",
   ]
 }

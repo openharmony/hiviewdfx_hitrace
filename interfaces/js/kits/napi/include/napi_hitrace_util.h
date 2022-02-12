@@ -31,15 +31,15 @@ public:
     static bool NapiTypeCheck(const napi_env env, const napi_value& jsObj,
         const napi_valuetype typeName);
     static void SetPropertyInt32(const napi_env env, napi_value& object,
-        std::string propertyName, int32_t value);
+        const std::string& propertyName, int32_t value);
     static void SetPropertyInt64(const napi_env env, napi_value& object,
-        std::string propertyName, int64_t value);
+        const std::string& propertyName, int64_t value);
     static void CreateHiTraceIdObject(const napi_env env, HiTraceId& traceId,
         napi_value& valueObject);
     static uint32_t GetPropertyInt32(const napi_env env, napi_value& object,
-        std::string propertyName);
+        const std::string& propertyName);
     static uint64_t GetPropertyInt64(const napi_env env, napi_value& object,
-        std::string propertyName);
+        const std::string& propertyName);
     static void TransHiTraceIdObjectToNative(const napi_env env, HiTraceId& traceId,
         napi_value& valueObject);
     static void EnableTraceIdObjectFlag(const napi_env env, HiTraceId& traceId, napi_value& traceIdObject);
