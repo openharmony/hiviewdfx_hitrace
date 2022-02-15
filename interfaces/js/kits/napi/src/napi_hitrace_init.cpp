@@ -68,7 +68,7 @@ void InitHiTraceFlagEnum(napi_env env, std::map<const char*, napi_value>& traceF
     traceFlagMap["DONOT_CREATE_SPAN"] = doNotCreateSpanFlag;
     traceFlagMap["TP_INFO"] = tpInfoFlag;
     traceFlagMap["NO_BE_INFO"] = noBeInfoFlag;
-    traceFlagMap["DONOT_ENABLE_LOG"] = doNotEnableLogFlag;
+    traceFlagMap["DISABLE_LOG"] = doNotEnableLogFlag;
     traceFlagMap["FAILURE_TRIGGER"] = failureTriggerFlag;
     traceFlagMap["D2D_TP_INFO"] = d2dTpInfoFlag;
 }
