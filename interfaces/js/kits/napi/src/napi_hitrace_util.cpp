@@ -86,13 +86,15 @@ void NapiHitraceUtil::CreateHiTraceIdObject(const napi_env env, HiTraceId& trace
     napi_create_object(env, &valueObject);
     NapiHitraceUtil::SetPropertyBigInt64(env, valueObject, CHAIN_ID_ATTR,
         traceId.GetChainId());
-    HiLog::Debug(LABEL, "Native2Js: chainId is %{public}llu.", traceId.GetChainId());
+    HiLog::Debug(LABEL, "Native2Js: chainId is %{public}llx.",
+        static_cast<unsigned long long>(traceId.GetChainId()));
     NapiHitraceUtil::SetPropertyInt64(env, valueObject, SPAN_ID_ATTR, traceId.GetSpanId());
-    HiLog::Debug(LABEL, "Native2Js: spanId is %{public}llu.", traceId.GetSpanId());
+    HiLog::Debug(LABEL, "Native2Js: spanId is %{public}llx.",
+        static_cast<unsigned long long>(traceId.GetSpanId()));
     NapiHitraceUtil::SetPropertyInt64(env, valueObject, PARENT_SPAN_ID_ATTR,
         traceId.GetParentSpanId());
-    HiLog::Debug(LABEL, "Native2Js: parentSpanId is %{public}llu.",
-        traceId.GetParentSpanId());
+    HiLog::Debug(LABEL, "Native2Js: parentSpanId is %{public}llx.",
+        static_cast<unsigned long long>(traceId.GetParentSpanId()));
     NapiHitraceUtil::SetPropertyInt32(env, valueObject, FLAGS_ATTR,
         traceId.GetFlags());
     HiLog::Debug(LABEL, "Native2Js: flags is %{public}d.", traceId.GetFlags());
@@ -102,14 +104,17 @@ void NapiHitraceUtil::TransHiTraceIdObjectToNative(const napi_env env, HiTraceId
     napi_value& valueObject)
 {
     uint64_t chainId = NapiHitraceUtil::GetPropertyBigInt64(env, valueObject, CHAIN_ID_ATTR);
-    HiLog::Debug(LABEL, "Js2Native: chainId is %{public}llu.", chainId);
+    HiLog::Debug(LABEL, "Js2Native: chainId is %{public}llx.",
+        static_cast<unsigned long long>(chainId));
     traceId.SetChainId(chainId);
     uint64_t spanId = NapiHitraceUtil::GetPropertyInt64(env, valueObject, SPAN_ID_ATTR);
-    HiLog::Debug(LABEL, "Js2Native: spanId is %{public}llu.", spanId);
+    HiLog::Debug(LABEL, "Js2Native: spanId is %{public}llx.",
+        static_cast<unsigned long long>(spanId));
     traceId.SetSpanId(spanId);
     uint64_t parentSpanId = NapiHitraceUtil::GetPropertyInt64(env, valueObject,
         PARENT_SPAN_ID_ATTR);
-    HiLog::Debug(LABEL, "Js2Native: parentSpanId is %{public}llu.", parentSpanId);
+    HiLog::Debug(LABEL, "Js2Native: parentSpanId is %{public}llx.",
+        static_cast<unsigned long long>(parentSpanId));
     traceId.SetParentSpanId(parentSpanId);
     uint32_t flags = NapiHitraceUtil::GetPropertyInt32(env, valueObject, FLAGS_ATTR);
     HiLog::Debug(LABEL, "Js2Native: flags is %{public}d.", flags);
