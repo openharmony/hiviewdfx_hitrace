@@ -19,7 +19,6 @@
 
 namespace OHOS {
 namespace HiviewDFX {
-
 using namespace testing::ext;
 
 class HiTraceCppTest : public testing::Test {
@@ -556,6 +555,5 @@ HWTEST_F(HiTraceCppTest, InvalidParamTest_001, TestSize.Level1)
     EXPECT_EQ(1, invalidNameId.IsValid());
     HiTrace::End(invalidNameId);
 }
-
 }  // namespace HiviewDFX
 }  // namespace OHOS

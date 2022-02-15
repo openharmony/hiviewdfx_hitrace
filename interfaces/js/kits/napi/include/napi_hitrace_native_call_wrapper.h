@@ -31,7 +31,7 @@ public:
     static void SetId(napi_env env, napi_value* params, napi_value& result);
     static void ClearId(napi_env env, napi_value& result);
     static void CreateSpan(napi_env env, napi_value& result);
-    static void TracePoint(napi_env env, napi_value* params, napi_value& result);
+    static void Tracepoint(napi_env env, napi_value* params, napi_value& result);
     static void IsValid(napi_env env, napi_value* params, napi_value& result);
     static void IsFlagEnabled(napi_env env, napi_value* params, napi_value& result);
     static void EnableFlag(napi_env env, napi_value* params, napi_value& result);

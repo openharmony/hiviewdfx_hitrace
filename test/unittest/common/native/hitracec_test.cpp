@@ -19,7 +19,6 @@
 
 namespace OHOS {
 namespace HiviewDFX {
-
 using namespace testing::ext;
 
 #define HITRACE_DEBUG
@@ -557,6 +556,5 @@ HWTEST_F(HiTraceCTest, SyncAsyncTest_001, TestSize.Level1)
 
     HiTraceEnd(&asyncId);
 }
-
 }  // namespace HiviewDFX
 }  // namespace OHOS
