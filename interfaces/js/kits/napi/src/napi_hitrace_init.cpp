@@ -27,7 +27,7 @@ namespace {
 using ClassInitFunc = std::function<void(napi_env, std::map<const char*, napi_value>&)>;
 
 const std::string HITRACE_FLAG_ENUM_NAME = "HiTraceFlag";
-const std::string HITRACE_TRACE_POINT_TYPE_ENUM_NAME = "HiTraceTracePointType";
+const std::string HITRACE_TRACE_POINT_TYPE_ENUM_NAME = "HiTraceTracepointType";
 const std::string HITRACE_COMMUNICATION_MODE_ENUM_NAME = "HiTraceCommunicationMode";
 
 napi_value ClassConstructor(napi_env env, napi_callback_info info)
@@ -73,7 +73,7 @@ void InitHiTraceFlagEnum(napi_env env, std::map<const char*, napi_value>& traceF
     traceFlagMap["D2D_TP_INFO"] = d2dTpInfoFlag;
 }
 
-void InitHiTraceTracePointTypeEnum(napi_env env,
+void InitHiTraceTracepointTypeEnum(napi_env env,
     std::map<const char*, napi_value>& tracePointMap)
 {
     napi_value csTracePoint = nullptr;
@@ -118,7 +118,7 @@ void InitConstClassByName(napi_env env, napi_value exports, std::string name)
     if (name == HITRACE_FLAG_ENUM_NAME) {
         InitHiTraceFlagEnum(env, propertyMap);
     } else if (name == HITRACE_TRACE_POINT_TYPE_ENUM_NAME) {
-        InitHiTraceTracePointTypeEnum(env, propertyMap);
+        InitHiTraceTracepointTypeEnum(env, propertyMap);
     } else if (name == HITRACE_COMMUNICATION_MODE_ENUM_NAME) {
         InitHiTraceCommunicationModeEnum(env, propertyMap);
     } else {

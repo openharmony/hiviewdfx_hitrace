@@ -84,7 +84,7 @@ describe('hiTraceChainJsUnitTest', function () {
         console.info('hiTraceChainJsUnitTest003 start');
         let traceId = hiTraceChain.begin("hiTraceChainJsUnitTest003");
         hiTraceChain.tracepoint(hiTraceChain.HiTraceCommunicationMode.DEFAULT,
-            hiTraceChain.HiTraceTracePointType.CS, traceId, "hiTraceChainJsUnitTest003 test case");
+            hiTraceChain.HiTraceTracepointType.CS, traceId, "hiTraceChainJsUnitTest003 test case");
         console.info('hiTraceChainJsUnitTest003 end');
         hiTraceChain.end(traceId);
         done();
