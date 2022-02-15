@@ -34,7 +34,7 @@ static napi_value Begin(napi_env env, napi_callback_info info)
     void* data = nullptr;
     NAPI_CALL(env, napi_get_cb_info(env, info, &paramNum, params, &thisArg, &data));
 
-    napi_value result = NapiHitraceUtil::InitUndefinedObj(env);
+    napi_value result = nullptr;
     if (paramNum != ParamNum::TOTAL_ONE && paramNum != ParamNum::TOTAL_TWO) {
         HiLog::Error(LABEL,
             "failed to begin a new trace, count of parameters is invalid.");
@@ -52,7 +52,7 @@ static napi_value End(napi_env env, napi_callback_info info)
     void* data = nullptr;
     NAPI_CALL(env, napi_get_cb_info(env, info, &paramNum, params, &thisArg, &data));
 
-    napi_value result = NapiHitraceUtil::InitUndefinedObj(env);
+    napi_value result = nullptr;
     if (paramNum != ParamNum::TOTAL_ONE) {
         HiLog::Error(LABEL,
             "failed to end trace by trace id, count of parameters is not 1.");
@@ -64,7 +64,7 @@ static napi_value End(napi_env env, napi_callback_info info)
 
 static napi_value GetId(napi_env env, napi_callback_info info)
 {
-    napi_value result = NapiHitraceUtil::InitUndefinedObj(env);
+    napi_value result = nullptr;
     NapiHiTraceNativeCallWrapper::GetId(env, result);
     return result;
 }
@@ -77,7 +77,7 @@ static napi_value SetId(napi_env env, napi_callback_info info)
     void* data = nullptr;
     NAPI_CALL(env, napi_get_cb_info(env, info, &paramNum, params, &thisArg, &data));
 
-    napi_value result = NapiHitraceUtil::InitUndefinedObj(env);
+    napi_value result = nullptr;
     if (paramNum != ParamNum::TOTAL_ONE && paramNum != ParamNum::TOTAL_TWO) {
         HiLog::Error(LABEL,
             "failed to set a new id for a trace, count of parameters is not 1.");
@@ -89,14 +89,14 @@ static napi_value SetId(napi_env env, napi_callback_info info)
 
 static napi_value ClearId(napi_env env, napi_callback_info info)
 {
-    napi_value result = NapiHitraceUtil::InitUndefinedObj(env);
+    napi_value result = nullptr;
     NapiHiTraceNativeCallWrapper::ClearId(env, result);
     return result;
 }
 
 static napi_value CreateSpan(napi_env env, napi_callback_info info)
 {
-    napi_value result = NapiHitraceUtil::InitUndefinedObj(env);
+    napi_value result = nullptr;
     NapiHiTraceNativeCallWrapper::CreateSpan(env, result);
     return result;
 }
@@ -109,7 +109,7 @@ static napi_value Tracepoint(napi_env env, napi_callback_info info)
     void* data = nullptr;
     NAPI_CALL(env, napi_get_cb_info(env, info, &paramNum, params, &thisArg, &data));
 
-    napi_value result = NapiHitraceUtil::InitUndefinedObj(env);
+    napi_value result = nullptr;
     if (paramNum != ParamNum::TOTAL_FOUR) {
         HiLog::Error(LABEL,
             "failed to trace point, count of parameters is not 4.");
@@ -127,7 +127,7 @@ static napi_value IsValid(napi_env env, napi_callback_info info)
     void* data = nullptr;
     NAPI_CALL(env, napi_get_cb_info(env, info, &paramNum, params, &thisArg, &data));
 
-    napi_value result = NapiHitraceUtil::InitUndefinedObj(env);
+    napi_value result = nullptr;
     if (paramNum != ParamNum::TOTAL_ONE) {
         HiLog::Error(LABEL,
             "failed to check whether a id is valid or not, count of parameters is not 1.");
@@ -145,7 +145,7 @@ static napi_value IsFlagEnabled(napi_env env, napi_callback_info info)
     void* data = nullptr;
     NAPI_CALL(env, napi_get_cb_info(env, info, &paramNum, params, &thisArg, &data));
 
-    napi_value result = NapiHitraceUtil::InitUndefinedObj(env);
+    napi_value result = nullptr;
     if (paramNum != ParamNum::TOTAL_TWO) {
         HiLog::Error(LABEL,
             "failed to check whether a flag is enabled in a trace id, count of parameters is not 2.");
@@ -163,7 +163,7 @@ static napi_value EnableFlag(napi_env env, napi_callback_info info)
     void* data = nullptr;
     NAPI_CALL(env, napi_get_cb_info(env, info, &paramNum, params, &thisArg, &data));
 
-    napi_value result = NapiHitraceUtil::InitUndefinedObj(env);
+    napi_value result = nullptr;
     if (paramNum != ParamNum::TOTAL_TWO) {
         HiLog::Error(LABEL,
             "failed to enable a flag for a trace id, count of parameters is not 2.");

@@ -20,18 +20,52 @@
 namespace OHOS {
 namespace HiviewDFX {
 namespace {
-    constexpr HiLogLabel LABEL = { LOG_CORE, 0xD002D03, "NapiHitraceUtil" };
-    const std::string CHAIN_ID_ATTR = "chainId";
-    const std::string SPAN_ID_ATTR = "spanId";
-    const std::string PARENT_SPAN_ID_ATTR = "parentSpanId";
-    const std::string FLAGS_ATTR = "flags";
-}
+constexpr HiLogLabel LABEL = { LOG_CORE, 0xD002D03, "NapiHitraceUtil" };
+constexpr uint32_t UINT32_T_PRO_DEFAULT_VALUE = 0;
+constexpr uint64_t UINT64_T_PRO_DEFAULT_VALUE = 0;
+const std::string CHAIN_ID_ATTR = "chainId";
+const std::string SPAN_ID_ATTR = "spanId";
+const std::string PARENT_SPAN_ID_ATTR = "parentSpanId";
+const std::string FLAGS_ATTR = "flags";
 
-napi_value NapiHitraceUtil::InitUndefinedObj(const napi_env env)
+static napi_value CreateInt32Value(const napi_env env, int32_t value)
 {
     napi_value result = nullptr;
-    NAPI_CALL(env, napi_get_undefined(env, &result));
+    NAPI_CALL(env, napi_create_int32(env, value, &result));
     return result;
+}
+
+static napi_value CreateInt64Value(const napi_env env, int64_t value)
+{
+    napi_value result = nullptr;
+    NAPI_CALL(env, napi_create_int64(env, value, &result));
+    return result;
+}
+
+static napi_value CreateBigInt64Value(const napi_env env, uint64_t value)
+{
+    napi_value result = nullptr;
+    NAPI_CALL(env, napi_create_bigint_uint64(env, value, &result));
+    return result;
+}
+
+static napi_status SetNamedProperty(const napi_env env, napi_value& object,
+    const std::string& propertyName, napi_value& propertyValue)
+{
+    napi_status status = napi_set_named_property(env, object, propertyName.c_str(), propertyValue);
+    if (status != napi_ok) {
+        HiLog::Error(LABEL, "set property %{public}s failed.", propertyName.c_str());
+    }
+    return status;
+}
+
+static napi_value GetPropertyByName(const napi_env env, napi_value& object,
+    const std::string& propertyName)
+{
+    napi_value result = nullptr;
+    NAPI_CALL(env, napi_get_named_property(env, object, propertyName.c_str(), &result));
+    return result;
+}
 }
 
 bool NapiHitraceUtil::NapiTypeCheck(const napi_env env, const napi_value& jsObj,
@@ -50,58 +84,35 @@ void NapiHitraceUtil::CreateHiTraceIdObject(const napi_env env, HiTraceId& trace
     napi_value& valueObject)
 {
     napi_create_object(env, &valueObject);
-    NapiHitraceUtil::SetPropertyInt64(env, valueObject, CHAIN_ID_ATTR, traceId.GetChainId());
-    NapiHitraceUtil::SetPropertyInt32(env, valueObject, SPAN_ID_ATTR, traceId.GetSpanId());
-    NapiHitraceUtil::SetPropertyInt32(env, valueObject, PARENT_SPAN_ID_ATTR, traceId.GetParentSpanId());
-    NapiHitraceUtil::SetPropertyInt32(env, valueObject, FLAGS_ATTR, traceId.GetFlags());
-}
-
-void NapiHitraceUtil::SetPropertyInt32(const napi_env env, napi_value& object,
-    const std::string& propertyName, int32_t value)
-{
-    napi_value propertyValue = InitUndefinedObj(env);
-    napi_create_int32(env, value, &propertyValue);
-    napi_set_named_property(env, object, propertyName.c_str(), propertyValue);
-}
-
-void NapiHitraceUtil::SetPropertyInt64(const napi_env env, napi_value& object,
-    const std::string& propertyName, int64_t value)
-{
-    napi_value propertyValue = InitUndefinedObj(env);
-    napi_create_int64(env, value, &propertyValue);
-    napi_set_named_property(env, object, propertyName.c_str(), propertyValue);
-}
-
-uint32_t NapiHitraceUtil::GetPropertyInt32(const napi_env env, napi_value& object,
-    const std::string& propertyName)
-{
-    napi_value propertyValue = InitUndefinedObj(env);
-    napi_get_named_property(env, object, propertyName.c_str(), &propertyValue);
-    int32_t value;
-    napi_get_value_int32(env, propertyValue, &value);
-    return value;
-}
-
-uint64_t NapiHitraceUtil::GetPropertyInt64(const napi_env env, napi_value& object,
-    const std::string& propertyName)
-{
-    napi_value propertyValue = InitUndefinedObj(env);
-    napi_get_named_property(env, object, propertyName.c_str(), &propertyValue);
-    int64_t value;
-    napi_get_value_int64(env, propertyValue, &value);
-    return value;
+    NapiHitraceUtil::SetPropertyBigInt64(env, valueObject, CHAIN_ID_ATTR,
+        traceId.GetChainId());
+    HiLog::Debug(LABEL, "Native2Js: chainId is %{public}llu.", traceId.GetChainId());
+    NapiHitraceUtil::SetPropertyInt64(env, valueObject, SPAN_ID_ATTR, traceId.GetSpanId());
+    HiLog::Debug(LABEL, "Native2Js: spanId is %{public}llu.", traceId.GetSpanId());
+    NapiHitraceUtil::SetPropertyInt64(env, valueObject, PARENT_SPAN_ID_ATTR,
+        traceId.GetParentSpanId());
+    HiLog::Debug(LABEL, "Native2Js: parentSpanId is %{public}llu.",
+        traceId.GetParentSpanId());
+    NapiHitraceUtil::SetPropertyInt32(env, valueObject, FLAGS_ATTR,
+        traceId.GetFlags());
+    HiLog::Debug(LABEL, "Native2Js: flags is %{public}d.", traceId.GetFlags());
 }
 
 void NapiHitraceUtil::TransHiTraceIdObjectToNative(const napi_env env, HiTraceId& traceId,
     napi_value& valueObject)
 {
-    uint64_t chainId = NapiHitraceUtil::GetPropertyInt64(env, valueObject, CHAIN_ID_ATTR);
+    uint64_t chainId = NapiHitraceUtil::GetPropertyBigInt64(env, valueObject, CHAIN_ID_ATTR);
+    HiLog::Debug(LABEL, "Js2Native: chainId is %{public}llu.", chainId);
     traceId.SetChainId(chainId);
-    uint64_t spanId = NapiHitraceUtil::GetPropertyInt32(env, valueObject, SPAN_ID_ATTR);
+    uint64_t spanId = NapiHitraceUtil::GetPropertyInt64(env, valueObject, SPAN_ID_ATTR);
+    HiLog::Debug(LABEL, "Js2Native: spanId is %{public}llu.", spanId);
     traceId.SetSpanId(spanId);
-    uint64_t parentSpanId = NapiHitraceUtil::GetPropertyInt32(env, valueObject, PARENT_SPAN_ID_ATTR);
+    uint64_t parentSpanId = NapiHitraceUtil::GetPropertyInt64(env, valueObject,
+        PARENT_SPAN_ID_ATTR);
+    HiLog::Debug(LABEL, "Js2Native: parentSpanId is %{public}llu.", parentSpanId);
     traceId.SetParentSpanId(parentSpanId);
     uint32_t flags = NapiHitraceUtil::GetPropertyInt32(env, valueObject, FLAGS_ATTR);
+    HiLog::Debug(LABEL, "Js2Native: flags is %{public}d.", flags);
     traceId.SetFlags(flags);
 }
 
@@ -109,6 +120,92 @@ void NapiHitraceUtil::EnableTraceIdObjectFlag(const napi_env env, HiTraceId& tra
     napi_value& traceIdObject)
 {
     NapiHitraceUtil::SetPropertyInt32(env, traceIdObject, FLAGS_ATTR, traceId.GetFlags());
+}
+
+void NapiHitraceUtil::SetPropertyInt32(const napi_env env, napi_value& object,
+    const std::string& propertyName, uint32_t value)
+{
+    napi_value peropertyValue = CreateInt32Value(env, value);
+    SetNamedProperty(env, object, propertyName, peropertyValue);
+}
+
+void NapiHitraceUtil::SetPropertyInt64(const napi_env env, napi_value& object,
+    const std::string& propertyName, uint64_t value)
+{
+    napi_value peropertyValue = CreateInt64Value(env, value);
+    SetNamedProperty(env, object, propertyName, peropertyValue);
+}
+
+void NapiHitraceUtil::SetPropertyBigInt64(const napi_env env, napi_value& object,
+    const std::string& propertyName, uint64_t value)
+{
+    napi_value peropertyValue = CreateBigInt64Value(env, value);
+    SetNamedProperty(env, object, propertyName, peropertyValue);
+}
+
+uint32_t NapiHitraceUtil::GetPropertyInt32(const napi_env env, napi_value& object,
+    const std::string& propertyName)
+{
+    napi_value propertyValue = GetPropertyByName(env, object, propertyName);
+    napi_valuetype type;
+    napi_status status = napi_typeof(env, propertyValue, &type);
+    if (status != napi_ok) {
+        HiLog::Error(LABEL, "failed to get %{public}s from HiTraceId Js Object.",
+            propertyName.c_str());
+        return UINT32_T_PRO_DEFAULT_VALUE;
+    }
+    if (type != napi_valuetype::napi_number) {
+        HiLog::Error(LABEL, "type is not napi_number property.");
+        return UINT32_T_PRO_DEFAULT_VALUE;
+    }
+    int32_t numberValue = 0;
+    status = napi_get_value_int32(env, propertyValue, &numberValue);
+    if (status == napi_ok) {
+        return numberValue;
+    }
+    HiLog::Error(LABEL, "failed to get napi_number property from HiTraceId Js Object.");
+    return UINT32_T_PRO_DEFAULT_VALUE;
+}
+
+uint64_t NapiHitraceUtil::GetPropertyInt64(const napi_env env, napi_value& object,
+    const std::string& propertyName)
+{
+    napi_value propertyValue = GetPropertyByName(env, object, propertyName);
+    napi_valuetype type;
+    napi_status status = napi_typeof(env, propertyValue, &type);
+    if (status != napi_ok) {
+        HiLog::Error(LABEL, "failed to get %{public}s from HiTraceId Js Object.",
+            propertyName.c_str());
+        return UINT64_T_PRO_DEFAULT_VALUE;
+    }
+    if (type != napi_valuetype::napi_number) {
+        HiLog::Error(LABEL, "type is not napi_number property.");
+        return UINT64_T_PRO_DEFAULT_VALUE;
+    }
+    int64_t numberValue = 0;
+    status = napi_get_value_int64(env, propertyValue, &numberValue);
+    if (status == napi_ok) {
+        return numberValue;
+    }
+    HiLog::Error(LABEL, "failed to get napi_number property from HiTraceId Js Object.");
+    return UINT64_T_PRO_DEFAULT_VALUE;
+}
+
+uint64_t NapiHitraceUtil::GetPropertyBigInt64(const napi_env env, napi_value& object,
+    const std::string& propertyName)
+{
+    napi_value propertyValue = GetPropertyByName(env, object, propertyName);
+    napi_valuetype type;
+    napi_status status = napi_typeof(env, propertyValue, &type);
+    if (status != napi_ok) {
+        HiLog::Error(LABEL, "failed to get %{public}s from HiTraceId Js Object.",
+            propertyName.c_str());
+        return UINT64_T_PRO_DEFAULT_VALUE;
+    }
+    uint64_t bigInt64Value = 0;
+    bool lossless = true;
+    napi_get_value_bigint_uint64(env, propertyValue, &bigInt64Value, &lossless);
+    return bigInt64Value;
 }
 } // namespace HiviewDFX
 } // namespace OHOS

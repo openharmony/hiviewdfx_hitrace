@@ -27,22 +27,27 @@ namespace HiviewDFX {
 constexpr int NAPI_VALUE_STRING_LEN = 10240;
 class NapiHitraceUtil {
 public:
-    static napi_value InitUndefinedObj(const napi_env env);
     static bool NapiTypeCheck(const napi_env env, const napi_value& jsObj,
         const napi_valuetype typeName);
-    static void SetPropertyInt32(const napi_env env, napi_value& object,
-        const std::string& propertyName, int32_t value);
-    static void SetPropertyInt64(const napi_env env, napi_value& object,
-        const std::string& propertyName, int64_t value);
     static void CreateHiTraceIdObject(const napi_env env, HiTraceId& traceId,
         napi_value& valueObject);
+    static void TransHiTraceIdObjectToNative(const napi_env env, HiTraceId& traceId,
+        napi_value& valueObject);
+    static void EnableTraceIdObjectFlag(const napi_env env, HiTraceId& traceId, napi_value& traceIdObject);
+
+private:
+    static void SetPropertyInt32(const napi_env env, napi_value& object,
+        const std::string& propertyName, uint32_t value);
+    static void SetPropertyInt64(const napi_env env, napi_value& object,
+        const std::string& propertyName, uint64_t value);
+    static void SetPropertyBigInt64(const napi_env env, napi_value& object,
+        const std::string& propertyName, uint64_t value);
     static uint32_t GetPropertyInt32(const napi_env env, napi_value& object,
         const std::string& propertyName);
     static uint64_t GetPropertyInt64(const napi_env env, napi_value& object,
         const std::string& propertyName);
-    static void TransHiTraceIdObjectToNative(const napi_env env, HiTraceId& traceId,
-        napi_value& valueObject);
-    static void EnableTraceIdObjectFlag(const napi_env env, HiTraceId& traceId, napi_value& traceIdObject);
+    static uint64_t GetPropertyBigInt64(const napi_env env, napi_value& object,
+        const std::string& propertyName);
 };
 } // namespace HiviewDFX
 } // namespace OHOS
