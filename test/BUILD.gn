@@ -67,6 +67,8 @@ group("unittest") {
   deps = [
     ":HitraceCTest",
     ":HitraceCppTest",
-    "unittest/common/napi:unittest",
   ]
+  if (support_jsapi) {
+    deps += [ "unittest/common/napi:unittest" ]
+  }
 }
