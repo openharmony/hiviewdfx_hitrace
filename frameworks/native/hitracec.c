@@ -135,9 +135,9 @@ static inline uint64_t HiTraceCreateChainId()
         .padding = 0,
         .chainId = 0
     };
-    chainId.deviceId = HiTraceGetDeviceId();
+    chainId.deviceId = (uint64_t)(HiTraceGetDeviceId());
     chainId.cpuId = HiTraceGetCpuId();
-    chainId.second = tv.tv_sec;
+    chainId.second = (uint64_t)(tv.tv_sec);
     chainId.usecond = tv.tv_usec;
 
     return chainId.chainId;
@@ -160,7 +160,7 @@ HiTraceIdStruct HiTraceBegin(const char* name, int flags)
     id.valid = HITRACE_ID_VALID;
     id.ver = HITRACE_VER_1;
     id.chainId = HiTraceCreateChainId();
-    id.flags = flags;
+    id.flags = (uint64_t)flags;
     id.spanId = 0;
     id.parentSpanId = 0;
 
@@ -237,11 +237,11 @@ HiTraceIdStruct HiTraceCreateSpan()
     gettimeofday(&tv, NULL);
 
     uint32_t hashData[hashDataNum];
-    hashData[0] = HiTraceGetDeviceId(); // 0: device id
-    hashData[1] = id.parentSpanId;      // 1: parent span id
-    hashData[2] = id.spanId;            // 2: span id
-    hashData[3] = tv.tv_sec;            // 3: second
-    hashData[4] = tv.tv_usec;           // 4: usecond
+    hashData[0] = (uint64_t)(HiTraceGetDeviceId());  // 0: device id
+    hashData[1] = id.parentSpanId;                   // 1: parent span id
+    hashData[2] = id.spanId;                         // 2: span id
+    hashData[3] = (uint64_t)(tv.tv_sec);             // 3: second
+    hashData[4] = tv.tv_usec;                        // 4: usecond
 
     uint32_t hash = HashFunc(hashData, hashDataNum * sizeof(uint32_t));
 
