@@ -154,7 +154,7 @@ static inline int HiTraceGetFlags(const HiTraceIdStruct* pId)
 static inline void HiTraceSetFlags(HiTraceIdStruct* pId, int flags)
 {
     if (HiTraceIsValid(pId) && (flags >= HITRACE_FLAG_MIN) && (flags < HITRACE_FLAG_MAX)) {
-        pId->flags = flags;
+        pId->flags = (uint64_t)flags;
     }
     return;
 }
