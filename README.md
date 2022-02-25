@@ -8,7 +8,7 @@
     -   [Available APIs](#section1551164914237)
     -   [Usage Guidelines](#section129654513264)
 
--   [Repositories Involved](#section1371113476307)
+-   [Repositories Involved](#section1371113476317)
 
 ## Overview<a name="section11660541593"></a>
 
@@ -31,11 +31,14 @@ HiTrace is the lightweight implementation based on the distributed call chain of
 
 ```
 /base/hiviewdfx/hitrace
-├── frameworks           # Framework code
-│   └── native          # HiTrace Native implementation code
-└── interfaces           # APIs
-   └── native            # C/C++ APIs
-       └── innerkits     # Header files opened to internal subsystems
+├── frameworks            # Framework code
+│   └── native            # HiTrace Native implementation code
+├── interfaces            # APIs
+│   └── js                # JS APIs
+│       └── kits          # JS inner implementation code 
+│   └── native            # C/C++ APIs
+│       └── innerkits     # Header files opened to internal subsystems
+└── test                  # Test cases
 ```
 
 ## Constraints<a name="section119744591305"></a>
@@ -89,9 +92,17 @@ Major APIs of HiTrace
 </tr>
 </tbody>
 </table>
-## Repositories Involved<a name="section1371113476307"></a>
 
-[Hivew](https://gitee.com/openharmony)
 
-[HiDumper](https://gitee.com/openharmony)
+## Repositories Involved<a name="section1371113476317"></a>
+
+[DFX SubSystem](https://gitee.com/openharmony/docs/blob/master/zh-cn/readme/DFX%E5%AD%90%E7%B3%BB%E7%BB%9F.md)
+
+[hiviewdfx\_hiview](https://gitee.com/openharmony/hiviewdfx_hiview/blob/master/README_zh.md)
+
+[hiviewdfx\_hilog](https://gitee.com/openharmony/hiviewdfx_hilog/blob/master/README_zh.md)
+
+[hiviewdfx\_hiappevent](https://gitee.com/openharmony/hiviewdfx_hiappevent/blob/master/README_zh.md)
+
+[hiviewdfx\_hisysevent](https://gitee.com/openharmony/hiviewdfx_hisysevent/blob/master/README_zh.md)
 
