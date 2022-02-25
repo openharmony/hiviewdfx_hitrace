@@ -8,7 +8,7 @@
     -   [接口说明](#section1551164914237)
     -   [使用说明](#section129654513264)
 
--   [相关仓](#section1371113476307)
+-   [相关仓](#section1371113476317)
 
 ## 简介<a name="section11660541593"></a>
 
@@ -32,11 +32,14 @@ HiTrace实现机制：
 
 ```
 /base/hiviewdfx/hitrace
-├── frameworks           # 框架代码
-│   └── native          # HiTrace native实现代码
-└── interfaces           # 接口
-   └── native            # C/C++接口
-       └── innerkits     # 对内部子系统暴露的头文件
+├── frameworks            # 框架代码
+│   └── native            # HiTrace native实现代码
+├── interfaces            # 接口
+│   └── js                # js接口
+│       └── kits          # js接口内部实现代码
+│   └── native            # C/C++接口
+│       └── innerkits     # 对内部子系统暴露的头文件
+└── test                  # 测试用例代码
 ```
 
 ## 约束<a name="section119744591305"></a>
@@ -47,7 +50,7 @@ HiTrace实现机制：
 
 ### 接口说明<a name="section1551164914237"></a>
 
-主要接口：
+C++主要接口：
 
 <a name="table1764215412123"></a>
 <table><tbody><tr id="row1370464111219"><td class="cellrowborder" valign="top" width="8.98%"><p id="p1670474115124"><a name="p1670474115124"></a><a name="p1670474115124"></a><strong id="b1970404151213"><a name="b1970404151213"></a><a name="b1970404151213"></a>类</strong></p>
@@ -91,9 +94,14 @@ HiTrace实现机制：
 </table>
 
 
-## 相关仓<a name="section1371113476307"></a>
+## 相关仓<a name="section1371113476317"></a>
 
-[HivewDfx子系统](https://gitee.com/openharmony)
+[DFX子系统](https://gitee.com/openharmony/docs/blob/master/zh-cn/readme/DFX%E5%AD%90%E7%B3%BB%E7%BB%9F.md)
 
-[HiDumper组件](https://gitee.com/openharmony)
+[hiviewdfx\_hiview](https://gitee.com/openharmony/hiviewdfx_hiview/blob/master/README_zh.md)
 
+[hiviewdfx\_hilog](https://gitee.com/openharmony/hiviewdfx_hilog/blob/master/README_zh.md)
+
+[hiviewdfx\_hiappevent](https://gitee.com/openharmony/hiviewdfx_hiappevent/blob/master/README_zh.md)
+
+[hiviewdfx\_hisysevent](https://gitee.com/openharmony/hiviewdfx_hisysevent/blob/master/README_zh.md)
