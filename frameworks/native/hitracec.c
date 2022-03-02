@@ -138,7 +138,7 @@ static inline uint64_t HiTraceCreateChainId()
     chainId.deviceId = (uint64_t)(HiTraceGetDeviceId());
     chainId.cpuId = HiTraceGetCpuId();
     chainId.second = (uint64_t)(tv.tv_sec);
-    chainId.usecond = tv.tv_usec;
+    chainId.usecond = (uint64_t)(tv.tv_usec);
 
     return chainId.chainId;
 }
@@ -241,7 +241,7 @@ HiTraceIdStruct HiTraceCreateSpan()
     hashData[1] = id.parentSpanId;                   // 1: parent span id
     hashData[2] = id.spanId;                         // 2: span id
     hashData[3] = (uint64_t)(tv.tv_sec);             // 3: second
-    hashData[4] = tv.tv_usec;                        // 4: usecond
+    hashData[4] = (uint64_t)(tv.tv_usec);                        // 4: usecond
 
     uint32_t hash = HashFunc(hashData, hashDataNum * sizeof(uint32_t));
 
