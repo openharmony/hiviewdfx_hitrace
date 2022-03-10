@@ -29,4 +29,7 @@ ohos_source_set("libhitrace_source") {
   external_deps = [ "hilog_native:libhilog" ]
 
   deps = [ "//utils/native/base:utils" ]
+
+  part_name = "hitrace_native"
+  subsystem_name = "hiviewdfx"
 }
