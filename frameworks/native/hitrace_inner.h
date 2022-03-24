@@ -22,6 +22,10 @@
 extern "C" {
 #endif
 
+#define HITRACE_INFO_FAIL (-1)
+#define HITRACE_INFO_ALL_VALID (0)
+#define HITRACE_INFO_ALL_VALID_EXCEPT_SPAN (1)
+
 void HiTraceTracepointInner(HiTraceCommunicationMode mode, HiTraceTracepointType type, const HiTraceIdStruct* pId,
     const char* fmt, va_list args);
 

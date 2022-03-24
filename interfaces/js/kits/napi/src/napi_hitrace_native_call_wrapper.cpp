@@ -31,6 +31,9 @@ constexpr uint32_t BUF_SIZE_64 = 64;
 void NapiHiTraceNativeCallWrapper::Begin(napi_env env, size_t paramNum, napi_value* params,
     napi_value& result)
 {
+    if (params == nullptr) {
+        return;
+    }
     if (!NapiHitraceUtil::NapiTypeCheck(env, params[ParamIndex::PARAM_FIRST],
         napi_valuetype::napi_string)) {
         HiLog::Error(LABEL, "name type must be string.");
@@ -58,6 +61,9 @@ void NapiHiTraceNativeCallWrapper::Begin(napi_env env, size_t paramNum, napi_val
 
 void NapiHiTraceNativeCallWrapper::End(napi_env env, napi_value* params, napi_value& result)
 {
+    if (params == nullptr) {
+        return;
+    }
     if (!NapiHitraceUtil::NapiTypeCheck(env, params[ParamIndex::PARAM_FIRST],
         napi_valuetype::napi_object)) {
         HiLog::Error(LABEL, "hitarce id type must be object.");
@@ -76,6 +82,9 @@ void NapiHiTraceNativeCallWrapper::GetId(napi_env env, napi_value& result)
 
 void NapiHiTraceNativeCallWrapper::SetId(napi_env env, napi_value* params, napi_value& result)
 {
+    if (params == nullptr) {
+        return;
+    }
     if (!NapiHitraceUtil::NapiTypeCheck(env, params[ParamIndex::PARAM_FIRST],
         napi_valuetype::napi_object)) {
         HiLog::Error(LABEL, "hitarce id type must be object.");
@@ -99,6 +108,9 @@ void NapiHiTraceNativeCallWrapper::CreateSpan(napi_env env, napi_value& result)
 
 void NapiHiTraceNativeCallWrapper::Tracepoint(napi_env env, napi_value* params, napi_value& result)
 {
+    if (params == nullptr) {
+        return;
+    }
     if (!NapiHitraceUtil::NapiTypeCheck(env, params[ParamIndex::PARAM_FIRST],
         napi_valuetype::napi_number)) {
         HiLog::Error(LABEL, "HiTraceCommunicationMode type must be number.");
@@ -136,6 +148,9 @@ void NapiHiTraceNativeCallWrapper::Tracepoint(napi_env env, napi_value* params, 
 
 void NapiHiTraceNativeCallWrapper::IsValid(napi_env env, napi_value* params, napi_value& result)
 {
+    if (params == nullptr) {
+        return;
+    }
     if (!NapiHitraceUtil::NapiTypeCheck(env, params[ParamIndex::PARAM_FIRST],
         napi_valuetype::napi_object)) {
         HiLog::Error(LABEL, "hitarce id type must be object.");
@@ -149,6 +164,9 @@ void NapiHiTraceNativeCallWrapper::IsValid(napi_env env, napi_value* params, nap
 
 void NapiHiTraceNativeCallWrapper::IsFlagEnabled(napi_env env, napi_value* params, napi_value& result)
 {
+    if (params == nullptr) {
+        return;
+    }
     if (!NapiHitraceUtil::NapiTypeCheck(env, params[ParamIndex::PARAM_FIRST],
         napi_valuetype::napi_object)) {
         HiLog::Error(LABEL, "hitarce id type must be object.");
@@ -170,6 +188,9 @@ void NapiHiTraceNativeCallWrapper::IsFlagEnabled(napi_env env, napi_value* param
 
 void NapiHiTraceNativeCallWrapper::EnableFlag(napi_env env, napi_value* params, napi_value& result)
 {
+    if (params == nullptr) {
+        return;
+    }
     if (!NapiHitraceUtil::NapiTypeCheck(env, params[ParamIndex::PARAM_FIRST],
         napi_valuetype::napi_object)) {
         HiLog::Error(LABEL, "hitarce id type is not object.");

@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #include "napi_hitrace_init.h"
 
 #include <functional>
@@ -26,9 +26,9 @@ namespace HiviewDFX {
 namespace {
 using ClassInitFunc = std::function<void(napi_env, std::map<const char*, napi_value>&)>;
 
-const std::string HITRACE_FLAG_ENUM_NAME = "HiTraceFlag";
-const std::string HITRACE_TRACE_POINT_TYPE_ENUM_NAME = "HiTraceTracepointType";
-const std::string HITRACE_COMMUNICATION_MODE_ENUM_NAME = "HiTraceCommunicationMode";
+constexpr char HITRACE_FLAG_ENUM_NAME[] = "HiTraceFlag";
+constexpr char HITRACE_TRACE_POINT_TYPE_ENUM_NAME[] = "HiTraceTracepointType";
+constexpr char HITRACE_COMMUNICATION_MODE_ENUM_NAME[] = "HiTraceCommunicationMode";
 
 napi_value ClassConstructor(napi_env env, napi_callback_info info)
 {

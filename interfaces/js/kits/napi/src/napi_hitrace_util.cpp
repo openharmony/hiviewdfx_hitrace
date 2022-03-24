@@ -23,10 +23,10 @@ namespace {
 constexpr HiLogLabel LABEL = { LOG_CORE, 0xD002D03, "NapiHitraceUtil" };
 constexpr uint32_t UINT32_T_PRO_DEFAULT_VALUE = 0;
 constexpr uint64_t UINT64_T_PRO_DEFAULT_VALUE = 0;
-const std::string CHAIN_ID_ATTR = "chainId";
-const std::string SPAN_ID_ATTR = "spanId";
-const std::string PARENT_SPAN_ID_ATTR = "parentSpanId";
-const std::string FLAGS_ATTR = "flags";
+constexpr char CHAIN_ID_ATTR[] = "chainId";
+constexpr char SPAN_ID_ATTR[] = "spanId";
+constexpr char PARENT_SPAN_ID_ATTR[] = "parentSpanId";
+constexpr char FLAGS_ATTR[] = "flags";
 
 static napi_value CreateInt32Value(const napi_env env, int32_t value)
 {
