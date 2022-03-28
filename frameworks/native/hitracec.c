@@ -241,7 +241,7 @@ HiTraceIdStruct HiTraceCreateSpan()
     hashData[1] = id.parentSpanId;                   // 1: parent span id
     hashData[2] = id.spanId;                         // 2: span id
     hashData[3] = (uint64_t)(tv.tv_sec);             // 3: second
-    hashData[4] = (uint64_t)(tv.tv_usec);                        // 4: usecond
+    hashData[4] = (uint64_t)(tv.tv_usec);            // 4: usecond
 
     uint32_t hash = HashFunc(hashData, hashDataNum * sizeof(uint32_t));
 
@@ -253,14 +253,14 @@ HiTraceIdStruct HiTraceCreateSpan()
 void HiTraceTracepointInner(HiTraceCommunicationMode mode, HiTraceTracepointType type, const HiTraceIdStruct* pId,
     const char* fmt, va_list args)
 {
-    static const int tpBufferSize = 2048;
+    static const int tpBufferSize = 1024;
     static const char* hiTraceTypeStr[] = { "CS", "CR", "SS", "SR", "GENERAL", };
     static const char* hiTraceModeStr[] = { "DEFAULT", "THREAD", "PROCESS", "DEVICE", };
 
-    if (mode < HITRACE_CM_MIN || mode > HITRACE_CM_MAX) {
+    if ((mode < HITRACE_CM_MIN) || (mode > HITRACE_CM_MAX)) {
         return;
     }
-    if (type < HITRACE_TP_MIN || type > HITRACE_TP_MAX) {
+    if ((type < HITRACE_TP_MIN) || (type > HITRACE_TP_MAX)) {
         return;
     }
 
@@ -285,7 +285,6 @@ void HiTraceTracepointInner(HiTraceCommunicationMode mode, HiTraceTracepointType
     if (ret == -1) { // -1: vsnprintf_s copy string fail
         return;
     }
-    buff[tpBufferSize - 1] = 0;
 
     HILOG_INFO(LOG_CORE, "<%{public}s,%{public}s,[%{public}llx,%{public}llx,%{public}llx]> %{public}s",
                hiTraceModeStr[mode], hiTraceTypeStr[type], (unsigned long long)pId->chainId,
@@ -323,34 +322,33 @@ void HiTraceTracepointEx(HiTraceCommunicationMode mode, HiTraceTracepointType ty
     return;
 }
 
-// return: -1 -- fail; 0 -- all valid; 1 -- all valid except span
-int HiTraceGetInfo(uint64_t* pChainId, uint32_t* pFlags, uint64_t* pSpanId, uint64_t* pParentSpanId)
+int HiTraceGetInfo(uint64_t* chainId, uint32_t* flags, uint64_t* spanId, uint64_t* parentSpanId)
 {
-    if (!pChainId || !pFlags || !pSpanId || !pParentSpanId) {
-        return -1;
+    if (!chainId || !flags || !spanId || !parentSpanId) {
+        return HITRACE_INFO_FAIL;
     }
 
     HiTraceIdStruct id = HiTraceGetId();
     if (!HiTraceIsValid(&id)) {
-        return -1;
+        return HITRACE_INFO_FAIL;
     }
 
     if (HiTraceIsFlagEnabled(&id, HITRACE_FLAG_DONOT_ENABLE_LOG)) {
-        return -1;
+        return HITRACE_INFO_FAIL;
     }
 
-    *pChainId = HiTraceGetChainId(&id);
-    *pFlags = HiTraceGetFlags(&id);
+    *chainId = HiTraceGetChainId(&id);
+    *flags = HiTraceGetFlags(&id);
 
     if (HiTraceIsFlagEnabled(&id, HITRACE_FLAG_DONOT_CREATE_SPAN)) {
-        *pSpanId = 0;
-        *pParentSpanId = 0;
-        return 1;
+        *spanId = 0;
+        *parentSpanId = 0;
+        return HITRACE_INFO_ALL_VALID_EXCEPT_SPAN;
     }
 
-    *pSpanId = HiTraceGetSpanId(&id);
-    *pParentSpanId = HiTraceGetParentSpanId(&id);
-    return 0;
+    *spanId = HiTraceGetSpanId(&id);
+    *parentSpanId = HiTraceGetParentSpanId(&id);
+    return HITRACE_INFO_ALL_VALID;
 }
 
 static void __attribute__((constructor)) HiTraceInit()

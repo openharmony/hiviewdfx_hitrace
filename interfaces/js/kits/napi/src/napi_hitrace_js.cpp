@@ -202,7 +202,7 @@ static napi_module hitrace_module = {
     .nm_filename = nullptr,
     .nm_register_func = TraceNapiInit,
     .nm_modname = "hiTraceChain",
-    .nm_priv = ((void *)0),
+    .nm_priv = (reinterpret_cast<void *>(0)),
     .reserved = {0}
 };
 

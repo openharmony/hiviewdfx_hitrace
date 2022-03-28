@@ -52,12 +52,12 @@ describe('hiTraceChainJsUnitTest', function () {
      * @tc.type: FUNC
      */
     it('hiTraceChainJsUnitTest001', 0, async function (done) {
-        console.info('hiTraceChainJsUnitTest001 start');
-        let traceId = hiTraceChain.begin("hiTraceChainJsUnitTest001");
-        expect(hiTraceChain.isValid(traceId)).assertTrue();
-        console.info('hiTraceChainJsUnitTest001 end');
-        hiTraceChain.end(traceId);
-        done();
+        console.info('hiTraceChainJsUnitTest001 start')
+        let traceId = hiTraceChain.begin("hiTraceChainJsUnitTest001")
+        expect(hiTraceChain.isValid(traceId)).assertTrue()
+        console.info('hiTraceChainJsUnitTest001 end')
+        hiTraceChain.end(traceId)
+        done()
     });
 
     /**
@@ -66,13 +66,13 @@ describe('hiTraceChainJsUnitTest', function () {
      * @tc.type: FUNC
      */
     it('hiTraceChainJsUnitTest002', 0, async function (done) {
-        console.info('hiTraceChainJsUnitTest001 start');
-        let traceId = hiTraceChain.begin("hiTraceChainJsUnitTest002");
-        traceId = hiTraceChain.createSpan();
-        expect(hiTraceChain.isValid(traceId)).assertTrue();
-        console.info('hiTraceChainJsUnitTest002 end');
-        hiTraceChain.end(traceId);
-        done();
+        console.info('hiTraceChainJsUnitTest001 start')
+        let traceId = hiTraceChain.begin("hiTraceChainJsUnitTest002")
+        traceId = hiTraceChain.createSpan()
+        expect(hiTraceChain.isValid(traceId)).assertTrue()
+        console.info('hiTraceChainJsUnitTest002 end')
+        hiTraceChain.end(traceId)
+        done()
     });
 
     /**
@@ -81,11 +81,11 @@ describe('hiTraceChainJsUnitTest', function () {
      * @tc.type: FUNC
      */
      it('hiTraceChainJsUnitTest003', 0, async function (done) {
-        console.info('hiTraceChainJsUnitTest003 start');
-        let traceId = hiTraceChain.begin("hiTraceChainJsUnitTest003");
+        console.info('hiTraceChainJsUnitTest003 start')
+        let traceId = hiTraceChain.begin("hiTraceChainJsUnitTest003")
         hiTraceChain.tracepoint(hiTraceChain.HiTraceCommunicationMode.DEFAULT,
-            hiTraceChain.HiTraceTracepointType.CS, traceId, "hiTraceChainJsUnitTest003 test case");
-        console.info('hiTraceChainJsUnitTest003 end');
+            hiTraceChain.HiTraceTracepointType.CS, traceId, "hiTraceChainJsUnitTest003 test case")
+        console.info('hiTraceChainJsUnitTest003 end')
         hiTraceChain.end(traceId);
         done();
     });
@@ -96,13 +96,13 @@ describe('hiTraceChainJsUnitTest', function () {
      * @tc.type: FUNC
      */
     it('hiTraceChainJsUnitTest004', 0, async function (done) {
-        console.info('hiTraceChainJsUnitTest004 start');
-        let traceId = hiTraceChain.begin("hiTraceChainJsUnitTest004");
-        expect(!hiTraceChain.isFlagEnabled(traceId, hiTraceChain.HiTraceFlag.INCLUDE_ASYNC)).assertTrue();
-        hiTraceChain.enableFlag(traceId, hiTraceChain.HiTraceFlag.INCLUDE_ASYNC);
-        expect(hiTraceChain.isFlagEnabled(traceId, hiTraceChain.HiTraceFlag.INCLUDE_ASYNC)).assertTrue();
-        console.info('hiTraceChainJsUnitTest004 end');
-        hiTraceChain.end(traceId);
+        console.info('hiTraceChainJsUnitTest004 start')
+        let traceId = hiTraceChain.begin("hiTraceChainJsUnitTest004")
+        expect(!hiTraceChain.isFlagEnabled(traceId, hiTraceChain.HiTraceFlag.INCLUDE_ASYNC)).assertTrue()
+        hiTraceChain.enableFlag(traceId, hiTraceChain.HiTraceFlag.INCLUDE_ASYNC)
+        expect(hiTraceChain.isFlagEnabled(traceId, hiTraceChain.HiTraceFlag.INCLUDE_ASYNC)).assertTrue()
+        console.info('hiTraceChainJsUnitTest004 end')
+        hiTraceChain.end(traceId)
         done();
     });
 });
