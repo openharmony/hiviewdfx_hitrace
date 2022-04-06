@@ -167,7 +167,7 @@ HiTraceIdStruct HiTraceBegin(const char* name, int flags)
     pThreadId->id = id;
 
     if (!HiTraceIsFlagEnabled(&id, HITRACE_FLAG_NO_BE_INFO)) {
-        HILOG_INFO(LOG_CORE, "HiTraceBegin name:%{public}s flags:%{public}x.", name ? name : "", (int)id.flags);
+        HILOG_INFO(LOG_CORE, "HiTraceBegin name:%{public}s flags:0x%{public}.2x.", name ? name : "", (int)id.flags);
     }
     return id;
 }
@@ -237,11 +237,11 @@ HiTraceIdStruct HiTraceCreateSpan()
     gettimeofday(&tv, NULL);
 
     uint32_t hashData[hashDataNum];
-    hashData[0] = (uint64_t)(HiTraceGetDeviceId());  // 0: device id
+    hashData[0] = (uint32_t)(HiTraceGetDeviceId());  // 0: device id
     hashData[1] = id.parentSpanId;                   // 1: parent span id
     hashData[2] = id.spanId;                         // 2: span id
-    hashData[3] = (uint64_t)(tv.tv_sec);             // 3: second
-    hashData[4] = (uint64_t)(tv.tv_usec);            // 4: usecond
+    hashData[3] = (uint32_t)(tv.tv_sec);             // 3: second
+    hashData[4] = (uint32_t)(tv.tv_usec);            // 4: usecond
 
     uint32_t hash = HashFunc(hashData, hashDataNum * sizeof(uint32_t));
 
