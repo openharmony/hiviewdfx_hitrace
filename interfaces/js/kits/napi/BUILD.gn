@@ -29,7 +29,7 @@ ohos_shared_library("hitracechain_napi") {
     "./src/napi_hitrace_util.cpp",
   ]
 
-  deps = [ "//foundation/ace/napi:ace_napi" ]
+  deps = [ "//foundation/arkui/napi:ace_napi" ]
 
   external_deps = [
     "hilog_native:libhilog",
