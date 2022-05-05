@@ -31,11 +31,23 @@
     },
     "build": {
       "sub_component": [
+        "//base/hiviewdfx/hitrace/interfaces/native/innerkits:hitrace_meter",
         "//base/hiviewdfx/hitrace/interfaces/native/innerkits:libhitrace",
         "//base/hiviewdfx/hitrace/interfaces/js/kits:hitracechain_napi"
       ],
       "inner_kits": [
         {
+          "type": "so",
+          "name": "//base/hiviewdfx/hitrace/interfaces/native/innerkits:hitrace_meter",
+          "header": {
+            "header_base": "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/hitrace_meter/",
+            "header_files": [
+              "hitrace_meter.h"
+            ]
+          }
+        },
+        {
+          "type": "so",
           "name": "//base/hiviewdfx/hitrace/interfaces/native/innerkits:libhitrace",
           "header": {
             "header_base": "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/",
