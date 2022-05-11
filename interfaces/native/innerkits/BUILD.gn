@@ -48,7 +48,7 @@ ohos_static_library("hitrace_inner") {
   external_deps = [
     "hiviewdfx_hilog_native:libhilog",
     "ipc:ipc_core",
-    "startup_l2:syspara",
+    "init:libbegetutil",
     "startup_l2:syspara_watchagent",
   ]
 
