@@ -36,8 +36,8 @@ namespace {
 int g_markerFd = -1;
 std::once_flag g_onceFlag;
 
-std::atomic<bool> g_isBytraceInit(false);
-std::atomic<uint64_t> g_tagsProperty(BYTRACE_TAG_NOT_READY);
+std::atomic<bool> g_isHitraceMeterInit(false);
+std::atomic<uint64_t> g_tagsProperty(HITRACE_TAG_NOT_READY);
 
 const std::string KEY_TRACE_TAG = "debug.bytrace.tags.enableflags";
 const std::string KEY_APP_NUMBER = "debug.bytrace.app_number";
@@ -47,8 +47,8 @@ constexpr int NAME_MAX_SIZE = 1000;
 static std::vector<std::string> g_markTypes = {"B", "E", "S", "F", "C"};
 enum MarkerType { MARKER_BEGIN, MARKER_END, MARKER_ASYNC_BEGIN, MARKER_ASYNC_END, MARKER_INT, MARKER_MAX };
 
-constexpr uint64_t BYTRACE_TAG = 0xd03301;
-constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, BYTRACE_TAG, "BytraceCore"};
+constexpr uint64_t HITRACE_TAG = 0xd03301;
+constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, HITRACE_TAG, "HitraceMeter"};
 
 static void ParameterChange(const char* key, const char* value, void* context)
 {
@@ -93,7 +93,7 @@ uint64_t GetSysParamTags()
     }
 
     IsAppValid();
-    return (tags | BYTRACE_TAG_ALWAYS) & BYTRACE_TAG_VALID_MASK;
+    return (tags | HITRACE_TAG_ALWAYS) & HITRACE_TAG_VALID_MASK;
 }
 
 // open file "trace_marker".
@@ -116,13 +116,13 @@ void OpenTraceMarkerFile()
         HiLog::Error(LABEL, "WatchParameter %{public}s failed", KEY_TRACE_TAG.c_str());
         return;
     }
-    g_isBytraceInit = true;
+    g_isHitraceMeterInit = true;
 }
 }; // namespace
 
-void AddBytraceMarker(MarkerType type, uint64_t tag, const std::string& name, const std::string& value)
+void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& name, const std::string& value)
 {
-    if (UNEXPECTANTLY(!g_isBytraceInit)) {
+    if (UNEXPECTANTLY(!g_isHitraceMeterInit)) {
         std::call_once(g_onceFlag, OpenTraceMarkerFile);
     }
     if (UNEXPECTANTLY(g_tagsProperty & tag)) {
@@ -139,7 +139,7 @@ void AddBytraceMarker(MarkerType type, uint64_t tag, const std::string& name, co
 
 void UpdateTraceLabel()
 {
-    if (!g_isBytraceInit) {
+    if (!g_isHitraceMeterInit) {
         return;
     }
     g_tagsProperty = GetSysParamTags();
@@ -148,83 +148,83 @@ void UpdateTraceLabel()
 void StartTrace(uint64_t label, const string& value, float limit)
 {
     string traceName = "H:" + value;
-    AddBytraceMarker(MARKER_BEGIN, label, traceName, "");
+    AddHitraceMeterMarker(MARKER_BEGIN, label, traceName, "");
 }
 
 void StartTraceDebug(uint64_t label, const string& value, float limit)
 {
 #if (TRACE_LEVEL >= DEBUG_LEVEL)
     string traceName = "H:" + value + GetHiTraceInfo();
-    AddBytraceMarker(MARKER_BEGIN, label, traceName, "");
+    AddHitraceMeterMarker(MARKER_BEGIN, label, traceName, "");
 #endif
 }
 
 void FinishTrace(uint64_t label)
 {
-    AddBytraceMarker(MARKER_END, label, "", "");
+    AddHitraceMeterMarker(MARKER_END, label, "", "");
 }
 
 void FinishTraceDebug(uint64_t label)
 {
 #if (TRACE_LEVEL >= DEBUG_LEVEL)
-    AddBytraceMarker(MARKER_END, label, "", "");
+    AddHitraceMeterMarker(MARKER_END, label, "", "");
 #endif
 }
 
 void StartAsyncTrace(uint64_t label, const string& value, int32_t taskId, float limit)
 {
     string traceName = "H:" + value;
-    AddBytraceMarker(MARKER_ASYNC_BEGIN, label, traceName, std::to_string(taskId));
+    AddHitraceMeterMarker(MARKER_ASYNC_BEGIN, label, traceName, std::to_string(taskId));
 }
 
 void StartAsyncTraceDebug(uint64_t label, const string& value, int32_t taskId, float limit)
 {
 #if (TRACE_LEVEL >= DEBUG_LEVEL)
     string traceName = "H:" + value;
-    AddBytraceMarker(MARKER_ASYNC_BEGIN, label, traceName, std::to_string(taskId));
+    AddHitraceMeterMarker(MARKER_ASYNC_BEGIN, label, traceName, std::to_string(taskId));
 #endif
 }
 
 void FinishAsyncTrace(uint64_t label, const string& value, int32_t taskId)
 {
     string traceName = "H:" + value;
-    AddBytraceMarker(MARKER_ASYNC_END, label, traceName, std::to_string(taskId));
+    AddHitraceMeterMarker(MARKER_ASYNC_END, label, traceName, std::to_string(taskId));
 }
 
 void FinishAsyncTraceDebug(uint64_t label, const string& value, int32_t taskId)
 {
 #if (TRACE_LEVEL >= DEBUG_LEVEL)
     string traceName = "H:" + value;
-    AddBytraceMarker(MARKER_ASYNC_END, label, traceName, std::to_string(taskId));
+    AddHitraceMeterMarker(MARKER_ASYNC_END, label, traceName, std::to_string(taskId));
 #endif
 }
 
 void MiddleTrace(uint64_t label, const string& beforeValue, const std::string& afterValue)
 {
     string traceName = "H:" + afterValue;
-    AddBytraceMarker(MARKER_END, label, "", "");
-    AddBytraceMarker(MARKER_BEGIN, label, traceName, "");
+    AddHitraceMeterMarker(MARKER_END, label, "", "");
+    AddHitraceMeterMarker(MARKER_BEGIN, label, traceName, "");
 }
 
 void MiddleTraceDebug(uint64_t label, const string& beforeValue, const std::string& afterValue)
 {
 #if (TRACE_LEVEL >= DEBUG_LEVEL)
     string traceName = "H:" + afterValue + GetTraceInfo();
-    AddBytraceMarker(MARKER_END, label, "", "");
-    AddBytraceMarker(MARKER_BEGIN, label, traceName, "");
+    AddHitraceMeterMarker(MARKER_END, label, "", "");
+    AddHitraceMeterMarker(MARKER_BEGIN, label, traceName, "");
 #endif
 }
 
 void CountTrace(uint64_t label, const string& name, int64_t count)
 {
     string traceName = "H:" + name;
-    AddBytraceMarker(MARKER_INT, label, traceName, std::to_string(count));
+    AddHitraceMeterMarker(MARKER_INT, label, traceName, std::to_string(count));
 }
 
 void CountTraceDebug(uint64_t label, const string& name, int64_t count)
 {
 #if (TRACE_LEVEL >= DEBUG_LEVEL)
     string traceName = "H:" + name;
-    AddBytraceMarker(MARKER_INT, label, traceName, std::to_string(count));
+    AddHitraceMeterMarker(MARKER_INT, label, traceName, std::to_string(count));
 #endif
 }
