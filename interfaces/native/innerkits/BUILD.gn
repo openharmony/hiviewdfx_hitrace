@@ -49,7 +49,7 @@ ohos_static_library("hitrace_inner") {
     "hiviewdfx_hilog_native:libhilog",
     "ipc:ipc_core",
     "init:libbegetutil",
-    "startup_l2:syspara_watchagent",
+    "init:libbeget_proxy",
   ]
 
   part_name = "hitrace_native"
