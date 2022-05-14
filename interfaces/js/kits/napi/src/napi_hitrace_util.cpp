@@ -28,28 +28,28 @@ constexpr char SPAN_ID_ATTR[] = "spanId";
 constexpr char PARENT_SPAN_ID_ATTR[] = "parentSpanId";
 constexpr char FLAGS_ATTR[] = "flags";
 
-static napi_value CreateInt32Value(const napi_env env, int32_t value)
+napi_value CreateInt32Value(const napi_env env, int32_t value)
 {
     napi_value result = nullptr;
     NAPI_CALL(env, napi_create_int32(env, value, &result));
     return result;
 }
 
-static napi_value CreateInt64Value(const napi_env env, int64_t value)
+napi_value CreateInt64Value(const napi_env env, int64_t value)
 {
     napi_value result = nullptr;
     NAPI_CALL(env, napi_create_int64(env, value, &result));
     return result;
 }
 
-static napi_value CreateBigInt64Value(const napi_env env, uint64_t value)
+napi_value CreateBigInt64Value(const napi_env env, uint64_t value)
 {
     napi_value result = nullptr;
     NAPI_CALL(env, napi_create_bigint_uint64(env, value, &result));
     return result;
 }
 
-static napi_status SetNamedProperty(const napi_env env, napi_value& object,
+napi_status SetNamedProperty(const napi_env env, napi_value& object,
     const std::string& propertyName, napi_value& propertyValue)
 {
     napi_status status = napi_set_named_property(env, object, propertyName.c_str(), propertyValue);
@@ -59,7 +59,7 @@ static napi_status SetNamedProperty(const napi_env env, napi_value& object,
     return status;
 }
 
-static napi_value GetPropertyByName(const napi_env env, napi_value& object,
+napi_value GetPropertyByName(const napi_env env, napi_value& object,
     const std::string& propertyName)
 {
     napi_value result = nullptr;
