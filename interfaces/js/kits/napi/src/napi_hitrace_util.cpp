@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -20,9 +20,10 @@
 namespace OHOS {
 namespace HiviewDFX {
 namespace {
-constexpr HiLogLabel LABEL = { LOG_CORE, 0xD002D03, "NapiHitraceUtil" };
+constexpr HiLogLabel LABEL = { LOG_CORE, 0xD002D03, "HITRACE_UTIL_NAPI" };
 constexpr uint32_t UINT32_T_PRO_DEFAULT_VALUE = 0;
 constexpr uint64_t UINT64_T_PRO_DEFAULT_VALUE = 0;
+constexpr uint64_t INVALID_CHAIN_ID = 0;
 constexpr char CHAIN_ID_ATTR[] = "chainId";
 constexpr char SPAN_ID_ATTR[] = "spanId";
 constexpr char PARENT_SPAN_ID_ATTR[] = "parentSpanId";
@@ -68,11 +69,15 @@ napi_value GetPropertyByName(const napi_env env, napi_value& object,
 }
 }
 
-bool NapiHitraceUtil::NapiTypeCheck(const napi_env env, const napi_value& jsObj,
+bool NapiHitraceUtil::CheckValueTypeValidity(const napi_env env, const napi_value& jsObj,
     const napi_valuetype typeName)
 {
-    napi_valuetype valueType;
-    napi_typeof(env, jsObj, &valueType);
+    napi_valuetype valueType = napi_undefined;
+    napi_status ret = napi_typeof(env, jsObj, &valueType);
+    if (ret != napi_ok) {
+        HiLog::Error(LABEL, "failed to parse the type of napi value.");
+        return false;
+    }
     if (valueType != typeName) {
         HiLog::Error(LABEL, "you have called a function with parameters of wrong type.");
         return false;
@@ -80,7 +85,7 @@ bool NapiHitraceUtil::NapiTypeCheck(const napi_env env, const napi_value& jsObj,
     return true;
 }
 
-void NapiHitraceUtil::CreateHiTraceIdObject(const napi_env env, HiTraceId& traceId,
+void NapiHitraceUtil::CreateHiTraceIdJsObject(const napi_env env, HiTraceId& traceId,
     napi_value& valueObject)
 {
     napi_create_object(env, &valueObject);
@@ -100,12 +105,15 @@ void NapiHitraceUtil::CreateHiTraceIdObject(const napi_env env, HiTraceId& trace
     HiLog::Debug(LABEL, "Native2Js: flags is %{public}d.", traceId.GetFlags());
 }
 
-void NapiHitraceUtil::TransHiTraceIdObjectToNative(const napi_env env, HiTraceId& traceId,
+void NapiHitraceUtil::TransHiTraceIdJsObjectToNative(const napi_env env, HiTraceId& traceId,
     napi_value& valueObject)
 {
     uint64_t chainId = NapiHitraceUtil::GetPropertyBigInt64(env, valueObject, CHAIN_ID_ATTR);
     HiLog::Debug(LABEL, "Js2Native: chainId is %{public}llx.",
         static_cast<unsigned long long>(chainId));
+    if (chainId == INVALID_CHAIN_ID) {
+        return;
+    }
     traceId.SetChainId(chainId);
     uint64_t spanId = NapiHitraceUtil::GetPropertyInt64(env, valueObject, SPAN_ID_ATTR);
     HiLog::Debug(LABEL, "Js2Native: spanId is %{public}llx.",
