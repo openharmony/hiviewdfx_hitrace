@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Huawei Device Co., Ltd.
+ * Copyright (C) 2021-2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,28 +19,32 @@ import {describe, beforeAll, beforeEach, afterEach, afterAll, it, expect} from '
 
 describe('hiTraceChainJsUnitTest', function () {
     beforeAll(function() {
-        /*
+
+        /**
          * @tc.setup: setup invoked before all test cases
          */
         console.info('hiTraceChainJsUnitTest beforeAll called')
     })
 
     afterAll(function() {
-        /*
+
+        /**
          * @tc.teardown: teardown invoked after all test cases
          */
         console.info('hiTraceChainJsUnitTest afterAll called')
     })
 
     beforeEach(function() {
-        /*
+
+        /**
          * @tc.setup: setup invoked before each test case
          */
         console.info('hiTraceChainJsUnitTest beforeEach called')
     })
 
     afterEach(function() {
-        /*
+
+        /**
          * @tc.teardown: teardown invoked after each test case
          */
         console.info('hiTraceChainJsUnitTest afterEach called')
@@ -52,12 +56,10 @@ describe('hiTraceChainJsUnitTest', function () {
      * @tc.type: FUNC
      */
     it('hiTraceChainJsUnitTest001', 0, async function (done) {
-        console.info('hiTraceChainJsUnitTest001 start');
-        let traceId = hiTraceChain.begin("hiTraceChainJsUnitTest001");
-        expect(hiTraceChain.isValid(traceId)).assertTrue();
-        console.info('hiTraceChainJsUnitTest001 end');
-        hiTraceChain.end(traceId);
-        done();
+        let traceId = hiTraceChain.begin("hiTraceChainJsUnitTest001")
+        expect(hiTraceChain.isValid(traceId)).assertTrue()
+        hiTraceChain.end(traceId)
+        done()
     });
 
     /**
@@ -66,13 +68,11 @@ describe('hiTraceChainJsUnitTest', function () {
      * @tc.type: FUNC
      */
     it('hiTraceChainJsUnitTest002', 0, async function (done) {
-        console.info('hiTraceChainJsUnitTest001 start');
-        let traceId = hiTraceChain.begin("hiTraceChainJsUnitTest002");
-        traceId = hiTraceChain.createSpan();
-        expect(hiTraceChain.isValid(traceId)).assertTrue();
-        console.info('hiTraceChainJsUnitTest002 end');
-        hiTraceChain.end(traceId);
-        done();
+        let traceId = hiTraceChain.begin("hiTraceChainJsUnitTest002")
+        traceId = hiTraceChain.createSpan()
+        expect(hiTraceChain.isValid(traceId)).assertTrue()
+        hiTraceChain.end(traceId)
+        done()
     });
 
     /**
@@ -81,11 +81,9 @@ describe('hiTraceChainJsUnitTest', function () {
      * @tc.type: FUNC
      */
      it('hiTraceChainJsUnitTest003', 0, async function (done) {
-        console.info('hiTraceChainJsUnitTest003 start');
-        let traceId = hiTraceChain.begin("hiTraceChainJsUnitTest003");
+        let traceId = hiTraceChain.begin("hiTraceChainJsUnitTest003")
         hiTraceChain.tracepoint(hiTraceChain.HiTraceCommunicationMode.DEFAULT,
-            hiTraceChain.HiTraceTracepointType.CS, traceId, "hiTraceChainJsUnitTest003 test case");
-        console.info('hiTraceChainJsUnitTest003 end');
+            hiTraceChain.HiTraceTracepointType.CS, traceId, "hiTraceChainJsUnitTest003 test case")
         hiTraceChain.end(traceId);
         done();
     });
@@ -96,13 +94,23 @@ describe('hiTraceChainJsUnitTest', function () {
      * @tc.type: FUNC
      */
     it('hiTraceChainJsUnitTest004', 0, async function (done) {
-        console.info('hiTraceChainJsUnitTest004 start');
-        let traceId = hiTraceChain.begin("hiTraceChainJsUnitTest004");
-        expect(!hiTraceChain.isFlagEnabled(traceId, hiTraceChain.HiTraceFlag.INCLUDE_ASYNC)).assertTrue();
-        hiTraceChain.enableFlag(traceId, hiTraceChain.HiTraceFlag.INCLUDE_ASYNC);
-        expect(hiTraceChain.isFlagEnabled(traceId, hiTraceChain.HiTraceFlag.INCLUDE_ASYNC)).assertTrue();
-        console.info('hiTraceChainJsUnitTest004 end');
-        hiTraceChain.end(traceId);
+        let traceId = hiTraceChain.begin("hiTraceChainJsUnitTest004")
+        expect(!hiTraceChain.isFlagEnabled(traceId, hiTraceChain.HiTraceFlag.INCLUDE_ASYNC)).assertTrue()
+        hiTraceChain.enableFlag(traceId, hiTraceChain.HiTraceFlag.INCLUDE_ASYNC)
+        expect(hiTraceChain.isFlagEnabled(traceId, hiTraceChain.HiTraceFlag.INCLUDE_ASYNC)).assertTrue()
+        hiTraceChain.end(traceId)
+        done();
+    });
+
+    /**
+     * @tc.name: hiTraceChainJsUnitTest005
+     * @tc.desc: test call begin api function with parameters of wrong number
+     * @tc.type: FUNC
+     */
+    it('hiTraceChainJsUnitTest005', 0, async function (done) {
+        let traceId = hiTraceChain.begin("hiTraceChainJsUnitTest005", "testp1", "testp2")
+        expect(!hiTraceChain.isValid(traceId)).assertTrue()
+        hiTraceChain.end(traceId)
         done();
     });
 });
