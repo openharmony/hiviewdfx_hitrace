@@ -60,7 +60,7 @@ napi_status SetNamedProperty(const napi_env env, napi_value& object,
     return status;
 }
 
-napi_value GetPropertyByName(const napi_env env, napi_value& object,
+napi_value GetPropertyByName(const napi_env env, const napi_value& object,
     const std::string& propertyName)
 {
     napi_value result = nullptr;
@@ -106,7 +106,7 @@ void NapiHitraceUtil::CreateHiTraceIdJsObject(const napi_env env, HiTraceId& tra
 }
 
 void NapiHitraceUtil::TransHiTraceIdJsObjectToNative(const napi_env env, HiTraceId& traceId,
-    napi_value& valueObject)
+    const napi_value& valueObject)
 {
     uint64_t chainId = NapiHitraceUtil::GetPropertyBigInt64(env, valueObject, CHAIN_ID_ATTR);
     HiLog::Debug(LABEL, "Js2Native: chainId is %{public}llx.",
@@ -156,7 +156,7 @@ void NapiHitraceUtil::SetPropertyBigInt64(const napi_env env, napi_value& object
     SetNamedProperty(env, object, propertyName, peropertyValue);
 }
 
-uint32_t NapiHitraceUtil::GetPropertyInt32(const napi_env env, napi_value& object,
+uint32_t NapiHitraceUtil::GetPropertyInt32(const napi_env env, const napi_value& object,
     const std::string& propertyName)
 {
     napi_value propertyValue = GetPropertyByName(env, object, propertyName);
@@ -180,7 +180,7 @@ uint32_t NapiHitraceUtil::GetPropertyInt32(const napi_env env, napi_value& objec
     return UINT32_T_PRO_DEFAULT_VALUE;
 }
 
-uint64_t NapiHitraceUtil::GetPropertyInt64(const napi_env env, napi_value& object,
+uint64_t NapiHitraceUtil::GetPropertyInt64(const napi_env env, const napi_value& object,
     const std::string& propertyName)
 {
     napi_value propertyValue = GetPropertyByName(env, object, propertyName);
@@ -204,7 +204,7 @@ uint64_t NapiHitraceUtil::GetPropertyInt64(const napi_env env, napi_value& objec
     return UINT64_T_PRO_DEFAULT_VALUE;
 }
 
-uint64_t NapiHitraceUtil::GetPropertyBigInt64(const napi_env env, napi_value& object,
+uint64_t NapiHitraceUtil::GetPropertyBigInt64(const napi_env env, const napi_value& object,
     const std::string& propertyName)
 {
     napi_value propertyValue = GetPropertyByName(env, object, propertyName);
