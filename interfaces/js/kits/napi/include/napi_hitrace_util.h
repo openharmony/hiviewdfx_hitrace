@@ -32,7 +32,7 @@ public:
     static void CreateHiTraceIdJsObject(const napi_env env, HiTraceId& traceId,
         napi_value& valueObject);
     static void TransHiTraceIdJsObjectToNative(const napi_env env, HiTraceId& traceId,
-        napi_value& valueObject);
+        const napi_value& valueObject);
     static void EnableTraceIdObjectFlag(const napi_env env, HiTraceId& traceId, napi_value& traceIdObject);
 
 private:
@@ -42,11 +42,11 @@ private:
         const std::string& propertyName, uint64_t value);
     static void SetPropertyBigInt64(const napi_env env, napi_value& object,
         const std::string& propertyName, uint64_t value);
-    static uint32_t GetPropertyInt32(const napi_env env, napi_value& object,
+    static uint32_t GetPropertyInt32(const napi_env env, const napi_value& object,
         const std::string& propertyName);
-    static uint64_t GetPropertyInt64(const napi_env env, napi_value& object,
+    static uint64_t GetPropertyInt64(const napi_env env, const napi_value& object,
         const std::string& propertyName);
-    static uint64_t GetPropertyBigInt64(const napi_env env, napi_value& object,
+    static uint64_t GetPropertyBigInt64(const napi_env env, const napi_value& object,
         const std::string& propertyName);
 };
 } // namespace HiviewDFX

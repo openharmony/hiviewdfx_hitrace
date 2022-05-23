@@ -25,7 +25,7 @@ namespace {
 constexpr HiLogLabel LABEL = { LOG_CORE, 0xD002D03, "HITRACE_JS_NAPI" };
 constexpr uint32_t BUF_SIZE_64 = 64;
 
-bool ParseInt32Param(napi_env& env, napi_value& origin, int& dest)
+bool ParseInt32Param(const napi_env& env, const napi_value& origin, int& dest)
 {
     if (!NapiHitraceUtil::CheckValueTypeValidity(env, origin, napi_valuetype::napi_number)) {
         return false;
@@ -34,7 +34,7 @@ bool ParseInt32Param(napi_env& env, napi_value& origin, int& dest)
     return true;
 }
 
-bool ParseStringParam(napi_env& env, napi_value& origin, std::string& dest)
+bool ParseStringParam(const napi_env& env, const napi_value& origin, std::string& dest)
 {
     if (!NapiHitraceUtil::CheckValueTypeValidity(env, origin, napi_valuetype::napi_string)) {
         return false;
@@ -46,7 +46,7 @@ bool ParseStringParam(napi_env& env, napi_value& origin, std::string& dest)
     return true;
 }
 
-bool ParseTraceIdObject(napi_env& env, napi_value& origin, HiTraceId& traceId)
+bool ParseTraceIdObject(const napi_env& env, const napi_value& origin, HiTraceId& traceId)
 {
     if (!NapiHitraceUtil::CheckValueTypeValidity(env, origin, napi_valuetype::napi_object)) {
         return false;
