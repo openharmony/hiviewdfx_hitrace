@@ -62,11 +62,40 @@ ohos_unittest("HitraceCppTest") {
   external_deps = [ "hilog_native:libhilog" ]
 }
 
+config("HitraceNDKTest_config") {
+  visibility = [ ":*" ]
+
+  include_dirs = [
+    "//base/hiviewdfx/hitrace/cmd/include",
+    "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/hitrace_meter",
+  ]
+}
+
+ohos_unittest("HitraceNDKTest") {
+  module_out_path = module_output_path
+
+  sources = [ "unittest/hitrace_meter/hitrace_ndk_test.cpp" ]
+
+  configs = [ ":HitraceNDKTest_config" ]
+
+  deps = [
+    "//base/hiviewdfx/hitrace/cmd:hitrace_osal_inner",
+    "//base/hiviewdfx/hitrace/interfaces/native/innerkits:hitrace_meter",
+    "//third_party/googletest:gtest_main",
+  ]
+
+  external_deps = [
+    "hiviewdfx_hilog_native:libhilog",
+    "startup_l2:syspara",
+  ]
+}
+
 group("unittest") {
   testonly = true
   deps = [
     ":HitraceCTest",
     ":HitraceCppTest",
+    ":HitraceNDKTest",
   ]
   if (support_jsapi) {
     deps += [ "unittest/common/napi:unittest" ]

@@ -39,9 +39,10 @@ std::once_flag g_onceFlag;
 std::atomic<bool> g_isHitraceMeterInit(false);
 std::atomic<uint64_t> g_tagsProperty(HITRACE_TAG_NOT_READY);
 
-const std::string KEY_TRACE_TAG = "debug.bytrace.tags.enableflags";
-const std::string KEY_APP_NUMBER = "debug.bytrace.app_number";
+const std::string KEY_TRACE_TAG = "debug.hitrace.tags.enableflags";
+const std::string KEY_APP_NUMBER = "debug.hitrace.app_number";
 const std::string KEY_RO_DEBUGGABLE = "ro.debuggable";
+const std::string KEY_PREFIX = "debug.hitrace.app_";
 
 constexpr int NAME_MAX_SIZE = 1000;
 static std::vector<std::string> g_markTypes = {"B", "E", "S", "F", "C"};
@@ -52,7 +53,7 @@ constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, HITRACE_TAG, "HitraceMe
 
 static void ParameterChange(const char* key, const char* value, void* context)
 {
-    HiLog::Info(LABEL, "ParameterChange %{public}s", key);
+    HiLog::Info(LABEL, "ParameterChange enableflags %{public}s", value);
     UpdateTraceLabel();
 }
 
@@ -69,10 +70,9 @@ bool IsAppValid()
 
         std::string lineStr;
         std::getline(fs, lineStr);
-        std::string keyPrefix = "debug.bytrace.app_";
         int nums = OHOS::system::GetIntParameter<int>(KEY_APP_NUMBER, 0);
         for (int i = 0; i < nums; i++) {
-            std::string keyStr = keyPrefix + std::to_string(i);
+            std::string keyStr = KEY_PREFIX + std::to_string(i);
             std::string val = OHOS::system::GetParameter(keyStr, "");
             if (val == "*" || val == lineStr) {
                 fs.close();
