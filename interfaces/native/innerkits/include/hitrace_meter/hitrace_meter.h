@@ -45,6 +45,7 @@ constexpr uint64_t HITRACE_TAG_ARK = (1ULL << 47); // ARK tag.
 constexpr uint64_t HITRACE_TAG_WINDOW_MANAGER = (1ULL << 48); // window manager tag.
 constexpr uint64_t HITRACE_TAG_ACCOUNT_MANAGER = (1ULL << 49); // account manager tag.
 constexpr uint64_t HITRACE_TAG_DISTRIBUTED_SCREEN = (1ULL << 50); // Distributed screen tag.
+constexpr uint64_t HITRACE_TAG_DISTRIBUTED_HARDWARE_FWK = (1ULL << 52); // Distributed hardware fwk tag.
 constexpr uint64_t HITRACE_TAG_APP = (1ULL << 62); // App tag.
 
 constexpr uint64_t HITRACE_TAG_LAST = HITRACE_TAG_APP;
