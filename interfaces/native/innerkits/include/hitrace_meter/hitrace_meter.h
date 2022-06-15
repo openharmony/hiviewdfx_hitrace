@@ -47,6 +47,7 @@ constexpr uint64_t HITRACE_TAG_ACCOUNT_MANAGER = (1ULL << 49); // account manage
 constexpr uint64_t HITRACE_TAG_DISTRIBUTED_SCREEN = (1ULL << 50); // Distributed screen tag.
 constexpr uint64_t HITRACE_TAG_DISTRIBUTED_CAMERA = (1ULL << 51); // Distributed camera tag.
 constexpr uint64_t HITRACE_TAG_DISTRIBUTED_HARDWARE_FWK = (1ULL << 52); // Distributed hardware fwk tag.
+constexpr uint64_t HITRACE_TAG_DISTRIBUTED_DEVICEMANAGER = (1ULL << 54); // Distributed hardware devicemanager tag.
 constexpr uint64_t HITRACE_TAG_APP = (1ULL << 62); // App tag.
 
 constexpr uint64_t HITRACE_TAG_LAST = HITRACE_TAG_APP;
