@@ -869,6 +869,7 @@ static void InitAllSupportTags()
     g_tagMap["zbinder"] = { "zbinder", "OpenHarmony binder communication", 0, KERNEL, {
         { "events/zbinder/enable" },
     }};
+    g_tagMap["gresource"] = { "gresource", "Global Resource Manager", HITRACE_TAG_GLOBAL_RESMGR, USER, {}};
 
     // Kernel os
     InitKernelSupportTags();
