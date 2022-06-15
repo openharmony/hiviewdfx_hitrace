@@ -864,8 +864,7 @@ static void InitAllSupportTags()
     g_tagMap["account"] = { "account", "Account Manager", HITRACE_TAG_ACCOUNT_MANAGER, USER, {}};
     g_tagMap["dhfwk"] = { "dhfwk", "Distributed Hardware FWK", HITRACE_TAG_DISTRIBUTED_HARDWARE_FWK, USER, {}};
     g_tagMap["dscreen"] = { "dscreen", "Distributed Screen", HITRACE_TAG_DISTRIBUTED_SCREEN, USER, {}};
-    g_tagMap["devicemanager"] = { "devicemanager", "Distributed Hardware DM", HITRACE_TAG_DISTRIBUTED_DEVICEMANAGER,
-        USER, {}};
+    g_tagMap["devicemanager"] = { "devicemanager", "Device Manager", HITRACE_TAG_DEVICE_MANAGER, USER, {}};
     g_tagMap["app"] = { "app", "APP Module", HITRACE_TAG_APP, USER, {}};
     g_tagMap["dcamera"] = { "dcamera", "Distributed Camera", HITRACE_TAG_DISTRIBUTED_CAMERA, USER, {}};
     g_tagMap["zbinder"] = { "zbinder", "OpenHarmony binder communication", 0, KERNEL, {
