@@ -22,8 +22,8 @@
 namespace OHOS {
 namespace HiviewDFX {
 namespace HitraceOsal {
-const int MAX_SYS_FILES = 11;
 enum TraceType { USER, KERNEL };
+constexpr int MAX_SYS_FILES = 11;
 struct TagCategory {
     std::string name;
     std::string description;
