@@ -864,6 +864,7 @@ static void InitAllSupportTags()
     g_tagMap["account"] = { "account", "Account Manager", HITRACE_TAG_ACCOUNT_MANAGER, USER, {}};
     g_tagMap["dhfwk"] = { "dhfwk", "Distributed Hardware FWK", HITRACE_TAG_DISTRIBUTED_HARDWARE_FWK, USER, {}};
     g_tagMap["dscreen"] = { "dscreen", "Distributed Screen", HITRACE_TAG_DISTRIBUTED_SCREEN, USER, {}};
+    g_tagMap["dinput"] = { "dinput", "Distributed Input", HITRACE_TAG_DISTRIBUTED_INPUT, USER, {}};
     g_tagMap["devicemanager"] = { "devicemanager", "Device Manager", HITRACE_TAG_DEVICE_MANAGER, USER, {}};
     g_tagMap["samgr"] = { "samgr", "samgr", HITRACE_TAG_SAMGR, USER, {}};
     g_tagMap["app"] = { "app", "APP Module", HITRACE_TAG_APP, USER, {}};
