@@ -873,6 +873,7 @@ static void InitAllSupportTags()
         { "events/zbinder/enable" },
     }};
     g_tagMap["gresource"] = { "gresource", "Global Resource Manager", HITRACE_TAG_GLOBAL_RESMGR, USER, {}};
+    g_tagMap["power"] = { "power", "Power Manager", HITRACE_TAG_POWER, USER, {}};
 
     // Kernel os
     InitKernelSupportTags();
