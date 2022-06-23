@@ -52,7 +52,8 @@ constexpr uint64_t HITRACE_TAG_DEVICE_MANAGER = (1ULL << 54); // Distributed har
 constexpr uint64_t HITRACE_TAG_SAMGR = (1ULL << 55); // SA tag.
 constexpr uint64_t HITRACE_TAG_POWER = (1ULL << 56); // power manager tag.
 constexpr uint64_t HITRACE_TAG_DISTRIBUTED_SCHEDULE = (1ULL << 57); // Distributed schedule tag.
-constexpr uint64_t HITRACE_TAG_DISTRIBUTED_INPUT = (1ULL << 58); // Distributed input tag.
+constexpr uint64_t HITRACE_TAG_DEVICE_PROFILE = (1ULL << 58); // device profile tag.
+constexpr uint64_t HITRACE_TAG_DISTRIBUTED_INPUT = (1ULL << 59); // Distributed input tag.
 constexpr uint64_t HITRACE_TAG_APP = (1ULL << 62); // App tag.
 
 constexpr uint64_t HITRACE_TAG_LAST = HITRACE_TAG_APP;
