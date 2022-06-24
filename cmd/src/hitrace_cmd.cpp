@@ -876,6 +876,7 @@ static void InitAllSupportTags()
     }};
     g_tagMap["gresource"] = { "gresource", "Global Resource Manager", HITRACE_TAG_GLOBAL_RESMGR, USER, {}};
     g_tagMap["power"] = { "power", "Power Manager", HITRACE_TAG_POWER, USER, {}};
+    g_tagMap["bluetooth"] = { "bluetooth", "communicatio bluetooth", HITRACE_TAG_BLUETOOTH, USER, {}};
 
     // Kernel os
     InitKernelSupportTags();
