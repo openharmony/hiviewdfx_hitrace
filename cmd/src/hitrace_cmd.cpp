@@ -38,7 +38,7 @@ using namespace std;
 using namespace OHOS::HiviewDFX::HitraceOsal;
 
 namespace {
-struct option g_longOptions[] = {
+constexpr struct option LONG_OPTIONS[] = {
     { "buffer_size",       required_argument, nullptr, 0 },
     { "trace_clock",       required_argument, nullptr, 0 },
     { "help",              no_argument,       nullptr, 0 },
@@ -53,17 +53,17 @@ struct option g_longOptions[] = {
 const unsigned int CHUNK_SIZE = 65536;
 const int BLOCK_SIZE = 4096;
 
-const string TRACE_TAG_PROPERTY = "debug.hitrace.tags.enableflags";
+constexpr const char *TRACE_TAG_PROPERTY = "debug.hitrace.tags.enableflags";
 
 // various operating paths of ftrace
-const string TRACING_ON_PATH = "tracing_on";
-const string TRACE_PATH = "trace";
-const string TRACE_MARKER_PATH = "trace_marker";
-const string BUFFER_SIZE_PATH = "buffer_size_kb";
-const string CURRENT_TRACER_PATH = "current_tracer";
-const string TRACE_CLOCK_PATH = "trace_clock";
-const string OVER_WRITE_PATH = "options/overwrite";
-const string RECORD_TGID_PATH = "options/record-tgid";
+constexpr const char *TRACING_ON_PATH = "tracing_on";
+constexpr const char *TRACE_PATH = "trace";
+constexpr const char *TRACE_MARKER_PATH = "trace_marker";
+constexpr const char *BUFFER_SIZE_PATH = "buffer_size_kb";
+constexpr const char *CURRENT_TRACER_PATH = "current_tracer";
+constexpr const char *TRACE_CLOCK_PATH = "trace_clock";
+constexpr const char *OVER_WRITE_PATH = "options/overwrite";
+constexpr const char *RECORD_TGID_PATH = "options/record-tgid";
 
 // support customization of some parameters
 
@@ -158,12 +158,12 @@ static bool IsTagSupported(const string& name)
 
     bool findPath = false;
     for (int i = 0; i < MAX_SYS_FILES; i++) {
-        const string path = tagCategory.SysFiles[i].path;
+        string path = tagCategory.SysFiles[i].path;
         if (path.size() == 0) {
             continue;
         }
         if (IsWritableFile(path)) {
-            g_kernelEnabledPaths.push_back(path);
+            g_kernelEnabledPaths.push_back(std::move(path));
             findPath = true;
         } else if (IsFileExit(path)) {
             fprintf(stderr, "Warning: category \"%s\" requires root "
@@ -225,7 +225,7 @@ static string ReadFile(const string& filename)
 static bool SetBufferSize(int bufferSize)
 {
     if (!WriteStrToFile(CURRENT_TRACER_PATH, "nop")) {
-        fprintf(stderr, "Error: write \"nop\" to %s\n", CURRENT_TRACER_PATH.c_str());
+        fprintf(stderr, "Error: write \"nop\" to %s\n", CURRENT_TRACER_PATH);
     }
     return WriteStrToFile(BUFFER_SIZE_PATH, to_string(bufferSize));
 }
@@ -329,12 +329,14 @@ static bool ClearUserSpaceSettings()
 
 static bool SetKernelSpaceSettings()
 {
-    bool isTrue = SetBufferSize(g_bufferSizeKB) && SetClock(g_clock) &&
-        SetOverWriteEnable(g_overwrite) && DisableAllFtraceEvents();
+    if (!(SetBufferSize(g_bufferSizeKB) && SetClock(g_clock) &&
+        SetOverWriteEnable(g_overwrite) && DisableAllFtraceEvents())) {
+        return false;
+    }
     for (const auto& path : g_kernelEnabledPaths) {
         SetFtraceEnabled(path, true);
     }
-    return isTrue;
+    return true;
 }
 
 static bool ClearKernelSpaceSettings()
@@ -394,9 +396,10 @@ inline bool StrToNum(const std::string& sString, T &tX)
     return (iStream >> tX) ? true : false;
 }
 
-static void ParseLongOpt(const string& cmd, int optionIndex, bool& isTrue)
+static bool ParseLongOpt(const string& cmd, int optionIndex)
 {
-    if (!strcmp(g_longOptions[optionIndex].name, "buffer_size")) {
+    bool isTrue = true;
+    if (!strcmp(LONG_OPTIONS[optionIndex].name, "buffer_size")) {
         if (!StrToNum(optarg, g_bufferSizeKB)) {
             fprintf(stderr, "Error: buffer size is illegal input. eg: \"--buffer_size 1024\"\n");
             isTrue = false;
@@ -405,7 +408,7 @@ static void ParseLongOpt(const string& cmd, int optionIndex, bool& isTrue)
             isTrue = false;
         }
         g_bufferSizeKB = g_bufferSizeKB / PAGE_SIZE_KB * PAGE_SIZE_KB;
-    } else if (!strcmp(g_longOptions[optionIndex].name, "trace_clock")) {
+    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_clock")) {
         regex re("[a-zA-Z]{4,6}");
         if (regex_match(optarg, re)) {
             g_clock = optarg;
@@ -413,10 +416,10 @@ static void ParseLongOpt(const string& cmd, int optionIndex, bool& isTrue)
             fprintf(stderr, "Error: \"--trace_clock\" is illegal input. eg: \"--trace_clock boot\"\n");
             isTrue = false;
         }
-    } else if (!strcmp(g_longOptions[optionIndex].name, "help")) {
+    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "help")) {
         ShowHelp(cmd);
         isTrue = false;
-    } else if (!strcmp(g_longOptions[optionIndex].name, "time")) {
+    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "time")) {
         if (!StrToNum(optarg, g_traceDuration)) {
             fprintf(stderr, "Error: the time is illegal input. eg: \"--time 5\"\n");
             isTrue = false;
@@ -424,10 +427,10 @@ static void ParseLongOpt(const string& cmd, int optionIndex, bool& isTrue)
             fprintf(stderr, "Error: \"-t %s\" to be greater than zero. eg: \"--time 5\"\n", optarg);
             isTrue = false;
         }
-    } else if (!strcmp(g_longOptions[optionIndex].name, "list_categories")) {
+    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "list_categories")) {
         ShowListCategory();
         isTrue = false;
-    } else if (!strcmp(g_longOptions[optionIndex].name, "output")) {
+    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "output")) {
         struct stat buf;
         size_t len = strnlen(optarg, MAX_OUTPUT_LEN);
         if (len == MAX_OUTPUT_LEN || len < 1 || (stat(optarg, &buf) == 0 && (buf.st_mode & S_IFDIR))) {
@@ -436,21 +439,22 @@ static void ParseLongOpt(const string& cmd, int optionIndex, bool& isTrue)
         } else {
             g_outputFile = optarg;
         }
-    } else if (!strcmp(g_longOptions[optionIndex].name, "overwrite")) {
+    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "overwrite")) {
         g_overwrite = false;
-    } else if (!strcmp(g_longOptions[optionIndex].name, "trace_begin")) {
+    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_begin")) {
         g_traceStart = START_ASYNC;
         g_traceStop = false;
         g_traceDump = false;
-    } else if (!strcmp(g_longOptions[optionIndex].name, "trace_finish")) {
+    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_finish")) {
         g_traceStart = START_NONE;
         g_traceStop = true;
         g_traceDump = true;
-    } else if (!strcmp(g_longOptions[optionIndex].name, "trace_dump")) {
+    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_dump")) {
         g_traceStart = START_NONE;
         g_traceStop = false;
         g_traceDump = true;
     }
+    return isTrue;
 }
 
 static bool ParseOpt(int opt, char** argv, int optIndex)
@@ -501,7 +505,7 @@ static bool ParseOpt(int opt, char** argv, int optIndex)
             g_compress = true;
             break;
         case 0: // long options
-            ParseLongOpt(argv[0], optIndex, isTrue);
+            isTrue = ParseLongOpt(argv[0], optIndex);
             break;
         default:
             ShowHelp(argv[0]);
@@ -529,7 +533,7 @@ static bool HandleOpt(int argc, char** argv)
     string shortOption = "b:c:hlo:t:z";
     int argcSize = argc;
     while (isTrue && argcSize-- > 0) {
-        opt = getopt_long(argc, argv, shortOption.c_str(), g_longOptions, &optionIndex);
+        opt = getopt_long(argc, argv, shortOption.c_str(), LONG_OPTIONS, &optionIndex);
         if (opt < 0) {
             IsInvalidOpt(argc, argv);
             break;
@@ -664,7 +668,7 @@ static bool MarkOthersClockSync()
     string resolvedPath = CanonicalizeSpecPath((g_traceRootPath + TRACE_MARKER_PATH).c_str());
     int fd = open(resolvedPath.c_str(), O_WRONLY);
     if (fd == -1) {
-        fprintf(stderr, "Error: opening %s, errno: %d\n", TRACE_MARKER_PATH.c_str(), errno);
+        fprintf(stderr, "Error: opening %s, errno: %d\n", TRACE_MARKER_PATH, errno);
         return false;
     }
 
