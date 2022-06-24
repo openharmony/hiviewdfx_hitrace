@@ -68,17 +68,11 @@ constexpr uint64_t HITRACE_TAG_VALID_MASK = ((HITRACE_TAG_LAST - 1) | HITRACE_TA
 #error HITRACE_TAG must be defined to be one of the tags defined in hitrace_meter.h
 #endif
 
-#define RELEASE_LEVEL 0X01
-#define DEBUG_LEVEL 0X02
-
-#ifndef TRACE_LEVEL
-#define TRACE_LEVEL RELEASE
-#endif
-
 #define TOKENPASTE(x, y) x ## y
 #define TOKENPASTE2(x, y) TOKENPASTE(x, y)
-#define HITRACE_METER_NAME(TAG, fmt, ...) HitraceScoped TOKENPASTE2(tracer, __LINE__)(TAG, fmt, ##__VA_ARGS__)
+#define HITRACE_METER_NAME(TAG, str) HitraceScoped TOKENPASTE2(tracer, __LINE__)(TAG, str)
 #define HITRACE_METER(TAG) HITRACE_METER_NAME(TAG, __func__)
+#define HITRACE_METER_FMT(TAG, fmt, ...) HitraceMeterFmtScoped TOKENPASTE2(tracer, __LINE__)(TAG, fmt, ##__VA_ARGS__)
 
 /**
  * Update trace label when your process has started.
@@ -89,35 +83,43 @@ void UpdateTraceLabel();
  * Track the beginning of a context.
  */
 void StartTrace(uint64_t label, const std::string& value, float limit = -1);
-void StartTraceDebug(uint64_t label, const std::string& value, float limit = -1);
+void StartTraceDebug(bool isDebug, uint64_t label, const std::string& value, float limit = -1);
+void StartTraceArgs(uint64_t label, const char *fmt, ...);
+void StartTraceArgsDebug(bool isDebug, uint64_t label, const char *fmt, ...);
+
 /**
  * Track the end of a context.
  */
 void FinishTrace(uint64_t label);
-void FinishTraceDebug(uint64_t label);
+void FinishTraceDebug(bool isDebug, uint64_t label);
+
 /**
  * Track the beginning of an asynchronous event.
  */
 void StartAsyncTrace(uint64_t label, const std::string& value, int32_t taskId, float limit = -1);
-void StartAsyncTraceDebug(uint64_t label, const std::string& value, int32_t taskId, float limit = -1);
+void StartAsyncTraceDebug(bool isDebug, uint64_t label, const std::string& value, int32_t taskId, float limit = -1);
+void StartAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...);
+void StartAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, const char *fmt, ...);
 
 /**
  * Track the end of an asynchronous event.
  */
 void FinishAsyncTrace(uint64_t label, const std::string& value, int32_t taskId);
-void FinishAsyncTraceDebug(uint64_t label, const std::string& value, int32_t taskId);
+void FinishAsyncTraceDebug(bool isDebug, uint64_t label, const std::string& value, int32_t taskId);
+void FinishAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...);
+void FinishAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, const char *fmt, ...);
 
 /**
  * Track the middle of a context. Match the previous function of StartTrace before it.
  */
 void MiddleTrace(uint64_t label, const std::string& beforeValue, const std::string& afterValue);
-void MiddleTraceDebug(uint64_t label, const std::string& beforeValue, const std::string& afterValue);
+void MiddleTraceDebug(bool isDebug, uint64_t label, const std::string& beforeValue, const std::string& afterValue);
 
 /**
  * Track the 64-bit integer counter value.
  */
 void CountTrace(uint64_t label, const std::string& name, int64_t count);
-void CountTraceDebug(uint64_t label, const std::string& name, int64_t count);
+void CountTraceDebug(bool isDebug, uint64_t label, const std::string& name, int64_t count);
 
 class HitraceScoped {
 public:
@@ -127,6 +129,18 @@ public:
     }
 
     inline ~HitraceScoped()
+    {
+        FinishTrace(mTag);
+    }
+private:
+    uint64_t mTag;
+};
+
+class HitraceMeterFmtScoped {
+public:
+    HitraceMeterFmtScoped(uint64_t tag, const char *fmt, ...);
+
+    ~HitraceMeterFmtScoped()
     {
         FinishTrace(mTag);
     }

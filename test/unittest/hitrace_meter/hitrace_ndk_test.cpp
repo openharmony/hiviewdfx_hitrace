@@ -614,8 +614,8 @@ HWTEST_F(HitraceNDKTest, StartTrace_011, TestSize.Level1)
 {
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
-    StartTraceDebug(TAG, "StartTraceTest011");
-    FinishTraceDebug(TAG);
+    StartTraceDebug(true, TAG, "StartTraceTest011");
+    FinishTraceDebug(true, TAG);
 }
 
 /**
@@ -627,8 +627,8 @@ HWTEST_F(HitraceNDKTest, StartTrace_012, TestSize.Level1)
 {
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
-    StartTraceDebug(TAG, "StartTraceTest012 %s");
-    FinishTraceDebug(TAG);
+    StartTraceDebug(true, TAG, "StartTraceTest012 %s");
+    FinishTraceDebug(true, TAG);
 }
 
 /**
@@ -640,8 +640,8 @@ HWTEST_F(HitraceNDKTest, StartTrace_013, TestSize.Level1)
 {
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
-    StartAsyncTraceDebug(TAG, "asyncTraceTest013", 123);
-    FinishAsyncTraceDebug(TAG, "asyncTraceTest013", 123);
+    StartAsyncTraceDebug(true, TAG, "asyncTraceTest013", 123);
+    FinishAsyncTraceDebug(true, TAG, "asyncTraceTest013", 123);
 }
 
 /**
@@ -653,7 +653,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_014, TestSize.Level1)
 {
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
-    CountTraceDebug(TAG, "countTraceTest014", 1);
+    CountTraceDebug(true, TAG, "countTraceTest014", 1);
 }
 
 /**
@@ -677,7 +677,48 @@ HWTEST_F(HitraceNDKTest, StartTrace_016, TestSize.Level1)
 {
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
-    MiddleTraceDebug(TAG, "MiddleTraceTest016", "061tseTecarTelddiM");
+    MiddleTraceDebug(true, TAG, "MiddleTraceTest016", "061tseTecarTelddiM");
+}
+
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: tracing_mark_write file node normal output start tracing and end tracing with args
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, StartTrace_017, TestSize.Level1)
+{
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    int var = 1;
+    StartTraceArgs(TAG, "StartTraceTest017-%d", var);
+    FinishTrace(TAG);
+    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    vector<string> list = ReadTrace();
+    MyTrace startTrace = GetTraceResult(TRACE_START + "(StartTraceTest017-1) ", list);
+    ASSERT_TRUE(startTrace.IsLoaded()) << "Can't find \"B|pid|StartTraceTest017-1\" from trace.";
+    MyTrace finishTrace = GetTraceResult(GetFinishTraceRegex(startTrace), list);
+    ASSERT_TRUE(finishTrace.IsLoaded()) << "Can't find \"E|\" from trace.";
+}
+
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: tracing_mark_write file node normal output start trace and end trace async with args
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, StartTrace_018, TestSize.Level1)
+{
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    int var = 1;
+    StartAsyncTraceArgs(TAG, 123, "asyncTraceTest018-%d", var);
+    FinishAsyncTraceArgs(TAG, 123, "asyncTraceTest018-%d", var);
+    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    vector<string> list = ReadTrace();
+    MyTrace startTrace = GetTraceResult(TRACE_ASYNC_START + "(asyncTraceTest018-1) (.*)", list);
+    ASSERT_TRUE(startTrace.IsLoaded()) << "Can't find \"S|pid|asyncTraceTest018-1\" from trace.";
+    MyTrace finishTrace =
+        GetTraceResult(TRACE_ASYNC_FINISH + startTrace.GetTraceName() + " " + startTrace.GetNum(), list);
+    ASSERT_TRUE(finishTrace.IsLoaded()) << "Can't find \"F|\" from trace.";
 }
 } // namespace HitraceTest
 } // namespace HiviewDFX
