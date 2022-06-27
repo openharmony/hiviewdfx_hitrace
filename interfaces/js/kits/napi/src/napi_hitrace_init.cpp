@@ -15,7 +15,6 @@
 
 #include "napi_hitrace_init.h"
 
-#include <functional>
 #include <map>
 
 #include "hilog/log.h"
@@ -24,8 +23,6 @@
 namespace OHOS {
 namespace HiviewDFX {
 namespace {
-using ClassInitFunc = std::function<void(napi_env, std::map<const char*, napi_value>&)>;
-
 constexpr char HITRACE_FLAG_ENUM_NAME[] = "HiTraceFlag";
 constexpr char HITRACE_TRACE_POINT_TYPE_ENUM_NAME[] = "HiTraceTracepointType";
 constexpr char HITRACE_COMMUNICATION_MODE_ENUM_NAME[] = "HiTraceCommunicationMode";

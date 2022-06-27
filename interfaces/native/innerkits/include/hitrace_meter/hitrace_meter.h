@@ -22,52 +22,58 @@
 extern "C" {
 #endif
 
-constexpr uint64_t BYTRACE_TAG_NEVER = 0; // This tag is never enabled.
-constexpr uint64_t BYTRACE_TAG_ALWAYS = (1ULL << 0); // This tag is always enabled.
-constexpr uint64_t BYTRACE_TAG_OHOS = (1ULL << 30); // OHOS generic tag.
-constexpr uint64_t BYTRACE_TAG_ABILITY_MANAGER = (1ULL << 31); // Ability Manager tag.
-constexpr uint64_t BYTRACE_TAG_ZCAMERA = (1ULL << 32); // Camera module tag.
-constexpr uint64_t BYTRACE_TAG_ZMEDIA = (1ULL << 33); // Media module tag.
-constexpr uint64_t BYTRACE_TAG_ZIMAGE = (1ULL << 34); // Image module tag.
-constexpr uint64_t BYTRACE_TAG_ZAUDIO = (1ULL << 35); // Audio module tag.
-constexpr uint64_t BYTRACE_TAG_DISTRIBUTEDDATA = (1ULL << 36); // Distributeddata manager module tag.
-constexpr uint64_t BYTRACE_TAG_MDFS = (1ULL << 37); // Mobile distributed file system tag.
-constexpr uint64_t BYTRACE_TAG_GRAPHIC_AGP = (1ULL << 38); // Graphic module tag.
-constexpr uint64_t BYTRACE_TAG_ACE = (1ULL << 39); // ACE development framework tag.
-constexpr uint64_t BYTRACE_TAG_NOTIFICATION = (1ULL << 40); // Notification module tag.
-constexpr uint64_t BYTRACE_TAG_MISC = (1ULL << 41); // Notification module tag.
-constexpr uint64_t BYTRACE_TAG_MULTIMODALINPUT = (1ULL << 42); // Multi modal module tag.
-constexpr uint64_t BYTRACE_TAG_SENSORS = (1ULL << 43); // Sensors mudule tag.
-constexpr uint64_t BYTRACE_TAG_MSDP = (1ULL << 44); // Multimodal Sensor Data Platform module tag.
-constexpr uint64_t BYTRACE_TAG_DSOFTBUS = (1ULL << 45); // Distributed Softbus tag.
-constexpr uint64_t BYTRACE_TAG_RPC = (1ULL << 46); // RPC and IPC tag.
-constexpr uint64_t BYTRACE_TAG_ARK = (1ULL << 47); // ARK tag.
-constexpr uint64_t BYTRACE_TAG_WINDOW_MANAGER = (1ULL << 48); // window manager tag.
-constexpr uint64_t BYTRACE_TAG_APP = (1ULL << 62); // App tag.
+constexpr uint64_t HITRACE_TAG_NEVER = 0; // This tag is never enabled.
+constexpr uint64_t HITRACE_TAG_ALWAYS = (1ULL << 0); // This tag is always enabled.
+constexpr uint64_t HITRACE_TAG_OHOS = (1ULL << 30); // OHOS generic tag.
+constexpr uint64_t HITRACE_TAG_ABILITY_MANAGER = (1ULL << 31); // Ability Manager tag.
+constexpr uint64_t HITRACE_TAG_ZCAMERA = (1ULL << 32); // Camera module tag.
+constexpr uint64_t HITRACE_TAG_ZMEDIA = (1ULL << 33); // Media module tag.
+constexpr uint64_t HITRACE_TAG_ZIMAGE = (1ULL << 34); // Image module tag.
+constexpr uint64_t HITRACE_TAG_ZAUDIO = (1ULL << 35); // Audio module tag.
+constexpr uint64_t HITRACE_TAG_DISTRIBUTEDDATA = (1ULL << 36); // Distributeddata manager module tag.
+constexpr uint64_t HITRACE_TAG_MDFS = (1ULL << 37); // Mobile distributed file system tag.
+constexpr uint64_t HITRACE_TAG_GRAPHIC_AGP = (1ULL << 38); // Graphic module tag.
+constexpr uint64_t HITRACE_TAG_ACE = (1ULL << 39); // ACE development framework tag.
+constexpr uint64_t HITRACE_TAG_NOTIFICATION = (1ULL << 40); // Notification module tag.
+constexpr uint64_t HITRACE_TAG_MISC = (1ULL << 41); // Notification module tag.
+constexpr uint64_t HITRACE_TAG_MULTIMODALINPUT = (1ULL << 42); // Multi modal module tag.
+constexpr uint64_t HITRACE_TAG_SENSORS = (1ULL << 43); // Sensors mudule tag.
+constexpr uint64_t HITRACE_TAG_MSDP = (1ULL << 44); // Multimodal Sensor Data Platform module tag.
+constexpr uint64_t HITRACE_TAG_DSOFTBUS = (1ULL << 45); // Distributed Softbus tag.
+constexpr uint64_t HITRACE_TAG_RPC = (1ULL << 46); // RPC and IPC tag.
+constexpr uint64_t HITRACE_TAG_ARK = (1ULL << 47); // ARK tag.
+constexpr uint64_t HITRACE_TAG_WINDOW_MANAGER = (1ULL << 48); // window manager tag.
+constexpr uint64_t HITRACE_TAG_ACCOUNT_MANAGER = (1ULL << 49); // account manager tag.
+constexpr uint64_t HITRACE_TAG_DISTRIBUTED_SCREEN = (1ULL << 50); // Distributed screen tag.
+constexpr uint64_t HITRACE_TAG_DISTRIBUTED_CAMERA = (1ULL << 51); // Distributed camera tag.
+constexpr uint64_t HITRACE_TAG_DISTRIBUTED_HARDWARE_FWK = (1ULL << 52); // Distributed hardware fwk tag.
+constexpr uint64_t HITRACE_TAG_GLOBAL_RESMGR = (1ULL << 53); // Global resource manager tag.
+constexpr uint64_t HITRACE_TAG_DEVICE_MANAGER = (1ULL << 54); // Distributed hardware devicemanager tag.
+constexpr uint64_t HITRACE_TAG_SAMGR = (1ULL << 55); // SA tag.
+constexpr uint64_t HITRACE_TAG_POWER = (1ULL << 56); // power manager tag.
+constexpr uint64_t HITRACE_TAG_DISTRIBUTED_SCHEDULE = (1ULL << 57); // Distributed schedule tag.
+constexpr uint64_t HITRACE_TAG_DEVICE_PROFILE = (1ULL << 58); // device profile tag.
+constexpr uint64_t HITRACE_TAG_DISTRIBUTED_INPUT = (1ULL << 59); // Distributed input tag.
+constexpr uint64_t HITRACE_TAG_BLUETOOTH = (1ULL << 60); // bluetooth tag.
+constexpr uint64_t HITRACE_TAG_APP = (1ULL << 62); // App tag.
 
-constexpr uint64_t BYTRACE_TAG_LAST = BYTRACE_TAG_APP;
-constexpr uint64_t BYTRACE_TAG_NOT_READY = (1ULL << 63); // Reserved for initialization.
-constexpr uint64_t BYTRACE_TAG_VALID_MASK = ((BYTRACE_TAG_LAST - 1) | BYTRACE_TAG_LAST);
+constexpr uint64_t HITRACE_TAG_LAST = HITRACE_TAG_APP;
+constexpr uint64_t HITRACE_TAG_NOT_READY = (1ULL << 63); // Reserved for initialization.
+constexpr uint64_t HITRACE_TAG_VALID_MASK = ((HITRACE_TAG_LAST - 1) | HITRACE_TAG_LAST);
 
-#ifndef BYTRACE_TAG
-#define BYTRACE_TAG BYTRACE_TAG_NEVER
-#elif BYTRACE_TAG > BYTRACE_TAG_VALID_MASK
-#error BYTRACE_TAG must be defined to be one of the tags defined in hitrace_meter.h
-#elif BYTRACE_TAG < BYTRACE_TAG_OHOS
-#error BYTRACE_TAG must be defined to be one of the tags defined in hitrace_meter.h
-#endif
-
-#define RELEASE_LEVEL 0X01
-#define DEBUG_LEVEL 0X02
-
-#ifndef TRACE_LEVEL
-#define TRACE_LEVEL RELEASE
+#ifndef HITRACE_TAG
+#define HITRACE_TAG HITRACE_TAG_NEVER
+#elif HITRACE_TAG > HITRACE_TAG_VALID_MASK
+#error HITRACE_TAG must be defined to be one of the tags defined in hitrace_meter.h
+#elif HITRACE_TAG < HITRACE_TAG_OHOS
+#error HITRACE_TAG must be defined to be one of the tags defined in hitrace_meter.h
 #endif
 
 #define TOKENPASTE(x, y) x ## y
 #define TOKENPASTE2(x, y) TOKENPASTE(x, y)
-#define BYTRACE_NAME(TAG, fmt, ...) ByTraceScoped TOKENPASTE2(tracer, __LINE__)(TAG, fmt, ##__VA_ARGS__)
-#define BYTRACE(TAG) BYTRACE_NAME(TAG, __func__)
+#define HITRACE_METER_NAME(TAG, str) HitraceScoped TOKENPASTE2(tracer, __LINE__)(TAG, str)
+#define HITRACE_METER(TAG) HITRACE_METER_NAME(TAG, __func__)
+#define HITRACE_METER_FMT(TAG, fmt, ...) HitraceMeterFmtScoped TOKENPASTE2(tracer, __LINE__)(TAG, fmt, ##__VA_ARGS__)
 
 /**
  * Update trace label when your process has started.
@@ -78,44 +84,64 @@ void UpdateTraceLabel();
  * Track the beginning of a context.
  */
 void StartTrace(uint64_t label, const std::string& value, float limit = -1);
-void StartTraceDebug(uint64_t label, const std::string& value, float limit = -1);
+void StartTraceDebug(bool isDebug, uint64_t label, const std::string& value, float limit = -1);
+void StartTraceArgs(uint64_t label, const char *fmt, ...);
+void StartTraceArgsDebug(bool isDebug, uint64_t label, const char *fmt, ...);
+
 /**
  * Track the end of a context.
  */
 void FinishTrace(uint64_t label);
-void FinishTraceDebug(uint64_t label);
+void FinishTraceDebug(bool isDebug, uint64_t label);
+
 /**
  * Track the beginning of an asynchronous event.
  */
 void StartAsyncTrace(uint64_t label, const std::string& value, int32_t taskId, float limit = -1);
-void StartAsyncTraceDebug(uint64_t label, const std::string& value, int32_t taskId, float limit = -1);
+void StartAsyncTraceDebug(bool isDebug, uint64_t label, const std::string& value, int32_t taskId, float limit = -1);
+void StartAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...);
+void StartAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, const char *fmt, ...);
 
 /**
  * Track the end of an asynchronous event.
  */
 void FinishAsyncTrace(uint64_t label, const std::string& value, int32_t taskId);
-void FinishAsyncTraceDebug(uint64_t label, const std::string& value, int32_t taskId);
+void FinishAsyncTraceDebug(bool isDebug, uint64_t label, const std::string& value, int32_t taskId);
+void FinishAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...);
+void FinishAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, const char *fmt, ...);
 
 /**
  * Track the middle of a context. Match the previous function of StartTrace before it.
  */
 void MiddleTrace(uint64_t label, const std::string& beforeValue, const std::string& afterValue);
-void MiddleTraceDebug(uint64_t label, const std::string& beforeValue, const std::string& afterValue);
+void MiddleTraceDebug(bool isDebug, uint64_t label, const std::string& beforeValue, const std::string& afterValue);
 
 /**
  * Track the 64-bit integer counter value.
  */
 void CountTrace(uint64_t label, const std::string& name, int64_t count);
-void CountTraceDebug(uint64_t label, const std::string& name, int64_t count);
+void CountTraceDebug(bool isDebug, uint64_t label, const std::string& name, int64_t count);
 
-class ByTraceScoped {
+class HitraceScoped {
 public:
-    inline ByTraceScoped(uint64_t tag, const std::string &value) : mTag(tag)
+    inline HitraceScoped(uint64_t tag, const std::string &value) : mTag(tag)
     {
         StartTrace(mTag, value);
     }
 
-    inline ~ByTraceScoped()
+    inline ~HitraceScoped()
+    {
+        FinishTrace(mTag);
+    }
+private:
+    uint64_t mTag;
+};
+
+class HitraceMeterFmtScoped {
+public:
+    HitraceMeterFmtScoped(uint64_t tag, const char *fmt, ...);
+
+    ~HitraceMeterFmtScoped()
     {
         FinishTrace(mTag);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -27,12 +27,12 @@ namespace HiviewDFX {
 constexpr int NAPI_VALUE_STRING_LEN = 10240;
 class NapiHitraceUtil {
 public:
-    static bool NapiTypeCheck(const napi_env env, const napi_value& jsObj,
+    static bool CheckValueTypeValidity(const napi_env env, const napi_value& jsObj,
         const napi_valuetype typeName);
-    static void CreateHiTraceIdObject(const napi_env env, HiTraceId& traceId,
+    static void CreateHiTraceIdJsObject(const napi_env env, HiTraceId& traceId,
         napi_value& valueObject);
-    static void TransHiTraceIdObjectToNative(const napi_env env, HiTraceId& traceId,
-        napi_value& valueObject);
+    static void TransHiTraceIdJsObjectToNative(const napi_env env, HiTraceId& traceId,
+        const napi_value& valueObject);
     static void EnableTraceIdObjectFlag(const napi_env env, HiTraceId& traceId, napi_value& traceIdObject);
 
 private:
@@ -42,11 +42,11 @@ private:
         const std::string& propertyName, uint64_t value);
     static void SetPropertyBigInt64(const napi_env env, napi_value& object,
         const std::string& propertyName, uint64_t value);
-    static uint32_t GetPropertyInt32(const napi_env env, napi_value& object,
+    static uint32_t GetPropertyInt32(const napi_env env, const napi_value& object,
         const std::string& propertyName);
-    static uint64_t GetPropertyInt64(const napi_env env, napi_value& object,
+    static uint64_t GetPropertyInt64(const napi_env env, const napi_value& object,
         const std::string& propertyName);
-    static uint64_t GetPropertyBigInt64(const napi_env env, napi_value& object,
+    static uint64_t GetPropertyBigInt64(const napi_env env, const napi_value& object,
         const std::string& propertyName);
 };
 } // namespace HiviewDFX

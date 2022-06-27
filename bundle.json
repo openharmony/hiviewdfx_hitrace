@@ -31,6 +31,8 @@
     },
     "build": {
       "sub_component": [
+        "//base/hiviewdfx/hitrace/cmd:hitrace_target",
+        "//base/hiviewdfx/hitrace/cmd:hitrace.cfg",
         "//base/hiviewdfx/hitrace/interfaces/native/innerkits:hitrace_meter",
         "//base/hiviewdfx/hitrace/interfaces/native/innerkits:libhitrace",
         "//base/hiviewdfx/hitrace/interfaces/js/kits:hitracechain_napi"
@@ -60,7 +62,7 @@
           }
         }
       ],
-      "test": [ "//base/hiviewdfx/hitrace/test:unittest"]
+      "test": [ "//base/hiviewdfx/hitrace/test:unittest" ]
     }
   }
 }
