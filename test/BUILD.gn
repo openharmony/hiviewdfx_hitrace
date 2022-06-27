@@ -86,7 +86,7 @@ ohos_unittest("HitraceNDKTest") {
 
   external_deps = [
     "hiviewdfx_hilog_native:libhilog",
-    "startup_l2:syspara",
+    "init:libbegetutil",
   ]
 }
 

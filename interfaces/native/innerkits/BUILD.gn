@@ -47,9 +47,9 @@ ohos_static_library("hitrace_inner") {
   public_configs = [ ":hitrace_meter_config" ]
   external_deps = [
     "hiviewdfx_hilog_native:libhilog",
+    "init:libbeget_proxy",
+    "init:libbegetutil",
     "ipc:ipc_core",
-    "startup_l2:syspara",
-    "startup_l2:syspara_watchagent",
   ]
 
   part_name = "hitrace_native"

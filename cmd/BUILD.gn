@@ -25,8 +25,8 @@ ohos_static_library("hitrace_osal_inner") {
   sources = [ "./src/hitrace_osal.cpp" ]
   public_configs = [ ":hitrace_osal_inner_config" ]
   external_deps = [
+    "init:libbegetutil",
     "ipc:ipc_core",
-    "startup_l2:syspara",
   ]
 
   subsystem_name = "hiviewdfx"
