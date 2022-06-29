@@ -865,6 +865,8 @@ static void InitAllSupportTags()
     g_tagMap["rpc"] = { "rpc", "RPC and IPC", HITRACE_TAG_RPC, USER, {}};
     g_tagMap["ark"] = { "ark", "ARK Module", HITRACE_TAG_ARK, USER, {}};
     g_tagMap["window"] = { "window", "Window Manager", HITRACE_TAG_WINDOW_MANAGER, USER, {}};
+    g_tagMap["accessibility"] = { "accessibility", "Accessibility Manager",
+        HITRACE_TAG_ACCESSIBILITY_MANAGER, USER, {}};
     g_tagMap["account"] = { "account", "Account Manager", HITRACE_TAG_ACCOUNT_MANAGER, USER, {}};
     g_tagMap["dhfwk"] = { "dhfwk", "Distributed Hardware FWK", HITRACE_TAG_DISTRIBUTED_HARDWARE_FWK, USER, {}};
     g_tagMap["dscreen"] = { "dscreen", "Distributed Screen", HITRACE_TAG_DISTRIBUTED_SCREEN, USER, {}};
