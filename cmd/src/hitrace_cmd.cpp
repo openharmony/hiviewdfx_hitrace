@@ -59,14 +59,8 @@ constexpr const char *TRACE_TAG_PROPERTY = "debug.hitrace.tags.enableflags";
 constexpr const char *TRACING_ON_PATH = "tracing_on";
 constexpr const char *TRACE_PATH = "trace";
 constexpr const char *TRACE_MARKER_PATH = "trace_marker";
-constexpr const char *BUFFER_SIZE_PATH = "buffer_size_kb";
-constexpr const char *CURRENT_TRACER_PATH = "current_tracer";
-constexpr const char *TRACE_CLOCK_PATH = "trace_clock";
-constexpr const char *OVER_WRITE_PATH = "options/overwrite";
-constexpr const char *RECORD_TGID_PATH = "options/record-tgid";
 
 // support customization of some parameters
-
 const int MIN_BUFFER_SIZE = 256;
 const int MAX_BUFFER_SIZE = 307200; // 300 MB
 constexpr unsigned int MAX_OUTPUT_LEN = 255;
@@ -224,14 +218,17 @@ static string ReadFile(const string& filename)
 
 static bool SetBufferSize(int bufferSize)
 {
+    constexpr const char *CURRENT_TRACER_PATH = "current_tracer";
     if (!WriteStrToFile(CURRENT_TRACER_PATH, "nop")) {
         fprintf(stderr, "Error: write \"nop\" to %s\n", CURRENT_TRACER_PATH);
     }
+    constexpr const char *BUFFER_SIZE_PATH = "buffer_size_kb";
     return WriteStrToFile(BUFFER_SIZE_PATH, to_string(bufferSize));
 }
 
 static bool SetClock(const string& timeclock)
 {
+    constexpr const char *TRACE_CLOCK_PATH = "trace_clock";
     string allClocks = ReadFile(TRACE_CLOCK_PATH);
     size_t begin = allClocks.find("[");
     size_t end = allClocks.find("]");
@@ -264,11 +261,13 @@ static bool SetClock(const string& timeclock)
 
 static bool SetOverWriteEnable(bool enabled)
 {
+    constexpr const char *OVER_WRITE_PATH = "options/overwrite";
     return SetFtraceEnabled(OVER_WRITE_PATH, enabled);
 }
 
 static bool SetTgidEnable(bool enabled)
 {
+    constexpr const char *RECORD_TGID_PATH = "options/record-tgid";
     return SetFtraceEnabled(RECORD_TGID_PATH, enabled);
 }
 
