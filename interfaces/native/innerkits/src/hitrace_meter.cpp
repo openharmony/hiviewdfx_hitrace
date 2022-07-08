@@ -32,6 +32,7 @@ using namespace OHOS::HiviewDFX;
 
 #define EXPECTANTLY(exp) (__builtin_expect(!!(exp), true))
 #define UNEXPECTANTLY(exp) (__builtin_expect(!!(exp), false))
+#define UNUSED_PARAM __attribute__((__unused__))
 
 namespace {
 int g_markerFd = -1;
@@ -148,13 +149,13 @@ void UpdateTraceLabel()
     g_tagsProperty = GetSysParamTags();
 }
 
-void StartTrace(uint64_t label, const string& value, float limit)
+void StartTrace(uint64_t label, const string& value, float limit UNUSED_PARAM)
 {
     string traceName = "H:" + value;
     AddHitraceMeterMarker(MARKER_BEGIN, label, traceName, "");
 }
 
-void StartTraceDebug(bool isDebug, uint64_t label, const string& value, float limit)
+void StartTraceDebug(bool isDebug, uint64_t label, const string& value, float limit UNUSED_PARAM)
 {
     if (!isDebug) {
         return;
@@ -212,13 +213,13 @@ void FinishTraceDebug(bool isDebug, uint64_t label)
     AddHitraceMeterMarker(MARKER_END, label, "", "");
 }
 
-void StartAsyncTrace(uint64_t label, const string& value, int32_t taskId, float limit)
+void StartAsyncTrace(uint64_t label, const string& value, int32_t taskId, float limit UNUSED_PARAM)
 {
     string traceName = "H:" + value;
     AddHitraceMeterMarker(MARKER_ASYNC_BEGIN, label, traceName, std::to_string(taskId));
 }
 
-void StartAsyncTraceDebug(bool isDebug, uint64_t label, const string& value, int32_t taskId, float limit)
+void StartAsyncTraceDebug(bool isDebug, uint64_t label, const string& value, int32_t taskId, float limit UNUSED_PARAM)
 {
     if (!isDebug) {
         return;
@@ -316,14 +317,15 @@ void FinishAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, con
     FinishAsyncTrace(label, name, taskId);
 }
 
-void MiddleTrace(uint64_t label, const string& beforeValue, const std::string& afterValue)
+void MiddleTrace(uint64_t label, const string& beforeValue UNUSED_PARAM, const std::string& afterValue)
 {
     string traceName = "H:" + afterValue;
     AddHitraceMeterMarker(MARKER_END, label, "", "");
     AddHitraceMeterMarker(MARKER_BEGIN, label, traceName, "");
 }
 
-void MiddleTraceDebug(bool isDebug, uint64_t label, const string& beforeValue, const std::string& afterValue)
+void MiddleTraceDebug(bool isDebug, uint64_t label, const string& beforeValue UNUSED_PARAM, 
+                        const std::string& afterValue)
 {
     if (!isDebug) {
         return;
