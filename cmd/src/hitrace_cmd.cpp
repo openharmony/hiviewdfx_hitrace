@@ -218,18 +218,18 @@ static string ReadFile(const string& filename)
 
 static bool SetBufferSize(int bufferSize)
 {
-    constexpr const char *CURRENT_TRACER_PATH = "current_tracer";
-    if (!WriteStrToFile(CURRENT_TRACER_PATH, "nop")) {
-        fprintf(stderr, "Error: write \"nop\" to %s\n", CURRENT_TRACER_PATH);
+    constexpr const char *currentTracerPath = "current_tracer";
+    if (!WriteStrToFile(currentTracerPath, "nop")) {
+        fprintf(stderr, "Error: write \"nop\" to %s\n", currentTracerPath);
     }
-    constexpr const char *BUFFER_SIZE_PATH = "buffer_size_kb";
-    return WriteStrToFile(BUFFER_SIZE_PATH, to_string(bufferSize));
+    constexpr const char *bufferSizePath = "buffer_size_kb";
+    return WriteStrToFile(bufferSizePath, to_string(bufferSize));
 }
 
 static bool SetClock(const string& timeclock)
 {
-    constexpr const char *TRACE_CLOCK_PATH = "trace_clock";
-    string allClocks = ReadFile(TRACE_CLOCK_PATH);
+    constexpr const char *traceClockPath = "trace_clock";
+    string allClocks = ReadFile(traceClockPath);
     size_t begin = allClocks.find("[");
     size_t end = allClocks.find("]");
     string newClock;
@@ -254,21 +254,21 @@ static bool SetClock(const string& timeclock)
         return false;
     }
     if (newClock.size() != 0) {
-        return WriteStrToFile(TRACE_CLOCK_PATH, newClock);
+        return WriteStrToFile(traceClockPath, newClock);
     }
     return true;
 }
 
 static bool SetOverWriteEnable(bool enabled)
 {
-    constexpr const char *OVER_WRITE_PATH = "options/overwrite";
-    return SetFtraceEnabled(OVER_WRITE_PATH, enabled);
+    constexpr const char *overWritePath = "options/overwrite";
+    return SetFtraceEnabled(overWritePath, enabled);
 }
 
 static bool SetTgidEnable(bool enabled)
 {
-    constexpr const char *RECORD_TGID_PATH = "options/record-tgid";
-    return SetFtraceEnabled(RECORD_TGID_PATH, enabled);
+    constexpr const char *recordTgidPath = "options/record-tgid";
+    return SetFtraceEnabled(recordTgidPath, enabled);
 }
 
 static bool DisableAllFtraceEvents()

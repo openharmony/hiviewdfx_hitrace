@@ -325,7 +325,7 @@ void MiddleTrace(uint64_t label, const string& beforeValue UNUSED_PARAM, const s
 }
 
 void MiddleTraceDebug(bool isDebug, uint64_t label, const string& beforeValue UNUSED_PARAM, 
-                        const std::string& afterValue)
+    const std::string& afterValue)
 {
     if (!isDebug) {
         return;
