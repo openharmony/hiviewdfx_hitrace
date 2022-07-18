@@ -169,12 +169,10 @@ void StartTraceArgs(uint64_t label, const char *fmt, ...)
     char name[VAR_NAME_MAX_SIZE] = { 0 };
     va_list args;
     va_start(args, fmt);
-    bool res = false;
-    if ((res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args) < 0)) {
-        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
-    }
+    int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
-    if (res) {
+    if (res < 0) {
+        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
     StartTrace(label, name, -1);
@@ -189,12 +187,10 @@ void StartTraceArgsDebug(bool isDebug, uint64_t label, const char *fmt, ...)
     va_list args;
 
     va_start(args, fmt);
-    bool res = false;
-    if ((res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args) < 0)) {
-        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
-    }
+    int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
-    if (res) {
+    if (res < 0) {
+        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
     StartTrace(label, name, -1);
@@ -234,12 +230,10 @@ void StartAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...)
     va_list args;
 
     va_start(args, fmt);
-    bool res = false;
-    if ((res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args) < 0)) {
-        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
-    }
+    int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
-    if (res) {
+    if (res < 0) {
+        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
     StartAsyncTrace(label, name, taskId, -1);
@@ -254,12 +248,10 @@ void StartAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, cons
     va_list args;
 
     va_start(args, fmt);
-    bool res = false;
-    if ((res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args) < 0)) {
-        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
-    }
+    int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
-    if (res) {
+    if (res < 0) {
+        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
     StartAsyncTrace(label, name, taskId, -1);
@@ -286,12 +278,10 @@ void FinishAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...)
     va_list args;
 
     va_start(args, fmt);
-    bool res = false;
-    if ((res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args) < 0)) {
-        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
-    }
+    int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
-    if (res) {
+    if (res < 0) {
+        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
     FinishAsyncTrace(label, name, taskId);
@@ -306,12 +296,10 @@ void FinishAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, con
     va_list args;
 
     va_start(args, fmt);
-    bool res = false;
-    if ((res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args) < 0)) {
-        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
-    }
+    int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
-    if (res) {
+    if (res < 0) {
+        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
     FinishAsyncTrace(label, name, taskId);
@@ -356,12 +344,10 @@ HitraceMeterFmtScoped::HitraceMeterFmtScoped(uint64_t label, const char *fmt, ..
     va_list args;
 
     va_start(args, fmt);
-    bool res = false;
-    if ((res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args) < 0)) {
-        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
-    }
+    int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
-    if (res) {
+    if (res < 0) {
+        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
     StartTrace(label, name, -1);
