@@ -24,6 +24,7 @@ extern "C" {
 
 constexpr uint64_t HITRACE_TAG_NEVER = 0; // This tag is never enabled.
 constexpr uint64_t HITRACE_TAG_ALWAYS = (1ULL << 0); // This tag is always enabled.
+constexpr uint64_t HITRACE_TAG_DLSM = (1ULL << 28); // device security level tag.
 constexpr uint64_t HITRACE_TAG_FILEMANAGEMENT = (1ULL << 29); // filemanagement tag.
 constexpr uint64_t HITRACE_TAG_OHOS = (1ULL << 30); // OHOS generic tag.
 constexpr uint64_t HITRACE_TAG_ABILITY_MANAGER = (1ULL << 31); // Ability Manager tag.
