@@ -49,6 +49,7 @@ constexpr struct option LONG_OPTIONS[] = {
     { "trace_dump",        no_argument,       nullptr, 0 },
     { "list_categories",   no_argument,       nullptr, 0 },
     { "overwrite",         no_argument,       nullptr, 0 },
+    { nullptr,             0,                 nullptr, 0 },
 };
 const unsigned int CHUNK_SIZE = 65536;
 const int BLOCK_SIZE = 4096;
