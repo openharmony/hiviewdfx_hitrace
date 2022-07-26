@@ -17,7 +17,7 @@ ohos_source_set("libhitrace_source") {
   include_dirs = [
     "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include",
     "//base/hiviewdfx/hilog/frameworks/native/include",
-    "//utils/native/base/include",
+    "//commonlibrary/c_utils/base/include",
   ]
 
   sources = [
@@ -26,9 +26,10 @@ ohos_source_set("libhitrace_source") {
     "hitraceid.cpp",
   ]
 
-  external_deps = [ "hilog_native:libhilog" ]
-
-  deps = [ "//utils/native/base:utils" ]
+  external_deps = [
+    "c_utils:utils",
+    "hilog_native:libhilog",
+  ]
 
   part_name = "hitrace_native"
   subsystem_name = "hiviewdfx"

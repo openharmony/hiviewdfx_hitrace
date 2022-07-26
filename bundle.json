@@ -23,7 +23,7 @@
     "deps": {
       "components": [
         "hilog_native",
-        "utils_base"
+        "c_utils"
       ],
       "third_party": [
         "node"

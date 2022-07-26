@@ -40,14 +40,16 @@ ohos_executable("hitrace") {
   deps = [
     ":hitrace_osal_inner",
     "//third_party/zlib:libz",
-    "//utils/native/base:utils",
   ]
 
-  external_deps = [ "hitrace_native:hitrace_meter" ]
+  external_deps = [
+    "c_utils:utils",
+    "hitrace_native:hitrace_meter",
+  ]
 
   include_dirs = [
     "./include",
-    "//utils/native/base/include",
+    "//commonlibrary/c_utils/base/include",
     "//third_party/zlib",
   ]
   subsystem_name = "hiviewdfx"

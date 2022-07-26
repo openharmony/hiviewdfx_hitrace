@@ -61,8 +61,8 @@ ohos_shared_library("hitrace_meter") {
   deps = [
     ":hitrace_etc",
     ":hitrace_inner",
-    "//utils/native/base:utils",
   ]
+  external_deps = [ "c_utils:utils" ]
   include_dirs = [ "//utils/native/base/include" ]
   output_extension = "so"
 
