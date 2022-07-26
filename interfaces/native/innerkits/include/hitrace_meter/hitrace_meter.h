@@ -24,6 +24,7 @@ extern "C" {
 
 constexpr uint64_t HITRACE_TAG_NEVER = 0; // This tag is never enabled.
 constexpr uint64_t HITRACE_TAG_ALWAYS = (1ULL << 0); // This tag is always enabled.
+constexpr uint64_t HITRACE_TAG_DISTRIBUTED_AUDIO = (27ULL << 51); // Distributed audio tag.
 constexpr uint64_t HITRACE_TAG_DLSM = (1ULL << 28); // device security level tag.
 constexpr uint64_t HITRACE_TAG_FILEMANAGEMENT = (1ULL << 29); // filemanagement tag.
 constexpr uint64_t HITRACE_TAG_OHOS = (1ULL << 30); // OHOS generic tag.
@@ -49,7 +50,6 @@ constexpr uint64_t HITRACE_TAG_ACCOUNT_MANAGER = (1ULL << 49); // account manage
 constexpr uint64_t HITRACE_TAG_DISTRIBUTED_SCREEN = (1ULL << 50); // Distributed screen tag.
 constexpr uint64_t HITRACE_TAG_DISTRIBUTED_CAMERA = (1ULL << 51); // Distributed camera tag.
 constexpr uint64_t HITRACE_TAG_DISTRIBUTED_HARDWARE_FWK = (1ULL << 52); // Distributed hardware fwk tag.
-constexpr uint64_t HITRACE_TAG_DISTRIBUTED_AUDIO = (11ULL << 51); // Distributed audio tag.
 constexpr uint64_t HITRACE_TAG_GLOBAL_RESMGR = (1ULL << 53); // Global resource manager tag.
 constexpr uint64_t HITRACE_TAG_DEVICE_MANAGER = (1ULL << 54); // Distributed hardware devicemanager tag.
 constexpr uint64_t HITRACE_TAG_SAMGR = (1ULL << 55); // SA tag.
