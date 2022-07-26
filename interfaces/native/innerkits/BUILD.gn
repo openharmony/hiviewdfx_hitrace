@@ -59,6 +59,7 @@ ohos_static_library("hitrace_inner") {
 ohos_shared_library("hitrace_meter") {
   public_configs = [ ":hitrace_meter_config" ]
   deps = [
+    ":hitrace_etc",
     ":hitrace_inner",
     "//utils/native/base:utils",
   ]
@@ -67,4 +68,33 @@ ohos_shared_library("hitrace_meter") {
 
   part_name = "hitrace_native"
   subsystem_name = "hiviewdfx"
+}
+
+ohos_prebuilt_etc("hitrace.para") {
+  source = "hitrace.para"
+  install_images = [
+    "system",
+    "updater",
+  ]
+  module_install_dir = "etc/param"
+  part_name = "hitrace_native"
+  subsystem_name = "hiviewdfx"
+}
+
+ohos_prebuilt_etc("hitrace.para.dac") {
+  source = "hitrace.para.dac"
+  install_images = [
+    "system",
+    "updater",
+  ]
+  module_install_dir = "etc/param"
+  part_name = "hitrace_native"
+  subsystem_name = "hiviewdfx"
+}
+
+group("hitrace_etc") {
+  deps = [
+    ":hitrace.para",
+    ":hitrace.para.dac",
+  ]
 }
