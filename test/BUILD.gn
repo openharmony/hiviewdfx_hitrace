@@ -20,7 +20,7 @@ config("module_private_config") {
   include_dirs = [
     "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include",
     "//base/hiviewdfx/hilog/frameworks/native/include",
-    "//utils/native/base/include",
+    "//commonlibrary/c_utils/base/include",
   ]
 }
 
@@ -34,12 +34,12 @@ ohos_unittest("HitraceCTest") {
 
   configs = [ ":module_private_config" ]
 
-  deps = [
-    "//third_party/googletest:gtest_main",
-    "//utils/native/base:utils",
-  ]
+  deps = [ "//third_party/googletest:gtest_main" ]
 
-  external_deps = [ "hilog_native:libhilog" ]
+  external_deps = [
+    "c_utils:utils",
+    "hilog_native:libhilog",
+  ]
 }
 
 ohos_unittest("HitraceCppTest") {
@@ -54,12 +54,12 @@ ohos_unittest("HitraceCppTest") {
 
   configs = [ ":module_private_config" ]
 
-  deps = [
-    "//third_party/googletest:gtest_main",
-    "//utils/native/base:utils",
-  ]
+  deps = [ "//third_party/googletest:gtest_main" ]
 
-  external_deps = [ "hilog_native:libhilog" ]
+  external_deps = [
+    "c_utils:utils",
+    "hilog_native:libhilog",
+  ]
 }
 
 config("HitraceNDKTest_config") {
