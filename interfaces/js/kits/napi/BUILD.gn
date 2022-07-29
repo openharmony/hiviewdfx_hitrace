@@ -41,3 +41,17 @@ ohos_shared_library("hitracechain_napi") {
 
   subsystem_name = "hiviewdfx"
 }
+
+ohos_shared_library("hitracemeter_napi") {
+  sources = [ "./hitracemeter/napi_hitrace_meter.cpp" ]
+  deps = [ "//foundation/arkui/napi:ace_napi" ]
+  external_deps = [
+    "hitrace_native:hitrace_meter",
+    "hiviewdfx_hilog_native:libhilog",
+  ]
+
+  relative_install_dir = "module"
+
+  subsystem_name = "hiviewdfx"
+  part_name = "hitrace_native"
+}
