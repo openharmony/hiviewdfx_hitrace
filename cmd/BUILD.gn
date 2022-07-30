@@ -66,10 +66,7 @@ ohos_prebuilt_etc("hitrace.cfg") {
 ohos_executable("hitrace_example") {
   sources = [ "example/hitrace_example.cpp" ]
 
-  external_deps = [
-    "hitrace_native:hitrace_meter",
-    "hiviewdfx_hilog_native:libhilog",
-  ]
+  external_deps = [ "hitrace_native:hitrace_meter" ]
 
   subsystem_name = "hiviewdfx"
   part_name = "hitrace_native"
