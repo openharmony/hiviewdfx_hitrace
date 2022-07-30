@@ -13,9 +13,13 @@
  * limitations under the License.
  */
 
+#include <__config>
+#include <cstdint>
 #include <cstring>
 #include <unistd.h>
+#include <iosfwd>
 #include <iostream>
+#include <ostream>
 #include <thread>
 
 #include "hitrace_meter.h"

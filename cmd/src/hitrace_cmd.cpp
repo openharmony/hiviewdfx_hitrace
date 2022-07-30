@@ -19,17 +19,19 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <fcntl.h>
 #include <fstream>
+#include <getopt.h>
+#include <map>
 #include <regex>
 #include <sstream>
 #include <string>
-#include <vector>
-#include <fcntl.h>
-#include <getopt.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <vector>
 #include <zlib.h>
+
 #include "hitrace_meter.h"
 #include "hitrace_osal.h"
 #include "securec.h"
