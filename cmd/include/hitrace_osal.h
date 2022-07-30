@@ -16,8 +16,9 @@
 #ifndef BIN_INCLUDE_HITRACE_CAPTURE_H
 #define BIN_INCLUDE_HITRACE_CAPTURE_H
 
+#include <cstdint>
+#include <iosfwd>
 #include <string>
-#include <map>
 
 namespace OHOS {
 namespace HiviewDFX {

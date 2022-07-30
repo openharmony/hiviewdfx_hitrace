@@ -15,7 +15,14 @@
 
 #include "hitrace/hitracec.h"
 
+#include <cstdint>
+#include <cstdio>
 #include <gtest/gtest.h>
+
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
+#include "gtest/gtest_pred_impl.h"
+#include "gtest/hwext/gtest-tag.h"
 
 namespace OHOS {
 namespace HiviewDFX {

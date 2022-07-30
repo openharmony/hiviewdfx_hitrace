@@ -19,6 +19,7 @@
 #include <fcntl.h>
 #include <gtest/gtest.h>
 #include <hilog/log.h>
+
 #include "hitrace_meter.h"
 #include "hitrace_osal.h"
 #include "parameters.h"

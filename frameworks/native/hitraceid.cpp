@@ -15,6 +15,10 @@
 
 #include "hitrace/hitraceid.h"
 
+#include <cstdint>
+
+#include "hitrace/hitracec.h"
+
 namespace OHOS {
 namespace HiviewDFX {
 

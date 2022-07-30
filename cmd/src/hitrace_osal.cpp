@@ -14,7 +14,10 @@
  */
 
 #include "hitrace_osal.h"
-#include "hitrace_meter.h"
+
+#include <cstdio>
+#include <string>
+
 #include "parameters.h"
 
 namespace OHOS {
