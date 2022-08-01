@@ -887,7 +887,7 @@ static void InitAllSupportTags()
     g_tagMap["power"] = { "power", "Power Manager", HITRACE_TAG_POWER, USER, {}};
     g_tagMap["bluetooth"] = { "bluetooth", "communicatio bluetooth", HITRACE_TAG_BLUETOOTH, USER, {}};
     g_tagMap["filemanagement"] = { "filemanagement", "filemanagement", HITRACE_TAG_FILEMANAGEMENT, USER, {}};
-    g_tagMap["dslm"] = { "dslm", "device security level", HITRACE_TAG_DLSM, {}};
+    g_tagMap["dslm"] = {"dslm", "device security level", HITRACE_TAG_DLSM, USER, {}};
     g_tagMap["useriam"] = {"useriam", "useriam", HITRACE_TAG_USERIAM, USER, {}};
 
     // Kernel os
