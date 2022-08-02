@@ -890,6 +890,7 @@ static void InitAllSupportTags()
     g_tagMap["filemanagement"] = { "filemanagement", "filemanagement", HITRACE_TAG_FILEMANAGEMENT, USER, {}};
     g_tagMap["dslm"] = {"dslm", "device security level", HITRACE_TAG_DLSM, USER, {}};
     g_tagMap["useriam"] = {"useriam", "useriam", HITRACE_TAG_USERIAM, USER, {}};
+    g_tagMap["nweb"] = {"nweb", "NWEB Module", HITRACE_TAG_NWEB, USER, {}};
 
     // Kernel os
     InitKernelSupportTags();
