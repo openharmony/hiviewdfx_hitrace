@@ -38,7 +38,7 @@ namespace {
 int g_markerFd = -1;
 std::once_flag g_onceFlag;
 
-std::atomic<bool> g_isHitraceMeterDisbaled(false);
+std::atomic<bool> g_isHitraceMeterDisabled(false);
 std::atomic<bool> g_isHitraceMeterInit(false);
 std::atomic<uint64_t> g_tagsProperty(HITRACE_TAG_NOT_READY);
 
@@ -155,7 +155,7 @@ void UpdateTraceLabel()
 
 void SetTraceDisabled(bool disable)
 {
-    g_isHitraceMeterDisbaled = disable;
+    g_isHitraceMeterDisabled = disable;
 }
 
 void StartTrace(uint64_t label, const string& value, float limit UNUSED_PARAM)
