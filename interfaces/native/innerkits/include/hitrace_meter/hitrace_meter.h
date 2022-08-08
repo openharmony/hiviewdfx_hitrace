@@ -89,7 +89,7 @@ void UpdateTraceLabel();
 
 /**
  * Disable trace outputs.
- * You should know what you are doing when calling this fuction..
+ * You should know what you are doing when calling this function.
  */
 void SetTraceDisabled(bool disable);
 
