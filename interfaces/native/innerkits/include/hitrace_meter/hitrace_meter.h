@@ -88,6 +88,12 @@ constexpr uint64_t HITRACE_TAG_VALID_MASK = ((HITRACE_TAG_LAST - 1) | HITRACE_TA
 void UpdateTraceLabel();
 
 /**
+ * Disable trace outputs.
+ * You should know what you are doing when calling this function.
+ */
+void SetTraceDisabled(bool disable);
+
+/**
  * Track the beginning of a context.
  */
 void StartTrace(uint64_t label, const std::string& value, float limit = -1);
