@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Huawei Device Co., Ltd.
+ * Copyright (C) 2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -27,7 +27,6 @@ constexpr int SECOND_ARG_INDEX = 1;
 constexpr int THIRD_ARG_INDEX = 2;
 constexpr int ARGC_NUMBER_TWO = 2;
 constexpr int ARGC_NUMBER_THREE = 3;
-constexpr int NAME_MAX_SIZE = 1024;
 constexpr uint64_t HITRACE_METER_TAG = 0xd03301;
 constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, HITRACE_METER_TAG, "HITRACE_METER_JS"};
 using STR_NUM_PARAM_FUNC = std::function<bool(std::string, napi_value&)>;
@@ -39,7 +38,7 @@ napi_value ParseParams(napi_env& env, napi_callback_info& info, size_t& argc, na
     return nullptr;
 }
 
-bool TypeCheck(napi_env& env, napi_value& value, const napi_valuetype expectType)
+bool TypeCheck(const napi_env& env, const napi_value& value, const napi_valuetype expectType)
 {
     napi_valuetype valueType;
     napi_status status = napi_typeof(env, value, &valueType);
@@ -54,19 +53,20 @@ bool TypeCheck(napi_env& env, napi_value& value, const napi_valuetype expectType
     return true;
 }
 
-bool ParseStringParam(napi_env& env, napi_value& value, std::string& dest)
+bool ParseStringParam(const napi_env& env, const napi_value& value, std::string& dest)
 {
     if (!TypeCheck(env, value, napi_string)) {
         return false;
     }
-    char buf[NAME_MAX_SIZE] = {0};
+    constexpr int nameMaxSize = 1024;
+    char buf[nameMaxSize] = {0};
     size_t len = 0;
-    napi_get_value_string_utf8(env, value, buf, NAME_MAX_SIZE, &len);
+    napi_get_value_string_utf8(env, value, buf, nameMaxSize, &len);
     dest = std::string {buf};
     return true;
 }
 
-bool ParseInt32Param(napi_env& env, napi_value& value, int& dest)
+bool ParseInt32Param(const napi_env& env, const napi_value& value, int& dest)
 {
     if (!TypeCheck(env, value, napi_number)) {
         return false;
@@ -75,7 +75,7 @@ bool ParseInt32Param(napi_env& env, napi_value& value, int& dest)
     return true;
 }
 
-bool ParseInt64Param(napi_env& env, napi_value& value, int64_t& dest)
+bool ParseInt64Param(const napi_env& env, const napi_value& value, int64_t& dest)
 {
     if (!TypeCheck(env, value, napi_number)) {
         return false;
@@ -84,7 +84,7 @@ bool ParseInt64Param(napi_env& env, napi_value& value, int64_t& dest)
     return true;
 }
 
-bool ParseDoubleParam(napi_env& env, napi_value& value, double& dest)
+bool ParseDoubleParam(const napi_env& env, const napi_value& value, double& dest)
 {
     if (!TypeCheck(env, value, napi_number)) {
         return false;
@@ -118,9 +118,9 @@ static napi_value JSTraceStart(napi_env env, napi_callback_info info)
     size_t argc = ARGC_NUMBER_THREE;
     napi_value argv[ARGC_NUMBER_THREE];
     ParseParams(env, info, argc, argv);
+    NAPI_ASSERT(env, argc == ARGC_NUMBER_TWO || argc == ARGC_NUMBER_THREE, "Wrong number of arguments");
     if (argc != ARGC_NUMBER_TWO && argc != ARGC_NUMBER_THREE) {
         HiLog::Error(LABEL, "Wrong number of parameters.");
-        return nullptr;
     }
     std::string name;
     if (!ParseStringParam(env, argv[FIRST_ARG_INDEX], name)) {
@@ -144,6 +144,11 @@ static napi_value JSTraceStart(napi_env env, napi_callback_info info)
 
 static napi_value JSTraceFinish(napi_env env, napi_callback_info info)
 {
+    size_t argc = ARGC_NUMBER_TWO;
+    napi_value argv[ARGC_NUMBER_TWO];
+    napi_value thisVar;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, NULL));
+    NAPI_ASSERT(env, argc == ARGC_NUMBER_TWO, "Wrong number of arguments");
     (void)JsStrNumParamsFunc(env, info, [&env] (std::string name, napi_value& nValue) -> bool {
         int taskId = 0;
         if (!ParseInt32Param(env, nValue, taskId)) {
@@ -157,6 +162,11 @@ static napi_value JSTraceFinish(napi_env env, napi_callback_info info)
 
 static napi_value JSTraceCount(napi_env env, napi_callback_info info)
 {
+    size_t argc = ARGC_NUMBER_TWO;
+    napi_value argv[ARGC_NUMBER_TWO];
+    napi_value thisVar;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, NULL));
+    NAPI_ASSERT(env, argc == ARGC_NUMBER_TWO, "Wrong number of arguments");
     (void)JsStrNumParamsFunc(env, info, [&env] (std::string name, napi_value& nValue) -> bool {
         int64_t count = 0;
         if (!ParseInt64Param(env, nValue, count)) {
