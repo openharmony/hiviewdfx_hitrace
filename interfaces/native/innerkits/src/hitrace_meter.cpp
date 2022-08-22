@@ -53,7 +53,7 @@ constexpr int VAR_NAME_MAX_SIZE = 256;
 static std::vector<std::string> g_markTypes = {"B", "E", "S", "F", "C"};
 enum MarkerType { MARKER_BEGIN, MARKER_END, MARKER_ASYNC_BEGIN, MARKER_ASYNC_END, MARKER_INT, MARKER_MAX };
 
-constexpr uint64_t HITRACE_TAG = 0xd03301;
+constexpr uint64_t HITRACE_TAG = 0xD002D33;
 constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, HITRACE_TAG, "HitraceMeter"};
 
 static void ParameterChange(const char* key, const char* value, void* context)
