@@ -27,7 +27,7 @@ constexpr int SECOND_ARG_INDEX = 1;
 constexpr int THIRD_ARG_INDEX = 2;
 constexpr int ARGC_NUMBER_TWO = 2;
 constexpr int ARGC_NUMBER_THREE = 3;
-constexpr uint64_t HITRACE_METER_TAG = 0xd03301;
+constexpr uint64_t HITRACE_METER_TAG = 0xD002D33;
 constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, HITRACE_METER_TAG, "HITRACE_METER_JS"};
 using STR_NUM_PARAM_FUNC = std::function<bool(std::string, napi_value&)>;
 
