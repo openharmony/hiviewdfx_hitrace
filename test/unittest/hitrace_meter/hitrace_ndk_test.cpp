@@ -59,7 +59,7 @@ constexpr uint32_t TRACE_FMA11 = 11;
 constexpr uint32_t TRACE_FMA12 = 12;
 
 constexpr uint64_t TRACE_INVALIDATE_TAG = 0x1000000;
-constexpr uint64_t HITRACE_TAG =  0xd03301;
+constexpr uint64_t HITRACE_TAG = 0xD002D33;
 const constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, HITRACE_TAG, "Hitrace_TEST"};
 const uint64_t TAG = HITRACE_TAG_OHOS;
 static string g_traceRootPath;
