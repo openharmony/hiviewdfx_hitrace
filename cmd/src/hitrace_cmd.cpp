@@ -892,6 +892,7 @@ static void InitAllSupportTags()
     g_tagMap["useriam"] = {"useriam", "useriam", HITRACE_TAG_USERIAM, USER, {}};
     g_tagMap["nweb"] = {"nweb", "NWEB Module", HITRACE_TAG_NWEB, USER, {}};
     g_tagMap["net"] = {"net", "net", HITRACE_TAG_NET, USER, {}};
+    g_tagMap["accesscontrol"] = {"accesscontrol", "Access Control Module", HITRACE_TAG_ACCESS_CONTROL, USER, {}};
 
     // Kernel os
     InitKernelSupportTags();

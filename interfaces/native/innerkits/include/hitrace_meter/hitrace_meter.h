@@ -24,6 +24,7 @@ extern "C" {
 
 constexpr uint64_t HITRACE_TAG_NEVER = 0; // This tag is never enabled.
 constexpr uint64_t HITRACE_TAG_ALWAYS = (1ULL << 0); // This tag is always enabled.
+constexpr uint64_t HITRACE_TAG_ACCESS_CONTROL = (1ULL << 22); // This tag is access control tag.
 constexpr uint64_t HITRACE_TAG_NET = (1ULL << 23); // Net tag.
 constexpr uint64_t HITRACE_TAG_NWEB = (1ULL << 24); // NWeb tag.
 constexpr uint64_t HITRACE_TAG_HUKS = (1ULL << 25); // This tag is huks.
