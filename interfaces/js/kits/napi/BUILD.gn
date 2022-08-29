@@ -17,7 +17,6 @@ ohos_shared_library("hitracechain_napi") {
   include_dirs = [
     ".",
     "include/",
-    "//third_party/node/src",
   ]
 
   configs = []
@@ -28,11 +27,10 @@ ohos_shared_library("hitracechain_napi") {
     "./src/napi_hitrace_util.cpp",
   ]
 
-  deps = [ "//foundation/arkui/napi:ace_napi" ]
-
   external_deps = [
     "hilog_native:libhilog",
     "hitrace_native:libhitrace",
+    "napi:ace_napi",
   ]
 
   relative_install_dir = "module"
@@ -44,10 +42,10 @@ ohos_shared_library("hitracechain_napi") {
 
 ohos_shared_library("hitracemeter_napi") {
   sources = [ "./hitracemeter/napi_hitrace_meter.cpp" ]
-  deps = [ "//foundation/arkui/napi:ace_napi" ]
   external_deps = [
+    "hilog_native:libhilog",
     "hitrace_native:hitrace_meter",
-    "hiviewdfx_hilog_native:libhilog",
+    "napi:ace_napi",
   ]
 
   relative_install_dir = "module"

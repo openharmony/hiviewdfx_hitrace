@@ -22,12 +22,13 @@
     "ram": "",
     "deps": {
       "components": [
+        "c_utils",
         "hilog_native",
-        "c_utils"
+        "init",
+        "ipc",
+        "napi"
       ],
-      "third_party": [
-        "node"
-      ]
+      "third_party": []
     },
     "build": {
       "sub_component": [
