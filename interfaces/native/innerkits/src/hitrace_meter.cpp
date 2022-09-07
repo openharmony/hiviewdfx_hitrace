@@ -108,6 +108,7 @@ void OpenTraceMarkerFile()
     const std::string traceFile = "/sys/kernel/tracing/trace_marker";
     g_markerFd = open(debugFile.c_str(), O_WRONLY | O_CLOEXEC);
     if (g_markerFd == -1) {
+        HiLog::Error(LABEL, "open trace file %{public}s failed: %{public}d", debugFile.c_str(), errno);
         g_markerFd = open(traceFile.c_str(), O_WRONLY | O_CLOEXEC);
         if (g_markerFd == -1) {
             HiLog::Error(LABEL, "open trace file %{public}s failed: %{public}d", traceFile.c_str(), errno);
