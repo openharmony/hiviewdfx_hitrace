@@ -24,10 +24,7 @@ config("hitrace_osal_inner_config") {
 ohos_static_library("hitrace_osal_inner") {
   sources = [ "./src/hitrace_osal.cpp" ]
   public_configs = [ ":hitrace_osal_inner_config" ]
-  external_deps = [
-    "init:libbegetutil",
-    "ipc:ipc_core",
-  ]
+  external_deps = [ "init:libbegetutil" ]
 
   subsystem_name = "hiviewdfx"
   part_name = "hitrace_native"
@@ -42,10 +39,7 @@ ohos_executable("hitrace") {
     "//third_party/zlib:libz",
   ]
 
-  external_deps = [
-    "c_utils:utils",
-    "hitrace_native:hitrace_meter",
-  ]
+  external_deps = [ "c_utils:utils" ]
 
   include_dirs = [
     "./include",
