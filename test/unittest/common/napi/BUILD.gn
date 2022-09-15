@@ -18,7 +18,8 @@ module_output_path = "hitrace_native/hitrace_js_target"
 ohos_js_unittest("HiTraceChainJsTest") {
   module_out_path = module_output_path
   hap_profile = "./config.json"
-  certificate_profile = "//test/developertest/signature/openharmony_sx.p7b"
+  certificate_profile =
+      "//test/testfwk/developertest/signature/openharmony_sx.p7b"
 }
 
 group("unittest") {
