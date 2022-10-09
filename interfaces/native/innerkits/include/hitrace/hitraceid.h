@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,7 +16,7 @@
 #ifndef HIVIEWDFX_HITRACE_ID_H
 #define HIVIEWDFX_HITRACE_ID_H
 
-#include "hitrace/hitracec.h"
+#include "hitrace/hitracechainc.h"
 
 #ifdef __cplusplus
 
@@ -44,7 +44,7 @@ public:
 
 private:
     HiTraceIdStruct id_;
-    friend class HiTrace;
+    friend class HiTraceChain;
 };
 } // namespace HiviewDFX
 } // namespace OHOS

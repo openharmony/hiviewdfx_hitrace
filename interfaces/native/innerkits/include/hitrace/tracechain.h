@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,24 +13,11 @@
  * limitations under the License.
  */
 
-#ifndef HIVIEWDFX_HITRACE_INNER_H
-#define HIVIEWDFX_HITRACE_INNER_H
+#ifndef HIVIEWDFX_HITRACECHAIN_H
+#define HIVIEWDFX_HITRACECHAIN_H
 
-#include "hitrace/hitracec.h"
+#include "hitrace/hitracechain.h"
+#include "hitrace/hitracechainc.h"
+#include "hitrace/hitraceid.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#define HITRACE_INFO_FAIL (-1)
-#define HITRACE_INFO_ALL_VALID (0)
-#define HITRACE_INFO_ALL_VALID_EXCEPT_SPAN (1)
-
-void HiTraceTracepointInner(HiTraceCommunicationMode mode, HiTraceTracepointType type, const HiTraceIdStruct* pId,
-    const char* fmt, va_list args);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif // HIVIEWDFX_HITRACE_INNER_H
+#endif // HIVIEWDFX_HITRACECHAIN_H

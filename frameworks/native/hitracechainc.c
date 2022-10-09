@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "hitrace/hitracec.h"
+#include "hitrace/hitracechainc.h"
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,7 +22,7 @@
 #include "securec.h"
 #include "hilog/log.h"
 #include "hilog_trace.h"
-#include "hitrace_inner.h"
+#include "hitracechain_inner.h"
 
 #undef LOG_DOMAIN
 #undef LOG_TAG
@@ -78,15 +78,15 @@ static inline HiTraceIdStructInner* GetThreadIdInner()
     return &g_hiTraceId;
 }
 
-HiTraceIdStruct HiTraceGetId()
+HiTraceIdStruct HiTraceChainGetId()
 {
     HiTraceIdStructInner* pThreadId = GetThreadIdInner();
     return pThreadId->id;
 }
 
-void HiTraceSetId(const HiTraceIdStruct* pId)
+void HiTraceChainSetId(const HiTraceIdStruct* pId)
 {
-    if (!HiTraceIsValid(pId)) {
+    if (!HiTraceChainIsValid(pId)) {
         return;
     }
 
@@ -95,14 +95,14 @@ void HiTraceSetId(const HiTraceIdStruct* pId)
     return;
 }
 
-void HiTraceClearId()
+void HiTraceChainClearId()
 {
     HiTraceIdStructInner* pThreadId = GetThreadIdInner();
-    HiTraceInitId(&(pThreadId->id));
+    HiTraceChainInitId(&(pThreadId->id));
     return;
 }
 
-static inline int HiTraceGetDeviceId()
+static inline int HiTraceChainGetDeviceId()
 {
     // save device id and use it later
     static int deviceId = 0;
@@ -116,7 +116,7 @@ static inline int HiTraceGetDeviceId()
     return deviceId;
 }
 
-static inline unsigned int HiTraceGetCpuId()
+static inline unsigned int HiTraceChainGetCpuId()
 {
     // Using vdso call will make get_cpu_id faster: sched_getcpu()
     static unsigned int cpuId = 0;
@@ -125,77 +125,75 @@ static inline unsigned int HiTraceGetCpuId()
     return cpuId;
 }
 
-static inline uint64_t HiTraceCreateChainId()
+static inline uint64_t HiTraceChainCreateChainId()
 {
     // get timestamp. Using vdso call(no system call)
     struct timeval tv;
     gettimeofday(&tv, NULL);
-
     HiTraceChainIdStruct chainId = {
         .padding = 0,
         .chainId = 0
     };
-    chainId.deviceId = (uint64_t)(HiTraceGetDeviceId());
-    chainId.cpuId = HiTraceGetCpuId();
+    chainId.deviceId = (uint64_t)(HiTraceChainGetDeviceId());
+    chainId.cpuId = HiTraceChainGetCpuId();
     chainId.second = (uint64_t)(tv.tv_sec);
     chainId.usecond = (uint64_t)(tv.tv_usec);
-
     return chainId.chainId;
 }
 
-HiTraceIdStruct HiTraceBegin(const char* name, int flags)
+HiTraceIdStruct HiTraceChainBegin(const char* name, int flags)
 {
     HiTraceIdStruct id;
-    HiTraceInitId(&id);
+    HiTraceChainInitId(&id);
 
     if ((flags < HITRACE_FLAG_MIN) || (flags > HITRACE_FLAG_MAX)) {
         return id;
     }
 
     HiTraceIdStructInner* pThreadId = GetThreadIdInner();
-    if (HiTraceIsValid(&(pThreadId->id))) {
+    if (HiTraceChainIsValid(&(pThreadId->id))) {
         return id;
     }
 
     id.valid = HITRACE_ID_VALID;
     id.ver = HITRACE_VER_1;
-    id.chainId = HiTraceCreateChainId();
+    id.chainId = HiTraceChainCreateChainId();
     id.flags = (uint64_t)flags;
     id.spanId = 0;
     id.parentSpanId = 0;
 
     pThreadId->id = id;
 
-    if (!HiTraceIsFlagEnabled(&id, HITRACE_FLAG_NO_BE_INFO)) {
+    if (!HiTraceChainIsFlagEnabled(&id, HITRACE_FLAG_NO_BE_INFO)) {
         HILOG_INFO(LOG_CORE, "HiTraceBegin name:%{public}s flags:0x%{public}.2x.", name ? name : "", (int)id.flags);
     }
     return id;
 }
 
-void HiTraceEnd(const HiTraceIdStruct* pId)
+void HiTraceChainEnd(const HiTraceIdStruct* pId)
 {
-    if (!HiTraceIsValid(pId)) {
+    if (!HiTraceChainIsValid(pId)) {
         HILOG_ERROR(LOG_CORE, "HiTraceEnd error: invalid end id.");
         return;
     }
 
     HiTraceIdStructInner* pThreadId = GetThreadIdInner();
-    if (!HiTraceIsValid(&(pThreadId->id))) {
+    if (!HiTraceChainIsValid(&(pThreadId->id))) {
         HILOG_ERROR(LOG_CORE, "HiTraceEnd error: invalid thread id.");
         return;
     }
 
-    if (HiTraceGetChainId(pId) != HiTraceGetChainId(&(pThreadId->id))) {
+    if (HiTraceChainGetChainId(pId) != HiTraceChainGetChainId(&(pThreadId->id))) {
         HILOG_ERROR(LOG_CORE, "HiTraceEnd error: end id(%{public}llx) != thread id(%{public}llx).",
                     (unsigned long long)pId->chainId, (unsigned long long)pThreadId->id.chainId);
         return;
     }
 
-    if (!HiTraceIsFlagEnabled(&(pThreadId->id), HITRACE_FLAG_NO_BE_INFO)) {
+    if (!HiTraceChainIsFlagEnabled(&(pThreadId->id), HITRACE_FLAG_NO_BE_INFO)) {
         HILOG_INFO(LOG_CORE, "HiTraceEnd.");
     }
 
-    HiTraceInitId(&(pThreadId->id));
+    HiTraceChainInitId(&(pThreadId->id));
     return;
 }
 
@@ -219,16 +217,16 @@ static uint32_t HashFunc(const void* pData, uint32_t dataLen)
     return hash;
 }
 
-HiTraceIdStruct HiTraceCreateSpan()
+HiTraceIdStruct HiTraceChainCreateSpan()
 {
     static const uint32_t hashDataNum = 5;
 
-    HiTraceIdStruct id = HiTraceGetId();
-    if (!HiTraceIsValid(&id)) {
+    HiTraceIdStruct id = HiTraceChainGetId();
+    if (!HiTraceChainIsValid(&id)) {
         return id;
     }
 
-    if (HiTraceIsFlagEnabled(&id, HITRACE_FLAG_DONOT_CREATE_SPAN)) {
+    if (HiTraceChainIsFlagEnabled(&id, HITRACE_FLAG_DONOT_CREATE_SPAN)) {
         return id;
     }
 
@@ -237,7 +235,7 @@ HiTraceIdStruct HiTraceCreateSpan()
     gettimeofday(&tv, NULL);
 
     uint32_t hashData[hashDataNum];
-    hashData[0] = (uint32_t)(HiTraceGetDeviceId());  // 0: device id
+    hashData[0] = (uint32_t)(HiTraceChainGetDeviceId());  // 0: device id
     hashData[1] = id.parentSpanId;                   // 1: parent span id
     hashData[2] = id.spanId;                         // 2: span id
     hashData[3] = (uint32_t)(tv.tv_sec);             // 3: second
@@ -250,8 +248,8 @@ HiTraceIdStruct HiTraceCreateSpan()
     return id;
 }
 
-void HiTraceTracepointInner(HiTraceCommunicationMode mode, HiTraceTracepointType type, const HiTraceIdStruct* pId,
-    const char* fmt, va_list args)
+void HiTraceChainTracepointInner(HiTraceCommunicationMode mode, HiTraceTracepointType type,
+    const HiTraceIdStruct* pId, const char* fmt, va_list args)
 {
     static const int tpBufferSize = 1024;
     static const char* hiTraceTypeStr[] = { "CS", "CR", "SS", "SR", "GENERAL", };
@@ -264,14 +262,15 @@ void HiTraceTracepointInner(HiTraceCommunicationMode mode, HiTraceTracepointType
         return;
     }
 
-    if (!HiTraceIsValid(pId)) {
+    if (!HiTraceChainIsValid(pId)) {
         return;
     }
 
-    if (!HiTraceIsFlagEnabled(pId, HITRACE_FLAG_TP_INFO) && !HiTraceIsFlagEnabled(pId, HITRACE_FLAG_D2D_TP_INFO)) {
+    if (!HiTraceChainIsFlagEnabled(pId, HITRACE_FLAG_TP_INFO) &&
+        !HiTraceChainIsFlagEnabled(pId, HITRACE_FLAG_D2D_TP_INFO)) {
         // Both tp and d2d-tp flags are disabled.
         return;
-    } else if (!HiTraceIsFlagEnabled(pId, HITRACE_FLAG_TP_INFO) && (mode != HITRACE_CM_DEVICE)) {
+    } else if (!HiTraceChainIsFlagEnabled(pId, HITRACE_FLAG_TP_INFO) && (mode != HITRACE_CM_DEVICE)) {
         // Only d2d-tp flag is enabled. But the communication mode is not device-to-device.
         return;
     }
@@ -292,72 +291,73 @@ void HiTraceTracepointInner(HiTraceCommunicationMode mode, HiTraceTracepointType
     return;
 }
 
-void HiTraceTracepointWithArgs(HiTraceTracepointType type, const HiTraceIdStruct* pId, const char* fmt, va_list args)
+void HiTraceChainTracepointWithArgs(HiTraceTracepointType type, const HiTraceIdStruct* pId, const char* fmt,
+    va_list args)
 {
-    HiTraceTracepointInner(HITRACE_CM_DEFAULT, type, pId, fmt, args);
+    HiTraceChainTracepointInner(HITRACE_CM_DEFAULT, type, pId, fmt, args);
 }
 
-void HiTraceTracepointExWithArgs(HiTraceCommunicationMode mode, HiTraceTracepointType type, const HiTraceIdStruct* pId,
-    const char* fmt, va_list args)
+void HiTraceChainTracepointExWithArgs(HiTraceCommunicationMode mode, HiTraceTracepointType type,
+    const HiTraceIdStruct* pId, const char* fmt, va_list args)
 {
-    HiTraceTracepointInner(mode, type, pId, fmt, args);
+    HiTraceChainTracepointInner(mode, type, pId, fmt, args);
 }
 
-void HiTraceTracepoint(HiTraceTracepointType type, const HiTraceIdStruct* pId, const char* fmt, ...)
+void HiTraceChainTracepoint(HiTraceTracepointType type, const HiTraceIdStruct* pId, const char* fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    HiTraceTracepointInner(HITRACE_CM_DEFAULT, type, pId, fmt, args);
+    HiTraceChainTracepointInner(HITRACE_CM_DEFAULT, type, pId, fmt, args);
     va_end(args);
     return;
 }
 
-void HiTraceTracepointEx(HiTraceCommunicationMode mode, HiTraceTracepointType type, const HiTraceIdStruct* pId,
+void HiTraceChainTracepointEx(HiTraceCommunicationMode mode, HiTraceTracepointType type, const HiTraceIdStruct* pId,
     const char* fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    HiTraceTracepointInner(mode, type, pId, fmt, args);
+    HiTraceChainTracepointInner(mode, type, pId, fmt, args);
     va_end(args);
     return;
 }
 
-int HiTraceGetInfo(uint64_t* chainId, uint32_t* flags, uint64_t* spanId, uint64_t* parentSpanId)
+int HiTraceChainGetInfo(uint64_t* chainId, uint32_t* flags, uint64_t* spanId, uint64_t* parentSpanId)
 {
     if (!chainId || !flags || !spanId || !parentSpanId) {
         return HITRACE_INFO_FAIL;
     }
 
-    HiTraceIdStruct id = HiTraceGetId();
-    if (!HiTraceIsValid(&id)) {
+    HiTraceIdStruct id = HiTraceChainGetId();
+    if (!HiTraceChainIsValid(&id)) {
         return HITRACE_INFO_FAIL;
     }
 
-    if (HiTraceIsFlagEnabled(&id, HITRACE_FLAG_DONOT_ENABLE_LOG)) {
+    if (HiTraceChainIsFlagEnabled(&id, HITRACE_FLAG_DONOT_ENABLE_LOG)) {
         return HITRACE_INFO_FAIL;
     }
 
-    *chainId = HiTraceGetChainId(&id);
-    *flags = HiTraceGetFlags(&id);
+    *chainId = HiTraceChainGetChainId(&id);
+    *flags = HiTraceChainGetFlags(&id);
 
-    if (HiTraceIsFlagEnabled(&id, HITRACE_FLAG_DONOT_CREATE_SPAN)) {
+    if (HiTraceChainIsFlagEnabled(&id, HITRACE_FLAG_DONOT_CREATE_SPAN)) {
         *spanId = 0;
         *parentSpanId = 0;
         return HITRACE_INFO_ALL_VALID_EXCEPT_SPAN;
     }
 
-    *spanId = HiTraceGetSpanId(&id);
-    *parentSpanId = HiTraceGetParentSpanId(&id);
+    *spanId = HiTraceChainGetSpanId(&id);
+    *parentSpanId = HiTraceChainGetParentSpanId(&id);
     return HITRACE_INFO_ALL_VALID;
 }
 
-static void __attribute__((constructor)) HiTraceInit()
+static void __attribute__((constructor)) HiTraceChainInit()
 {
     // Call HiLog Register Interface
-    HiLogRegisterGetIdFun(HiTraceGetInfo);
+    HiLogRegisterGetIdFun(HiTraceChainGetInfo);
 }
 
-static void __attribute__((destructor)) HiTraceFini()
+static void __attribute__((destructor)) HiTraceChainFini()
 {
-    HiLogUnregisterGetIdFun(HiTraceGetInfo);
+    HiLogUnregisterGetIdFun(HiTraceChainGetInfo);
 }

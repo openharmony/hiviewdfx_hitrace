@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,7 +17,7 @@
 
 #include <cstdint>
 
-#include "hitrace/hitracec.h"
+#include "hitrace/hitracechainc.h"
 
 namespace OHOS {
 namespace HiviewDFX {
@@ -37,72 +37,72 @@ HiTraceId::HiTraceId(const HiTraceIdStruct& id) : id_(id)
 
 HiTraceId::HiTraceId(const uint8_t* pIdArray, int len)
 {
-    id_ = HiTraceBytesToId(pIdArray, len);
+    id_ = HiTraceChainBytesToId(pIdArray, len);
 }
 
 bool HiTraceId::IsValid() const
 {
-    return HiTraceIsValid(&id_);
+    return HiTraceChainIsValid(&id_);
 }
 
 bool HiTraceId::IsFlagEnabled(HiTraceFlag flag) const
 {
-    return HiTraceIsFlagEnabled(&id_, flag);
+    return HiTraceChainIsFlagEnabled(&id_, flag);
 }
 
 void HiTraceId::EnableFlag(HiTraceFlag flag)
 {
-    HiTraceEnableFlag(&id_, flag);
+    HiTraceChainEnableFlag(&id_, flag);
     return;
 }
 
 int HiTraceId::GetFlags() const
 {
-    return HiTraceGetFlags(&id_);
+    return HiTraceChainGetFlags(&id_);
 }
 
 void HiTraceId::SetFlags(int flags)
 {
-    HiTraceSetFlags(&id_, flags);
+    HiTraceChainSetFlags(&id_, flags);
     return;
 }
 
 uint64_t HiTraceId::GetChainId() const
 {
-    return HiTraceGetChainId(&id_);
+    return HiTraceChainGetChainId(&id_);
 }
 
 void HiTraceId::SetChainId(uint64_t chainId)
 {
-    HiTraceSetChainId(&id_, chainId);
+    HiTraceChainSetChainId(&id_, chainId);
     return;
 }
 
 uint64_t HiTraceId::GetSpanId() const
 {
-    return HiTraceGetSpanId(&id_);
+    return HiTraceChainGetSpanId(&id_);
 }
 
 void HiTraceId::SetSpanId(uint64_t spanId)
 {
-    HiTraceSetSpanId(&id_, spanId);
+    HiTraceChainSetSpanId(&id_, spanId);
     return;
 }
 
 uint64_t HiTraceId::GetParentSpanId() const
 {
-    return HiTraceGetParentSpanId(&id_);
+    return HiTraceChainGetParentSpanId(&id_);
 }
 
 void HiTraceId::SetParentSpanId(uint64_t parentSpanId)
 {
-    HiTraceSetParentSpanId(&id_, parentSpanId);
+    HiTraceChainSetParentSpanId(&id_, parentSpanId);
     return;
 }
 
 int HiTraceId::ToBytes(uint8_t* pIdArray, int len) const
 {
-    return HiTraceIdToBytes(&id_, pIdArray, len);
+    return HiTraceChainIdToBytes(&id_, pIdArray, len);
 }
 
 } // namespace HiviewDFX

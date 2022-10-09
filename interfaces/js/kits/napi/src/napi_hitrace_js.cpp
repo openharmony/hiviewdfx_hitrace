@@ -82,7 +82,7 @@ static napi_value Begin(napi_env env, napi_callback_info info)
         HiLog::Error(LABEL, "flag type must be number.");
         return val;
     }
-    traceId = HiTrace::Begin(name, flag);
+    traceId = HiTraceChain::Begin(name, flag);
     NapiHitraceUtil::CreateHiTraceIdJsObject(env, traceId, val);
     return val;
 }
@@ -104,13 +104,13 @@ static napi_value End(napi_env env, napi_callback_info info)
         HiLog::Error(LABEL, "hitarce id type must be object.");
         return nullptr;
     }
-    HiTrace::End(traceId);
+    HiTraceChain::End(traceId);
     return nullptr;
 }
 
 static napi_value GetId(napi_env env, napi_callback_info info)
 {
-    HiTraceId traceId = HiTrace::GetId();
+    HiTraceId traceId = HiTraceChain::GetId();
     napi_value val = nullptr;
     NapiHitraceUtil::CreateHiTraceIdJsObject(env, traceId, val);
     return val;
@@ -133,19 +133,19 @@ static napi_value SetId(napi_env env, napi_callback_info info)
         HiLog::Error(LABEL, "hitarce id type must be object.");
         return nullptr;
     }
-    HiTrace::SetId(traceId);
+    HiTraceChain::SetId(traceId);
     return nullptr;
 }
 
 static napi_value ClearId(napi_env env, napi_callback_info info)
 {
-    HiTrace::ClearId();
+    HiTraceChain::ClearId();
     return nullptr;
 }
 
 static napi_value CreateSpan(napi_env env, napi_callback_info info)
 {
-    HiTraceId traceId = HiTrace::CreateSpan();
+    HiTraceId traceId = HiTraceChain::CreateSpan();
     napi_value val = nullptr;
     NapiHitraceUtil::CreateHiTraceIdJsObject(env, traceId, val);
     return val;
@@ -185,7 +185,7 @@ static napi_value Tracepoint(napi_env env, napi_callback_info info)
         HiLog::Error(LABEL, "descriptione type must be string.");
         return nullptr;
     }
-    HiTrace::Tracepoint(communicationMode, tracePointType, traceId, "%s", description.c_str());
+    HiTraceChain::Tracepoint(communicationMode, tracePointType, traceId, "%s", description.c_str());
     return nullptr;
 }
 
