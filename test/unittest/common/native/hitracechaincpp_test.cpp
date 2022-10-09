@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "hitrace/hitrace.h"
+#include "hitrace/hitracechain.h"
 
 #include <cstdint>
 #include <gtest/gtest.h>
@@ -22,14 +22,14 @@
 #include "gtest/gtest-test-part.h"
 #include "gtest/gtest_pred_impl.h"
 #include "gtest/hwext/gtest-tag.h"
-#include "hitrace/hitracec.h"
+#include "hitrace/hitracechainc.h"
 #include "hitrace/hitraceid.h"
 
 namespace OHOS {
 namespace HiviewDFX {
 using namespace testing::ext;
 
-class HiTraceCppTest : public testing::Test {
+class HiTraceChainCppTest : public testing::Test {
 public:
     static void SetUpTestCase();
     static void TearDownTestCase();
@@ -37,27 +37,27 @@ public:
     void TearDown();
 };
 
-void HiTraceCppTest::SetUpTestCase()
+void HiTraceChainCppTest::SetUpTestCase()
 {}
 
-void HiTraceCppTest::TearDownTestCase()
+void HiTraceChainCppTest::TearDownTestCase()
 {}
 
-void HiTraceCppTest::SetUp()
+void HiTraceChainCppTest::SetUp()
 {
-    HiTrace::ClearId();
+    HiTraceChain::ClearId();
 }
 
-void HiTraceCppTest::TearDown()
+void HiTraceChainCppTest::TearDown()
 {}
 
 /**
- * @tc.name: Dfx_HiTraceCppTest_IdTest_001
+ * @tc.name: Dfx_HiTraceChainCppTest_IdTest_001
  * @tc.desc: Get, set and clear trace id
  * @tc.type: FUNC
  * @tc.require: AR000CQV9U
  */
-HWTEST_F(HiTraceCppTest, IdTest_001, TestSize.Level1)
+HWTEST_F(HiTraceChainCppTest, IdTest_001, TestSize.Level1)
 {
     /**
      * @tc.steps: step1. get and validate trace id.
@@ -72,7 +72,7 @@ HWTEST_F(HiTraceCppTest, IdTest_001, TestSize.Level1)
      * @tc.steps: step4. clear trace id, then get and validate it.
      * @tc.expected: step4. trace id is invalid.
      */
-    HiTraceId initId = HiTrace::GetId();
+    HiTraceId initId = HiTraceChain::GetId();
     EXPECT_EQ(0, initId.IsValid());
     /* set thread id */
     constexpr uint64_t CHAIN_ID = 0xABCDEF;
@@ -91,9 +91,9 @@ HWTEST_F(HiTraceCppTest, IdTest_001, TestSize.Level1)
     EXPECT_EQ(SPAN_ID, initId.GetSpanId());
     EXPECT_EQ(PARENT_SPAN_ID, initId.GetParentSpanId());
 
-    HiTrace::SetId(initId);
+    HiTraceChain::SetId(initId);
 
-    HiTraceId getId = HiTrace::GetId();
+    HiTraceId getId = HiTraceChain::GetId();
     EXPECT_EQ(1, getId.IsValid());
     EXPECT_EQ(CHAIN_ID, getId.GetChainId());
     EXPECT_EQ(HITRACE_FLAG_INCLUDE_ASYNC | HITRACE_FLAG_DONOT_CREATE_SPAN, getId.GetFlags());
@@ -101,27 +101,27 @@ HWTEST_F(HiTraceCppTest, IdTest_001, TestSize.Level1)
     EXPECT_EQ(PARENT_SPAN_ID, getId.GetParentSpanId());
 
     HiTraceId invalidId;
-    HiTrace::SetId(invalidId);
+    HiTraceChain::SetId(invalidId);
 
-    getId = HiTrace::GetId();
+    getId = HiTraceChain::GetId();
     EXPECT_EQ(1, getId.IsValid());
     EXPECT_EQ(CHAIN_ID, getId.GetChainId());
     EXPECT_EQ(HITRACE_FLAG_INCLUDE_ASYNC | HITRACE_FLAG_DONOT_CREATE_SPAN, getId.GetFlags());
     EXPECT_EQ(SPAN_ID, getId.GetSpanId());
     EXPECT_EQ(PARENT_SPAN_ID, getId.GetParentSpanId());
 
-    HiTrace::ClearId();
-    HiTraceId clearId = HiTrace::GetId();
+    HiTraceChain::ClearId();
+    HiTraceId clearId = HiTraceChain::GetId();
     EXPECT_EQ(0, clearId.IsValid());
 }
 
 /**
- * @tc.name: Dfx_HiTraceCppTest_IntfTest_001
+ * @tc.name: Dfx_HiTraceChainCppTest_IntfTest_001
  * @tc.desc: Interconversion between trace id and bytes array.
  * @tc.type: FUNC
  * @tc.require: AR000CQV9U
  */
-HWTEST_F(HiTraceCppTest, IntfTest_001, TestSize.Level1)
+HWTEST_F(HiTraceChainCppTest, IntfTest_001, TestSize.Level1)
 {
     /**
      * @tc.steps: step1. get trace id and validate it.
@@ -137,7 +137,7 @@ HWTEST_F(HiTraceCppTest, IntfTest_001, TestSize.Level1)
      * @tc.steps: step6. convert invalid bytes array to id.
      * @tc.expected: step6. convert fail.
      */
-    HiTraceId initId = HiTrace::GetId();
+    HiTraceId initId = HiTraceChain::GetId();
     EXPECT_EQ(0, initId.IsValid());
     constexpr uint64_t CHAIN_ID = 0xABCDEF;
     constexpr uint64_t SPAN_ID = 0x12345;
@@ -179,12 +179,12 @@ HWTEST_F(HiTraceCppTest, IntfTest_001, TestSize.Level1)
 }
 
 /**
- * @tc.name: Dfx_HiTraceCppTest_IntfTest_002
+ * @tc.name: Dfx_HiTraceChainCppTest_IntfTest_002
  * @tc.desc: Start and stop trace.
  * @tc.type: FUNC
  * @tc.require: AR000CQV9U
  */
-HWTEST_F(HiTraceCppTest, IntfTest_002, TestSize.Level1)
+HWTEST_F(HiTraceChainCppTest, IntfTest_002, TestSize.Level1)
 {
     /**
      * @tc.steps: step1. start trace with flags, get trace id and validit it.
@@ -192,24 +192,24 @@ HWTEST_F(HiTraceCppTest, IntfTest_002, TestSize.Level1)
      * @tc.steps: step2. stop trace, get trace id and validit it.
      * @tc.expected: step2. trace id is invalid.
      */
-    HiTraceId beginId = HiTrace::Begin("test", HITRACE_FLAG_INCLUDE_ASYNC | HITRACE_FLAG_NO_BE_INFO);
+    HiTraceId beginId = HiTraceChain::Begin("test", HITRACE_FLAG_INCLUDE_ASYNC | HITRACE_FLAG_NO_BE_INFO);
     EXPECT_EQ(1, beginId.IsValid());
     EXPECT_EQ(1, beginId.IsFlagEnabled(HITRACE_FLAG_INCLUDE_ASYNC));
     EXPECT_EQ(1, beginId.IsFlagEnabled(HITRACE_FLAG_NO_BE_INFO));
 
-    HiTrace::End(beginId);
+    HiTraceChain::End(beginId);
 
-    HiTraceId endId = HiTrace::GetId();
+    HiTraceId endId = HiTraceChain::GetId();
     EXPECT_EQ(0, endId.IsValid());
 }
 
 /**
- * @tc.name: Dfx_HiTraceCppTest_IntfTest_003
+ * @tc.name: Dfx_HiTraceChainCppTest_IntfTest_003
  * @tc.desc: Start and stop trace with reentered.
  * @tc.type: FUNC
  * @tc.require: AR000CQV9U
  */
-HWTEST_F(HiTraceCppTest, IntfTest_003, TestSize.Level1)
+HWTEST_F(HiTraceChainCppTest, IntfTest_003, TestSize.Level1)
 {
     /**
      * @tc.steps: step1. start trace twice and get 2nd trace id.
@@ -222,18 +222,18 @@ HWTEST_F(HiTraceCppTest, IntfTest_003, TestSize.Level1)
      * @tc.expected: step4. trace id is invalid.
      */
     /* begin */
-    HiTraceId beginId = HiTrace::Begin("begin", HITRACE_FLAG_INCLUDE_ASYNC);
+    HiTraceId beginId = HiTraceChain::Begin("begin", HITRACE_FLAG_INCLUDE_ASYNC);
     /* reenter begin */
-    HiTraceId reBeginId = HiTrace::Begin("reenter begin", HITRACE_FLAG_TP_INFO);
+    HiTraceId reBeginId = HiTraceChain::Begin("reenter begin", HITRACE_FLAG_TP_INFO);
     EXPECT_EQ(0, reBeginId.IsValid());
     EXPECT_NE(reBeginId.GetChainId(), beginId.GetChainId());
     EXPECT_EQ(0, reBeginId.IsFlagEnabled(HITRACE_FLAG_INCLUDE_ASYNC));
     EXPECT_EQ(0, reBeginId.IsFlagEnabled(HITRACE_FLAG_TP_INFO));
 
     /* reenter end */
-    HiTrace::End(reBeginId);
+    HiTraceChain::End(reBeginId);
 
-    HiTraceId endId = HiTrace::GetId();
+    HiTraceId endId = HiTraceChain::GetId();
     EXPECT_EQ(1, endId.IsValid());
     EXPECT_EQ(endId.GetChainId(), beginId.GetChainId());
     EXPECT_EQ(1, endId.IsFlagEnabled(HITRACE_FLAG_INCLUDE_ASYNC));
@@ -242,33 +242,33 @@ HWTEST_F(HiTraceCppTest, IntfTest_003, TestSize.Level1)
     /* end with wrong chainId */
     HiTraceId wrongBeginId = beginId;
     wrongBeginId.SetChainId(beginId.GetChainId() + 1);
-    HiTrace::End(wrongBeginId);
+    HiTraceChain::End(wrongBeginId);
 
-    HiTraceId wrongEndId = HiTrace::GetId();
+    HiTraceId wrongEndId = HiTraceChain::GetId();
     EXPECT_EQ(1, wrongEndId.IsValid());
     EXPECT_EQ(wrongEndId.GetChainId(), beginId.GetChainId());
     EXPECT_EQ(1, wrongEndId.IsFlagEnabled(HITRACE_FLAG_INCLUDE_ASYNC));
 
     /* end */
-    HiTrace::End(beginId);
+    HiTraceChain::End(beginId);
 
-    HiTraceId reEndId = HiTrace::GetId();
+    HiTraceId reEndId = HiTraceChain::GetId();
     EXPECT_EQ(0, reEndId.IsValid());
 
     /* end with invalid thread id */
-    HiTrace::End(beginId);
+    HiTraceChain::End(beginId);
 
-    HiTraceId endInvalidId = HiTrace::GetId();
+    HiTraceId endInvalidId = HiTraceChain::GetId();
     EXPECT_EQ(0, endInvalidId.IsValid());
 }
 
 /**
- * @tc.name: Dfx_HiTraceCppTest_SpanTest_001
+ * @tc.name: Dfx_HiTraceChainCppTest_SpanTest_001
  * @tc.desc: Create child and grand child span.
  * @tc.type: FUNC
  * @tc.require: AR000CQV9U
  */
-HWTEST_F(HiTraceCppTest, SpanTest_001, TestSize.Level1)
+HWTEST_F(HiTraceChainCppTest, SpanTest_001, TestSize.Level1)
 {
     /**
      * @tc.steps: step1. start trace without HITRACE_FLAG_DONOT_CREATE_SPAN,
@@ -281,39 +281,39 @@ HWTEST_F(HiTraceCppTest, SpanTest_001, TestSize.Level1)
      * @tc.expected: step4. grand child id has same span id with parent and child.
      */
     /* begin with span flag */
-    HiTraceId id = HiTrace::Begin("test", 0);
+    HiTraceId id = HiTraceChain::Begin("test", 0);
     EXPECT_EQ(0, id.GetFlags());
     EXPECT_EQ(0UL, id.GetSpanId());
     EXPECT_EQ(0UL, id.GetParentSpanId());
 
     /* create child span */
-    HiTraceId childId = HiTrace::CreateSpan();
+    HiTraceId childId = HiTraceChain::CreateSpan();
     EXPECT_EQ(1, childId.IsValid());
     EXPECT_EQ(childId.GetFlags(), id.GetFlags());
     EXPECT_EQ(childId.GetChainId(), id.GetChainId());
     EXPECT_EQ(childId.GetParentSpanId(), id.GetSpanId());
 
     /* set child id to thread id */
-    HiTrace::SetId(childId);
+    HiTraceChain::SetId(childId);
 
     /* continue to create child span */
-    HiTraceId grandChildId = HiTrace::CreateSpan();
+    HiTraceId grandChildId = HiTraceChain::CreateSpan();
     EXPECT_EQ(1, grandChildId.IsValid());
     EXPECT_EQ(grandChildId.GetFlags(), id.GetFlags());
     EXPECT_EQ(grandChildId.GetChainId(), id.GetChainId());
     EXPECT_EQ(grandChildId.GetParentSpanId(), childId.GetSpanId());
 
     /* end */
-    HiTrace::End(id);
+    HiTraceChain::End(id);
 }
 
 /**
- * @tc.name: Dfx_HiTraceCppTest_SpanTest_002
+ * @tc.name: Dfx_HiTraceChainCppTest_SpanTest_002
  * @tc.desc: Start and stop trace with reentered.
  * @tc.type: FUNC
  * @tc.require: AR000CQV9U
  */
-HWTEST_F(HiTraceCppTest, SpanTest_002, TestSize.Level1)
+HWTEST_F(HiTraceChainCppTest, SpanTest_002, TestSize.Level1)
 {
     /**
      * @tc.steps: step1. start trace with HITRACE_FLAG_DONOT_CREATE_SPAN,
@@ -323,11 +323,11 @@ HWTEST_F(HiTraceCppTest, SpanTest_002, TestSize.Level1)
      * @tc.expected: step2. child id is same with parent id.
      */
     /* begin with "donot create span" flag */
-    HiTraceId id = HiTrace::Begin("test", HITRACE_FLAG_DONOT_CREATE_SPAN);
+    HiTraceId id = HiTraceChain::Begin("test", HITRACE_FLAG_DONOT_CREATE_SPAN);
     EXPECT_EQ(1, id.IsFlagEnabled(HITRACE_FLAG_DONOT_CREATE_SPAN));
 
     /* create child span */
-    HiTraceId childId = HiTrace::CreateSpan();
+    HiTraceId childId = HiTraceChain::CreateSpan();
     EXPECT_EQ(1, childId.IsValid());
     EXPECT_EQ(childId.GetFlags(), id.GetFlags());
     EXPECT_EQ(childId.GetChainId(), id.GetChainId());
@@ -335,16 +335,16 @@ HWTEST_F(HiTraceCppTest, SpanTest_002, TestSize.Level1)
     EXPECT_EQ(childId.GetParentSpanId(), id.GetParentSpanId());
 
     /* end */
-    HiTrace::End(id);
+    HiTraceChain::End(id);
 }
 
 /**
- * @tc.name: Dfx_HiTraceCppTest_TracepointTest_001
+ * @tc.name: Dfx_HiTraceChainCppTest_TracepointTest_001
  * @tc.desc: Start trace with HITRACE_FLAG_TP_INFO flag.
  * @tc.type: FUNC
  * @tc.require: AR000CQVA3
  */
-HWTEST_F(HiTraceCppTest, TracepointTest_001, TestSize.Level1)
+HWTEST_F(HiTraceChainCppTest, TracepointTest_001, TestSize.Level1)
 {
     /**
      * @tc.steps: step1. start trace with HITRACE_FLAG_TP_INFO,
@@ -357,20 +357,20 @@ HWTEST_F(HiTraceCppTest, TracepointTest_001, TestSize.Level1)
      */
     /* begin with tp flag */
     HiTraceId invalidId;
-    HiTraceId id = HiTrace::Begin("test tp flag", HITRACE_FLAG_TP_INFO);
+    HiTraceId id = HiTraceChain::Begin("test tp flag", HITRACE_FLAG_TP_INFO);
     EXPECT_EQ(1, id.IsFlagEnabled(HITRACE_FLAG_TP_INFO));
-    HiTrace::Tracepoint(HITRACE_TP_CS, id, "client send msg content %d", 12);
-    HiTrace::Tracepoint(HITRACE_TP_CS, invalidId, "client send msg content %d", 12);
-    HiTrace::End(id);
+    HiTraceChain::Tracepoint(HITRACE_TP_CS, id, "client send msg content %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_TP_CS, invalidId, "client send msg content %d", 12);
+    HiTraceChain::End(id);
 }
 
 /**
- * @tc.name: Dfx_HiTraceCppTest_TracepointTest_002
+ * @tc.name: Dfx_HiTraceChainCppTest_TracepointTest_002
  * @tc.desc: Start trace without HITRACE_FLAG_TP_INFO flag.
  * @tc.type: FUNC
  * @tc.require: AR000CQVA3
  */
-HWTEST_F(HiTraceCppTest, TracepointTest_002, TestSize.Level1)
+HWTEST_F(HiTraceChainCppTest, TracepointTest_002, TestSize.Level1)
 {
     /**
      * @tc.steps: step1. start trace without HITRACE_FLAG_TP_INFO flag.
@@ -380,20 +380,20 @@ HWTEST_F(HiTraceCppTest, TracepointTest_002, TestSize.Level1)
      * @tc.expected: step2. trace point cannot be found in logs.
      */
     /* begin with tp flag */
-    HiTraceId id = HiTrace::Begin("test no tp flag", HITRACE_FLAG_INCLUDE_ASYNC);
+    HiTraceId id = HiTraceChain::Begin("test no tp flag", HITRACE_FLAG_INCLUDE_ASYNC);
     EXPECT_EQ(0, id.IsFlagEnabled(HITRACE_FLAG_TP_INFO));
-    HiTrace::Tracepoint(HITRACE_TP_CS, id, "client send msg content %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_TP_CS, id, "client send msg content %d", 12);
 
-    HiTrace::End(id);
+    HiTraceChain::End(id);
 }
 
 /**
- * @tc.name: Dfx_HiTraceCppTest_TracepointTest_003
+ * @tc.name: Dfx_HiTraceChainCppTest_TracepointTest_003
  * @tc.desc: Start trace with HITRACE_FLAG_D2D_TP_INFO flag.
  * @tc.type: FUNC
  * @tc.require: AR000CQVA3
  */
-HWTEST_F(HiTraceCppTest, TracepointTest_003, TestSize.Level1)
+HWTEST_F(HiTraceChainCppTest, TracepointTest_003, TestSize.Level1)
 {
     /**
      * @tc.steps: step1. start trace with HITRACE_FLAG_D2D_TP_INFO,
@@ -406,28 +406,28 @@ HWTEST_F(HiTraceCppTest, TracepointTest_003, TestSize.Level1)
      * @tc.steps: step3. add trace point info with id and check logs.
      * @tc.expected: step3. trace point cannot be found in logs.
      */
-    HiTraceId id = HiTrace::Begin("test D2D tp flag", HITRACE_FLAG_D2D_TP_INFO);
+    HiTraceId id = HiTraceChain::Begin("test D2D tp flag", HITRACE_FLAG_D2D_TP_INFO);
     EXPECT_EQ(1, id.IsFlagEnabled(HITRACE_FLAG_D2D_TP_INFO));
-    HiTrace::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, id, "client send msg content %d", 12);
-    HiTrace::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, id, "cannot be found %d", 22);
-    HiTrace::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, id, "cannot be found %d", 32);
-    HiTrace::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, id, "cannot be found %d", 42);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, id, "client send msg content %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, id, "cannot be found %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, id, "cannot be found %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, id, "cannot be found %d", 42);
 
     HiTraceId invalidId;
-    HiTrace::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, invalidId, "cannot be found %d", 13);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, invalidId, "cannot be found %d", 13);
 
-    HiTrace::Tracepoint(HITRACE_TP_CS, id, "cannot be found %d", 14);
+    HiTraceChain::Tracepoint(HITRACE_TP_CS, id, "cannot be found %d", 14);
 
-    HiTrace::End(id);
+    HiTraceChain::End(id);
 }
 
 /**
- * @tc.name: Dfx_HiTraceCppTest_TracepointTest_004
+ * @tc.name: Dfx_HiTraceChainCppTest_TracepointTest_004
  * @tc.desc: Start trace without HITRACE_FLAG_D2D_TP_INFO flag.
  * @tc.type: FUNC
  * @tc.require: AR000CQVA3
  */
-HWTEST_F(HiTraceCppTest, TracepointTest_004, TestSize.Level1)
+HWTEST_F(HiTraceChainCppTest, TracepointTest_004, TestSize.Level1)
 {
     /**
      * @tc.steps: step1. start trace without HITRACE_FLAG_D2D_TP_INFO flag.
@@ -436,23 +436,23 @@ HWTEST_F(HiTraceCppTest, TracepointTest_004, TestSize.Level1)
      * @tc.steps: step2. add D2D trace point info with id and check logs.
      * @tc.expected: step2. trace point cannot be found in logs.
      */
-    HiTraceId id = HiTrace::Begin("test no D2D tp flag", HITRACE_FLAG_INCLUDE_ASYNC);
+    HiTraceId id = HiTraceChain::Begin("test no D2D tp flag", HITRACE_FLAG_INCLUDE_ASYNC);
     EXPECT_EQ(0, id.IsFlagEnabled(HITRACE_FLAG_D2D_TP_INFO));
-    HiTrace::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, id, "cannot be found %d", 12);
-    HiTrace::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, id, "cannot be found %d", 22);
-    HiTrace::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, id, "cannot be found %d", 32);
-    HiTrace::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, id, "cannot be found %d", 42);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, id, "cannot be found %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, id, "cannot be found %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, id, "cannot be found %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, id, "cannot be found %d", 42);
 
-    HiTrace::End(id);
+    HiTraceChain::End(id);
 }
 
 /**
- * @tc.name: Dfx_HiTraceCppTest_TracepointTest_005
+ * @tc.name: Dfx_HiTraceChainCppTest_TracepointTest_005
  * @tc.desc: Start trace with HITRACE_FLAG_D2D_TP_INFO and HITRACE_FLAG_TP_INFO flag.
  * @tc.type: FUNC
  * @tc.require: AR000CQVA3
  */
-HWTEST_F(HiTraceCppTest, TracepointTest_005, TestSize.Level1)
+HWTEST_F(HiTraceChainCppTest, TracepointTest_005, TestSize.Level1)
 {
     /**
      * @tc.steps: step1. start trace with HITRACE_FLAG_D2D_TP_INFO | HITRACE_FLAG_TP_INFO,
@@ -464,26 +464,26 @@ HWTEST_F(HiTraceCppTest, TracepointTest_005, TestSize.Level1)
      * @tc.steps: step3. add trace point info with id and check logs.
      * @tc.expected: step3. trace point can be found in logs.
      */
-    HiTraceId id = HiTrace::Begin("test D2D | TP tp flag", HITRACE_FLAG_D2D_TP_INFO | HITRACE_FLAG_TP_INFO);
+    HiTraceId id = HiTraceChain::Begin("test D2D | TP tp flag", HITRACE_FLAG_D2D_TP_INFO | HITRACE_FLAG_TP_INFO);
     EXPECT_EQ(1, id.IsFlagEnabled(HITRACE_FLAG_D2D_TP_INFO));
     EXPECT_EQ(1, id.IsFlagEnabled(HITRACE_FLAG_TP_INFO));
-    HiTrace::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, id, "client send msg content %d", 12);
-    HiTrace::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, id, "client send msg content %d", 22);
-    HiTrace::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, id, "client send msg content %d", 32);
-    HiTrace::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, id, "client send msg content %d", 42);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, id, "client send msg content %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, id, "client send msg content %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, id, "client send msg content %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, id, "client send msg content %d", 42);
 
-    HiTrace::Tracepoint(HITRACE_TP_CS, id, "client send msg content %d", 13);
+    HiTraceChain::Tracepoint(HITRACE_TP_CS, id, "client send msg content %d", 13);
 
-    HiTrace::End(id);
+    HiTraceChain::End(id);
 }
 
 /**
- * @tc.name: Dfx_HiTraceCppTest_TracepointTest_006
+ * @tc.name: Dfx_HiTraceChainCppTest_TracepointTest_006
  * @tc.desc: Start trace without HITRACE_FLAG_D2D_TP_INFO, but with HITRACE_FLAG_TP_INFO flag.
  * @tc.type: FUNC
  * @tc.require: AR000CQVA3
  */
-HWTEST_F(HiTraceCppTest, TracepointTest_006, TestSize.Level1)
+HWTEST_F(HiTraceChainCppTest, TracepointTest_006, TestSize.Level1)
 {
     /**
      * @tc.steps: step1. start trace with HITRACE_FLAG_TP_INFO flag.
@@ -495,26 +495,26 @@ HWTEST_F(HiTraceCppTest, TracepointTest_006, TestSize.Level1)
      * @tc.steps: step2. add trace point info with id and check logs.
      * @tc.expected: step2. trace point can be found in logs.
      */
-    HiTraceId id = HiTrace::Begin("test no D2D, but tp flag", HITRACE_FLAG_TP_INFO);
+    HiTraceId id = HiTraceChain::Begin("test no D2D, but tp flag", HITRACE_FLAG_TP_INFO);
     EXPECT_EQ(0, id.IsFlagEnabled(HITRACE_FLAG_D2D_TP_INFO));
     EXPECT_EQ(1, id.IsFlagEnabled(HITRACE_FLAG_TP_INFO));
-    HiTrace::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, id, "client send msg content %d", 12);
-    HiTrace::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, id, "client send msg content %d", 22);
-    HiTrace::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, id, "client send msg content %d", 32);
-    HiTrace::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, id, "client send msg content %d", 42);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, id, "client send msg content %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, id, "client send msg content %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, id, "client send msg content %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, id, "client send msg content %d", 42);
 
-    HiTrace::Tracepoint(HITRACE_TP_CS, id, "client send msg content %d", 13);
+    HiTraceChain::Tracepoint(HITRACE_TP_CS, id, "client send msg content %d", 13);
 
-    HiTrace::End(id);
+    HiTraceChain::End(id);
 }
 
 /**
- * @tc.name: Dfx_HiTraceCppTest_SyncAsyncTest_001
+ * @tc.name: Dfx_HiTraceChainCppTest_SyncAsyncTest_001
  * @tc.desc: Start trace with SYNC or ASYNC.
  * @tc.type: FUNC
  * @tc.require: AR000CQ0G7
  */
-HWTEST_F(HiTraceCppTest, SyncAsyncTest_001, TestSize.Level1)
+HWTEST_F(HiTraceChainCppTest, SyncAsyncTest_001, TestSize.Level1)
 {
     /**
      * @tc.steps: step1. start trace without HITRACE_FLAG_INCLUDE_ASYNC flag.
@@ -525,25 +525,25 @@ HWTEST_F(HiTraceCppTest, SyncAsyncTest_001, TestSize.Level1)
      * @tc.expected: step2. HITRACE_FLAG_INCLUDE_ASYNC is enabled.
      */
     /* begin with sync flag */
-    HiTraceId syncId = HiTrace::Begin("test sync only", HITRACE_FLAG_TP_INFO);
+    HiTraceId syncId = HiTraceChain::Begin("test sync only", HITRACE_FLAG_TP_INFO);
     EXPECT_EQ(0, syncId.IsFlagEnabled(HITRACE_FLAG_INCLUDE_ASYNC));
-    HiTrace::Tracepoint(HITRACE_TP_CS, syncId, "client send msg: %s", "sync");
-        HiTrace::End(syncId);
+    HiTraceChain::Tracepoint(HITRACE_TP_CS, syncId, "client send msg: %s", "sync");
+        HiTraceChain::End(syncId);
     /* begin with async flag */
-    HiTraceId asyncId = HiTrace::Begin("test sync+async", HITRACE_FLAG_INCLUDE_ASYNC | HITRACE_FLAG_TP_INFO);
+    HiTraceId asyncId = HiTraceChain::Begin("test sync+async", HITRACE_FLAG_INCLUDE_ASYNC | HITRACE_FLAG_TP_INFO);
     EXPECT_EQ(1, asyncId.IsFlagEnabled(HITRACE_FLAG_INCLUDE_ASYNC));
-    HiTrace::Tracepoint(HITRACE_TP_CS, asyncId, "client send msg: %s", "async");
+    HiTraceChain::Tracepoint(HITRACE_TP_CS, asyncId, "client send msg: %s", "async");
 
-    HiTrace::End(asyncId);
+    HiTraceChain::End(asyncId);
 }
 
 /**
- * @tc.name: Dfx_HiTraceCppTest_InvalidParamTest_001
+ * @tc.name: Dfx_HiTraceChainCppTest_InvalidParamTest_001
  * @tc.desc: Start trace with SYNC or ASYNC.
  * @tc.type: FUNC
  * @tc.require: AR000CQV9U
  */
-HWTEST_F(HiTraceCppTest, InvalidParamTest_001, TestSize.Level1)
+HWTEST_F(HiTraceChainCppTest, InvalidParamTest_001, TestSize.Level1)
 {
     /**
      * @tc.steps: step1. start trace with invalid flag and validate trace id.
@@ -552,16 +552,16 @@ HWTEST_F(HiTraceCppTest, InvalidParamTest_001, TestSize.Level1)
      * @tc.expected: step2. trace id is valid.
      */
     /* begin with invalid flag */
-    HiTraceId invalidFlagId = HiTrace::Begin("invalid param", HITRACE_FLAG_MAX+1);
+    HiTraceId invalidFlagId = HiTraceChain::Begin("invalid param", HITRACE_FLAG_MAX+1);
     EXPECT_EQ(0, invalidFlagId.IsValid());
-    invalidFlagId = HiTrace::Begin("invalid param", -1);
+    invalidFlagId = HiTraceChain::Begin("invalid param", -1);
     EXPECT_EQ(0, invalidFlagId.IsValid());
-    HiTrace::End(invalidFlagId);
+    HiTraceChain::End(invalidFlagId);
 
     /* begin with invalid name */
-    HiTraceId invalidNameId = HiTrace::Begin("", HITRACE_FLAG_TP_INFO);
+    HiTraceId invalidNameId = HiTraceChain::Begin("", HITRACE_FLAG_TP_INFO);
     EXPECT_EQ(1, invalidNameId.IsValid());
-    HiTrace::End(invalidNameId);
+    HiTraceChain::End(invalidNameId);
 }
 }  // namespace HiviewDFX
 }  // namespace OHOS

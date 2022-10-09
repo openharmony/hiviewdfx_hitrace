@@ -29,7 +29,7 @@ ohos_shared_library("hitracechain_napi") {
 
   external_deps = [
     "hilog_native:libhilog",
-    "hitrace_native:libhitrace",
+    "hitrace_native:libhitracechain",
     "napi:ace_napi",
   ]
 

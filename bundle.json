@@ -35,7 +35,7 @@
         "//base/hiviewdfx/hitrace/cmd:hitrace_target",
         "//base/hiviewdfx/hitrace/cmd:hitrace.cfg",
         "//base/hiviewdfx/hitrace/interfaces/native/innerkits:hitrace_meter",
-        "//base/hiviewdfx/hitrace/interfaces/native/innerkits:libhitrace",
+        "//base/hiviewdfx/hitrace/interfaces/native/innerkits:libhitracechain",
         "//base/hiviewdfx/hitrace/interfaces/js/kits:hitrace_napi"
       ],
       "inner_kits": [
@@ -51,14 +51,15 @@
         },
         {
           "type": "so",
-          "name": "//base/hiviewdfx/hitrace/interfaces/native/innerkits:libhitrace",
+          "name": "//base/hiviewdfx/hitrace/interfaces/native/innerkits:libhitracechain",
           "header": {
             "header_base": "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/",
             "header_files": [
-              "hitrace/trace.h",
-              "hitrace/hitracec.h",
+              "hitrace/hitracechain.h",
+              "hitrace/hitracechainc.h",
               "hitrace/hitraceid.h",
-              "hitrace/hitrace.h"
+              "hitrace/trace.h",
+              "hitrace/tracechain.h"
             ]
           }
         }
