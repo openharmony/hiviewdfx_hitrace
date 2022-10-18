@@ -103,10 +103,10 @@ typedef struct HiTraceIdStruct {
 
 HiTraceIdStruct HiTraceChainBegin(const char* name, int flags);
 void HiTraceChainEnd(const HiTraceIdStruct* pId);
-HiTraceIdStruct HiTraceChainGetId();
+HiTraceIdStruct HiTraceChainGetId(void);
 void HiTraceChainSetId(const HiTraceIdStruct* pId);
-void HiTraceChainClearId();
-HiTraceIdStruct HiTraceChainCreateSpan();
+void HiTraceChainClearId(void);
+HiTraceIdStruct HiTraceChainCreateSpan(void);
 void HiTraceChainTracepoint(HiTraceTracepointType type, const HiTraceIdStruct* pId, const char* fmt, ...)
     __attribute__((__format__(os_log, 3, 4)));
 void HiTraceChainTracepointWithArgs(HiTraceTracepointType type, const HiTraceIdStruct* pId, const char* fmt,

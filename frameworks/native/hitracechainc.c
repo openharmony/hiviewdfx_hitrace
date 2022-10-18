@@ -73,12 +73,12 @@ typedef struct HiTraceIdStructInner {
 
 static __thread HiTraceIdStructInner g_hiTraceId = {{0, 0, 0, 0, 0, 0}, {0, 0}};
 
-static inline HiTraceIdStructInner* GetThreadIdInner()
+static inline HiTraceIdStructInner* GetThreadIdInner(void)
 {
     return &g_hiTraceId;
 }
 
-HiTraceIdStruct HiTraceChainGetId()
+HiTraceIdStruct HiTraceChainGetId(void)
 {
     HiTraceIdStructInner* pThreadId = GetThreadIdInner();
     return pThreadId->id;
@@ -95,14 +95,14 @@ void HiTraceChainSetId(const HiTraceIdStruct* pId)
     return;
 }
 
-void HiTraceChainClearId()
+void HiTraceChainClearId(void)
 {
     HiTraceIdStructInner* pThreadId = GetThreadIdInner();
     HiTraceChainInitId(&(pThreadId->id));
     return;
 }
 
-static inline int HiTraceChainGetDeviceId()
+static inline int HiTraceChainGetDeviceId(void)
 {
     // save device id and use it later
     static int deviceId = 0;
@@ -116,7 +116,7 @@ static inline int HiTraceChainGetDeviceId()
     return deviceId;
 }
 
-static inline unsigned int HiTraceChainGetCpuId()
+static inline unsigned int HiTraceChainGetCpuId(void)
 {
     // Using vdso call will make get_cpu_id faster: sched_getcpu()
     static unsigned int cpuId = 0;
@@ -125,7 +125,7 @@ static inline unsigned int HiTraceChainGetCpuId()
     return cpuId;
 }
 
-static inline uint64_t HiTraceChainCreateChainId()
+static inline uint64_t HiTraceChainCreateChainId(void)
 {
     // get timestamp. Using vdso call(no system call)
     struct timeval tv;
@@ -217,7 +217,7 @@ static uint32_t HashFunc(const void* pData, uint32_t dataLen)
     return hash;
 }
 
-HiTraceIdStruct HiTraceChainCreateSpan()
+HiTraceIdStruct HiTraceChainCreateSpan(void)
 {
     static const uint32_t hashDataNum = 5;
 
@@ -351,13 +351,13 @@ int HiTraceChainGetInfo(uint64_t* chainId, uint32_t* flags, uint64_t* spanId, ui
     return HITRACE_INFO_ALL_VALID;
 }
 
-static void __attribute__((constructor)) HiTraceChainInit()
+static void __attribute__((constructor)) HiTraceChainInit(void)
 {
     // Call HiLog Register Interface
     HiLogRegisterGetIdFun(HiTraceChainGetInfo);
 }
 
-static void __attribute__((destructor)) HiTraceChainFini()
+static void __attribute__((destructor)) HiTraceChainFini(void)
 {
     HiLogUnregisterGetIdFun(HiTraceChainGetInfo);
 }
