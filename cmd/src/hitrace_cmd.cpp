@@ -907,7 +907,7 @@ static void InterruptExit(int signo)
 
 int main(int argc, char **argv)
 {
-    setgid(2000);
+    setgid(SHELL_UID);
     (void)signal(SIGKILL, InterruptExit);
     (void)signal(SIGINT, InterruptExit);
 
