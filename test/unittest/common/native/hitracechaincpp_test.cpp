@@ -509,6 +509,37 @@ HWTEST_F(HiTraceChainCppTest, TracepointTest_006, TestSize.Level1)
 }
 
 /**
+ * @tc.name: Dfx_HiTraceChainCppTest_TracepointTest_007
+ * @tc.desc: Start trace without HITRACE_FLAG_D2D_TP_INFO, but with HITRACE_FLAG_TP_INFO flag.
+ * @tc.type: FUNC
+ * @tc.require: AR000CQVA3
+ */
+HWTEST_F(HiTraceChainCppTest, TracepointTest_007, TestSize.Level1)
+{
+    /**
+     * @tc.steps: step1. start trace with HITRACE_FLAG_TP_INFO flag.
+     *     get and check flags.
+     * @tc.expected: step1. HITRACE_FLAG_D2D_TP_INFO is not enabled.
+     * * @tc.expected: step1. HITRACE_FLAG_TP_INFO is enabled.
+     * @tc.steps: step2. add D2D trace point info with id and check logs.
+     * @tc.expected: step2. trace point can be found in logs.
+     * @tc.steps: step2. add trace point info with id and check logs.
+     * @tc.expected: step2. trace point can be found in logs.
+     */
+    HiTraceId id = HiTraceChain::Begin("test no D2D, but tp flag", HITRACE_FLAG_TP_INFO);
+    EXPECT_EQ(0, id.IsFlagEnabled(HITRACE_FLAG_D2D_TP_INFO));
+    EXPECT_EQ(1, id.IsFlagEnabled(HITRACE_FLAG_TP_INFO));
+    HiTraceChain::Tracepoint(HITRACE_TP_CS, id, "client send msg content %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_TP_CS, id, "client send msg content %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_TP_CS, id, "client send msg content %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_TP_CS, id, "client send msg content %d", 42);
+
+    HiTraceChain::Tracepoint(HITRACE_TP_CS, id, "client send msg content %d", 13);
+
+    HiTraceChain::End(id);
+}
+
+/**
  * @tc.name: Dfx_HiTraceChainCppTest_SyncAsyncTest_001
  * @tc.desc: Start trace with SYNC or ASYNC.
  * @tc.type: FUNC

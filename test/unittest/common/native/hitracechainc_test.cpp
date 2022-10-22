@@ -38,6 +38,24 @@ using namespace testing::ext;
            static_cast<int>((p)->spanId), static_cast<int>((p)->parentSpanId))
 #endif
 
+static void HiTraceChainTracepointExWithArgsWrapper(HiTraceCommunicationMode mode, HiTraceTracepointType type,
+    const HiTraceIdStruct* pId, const char* fmt, ...)
+{
+    va_list vaList;
+    va_start(vaList, fmt);
+    HiTraceChainTracepointExWithArgs(mode, type, pId, fmt, vaList);
+    va_end(vaList);
+}
+
+static void HiTraceChainTracepointWithArgsWrapper(HiTraceTracepointType type, const HiTraceIdStruct* pId,
+    const char* fmt, ...)
+{
+    va_list vaList;
+    va_start(vaList, fmt);
+    HiTraceChainTracepointWithArgs(type, pId, fmt, vaList);
+    va_end(vaList);
+}
+
 class HiTraceChainCTest : public testing::Test {
 public:
     static void SetUpTestCase();
@@ -529,6 +547,37 @@ HWTEST_F(HiTraceChainCTest, TracepointTest_006, TestSize.Level1)
     HiTraceChainTracepointEx(HITRACE_CM_DEFAULT, HITRACE_TP_CS, &id, "client send msg content %d", 42);
 
     HiTraceChainTracepoint(HITRACE_TP_CS, &id, "client send msg content %d", 13);
+
+    HiTraceChainEnd(&id);
+}
+
+/**
+ * @tc.name: Dfx_HiTraceChainCTest_TracepointTest_007
+ * @tc.desc: Start trace without HITRACE_FLAG_D2D_TP_INFO, but with HITRACE_FLAG_TP_INFO flag.
+ * @tc.type: FUNC
+ * @tc.require: AR000CQVA3
+ */
+HWTEST_F(HiTraceChainCTest, TracepointTest_007, TestSize.Level1)
+{
+    /**
+     * @tc.steps: step1. start trace with HITRACE_FLAG_TP_INFO flag.
+     *     get and check flags.
+     * @tc.expected: step1. HITRACE_FLAG_D2D_TP_INFO is not enabled.
+     * * @tc.expected: step1. HITRACE_FLAG_TP_INFO is enabled.
+     * @tc.steps: step2. add D2D trace point info with id and check logs.
+     * @tc.expected: step2. trace point can be found in logs.
+     * @tc.steps: step2. add trace point info with id and check logs.
+     * @tc.expected: step2. trace point can be found in logs.
+     */
+    HiTraceIdStruct id = HiTraceChainBegin("test no D2D, but tp flag", HITRACE_FLAG_TP_INFO);
+    EXPECT_EQ(0, HiTraceChainIsFlagEnabled(&id, HITRACE_FLAG_D2D_TP_INFO));
+    EXPECT_EQ(1, HiTraceChainIsFlagEnabled(&id, HITRACE_FLAG_TP_INFO));
+    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEVICE, HITRACE_TP_CS, &id, "client send msg content %d", 12);
+    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_PROCESS, HITRACE_TP_CS, &id, "client send msg content %d", 22);
+    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_THREAD, HITRACE_TP_CS, &id, "client send msg content %d", 32);
+    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEFAULT, HITRACE_TP_CS, &id, "client send msg content %d", 42);
+
+    HiTraceChainTracepointWithArgsWrapper(HITRACE_TP_CS, &id, "client send msg content %d", 13);
 
     HiTraceChainEnd(&id);
 }
