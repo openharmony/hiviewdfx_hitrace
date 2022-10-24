@@ -622,7 +622,7 @@ static void DumpCompressedTrace(int traceFd, int outFd)
             } else {
                 zs.next_in = reinterpret_cast<Bytef*>(in.get());
                 zs.avail_in = bytesRead;
-	    }
+            }
         }
         if (zs.avail_out == 0) {
             bytesWritten = TEMP_FAILURE_RETRY(write(outFd, out.get(), CHUNK_SIZE));
