@@ -590,6 +590,7 @@ static bool StopTrace()
 static void DumpCompressedTrace(int traceFd, int outFd)
 {
     z_stream zs { nullptr };
+    int flush = Z_NO_FLUSH;
     ssize_t bytesWritten;
     ssize_t bytesRead;
     if (memset_s(&zs, sizeof(zs), 0, sizeof(zs)) != 0) {
@@ -601,42 +602,59 @@ static void DumpCompressedTrace(int traceFd, int outFd)
         fprintf(stderr, "Error: initializing zlib: %d\n", ret);
         return;
     }
-    unsigned int have = 0;
     std::unique_ptr<uint8_t[]>  in = std::make_unique<uint8_t[]>(CHUNK_SIZE);
     std::unique_ptr<uint8_t[]>  out = std::make_unique<uint8_t[]>(CHUNK_SIZE);
-    int flush = Z_NO_FLUSH;
     if (!in || !out) {
         fprintf(stderr, "Error: couldn't allocate buffers\n");
         return;
     }
+    zs.next_out = reinterpret_cast<Bytef*>(out.get());
+    zs.avail_out = CHUNK_SIZE;
+
     do {
-        bytesRead = TEMP_FAILURE_RETRY(read(traceFd, in.get(), CHUNK_SIZE));
-        if (bytesRead == 0) {
-            flush = Z_FINISH;
-        } else if (bytesRead == -1) {
-            fprintf(stderr, "Error: reading trace, errno: %d\n", errno);
-            break;
-        }
-        zs.next_in = reinterpret_cast<Bytef*>(in.get());
-        zs.avail_in = bytesRead;
-        do {
-            zs.next_out = reinterpret_cast<Bytef*>(out.get());
-            zs.avail_out = CHUNK_SIZE;
-            ret = deflate(&zs, flush);
-            if (ret != Z_OK) {
-                fprintf(stderr, "Error: deflate zlib: %d\n", ret);
+        if (zs.avail_in == 0 && flush == Z_NO_FLUSH) {
+            bytesRead = TEMP_FAILURE_RETRY(read(traceFd, in.get(), CHUNK_SIZE));
+            if (bytesRead == 0) {
+                flush = Z_FINISH;
+            } else if (bytesRead == -1) {
+                fprintf(stderr, "Error: reading trace, errno: %d\n", errno);
                 break;
-            }
-            have = CHUNK_SIZE - zs.avail_out;
-            bytesWritten = TEMP_FAILURE_RETRY(write(outFd, out.get(), have));
-            if (bytesWritten < 0 || (static_cast<size_t>(bytesWritten) < static_cast<size_t>(have)) ||
-                bytesWritten == -1) {
+            } else {
+                zs.next_in = reinterpret_cast<Bytef*>(in.get());
+                zs.avail_in = bytesRead;
+	    }
+        }
+        if (zs.avail_out == 0) {
+            bytesWritten = TEMP_FAILURE_RETRY(write(outFd, out.get(), CHUNK_SIZE));
+            if (bytesWritten < CHUNK_SIZE) {
                 fprintf(stderr, "Error: writing deflated trace, errno: %d\n", errno);
                 break;
             }
-        } while (zs.avail_out == 0);
-    } while (flush != Z_FINISH);
-    deflateEnd(&zs);
+            zs.next_out = reinterpret_cast<Bytef*>(out.get());
+            zs.avail_out = CHUNK_SIZE;
+        }
+        ret = deflate(&zs, flush);
+        if (flush == Z_FINISH && ret == Z_STREAM_END) {
+            size_t have = CHUNK_SIZE - zs.avail_out;
+            bytesWritten = TEMP_FAILURE_RETRY(write(outFd, out.get(), have));
+            if (static_cast<size_t>(bytesWritten) < have) {
+                fprintf(stderr, "Error: writing deflated trace, errno: %d\n", errno);
+            }
+            break;
+        } else if (ret != Z_OK) {
+            if (ret == Z_ERRNO) {
+                fprintf(stderr, "Error: deflate failed with errno %d\n", errno);
+            } else {
+                fprintf(stderr, "Error: deflate failed return %d\n", ret);
+            }
+            break;
+        }
+    } while (ret == Z_OK);
+
+    ret = deflateEnd(&zs);
+    if (ret != Z_OK) {
+        fprintf(stderr, "error cleaning up zlib: %d\n", ret);
+    }
 }
 
 static void DumpTrace(int outFd, const string& path)
