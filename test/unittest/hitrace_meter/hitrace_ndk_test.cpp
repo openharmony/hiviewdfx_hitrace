@@ -721,6 +721,46 @@ HWTEST_F(HitraceNDKTest, StartTrace_018, TestSize.Level1)
         GetTraceResult(TRACE_ASYNC_FINISH + startTrace.GetTraceName() + " " + startTrace.GetNum(), list);
     ASSERT_TRUE(finishTrace.IsLoaded()) << "Can't find \"F|\" from trace.";
 }
+
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: Testing StartTraceArgsDebug function
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, StartTrace_019, TestSize.Level1)
+{
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    int var = 1;
+    StartTraceArgsDebug(true, TAG, "StartTraceTest019-%d", var);
+    FinishTrace(TAG);
+}
+
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: Testing StartAsyncTraceArgsDebug and FinishAsyncTraceArgsDebug function
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, StartTrace_020, TestSize.Level1)
+{
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    int var = 1;
+    StartAsyncTraceArgsDebug(true, TAG, 123, "asyncTraceTest020-%d", var);
+    FinishAsyncTraceArgsDebug(true, TAG, 123, "asyncTraceTest020-%d", var);
+}
+
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: Testing SetTraceDisabled function
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, StartTrace_021, TestSize.Level1)
+{
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    SetTraceDisabled(true);
+}
 } // namespace HitraceTest
 } // namespace HiviewDFX
 } // namespace OHOS
