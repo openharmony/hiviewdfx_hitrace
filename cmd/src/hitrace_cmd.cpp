@@ -57,6 +57,7 @@ constexpr struct option LONG_OPTIONS[] = {
 const unsigned int CHUNK_SIZE = 65536;
 const int BLOCK_SIZE = 4096;
 const int SHELL_UID = 2000;
+const int WAIT_MILLISECONDS = 10;
 
 constexpr const char *TRACE_TAG_PROPERTY = "debug.hitrace.tags.enableflags";
 
@@ -969,7 +970,7 @@ int main(int argc, char **argv)
     if (g_traceStop) {
         // clear user tags first and sleep a little to let apps already be notified.
         ClearUserSpaceSettings();
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));        
+        std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_MILLISECONDS));        
         isTrue = isTrue && StopTrace();
     }
 
