@@ -970,7 +970,7 @@ int main(int argc, char **argv)
     if (g_traceStop) {
         // clear user tags first and sleep a little to let apps already be notified.
         ClearUserSpaceSettings();
-        std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_MILLISECONDS));        
+        std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_MILLISECONDS));
         isTrue = isTrue && StopTrace();
     }
 
