@@ -16,7 +16,8 @@
       "package": "com.ohos.hiTraceChainJsUnitTest",
       "name": ".MyApplication",
       "deviceType": [
-        "phone"
+        "default",
+        "tablet"
       ],
       "distro": {
         "deliveryWithInstall": true,
