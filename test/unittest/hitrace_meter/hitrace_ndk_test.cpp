@@ -45,6 +45,8 @@ const string TRACE_ASYNC_START = TRACE_PATTERN + "S\\|(.*?)\\|H:";
 const string TRACE_ASYNC_FINISH = TRACE_PATTERN + "F\\|(.*?)\\|H:";
 const string TRACE_COUNT = TRACE_PATTERN + "C\\|(.*?)\\|H:";
 const string TRACE_PROPERTY = "debug.hitrace.tags.enableflags";
+const string KEY_RO_DEBUGGABLE = "ro.debuggable";
+const string KEY_APP_NUMBER = "debug.hitrace.app_number";
 constexpr uint32_t TASK = 1;
 constexpr uint32_t TID = 2;
 constexpr uint32_t TGID = 3;
@@ -401,6 +403,16 @@ vector<string> ReadFile2string(const string& filename)
 vector<string> ReadTrace()
 {
     return ReadFile2string(g_traceRootPath + TRACE_PATH);
+}
+
+bool RunCmd(const string& cmdstr)
+{
+    FILE *fp = popen(cmdstr.c_str(), "r");
+    if(fp == nullptr) {
+        return false;
+    }
+    pclose(fp);
+    return true;
 }
 
 /**
@@ -761,6 +773,57 @@ HWTEST_F(HitraceNDKTest, StartTrace_021, TestSize.Level1)
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
     SetTraceDisabled(true);
 }
+
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: Testing GetPropertyInner function
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, StartTrace_022, TestSize.Level1)
+{
+    ASSERT_TRUE(SetProperty(TRACE_PROPERTY, "0"));
+    string tmp;
+    ASSERT_TRUE(GetPropertyInner(TRACE_PROPERTY,tmp) == "0") << "GetPropertyInner failed.";
+}
+
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: Testing IsAppValid function
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, StartTrace_023, TestSize.Level1)
+{
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    SetProperty(KEY_RO_DEBUGGABLE, "true");
+    SetProperty(KEY_APP_NUMBER, "1");
+    StartTrace(TRACE_INVALIDATE_TAG, "StartTraceTest023");
+    FinishTrace(TRACE_INVALIDATE_TAG);
+}
+
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: Testing trace cmd function
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, StartTrace_024, TestSize.Level1)
+{
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(RunCmd("hitrace -h > /data/log/test1.txt"));
+    ASSERT_TRUE(RunCmd("hitrace -l > /data/log/test2.txt"));
+    ASSERT_TRUE(RunCmd("hitrace --list_categories > /data/log/test3.txt"));
+    ASSERT_TRUE(RunCmd("hitrace --trace_begin > /data/log/test4.txt"));
+    ASSERT_TRUE(RunCmd("hitrace --trace_dump > /data/log/test5.txt"));
+    ASSERT_TRUE(RunCmd("hitrace --trace_finish > /data/log/test6.txt"));
+    ASSERT_TRUE(RunCmd("hitrace -z --time 1 --buffer_size 10240 --trace_clock clock --overwrite ohos > /data/log/trace01"));
+    ASSERT_TRUE(RunCmd("hitrace -z -t 1 -b 10240 --trace_clock clock --overwrite ohos > /data/log/trace02"));
+    ASSERT_TRUE(RunCmd("hitrace -t 1 --trace_clock boot ohos > /data/log/trace03"));
+    ASSERT_TRUE(RunCmd("hitrace -t 1 --trace_clock global ohos > /data/log/trace04"));
+    ASSERT_TRUE(RunCmd("hitrace -t 1 --trace_clock mono ohos > /data/log/trace05"));
+    ASSERT_TRUE(RunCmd("hitrace -t 1 --trace_clock uptime ohos > /data/log/trace06"));
+    ASSERT_TRUE(RunCmd("hitrace -t 1 --trace_clock perf ohos > /data/log/trace07"));
+}
+
 } // namespace HitraceTest
 } // namespace HiviewDFX
 } // namespace OHOS
