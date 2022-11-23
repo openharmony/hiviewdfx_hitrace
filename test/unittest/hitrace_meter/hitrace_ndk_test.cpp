@@ -408,7 +408,7 @@ vector<string> ReadTrace()
 bool RunCmd(const string& cmdstr)
 {
     FILE *fp = popen(cmdstr.c_str(), "r");
-    if(fp == nullptr) {
+    if (fp == nullptr) {
         return false;
     }
     pclose(fp);
@@ -783,7 +783,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_022, TestSize.Level1)
 {
     ASSERT_TRUE(SetProperty(TRACE_PROPERTY, "0"));
     string tmp;
-    ASSERT_TRUE(GetPropertyInner(TRACE_PROPERTY,tmp) == "0") << "GetPropertyInner failed.";
+    ASSERT_TRUE(GetPropertyInner(TRACE_PROPERTY, tmp) == "0") << "GetPropertyInner failed.";
 }
 
 /**
@@ -815,7 +815,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_024, TestSize.Level1)
     ASSERT_TRUE(RunCmd("hitrace --trace_begin > /data/log/test4.txt"));
     ASSERT_TRUE(RunCmd("hitrace --trace_dump > /data/log/test5.txt"));
     ASSERT_TRUE(RunCmd("hitrace --trace_finish > /data/log/test6.txt"));
-    ASSERT_TRUE(RunCmd("hitrace -z --time 1 --buffer_size 10240 --trace_clock clock --overwrite ohos > /data/log/trace01"));
+    ASSERT_TRUE(RunCmd("hitrace -z --time 1 --buffer_size 10240 --trace_clock clock ohos > /data/log/trace01"));
     ASSERT_TRUE(RunCmd("hitrace -z -t 1 -b 10240 --trace_clock clock --overwrite ohos > /data/log/trace02"));
     ASSERT_TRUE(RunCmd("hitrace -t 1 --trace_clock boot ohos > /data/log/trace03"));
     ASSERT_TRUE(RunCmd("hitrace -t 1 --trace_clock global ohos > /data/log/trace04"));
