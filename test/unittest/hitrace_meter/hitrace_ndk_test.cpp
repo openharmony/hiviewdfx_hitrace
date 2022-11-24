@@ -829,7 +829,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_024, TestSize.Level1)
  * @tc.desc: Testing bytrace cmd function
  * @tc.type: FUNC
  */
-HWTEST_F(HitraceNDKTest, StartTrace_024, TestSize.Level1)
+HWTEST_F(HitraceNDKTest, StartTrace_025, TestSize.Level1)
 {
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(RunCmd("bytrace -h > /data/log/test1.txt"));
