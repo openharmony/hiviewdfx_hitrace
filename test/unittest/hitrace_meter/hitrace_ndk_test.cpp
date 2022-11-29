@@ -824,6 +824,29 @@ HWTEST_F(HitraceNDKTest, StartTrace_024, TestSize.Level1)
     ASSERT_TRUE(RunCmd("hitrace -t 1 --trace_clock perf ohos > /data/log/trace07"));
 }
 
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: Testing bytrace cmd function
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, StartTrace_025, TestSize.Level1)
+{
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(RunCmd("bytrace -h > /data/log/test1.txt"));
+    ASSERT_TRUE(RunCmd("bytrace -l > /data/log/test2.txt"));
+    ASSERT_TRUE(RunCmd("bytrace --list_categories > /data/log/test3.txt"));
+    ASSERT_TRUE(RunCmd("bytrace --trace_begin > /data/log/test4.txt"));
+    ASSERT_TRUE(RunCmd("bytrace --trace_dump > /data/log/test5.txt"));
+    ASSERT_TRUE(RunCmd("bytrace --trace_finish > /data/log/test6.txt"));
+    ASSERT_TRUE(RunCmd("bytrace -z --time 1 --buffer_size 10240 --trace_clock clock ohos > /data/log/trace01"));
+    ASSERT_TRUE(RunCmd("bytrace -z -t 1 -b 10240 --trace_clock clock --overwrite ohos > /data/log/trace02"));
+    ASSERT_TRUE(RunCmd("bytrace -t 1 --trace_clock boot ohos > /data/log/trace03"));
+    ASSERT_TRUE(RunCmd("bytrace -t 1 --trace_clock global ohos > /data/log/trace04"));
+    ASSERT_TRUE(RunCmd("bytrace -t 1 --trace_clock mono ohos > /data/log/trace05"));
+    ASSERT_TRUE(RunCmd("bytrace -t 1 --trace_clock uptime ohos > /data/log/trace06"));
+    ASSERT_TRUE(RunCmd("bytrace -t 1 --trace_clock perf ohos > /data/log/trace07"));
+}
+
 } // namespace HitraceTest
 } // namespace HiviewDFX
 } // namespace OHOS
