@@ -859,7 +859,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_025, TestSize.Level1)
     ASSERT_TRUE(RunCmd("bytrace -b a > /data/log/test14.txt"));
     ASSERT_TRUE(RunCmd("bytrace -b -1 > /data/log/test15.txt"));
     ASSERT_TRUE(RunCmd("bytrace --buffer_size a > /data/log/test16.txt"));
-    ASSERT_TRUE(RunCmd("bytrace --buffer_size -1 > /data/log/test17.txt"));    
+    ASSERT_TRUE(RunCmd("bytrace --buffer_size -1 > /data/log/test17.txt"));
     ASSERT_TRUE(RunCmd("bytrace -z --time 1 --buffer_size 10240 --trace_clock clock ohos > /data/log/trace01"));
     ASSERT_TRUE(RunCmd("bytrace -z -t 1 -b 10240 --trace_clock clock --overwrite ohos > /data/log/trace02"));
     ASSERT_TRUE(RunCmd("bytrace -t 1 --trace_clock boot ohos > /data/log/trace03"));
