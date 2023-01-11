@@ -11,4 +11,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-debug.hitrace.tags.enableflags = shell:root:0777
+debug.hitrace.tags.enableflags = root:shell:0775
