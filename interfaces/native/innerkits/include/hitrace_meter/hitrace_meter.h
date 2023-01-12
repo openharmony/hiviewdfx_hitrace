@@ -24,6 +24,8 @@ extern "C" {
 
 constexpr uint64_t HITRACE_TAG_NEVER = 0; // This tag is never enabled.
 constexpr uint64_t HITRACE_TAG_ALWAYS = (1ULL << 0); // This tag is always enabled.
+constexpr uint64_t HITRACE_TAG_HDF = (1ULL << 18); // HDF subsystem tag.
+constexpr uint64_t HITRACE_TAG_USB = (1ULL << 19); // USB subsystem tag.
 constexpr uint64_t HITRACE_TAG_INTERCONNECTION = (1ULL << 20); // Interconnection subsystem tag.
 constexpr uint64_t HITRACE_TAG_DLP_CREDENTIAL = (1ULL << 21); // This tag is dlp credential service.
 constexpr uint64_t HITRACE_TAG_ACCESS_CONTROL = (1ULL << 22); // This tag is access control tag.
