@@ -21,6 +21,7 @@
 #include <iostream>
 #include <ostream>
 #include <thread>
+#include <vector>
 
 #include "hitrace_meter.h"
 
@@ -28,75 +29,125 @@ using namespace std;
 namespace {
 constexpr int SLEEP_ONE_SECOND = 1;
 constexpr int SLEEP_TWO_SECOND = 2;
-constexpr int CYCLE_TIMES = 5;
+constexpr int USLEEP_HALF_SECOND = 500000;
+constexpr int CYCLE_TIMES = 3;
 constexpr int32_t TASK_ID = 111;
-constexpr uint64_t LABEL = HITRACE_TAG_OHOS;
+const vector<uint64_t> LABEL_TAGS = {
+    HITRACE_TAG_OHOS,
+    HITRACE_TAG_DLP_CREDENTIAL,
+    HITRACE_TAG_ACCESS_CONTROL,
+    HITRACE_TAG_NET,
+    HITRACE_TAG_NWEB,
+    HITRACE_TAG_HUKS,
+    HITRACE_TAG_USERIAM,
+    HITRACE_TAG_DISTRIBUTED_AUDIO,
+    HITRACE_TAG_DLSM,
+    HITRACE_TAG_FILEMANAGEMENT,
+    HITRACE_TAG_ABILITY_MANAGER,
+    HITRACE_TAG_ZCAMERA,
+    HITRACE_TAG_ZMEDIA,
+    HITRACE_TAG_ZIMAGE,
+    HITRACE_TAG_ZAUDIO,
+    HITRACE_TAG_DISTRIBUTEDDATA,
+    HITRACE_TAG_MDFS,
+    HITRACE_TAG_GRAPHIC_AGP,
+    HITRACE_TAG_ACE,
+    HITRACE_TAG_NOTIFICATION,
+    HITRACE_TAG_MISC,
+    HITRACE_TAG_MULTIMODALINPUT,
+    HITRACE_TAG_SENSORS,
+    HITRACE_TAG_MSDP,
+    HITRACE_TAG_DSOFTBUS,
+    HITRACE_TAG_RPC,
+    HITRACE_TAG_ARK,
+    HITRACE_TAG_WINDOW_MANAGER,
+    HITRACE_TAG_ACCOUNT_MANAGER,
+    HITRACE_TAG_DISTRIBUTED_SCREEN,
+    HITRACE_TAG_DISTRIBUTED_CAMERA,
+    HITRACE_TAG_DISTRIBUTED_HARDWARE_FWK,
+    HITRACE_TAG_GLOBAL_RESMGR,
+    HITRACE_TAG_DEVICE_MANAGER,
+    HITRACE_TAG_SAMGR,
+    HITRACE_TAG_POWER,
+    HITRACE_TAG_DISTRIBUTED_SCHEDULE,
+    HITRACE_TAG_DEVICE_PROFILE,
+    HITRACE_TAG_DISTRIBUTED_INPUT,
+    HITRACE_TAG_BLUETOOTH,
+    HITRACE_TAG_ACCESSIBILITY_MANAGER,
+    HITRACE_TAG_APP
+};
 
 void FuncA()
 {
     cout << "funcA" << endl;
-    sleep(SLEEP_ONE_SECOND);
+    usleep(USLEEP_HALF_SECOND);
 }
 
 void FuncB()
 {
     cout << "funcB" << endl;
-    sleep(SLEEP_TWO_SECOND);
+    usleep(USLEEP_HALF_SECOND);
 }
 
-void FuncC()
+void FuncC(uint64_t label)
 {
     cout << "funcC" << endl;
     int num = 0;
     for (int i = 0; i < CYCLE_TIMES; i++) {
-        CountTrace(HITRACE_TAG_OHOS, "count number", ++num);
-        sleep(SLEEP_ONE_SECOND);
+        CountTrace(label, "count number", ++num);
+        usleep(USLEEP_HALF_SECOND);
     }
 }
 
-void ThreadFunc1()
+void ThreadFunc1(uint64_t label)
 {
-    StartAsyncTrace(LABEL, "testAsync", TASK_ID);
+    StartAsyncTrace(label, "testAsync", TASK_ID);
     for (int i = 0; i < CYCLE_TIMES; ++i) {
         cout << "t1" << endl;
-        sleep(SLEEP_ONE_SECOND);
+        usleep(USLEEP_HALF_SECOND);
     }
 }
 
-void ThreadFunc2()
+void ThreadFunc2(uint64_t label)
 {
     for (int i = 0; i < CYCLE_TIMES; ++i) {
         cout << "t2" << endl;
-        sleep(SLEEP_ONE_SECOND);
+        usleep(USLEEP_HALF_SECOND);
     }
-    FinishAsyncTrace(LABEL, "testAsync", TASK_ID);
+    FinishAsyncTrace(label, "testAsync", TASK_ID);
+}
+
+void FuncMain(uint64_t label)
+{
+    thread t1(ThreadFunc1, label);
+    t1.join();
+
+    StartTrace(label, "testStart");
+    usleep(USLEEP_HALF_SECOND);
+
+    StartTrace(label, "funcAStart", SLEEP_ONE_SECOND); // 打印起始点
+    FuncA();
+    FinishTrace(label);
+    usleep(USLEEP_HALF_SECOND);
+
+    thread t2(ThreadFunc2, label);
+    t2.join();
+
+    StartTrace(label, "funcBStart", SLEEP_TWO_SECOND);
+    FuncB();
+    FinishTrace(label);
+    usleep(USLEEP_HALF_SECOND);
+
+    usleep(USLEEP_HALF_SECOND);
+    FinishTrace(label);
+    FuncC(label);
 }
 } // namespace
 
 int main()
 {
-    thread t1(ThreadFunc1);
-    t1.join();
-
-    StartTrace(LABEL, "testStart");
-    sleep(SLEEP_ONE_SECOND);
-
-    StartTrace(LABEL, "funcAStart", SLEEP_ONE_SECOND); // 打印起始点
-    FuncA();
-    FinishTrace(LABEL);
-    sleep(SLEEP_TWO_SECOND);
-
-    thread t2(ThreadFunc2);
-    t2.join();
-
-    StartTrace(LABEL, "funcBStart", SLEEP_TWO_SECOND);
-    FuncB();
-    FinishTrace(LABEL);
-    sleep(SLEEP_TWO_SECOND);
-
-    sleep(SLEEP_ONE_SECOND);
-    FinishTrace(LABEL);
-    FuncC();
-
+    for (auto tag : LABEL_TAGS) {
+        FuncMain(tag);
+    }
     return 0;
 }
