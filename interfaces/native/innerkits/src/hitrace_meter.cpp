@@ -52,7 +52,7 @@ constexpr int NAME_MAX_SIZE = 1000;
 constexpr int VAR_NAME_MAX_SIZE = 256;
 constexpr int NAME_NORMAL_LEN = 200;
 
-static const char* g_pid;
+static char g_pid[5];
 static const std::string EMPTY_TRACE_NAME;
 
 static std::vector<std::string> g_markTypes = {"B", "E", "S", "F", "C"};
@@ -122,7 +122,8 @@ void OpenTraceMarkerFile()
         }
     }
     g_tagsProperty = GetSysParamTags();
-    g_pid = std::to_string(getpid()).c_str();
+    std::string str = std::to_string(getpid());
+    strcpy(g_pid, str.c_str());
 
     if (WatchParameter(KEY_TRACE_TAG.c_str(), ParameterChange, nullptr) != 0) {
         HiLog::Error(LABEL, "WatchParameter %{public}s failed", KEY_TRACE_TAG.c_str());
@@ -138,7 +139,7 @@ void WriteToTraceMarker(const char* buf, const int count)
         return;
     }
     if (write(g_markerFd, buf, count) < 0) {
-    	HiLog::Error(LABEL, "write trace_marker failed, %{public}d", errno);
+        HiLog::Error(LABEL, "write trace_marker failed, %{public}d", errno);
     }
 }
 
