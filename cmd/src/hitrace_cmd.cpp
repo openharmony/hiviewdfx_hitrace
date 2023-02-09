@@ -919,6 +919,7 @@ static void InitAllSupportTags()
     g_tagMap["interconn"] = {"interconn", "Interconnection subsystem", HITRACE_TAG_INTERCONNECTION, USER, {}};
     g_tagMap["usb"] = {"usb", "usb subsystem", HITRACE_TAG_USB, USER, {}};
     g_tagMap["hdf"] = {"hdf", "hdf subsystem", HITRACE_TAG_HDF, USER, {}};
+    g_tagMap["commonlibrary"] = {"commonlibrary", "commonlibrary subsystem", HITRACE_TAG_COMMONLIBRARY, USER, {}};
 
     // Kernel os
     InitKernelSupportTags();
