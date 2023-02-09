@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <iostream>
 #include <atomic>
 #include <cinttypes>
 #include <climits>
@@ -50,6 +51,10 @@ const std::string KEY_PREFIX = "debug.hitrace.app_";
 
 constexpr int NAME_MAX_SIZE = 1000;
 constexpr int VAR_NAME_MAX_SIZE = 256;
+constexpr int NAME_NORMAL_LEN = 200;
+
+static const char* g_pid;
+static const std::string EMPTY_TRACE_NAME;
 
 static std::vector<std::string> g_markTypes = {"B", "E", "S", "F", "C"};
 enum MarkerType { MARKER_BEGIN, MARKER_END, MARKER_ASYNC_BEGIN, MARKER_ASYNC_END, MARKER_INT, MARKER_MAX };
@@ -118,6 +123,7 @@ void OpenTraceMarkerFile()
         }
     }
     g_tagsProperty = GetSysParamTags();
+    g_pid = std::to_string(getpid()).c_str();
 
     if (WatchParameter(KEY_TRACE_TAG.c_str(), ParameterChange, nullptr) != 0) {
         HiLog::Error(LABEL, "WatchParameter %{public}s failed", KEY_TRACE_TAG.c_str());
@@ -127,7 +133,36 @@ void OpenTraceMarkerFile()
 }
 }; // namespace
 
-void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& name, const std::string& value)
+void WriteToTraceMarker(const char* buf, const int count)
+{
+    if (UNEXPECTANTLY(count <= 0)) {
+	    return;
+    }
+    if (write(g_markerFd, buf, count) < 0) {
+    	HiLog::Error(LABEL, "write trace_marker failed, %{public}d", errno);
+    }
+}
+
+void AddTraceMarkerLarge(const std::string& name, MarkerType& type, const int64_t& value)
+{
+    std::string record;
+    record += g_markTypes[type];
+    record += "|";
+    record += g_pid;
+    record += "|H:";
+    std::string nameNew = name;
+    if (name.size() > NAME_MAX_SIZE) {
+	    nameNew = name.substr(0, NAME_MAX_SIZE);
+    }
+    record += nameNew;
+    record += " ";
+    if (value != 0) {
+        record += std::to_string(value);
+    }
+    WriteToTraceMarker(record.c_str(), record.size());
+}
+
+void AddHitraceMeterMarker(MarkerType type, uint64_t& tag, const std::string& name, const int64_t& value)
 {
     if (UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
         return;
@@ -139,14 +174,26 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
         }
         std::call_once(g_onceFlag, OpenTraceMarkerFile);
     }
-    if (UNEXPECTANTLY(g_tagsProperty & tag)) {
+    if (UNEXPECTANTLY(g_tagsProperty & tag) && g_markerFd != -1) {
         // record fomart: "type|pid|name value".
-        std::string record = g_markTypes[type] + "|";
-        record += std::to_string(getpid()) + "|";
-        record += (name.size() < NAME_MAX_SIZE) ? name : name.substr(0, NAME_MAX_SIZE);
-        record += " " + value;
-        if (write(g_markerFd, record.c_str(), record.size()) < 0) {
-            HiLog::Error(LABEL, "write trace_marker failed, %{public}d", errno);
+        char buf[NAME_NORMAL_LEN];
+        int len = name.length();
+        if (UNEXPECTANTLY(len <= NAME_NORMAL_LEN)) {
+            int bytes = 0;
+            if (type == MARKER_BEGIN) {
+                bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
+                    "B|%s|H:%s ", g_pid, name.c_str());
+            } else if (type == MARKER_END) {
+                bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
+                    "E|%s|", g_pid);
+            } else {
+                std::string marktypestr = g_markTypes[type];
+                bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
+                    "%s|%s|H:%s %lld", marktypestr.c_str(), g_pid, name.c_str(), value);
+            }
+            WriteToTraceMarker(buf, bytes);
+        } else {
+            AddTraceMarkerLarge(name, type, value);
         }
     }
 }
@@ -166,8 +213,7 @@ void SetTraceDisabled(bool disable)
 
 void StartTrace(uint64_t label, const string& value, float limit UNUSED_PARAM)
 {
-    string traceName = "H:" + value;
-    AddHitraceMeterMarker(MARKER_BEGIN, label, traceName, "");
+    AddHitraceMeterMarker(MARKER_BEGIN, label, value, 0);
 }
 
 void StartTraceDebug(bool isDebug, uint64_t label, const string& value, float limit UNUSED_PARAM)
@@ -175,8 +221,7 @@ void StartTraceDebug(bool isDebug, uint64_t label, const string& value, float li
     if (!isDebug) {
         return;
     }
-    string traceName = "H:" + value;
-    AddHitraceMeterMarker(MARKER_BEGIN, label, traceName, "");
+    AddHitraceMeterMarker(MARKER_BEGIN, label, value, 0);
 }
 
 void StartTraceArgs(uint64_t label, const char *fmt, ...)
@@ -190,7 +235,7 @@ void StartTraceArgs(uint64_t label, const char *fmt, ...)
         HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
-    StartTrace(label, name, -1);
+    AddHitraceMeterMarker(MARKER_BEGIN, label, name, 0);
 }
 
 void StartTraceArgsDebug(bool isDebug, uint64_t label, const char *fmt, ...)
@@ -208,12 +253,12 @@ void StartTraceArgsDebug(bool isDebug, uint64_t label, const char *fmt, ...)
         HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
-    StartTrace(label, name, -1);
+    AddHitraceMeterMarker(MARKER_BEGIN, label, name, 0);
 }
 
 void FinishTrace(uint64_t label)
 {
-    AddHitraceMeterMarker(MARKER_END, label, "", "");
+    AddHitraceMeterMarker(MARKER_END, label, EMPTY_TRACE_NAME, 0);
 }
 
 void FinishTraceDebug(bool isDebug, uint64_t label)
@@ -221,13 +266,12 @@ void FinishTraceDebug(bool isDebug, uint64_t label)
     if (!isDebug) {
         return;
     }
-    AddHitraceMeterMarker(MARKER_END, label, "", "");
+    AddHitraceMeterMarker(MARKER_END, label, EMPTY_TRACE_NAME, 0);
 }
 
 void StartAsyncTrace(uint64_t label, const string& value, int32_t taskId, float limit UNUSED_PARAM)
 {
-    string traceName = "H:" + value;
-    AddHitraceMeterMarker(MARKER_ASYNC_BEGIN, label, traceName, std::to_string(taskId));
+    AddHitraceMeterMarker(MARKER_ASYNC_BEGIN, label, value, taskId);
 }
 
 void StartAsyncTraceDebug(bool isDebug, uint64_t label, const string& value, int32_t taskId, float limit UNUSED_PARAM)
@@ -235,8 +279,7 @@ void StartAsyncTraceDebug(bool isDebug, uint64_t label, const string& value, int
     if (!isDebug) {
         return;
     }
-    string traceName = "H:" + value;
-    AddHitraceMeterMarker(MARKER_ASYNC_BEGIN, label, traceName, std::to_string(taskId));
+    AddHitraceMeterMarker(MARKER_ASYNC_BEGIN, label, value, taskId);
 }
 
 void StartAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...)
@@ -251,7 +294,7 @@ void StartAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...)
         HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
-    StartAsyncTrace(label, name, taskId, -1);
+    AddHitraceMeterMarker(MARKER_ASYNC_BEGIN, label, name, taskId);
 }
 
 void StartAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, const char *fmt, ...)
@@ -269,13 +312,12 @@ void StartAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, cons
         HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
-    StartAsyncTrace(label, name, taskId, -1);
+    AddHitraceMeterMarker(MARKER_ASYNC_BEGIN, label, name, taskId);
 }
 
 void FinishAsyncTrace(uint64_t label, const string& value, int32_t taskId)
 {
-    string traceName = "H:" + value;
-    AddHitraceMeterMarker(MARKER_ASYNC_END, label, traceName, std::to_string(taskId));
+    AddHitraceMeterMarker(MARKER_ASYNC_END, label, value, taskId);
 }
 
 void FinishAsyncTraceDebug(bool isDebug, uint64_t label, const string& value, int32_t taskId)
@@ -283,8 +325,7 @@ void FinishAsyncTraceDebug(bool isDebug, uint64_t label, const string& value, in
     if (!isDebug) {
         return;
     }
-    string traceName = "H:" + value;
-    AddHitraceMeterMarker(MARKER_ASYNC_END, label, traceName, std::to_string(taskId));
+    AddHitraceMeterMarker(MARKER_ASYNC_END, label, value, taskId);
 }
 
 void FinishAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...)
@@ -299,7 +340,7 @@ void FinishAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...)
         HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
-    FinishAsyncTrace(label, name, taskId);
+    AddHitraceMeterMarker(MARKER_ASYNC_END, label, name, taskId);
 }
 
 void FinishAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, const char *fmt, ...)
@@ -317,14 +358,13 @@ void FinishAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, con
         HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
-    FinishAsyncTrace(label, name, taskId);
+    AddHitraceMeterMarker(MARKER_ASYNC_END, label, name, taskId);
 }
 
 void MiddleTrace(uint64_t label, const string& beforeValue UNUSED_PARAM, const std::string& afterValue)
 {
-    string traceName = "H:" + afterValue;
-    AddHitraceMeterMarker(MARKER_END, label, "", "");
-    AddHitraceMeterMarker(MARKER_BEGIN, label, traceName, "");
+    AddHitraceMeterMarker(MARKER_END, label, EMPTY_TRACE_NAME, 0);
+    AddHitraceMeterMarker(MARKER_BEGIN, label, afterValue, 0);
 }
 
 void MiddleTraceDebug(bool isDebug, uint64_t label, const string& beforeValue UNUSED_PARAM, 
@@ -333,15 +373,13 @@ void MiddleTraceDebug(bool isDebug, uint64_t label, const string& beforeValue UN
     if (!isDebug) {
         return;
     }
-    string traceName = "H:" + afterValue;
-    AddHitraceMeterMarker(MARKER_END, label, "", "");
-    AddHitraceMeterMarker(MARKER_BEGIN, label, traceName, "");
+    AddHitraceMeterMarker(MARKER_END, label, EMPTY_TRACE_NAME, 0);
+    AddHitraceMeterMarker(MARKER_BEGIN, label, afterValue, 0);
 }
 
 void CountTrace(uint64_t label, const string& name, int64_t count)
 {
-    string traceName = "H:" + name;
-    AddHitraceMeterMarker(MARKER_INT, label, traceName, std::to_string(count));
+    AddHitraceMeterMarker(MARKER_INT, label, name, count);
 }
 
 void CountTraceDebug(bool isDebug, uint64_t label, const string& name, int64_t count)
@@ -349,8 +387,7 @@ void CountTraceDebug(bool isDebug, uint64_t label, const string& name, int64_t c
     if (!isDebug) {
         return;
     }
-    string traceName = "H:" + name;
-    AddHitraceMeterMarker(MARKER_INT, label, traceName, std::to_string(count));
+    AddHitraceMeterMarker(MARKER_INT, label, name, count);
 }
 
 HitraceMeterFmtScoped::HitraceMeterFmtScoped(uint64_t label, const char *fmt, ...) : mTag(label)
@@ -365,5 +402,5 @@ HitraceMeterFmtScoped::HitraceMeterFmtScoped(uint64_t label, const char *fmt, ..
         HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
-    StartTrace(label, name, -1);
+    AddHitraceMeterMarker(MARKER_BEGIN, label, name, 0);
 }
