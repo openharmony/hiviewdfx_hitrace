@@ -53,7 +53,7 @@ constexpr int VAR_NAME_MAX_SIZE = 256;
 constexpr int NAME_NORMAL_LEN = 200;
 
 static const int PID_BUF_SIZE = 6;
-static char G_PID[PID_BUF_SIZE];
+static char g_pid[PID_BUF_SIZE];
 static const std::string EMPTY_TRACE_NAME;
 
 static std::vector<std::string> g_markTypes = {"B", "E", "S", "F", "C"};
@@ -124,9 +124,9 @@ void OpenTraceMarkerFile()
     }
     g_tagsProperty = GetSysParamTags();
     std::string pid_str = std::to_string(getpid());
-    errno_t ret = strcpy_s(G_PID, PID_BUF_SIZE, pid_str.c_str());
-    if(ret != 0) {
-        strcpy_s(G_PID, PID_BUF_SIZE, pid_str.c_str());
+    errno_t ret = strcpy_s(g_pid, PID_BUF_SIZE, pid_str.c_str());
+    if (ret != 0) {
+        strcpy_s(g_pid, PID_BUF_SIZE, pid_str.c_str());
     }
 
     if (WatchParameter(KEY_TRACE_TAG.c_str(), ParameterChange, nullptr) != 0) {
@@ -152,7 +152,7 @@ void AddTraceMarkerLarge(const std::string& name, MarkerType& type, const int64_
     std::string record;
     record += g_markTypes[type];
     record += "|";
-    record += G_PID;
+    record += g_pid;
     record += "|H:";
     std::string nameNew = name;
     if (name.size() > NAME_MAX_SIZE) {
@@ -186,14 +186,14 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t& tag, const std::string& na
             int bytes = 0;
             if (type == MARKER_BEGIN) {
                 bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                    "B|%s|H:%s ", G_PID, name.c_str());
+                    "B|%s|H:%s ", g_pid, name.c_str());
             } else if (type == MARKER_END) {
                 bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                    "E|%s|", G_PID);
+                    "E|%s|", g_pid);
             } else {
                 std::string marktypestr = g_markTypes[type];
                 bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                    "%s|%s|H:%s %lld", marktypestr.c_str(), G_PID, name.c_str(), value);
+                    "%s|%s|H:%s %lld", marktypestr.c_str(), g_pid, name.c_str(), value);
             }
             WriteToTraceMarker(buf, bytes);
         } else {
