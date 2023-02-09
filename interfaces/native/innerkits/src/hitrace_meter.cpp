@@ -123,10 +123,10 @@ void OpenTraceMarkerFile()
         }
     }
     g_tagsProperty = GetSysParamTags();
-    std::string pid_str = std::to_string(getpid());
-    errno_t ret = strcpy_s(g_pid, PID_BUF_SIZE, pid_str.c_str());
+    std::string pidStr = std::to_string(getpid());
+    errno_t ret = strcpy_s(g_pid, PID_BUF_SIZE, pidStr.c_str());
     if (ret != 0) {
-        strcpy_s(g_pid, PID_BUF_SIZE, pid_str.c_str());
+        strcpy_s(g_pid, PID_BUF_SIZE, pidStr.c_str());
     }
 
     if (WatchParameter(KEY_TRACE_TAG.c_str(), ParameterChange, nullptr) != 0) {
