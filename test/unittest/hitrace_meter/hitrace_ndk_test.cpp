@@ -441,9 +441,9 @@ HWTEST_F(HitraceNDKTest, StartTrace_001, TestSize.Level0)
  */
 HWTEST_F(HitraceNDKTest, StartTrace_002, TestSize.Level0)
 {
-    std::string longTraceName = "StartTraceTest002StartTraceTest002StartTraceTest002StartTrace";
-    longTraceName += "Test002StartTraceTest002StartTraceTest002StartTraceTest002StartTraceTest002StartTraceTest002StartTrace";
-    longTraceName += "Test002StartTraceTest002StartTraceTest002";
+    std::string longTraceName = "StartTraceTest002StartTraceTest002StartTraceTest002";
+    longTraceName += "StartTraceTest002StartTraceTest002StartTraceTest002StartTraceTest002StartTraceTest002";
+    longTraceName += "StartTraceTest002StartTraceTest002StartTraceTest002StartTraceTest002";
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
     StartTrace(TAG, longTraceName);

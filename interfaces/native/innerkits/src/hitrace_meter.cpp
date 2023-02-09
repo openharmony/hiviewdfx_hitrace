@@ -123,7 +123,7 @@ void OpenTraceMarkerFile()
     }
     g_tagsProperty = GetSysParamTags();
     std::string str = std::to_string(getpid());
-    strcpy(g_pid, str.c_str());
+    strcpy_s(g_pid, 6, str.c_str());
 
     if (WatchParameter(KEY_TRACE_TAG.c_str(), ParameterChange, nullptr) != 0) {
         HiLog::Error(LABEL, "WatchParameter %{public}s failed", KEY_TRACE_TAG.c_str());
