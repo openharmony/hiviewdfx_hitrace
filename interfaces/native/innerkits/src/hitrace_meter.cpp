@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include <iostream>
 #include <atomic>
 #include <cinttypes>
 #include <climits>
@@ -136,7 +135,7 @@ void OpenTraceMarkerFile()
 void WriteToTraceMarker(const char* buf, const int count)
 {
     if (UNEXPECTANTLY(count <= 0)) {
-	    return;
+        return;
     }
     if (write(g_markerFd, buf, count) < 0) {
     	HiLog::Error(LABEL, "write trace_marker failed, %{public}d", errno);
@@ -152,7 +151,7 @@ void AddTraceMarkerLarge(const std::string& name, MarkerType& type, const int64_
     record += "|H:";
     std::string nameNew = name;
     if (name.size() > NAME_MAX_SIZE) {
-	    nameNew = name.substr(0, NAME_MAX_SIZE);
+        nameNew = name.substr(0, NAME_MAX_SIZE);
     }
     record += nameNew;
     record += " ";
