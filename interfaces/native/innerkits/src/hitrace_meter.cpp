@@ -22,12 +22,13 @@
 #include <mutex>
 #include <unistd.h>
 #include <vector>
+#include <sstream>
 #include "securec.h"
 #include "hilog/log.h"
 #include "parameter.h"
 #include "parameters.h"
 #include "hitrace_meter.h"
-
+#include "hitrace/tracechain.h"
 using namespace std;
 using namespace OHOS::HiviewDFX;
 
@@ -147,6 +148,13 @@ void WriteToTraceMarker(const char* buf, const int count)
     }
 }
 
+string ToHexStr(uint64_t source)
+ {
+    std::stringstream ss;
+    ss << std::hex << (uint64_t)source;
+    return ss.str();
+ }
+
 void AddTraceMarkerLarge(const std::string& name, MarkerType& type, const int64_t& value)
 {
     std::string record;
@@ -154,6 +162,17 @@ void AddTraceMarkerLarge(const std::string& name, MarkerType& type, const int64_
     record += "|";
     record += g_pid;
     record += "|H:";
+    HiTraceId hiTraceId = HiTraceChain::GetId();
+    if(hiTraceId.IsValid())
+    {
+        record += "[";
+        record += ToHexStr(hiTraceId.GetChainId());
+        record += ",";
+        record +=  ToHexStr(hiTraceId.GetSpanId());
+        record += ",";
+        record += ToHexStr(hiTraceId.GetParentSpanId());
+        record += "]#";
+    }
     std::string nameNew = name;
     if (name.size() > NAME_MAX_SIZE) {
         nameNew = name.substr(0, NAME_MAX_SIZE);
@@ -182,18 +201,26 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t& tag, const std::string& na
         // record fomart: "type|pid|name value".
         char buf[NAME_NORMAL_LEN];
         int len = name.length();
+        HiTraceId hiTraceId = HiTraceChain::GetId();
+        bool isValid=hiTraceId.IsValid();
         if (UNEXPECTANTLY(len <= NAME_NORMAL_LEN)) {
+            char traceId[64] = {0};
             int bytes = 0;
+            if(isValid)
+            {
+                bytes = snprintf_s(traceId, sizeof(traceId), sizeof(traceId) - 1, "[%llx,%llx,%llx]#",
+                                   hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId());
+            }
             if (type == MARKER_BEGIN) {
                 bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                    "B|%s|H:%s ", g_pid, name.c_str());
+                                   "B|%s|H:%s%s ", g_pid, traceId, name.c_str());
             } else if (type == MARKER_END) {
-                bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                    "E|%s|", g_pid);
+               bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
+                                   "E|%s|", g_pid);
             } else {
                 std::string marktypestr = g_markTypes[type];
                 bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                    "%s|%s|H:%s %lld", marktypestr.c_str(), g_pid, name.c_str(), value);
+                                   "%s|%s|H:%s%s %lld", marktypestr.c_str(), g_pid, traceId, name.c_str(), value);
             }
             WriteToTraceMarker(buf, bytes);
         } else {
