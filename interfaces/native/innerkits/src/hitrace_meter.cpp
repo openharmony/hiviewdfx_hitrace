@@ -29,6 +29,7 @@
 #include "parameters.h"
 #include "hitrace_meter.h"
 #include "hitrace/tracechain.h"
+
 using namespace std;
 using namespace OHOS::HiviewDFX;
 
