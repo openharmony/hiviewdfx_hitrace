@@ -150,11 +150,11 @@ void WriteToTraceMarker(const char* buf, const int count)
 }
 
 string ToHexStr(uint64_t source)
- {
+{
     std::stringstream ss;
     ss << std::hex << (uint64_t)source;
     return ss.str();
- }
+}
 
 void AddTraceMarkerLarge(const std::string& name, MarkerType& type, const int64_t& value)
 {
@@ -164,8 +164,7 @@ void AddTraceMarkerLarge(const std::string& name, MarkerType& type, const int64_
     record += g_pid;
     record += "|H:";
     HiTraceId hiTraceId = HiTraceChain::GetId();
-    if(hiTraceId.IsValid())
-    {
+    if (hiTraceId.IsValid()) {
         record += "[";
         record += ToHexStr(hiTraceId.GetChainId());
         record += ",";
@@ -203,12 +202,11 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t& tag, const std::string& na
         char buf[NAME_NORMAL_LEN];
         int len = name.length();
         HiTraceId hiTraceId = HiTraceChain::GetId();
-        bool isValid=hiTraceId.IsValid();
+        bool isValid = hiTraceId.IsValid();
         if (UNEXPECTANTLY(len <= NAME_NORMAL_LEN)) {
             char traceId[64] = {0};
             int bytes = 0;
-            if(isValid)
-            {
+            if (isValid) {
                 bytes = snprintf_s(traceId, sizeof(traceId), sizeof(traceId) - 1, "[%llx,%llx,%llx]#",
                                    hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId());
             }
@@ -216,7 +214,7 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t& tag, const std::string& na
                 bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
                                    "B|%s|H:%s%s ", g_pid, traceId, name.c_str());
             } else if (type == MARKER_END) {
-               bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
+                bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
                                    "E|%s|", g_pid);
             } else {
                 std::string marktypestr = g_markTypes[type];
