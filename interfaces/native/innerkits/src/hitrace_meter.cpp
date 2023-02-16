@@ -152,7 +152,7 @@ void WriteToTraceMarker(const char* buf, const int count)
 string ToHexStr(uint64_t source)
 {
     std::stringstream ss;
-    ss << std::hex << (uint64_t)source;
+    ss << std::hex << source;
     return ss.str();
 }
 
