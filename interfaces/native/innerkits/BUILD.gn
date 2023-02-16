@@ -65,6 +65,10 @@ ohos_shared_library("hitrace_meter") {
   include_dirs = [ "//commonlibrary/c_utils/base/include" ]
   output_extension = "so"
 
+  innerapi_tags = [
+    "chipsetsdk",
+    "platformsdk",
+  ]
   part_name = "hitrace_native"
   subsystem_name = "hiviewdfx"
 }
