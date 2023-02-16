@@ -23,6 +23,7 @@
 #include "hitrace_meter.h"
 #include "hitrace_osal.h"
 #include "parameters.h"
+#include "hitrace/tracechain.h"
 
 using namespace testing::ext;
 using namespace std;
@@ -415,6 +416,13 @@ bool RunCmd(const string& cmdstr)
     return true;
 }
 
+string ToHexStr(uint64_t source)
+{
+    std::stringstream ss;
+    ss << std::hex << source;
+    return ss.str();
+}
+
 /**
  * @tc.name: Hitrace
  * @tc.desc: tracing_mark_write file node normal output start tracing and end tracing.
@@ -430,6 +438,36 @@ HWTEST_F(HitraceNDKTest, StartTrace_001, TestSize.Level0)
     vector<string> list = ReadTrace();
     MyTrace startTrace = GetTraceResult(TRACE_START + "(StartTraceTest001) ", list);
     ASSERT_TRUE(startTrace.IsLoaded()) << "Can't find \"B|pid|StartTraceTest001\" from trace.";
+    MyTrace finishTrace = GetTraceResult(GetFinishTraceRegex(startTrace), list);
+    ASSERT_TRUE(finishTrace.IsLoaded()) << "Can't find \"E|\" from trace.";
+}
+
+
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: tracing_mark_write file node normal output  hitraceId.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, StartHiTraceIdTest_001, TestSize.Level0)
+{
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    HiTraceId hiTraceId = HiTraceChain::Begin("StartHiTraceIdTest001", HiTraceFlag::HITRACE_FLAG_DEFAULT);
+    std::string record;
+    record += "\\[";
+    record += ToHexStr(hiTraceId.GetChainId());
+    record += ",";
+    record +=  ToHexStr(hiTraceId.GetSpanId());
+    record += ",";
+    record += ToHexStr(hiTraceId.GetParentSpanId());
+    record += "\\]#";
+    StartTrace(TAG, "StartHiTraceIdTest001");
+    FinishTrace(TAG);
+    HiTraceChain::End(hiTraceId);
+    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    vector<string> list = ReadTrace();
+    MyTrace startTrace = GetTraceResult(TRACE_START + record + "(StartHiTraceIdTest001) ", list);
+    ASSERT_TRUE(startTrace.IsLoaded()) << "Can't find \"B|pid|StartHiTraceIdTest001\" from trace.";
     MyTrace finishTrace = GetTraceResult(GetFinishTraceRegex(startTrace), list);
     ASSERT_TRUE(finishTrace.IsLoaded()) << "Can't find \"E|\" from trace.";
 }
