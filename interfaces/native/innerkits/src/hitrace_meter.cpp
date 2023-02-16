@@ -38,6 +38,7 @@ using namespace OHOS::HiviewDFX;
 namespace {
 int g_markerFd = -1;
 std::once_flag g_onceFlag;
+std::once_flag g_onceWriteMarkerFailedFlag;
 
 std::atomic<bool> g_isHitraceMeterDisabled(false);
 std::atomic<bool> g_isHitraceMeterInit(false);
@@ -137,13 +138,18 @@ void OpenTraceMarkerFile()
 }
 }; // namespace
 
+void WriteFailedLog()
+{
+    HiLog::Error(LABEL, "write trace_marker failed, %{public}d", errno);
+}
+
 void WriteToTraceMarker(const char* buf, const int count)
 {
     if (UNEXPECTANTLY(count <= 0)) {
         return;
     }
     if (write(g_markerFd, buf, count) < 0) {
-        HiLog::Error(LABEL, "write trace_marker failed, %{public}d", errno);
+        std::call_once(g_onceWriteMarkerFailedFlag, WriteFailedLog);
     }
 }
 
