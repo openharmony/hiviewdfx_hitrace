@@ -212,14 +212,14 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t& tag, const std::string& na
             }
             if (type == MARKER_BEGIN) {
                 bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                                   "B|%s|H:%s%s ", g_pid, traceId, name.c_str());
+                    "B|%s|H:%s%s ", g_pid, traceId, name.c_str());
             } else if (type == MARKER_END) {
                 bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                                   "E|%s|", g_pid);
+                    "E|%s|", g_pid);
             } else {
                 std::string marktypestr = g_markTypes[type];
                 bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                                   "%s|%s|H:%s%s %lld", marktypestr.c_str(), g_pid, traceId, name.c_str(), value);
+                    "%s|%s|H:%s%s %lld", marktypestr.c_str(), g_pid, traceId, name.c_str(), value);
             }
             WriteToTraceMarker(buf, bytes);
         } else {
