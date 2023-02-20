@@ -199,7 +199,7 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t& tag, const std::string& na
             } else {
                 char marktypestr = g_markTypes[type];
                 bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                    "%s|%s|H:%s %lld", marktypestr, g_pid, name.c_str(), value);
+                    "%c|%s|H:%s %lld", marktypestr, g_pid, name.c_str(), value);
             }
             WriteToTraceMarker(buf, bytes);
         } else {
