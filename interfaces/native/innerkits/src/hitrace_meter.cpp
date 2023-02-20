@@ -57,7 +57,7 @@ static const int PID_BUF_SIZE = 6;
 static char g_pid[PID_BUF_SIZE];
 static const std::string EMPTY_TRACE_NAME;
 
-static std::vector<std::string> g_markTypes = {"B", "E", "S", "F", "C"};
+static char g_markTypes[5] = {'B', 'E', 'S', 'F', 'C'};
 enum MarkerType { MARKER_BEGIN, MARKER_END, MARKER_ASYNC_BEGIN, MARKER_ASYNC_END, MARKER_INT, MARKER_MAX };
 
 constexpr uint64_t HITRACE_TAG = 0xD002D33;
@@ -197,9 +197,9 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t& tag, const std::string& na
                 bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
                     "E|%s|", g_pid);
             } else {
-                std::string marktypestr = g_markTypes[type];
+                char marktypestr = g_markTypes[type];
                 bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                    "%s|%s|H:%s %lld", marktypestr.c_str(), g_pid, name.c_str(), value);
+                    "%s|%s|H:%s %lld", marktypestr, g_pid, name.c_str(), value);
             }
             WriteToTraceMarker(buf, bytes);
         } else {
