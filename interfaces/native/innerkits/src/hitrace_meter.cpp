@@ -149,13 +149,6 @@ void WriteToTraceMarker(const char* buf, const int count)
     }
 }
 
-string ToHexStr(uint64_t source)
-{
-    std::stringstream ss;
-    ss << std::hex << source;
-    return ss.str();
-}
-
 void AddTraceMarkerLarge(const std::string& name, MarkerType& type, const int64_t& value)
 {
     std::string record;
@@ -165,13 +158,11 @@ void AddTraceMarkerLarge(const std::string& name, MarkerType& type, const int64_
     record += "|H:";
     HiTraceId hiTraceId = HiTraceChain::GetId();
     if (hiTraceId.IsValid()) {
-        record += "[";
-        record += ToHexStr(hiTraceId.GetChainId());
-        record += ",";
-        record +=  ToHexStr(hiTraceId.GetSpanId());
-        record += ",";
-        record += ToHexStr(hiTraceId.GetParentSpanId());
-        record += "]#";
+        char buf[64] = {0};
+        int bytes = 0;
+        bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "[%llx,%llx,%llx]#",
+            hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId());
+        record += buf;
     }
     std::string nameNew = name;
     if (name.size() > NAME_MAX_SIZE) {
@@ -201,14 +192,14 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t& tag, const std::string& na
         // record fomart: "type|pid|name value".
         char buf[NAME_NORMAL_LEN];
         int len = name.length();
-        HiTraceId hiTraceId = HiTraceChain::GetId();
-        bool isValid = hiTraceId.IsValid();
         if (UNEXPECTANTLY(len <= NAME_NORMAL_LEN)) {
+            HiTraceId hiTraceId = HiTraceChain::GetId();
+            bool isValid = hiTraceId.IsValid();
             char traceId[64] = {0};
             int bytes = 0;
             if (isValid) {
                 bytes = snprintf_s(traceId, sizeof(traceId), sizeof(traceId) - 1, "[%llx,%llx,%llx]#",
-                                   hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId());
+                    hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId());
             }
             if (type == MARKER_BEGIN) {
                 bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
