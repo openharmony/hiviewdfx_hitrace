@@ -40,6 +40,7 @@ using namespace OHOS::HiviewDFX;
 namespace {
 int g_markerFd = -1;
 std::once_flag g_onceFlag;
+std::once_flag g_onceWriteMarkerFailedFlag;
 
 std::atomic<bool> g_isHitraceMeterDisabled(false);
 std::atomic<bool> g_isHitraceMeterInit(false);
@@ -58,7 +59,7 @@ static const int PID_BUF_SIZE = 6;
 static char g_pid[PID_BUF_SIZE];
 static const std::string EMPTY_TRACE_NAME;
 
-static std::vector<std::string> g_markTypes = {"B", "E", "S", "F", "C"};
+static char g_markTypes[5] = {'B', 'E', 'S', 'F', 'C'};
 enum MarkerType { MARKER_BEGIN, MARKER_END, MARKER_ASYNC_BEGIN, MARKER_ASYNC_END, MARKER_INT, MARKER_MAX };
 
 constexpr uint64_t HITRACE_TAG = 0xD002D33;
@@ -139,13 +140,18 @@ void OpenTraceMarkerFile()
 }
 }; // namespace
 
+void WriteFailedLog()
+{
+    HiLog::Error(LABEL, "write trace_marker failed, %{public}d", errno);
+}
+
 void WriteToTraceMarker(const char* buf, const int count)
 {
     if (UNEXPECTANTLY(count <= 0)) {
         return;
     }
     if (write(g_markerFd, buf, count) < 0) {
-        HiLog::Error(LABEL, "write trace_marker failed, %{public}d", errno);
+        std::call_once(g_onceWriteMarkerFailedFlag, WriteFailedLog);
     }
 }
 
@@ -208,9 +214,9 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t& tag, const std::string& na
                 bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
                     "E|%s|", g_pid);
             } else {
-                std::string marktypestr = g_markTypes[type];
+                char marktypestr = g_markTypes[type];
                 bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                    "%s|%s|H:%s%s %lld", marktypestr.c_str(), g_pid, traceId, name.c_str(), value);
+                    "%c|%s|H:%s%s %lld", marktypestr, g_pid, traceId, name.c_str(), value);
             }
             WriteToTraceMarker(buf, bytes);
         } else {
