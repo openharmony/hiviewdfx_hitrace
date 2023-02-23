@@ -22,7 +22,6 @@
 #include <mutex>
 #include <unistd.h>
 #include <vector>
-#include <sstream>
 #include "securec.h"
 #include "hilog/log.h"
 #include "parameter.h"
