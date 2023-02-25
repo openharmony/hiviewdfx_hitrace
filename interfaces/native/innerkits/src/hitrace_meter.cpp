@@ -164,10 +164,11 @@ void AddTraceMarkerLarge(const std::string& name, MarkerType& type, const int64_
     HiTraceId hiTraceId = HiTraceChain::GetId();
     if (hiTraceId.IsValid()) {
         char buf[64] = {0};
-        int bytes = 0;
-        bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "[%llx,%llx,%llx]#",
+        int bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "[%llx,%llx,%llx]#",
             hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId());
-        record += buf;
+        if (EXPECTANTLY(bytes > 0)) {
+            record += buf;
+        }
     }
     std::string nameNew = name;
     if (name.size() > NAME_MAX_SIZE) {
