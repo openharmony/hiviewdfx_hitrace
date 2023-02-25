@@ -88,6 +88,7 @@ ohos_unittest("HitraceNDKTest") {
   external_deps = [
     "hilog_native:libhilog",
     "init:libbegetutil",
+    "c_utils:utils",
   ]
 }
 

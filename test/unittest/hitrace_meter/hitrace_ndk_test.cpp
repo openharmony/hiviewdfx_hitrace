@@ -19,7 +19,7 @@
 #include <fcntl.h>
 #include <gtest/gtest.h>
 #include <hilog/log.h>
-
+#include "securec.h"
 #include "hitrace_meter.h"
 #include "hitrace_osal.h"
 #include "parameters.h"
@@ -29,6 +29,8 @@ using namespace testing::ext;
 using namespace std;
 using namespace OHOS::HiviewDFX;
 using namespace OHOS::HiviewDFX::HitraceOsal;
+
+#define EXPECTANTLY(exp) (__builtin_expect(!!(exp), true))
 
 namespace OHOS {
 namespace HiviewDFX {
@@ -65,6 +67,7 @@ constexpr uint64_t TRACE_INVALIDATE_TAG = 0x1000000;
 constexpr uint64_t HITRACE_TAG = 0xD002D33;
 const constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, HITRACE_TAG, "Hitrace_TEST"};
 const uint64_t TAG = HITRACE_TAG_OHOS;
+constexpr int HITRACEID_LEN = 64;
 static string g_traceRootPath;
 
 bool SetProperty(const string& property, const string& value);
@@ -416,13 +419,6 @@ bool RunCmd(const string& cmdstr)
     return true;
 }
 
-string ToHexStr(uint64_t source)
-{
-    std::stringstream ss;
-    ss << std::hex << source;
-    return ss.str();
-}
-
 /**
  * @tc.name: Hitrace
  * @tc.desc: tracing_mark_write file node normal output start tracing and end tracing.
@@ -454,13 +450,12 @@ HWTEST_F(HitraceNDKTest, StartHiTraceIdTest_001, TestSize.Level0)
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
     HiTraceId hiTraceId = HiTraceChain::Begin("StartHiTraceIdTest001", HiTraceFlag::HITRACE_FLAG_DEFAULT);
     std::string record;
-    record += "\\[";
-    record += ToHexStr(hiTraceId.GetChainId());
-    record += ",";
-    record +=  ToHexStr(hiTraceId.GetSpanId());
-    record += ",";
-    record += ToHexStr(hiTraceId.GetParentSpanId());
-    record += "\\]#";
+    char buf[HITRACEID_LEN] = {0};
+    int bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "\\[%llx,%llx,%llx\\]#",
+        hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId());
+    if (EXPECTANTLY(bytes > 0)) {
+        record += buf;
+    }
     StartTrace(TAG, "StartHiTraceIdTest001");
     FinishTrace(TAG);
     HiTraceChain::End(hiTraceId);
