@@ -205,7 +205,7 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
             int bytes = 0;
             if (type == MARKER_BEGIN) {
                 bytes = isValid ? snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                    "B|%s|H:[%llx,%llx,%llx]#%s ", g_pid,  hiTraceId.GetChainId(), 
+                    "B|%s|H:[%llx,%llx,%llx]#%s ", g_pid, hiTraceId.GetChainId(),
                     hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str())
                     : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
                     "B|%s|H:%s ", g_pid, name.c_str());
@@ -215,10 +215,13 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
             } else {
                 char marktypestr = g_markTypes[type];
                 bytes = isValid ? snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                    "%c|%s|H:[%llx,%llx,%llx]#%s %lld", marktypestr, g_pid, 
+                    "%c|%s|H:[%llx,%llx,%llx]#%s %lld", marktypestr, g_pid,
                     hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str(), value)
                     : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
                     "%c|%s|H:%s %lld", marktypestr, g_pid, name.c_str(), value);
+            }
+            if (UNEXPECTANTLY(bytes <= 0)) {
+                return;
             }
             WriteToTraceMarker(buf, bytes);
         } else {
