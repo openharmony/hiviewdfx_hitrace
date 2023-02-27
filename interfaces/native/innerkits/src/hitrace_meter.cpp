@@ -204,28 +204,24 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
             bool isValid = hiTraceId.IsValid();
             int bytes = 0;
             if (type == MARKER_BEGIN) {
-                if (isValid) {
-                    bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
+                bytes = isValid ? snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
                     "B|%s|H:[%llx,%llx,%llx]#%s ", g_pid, hiTraceId.GetChainId(),
-                    hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str()); 
-                }else{
-                    bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "B|%s|H:%s ", g_pid, name.c_str());
-                }
+                    hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str()) 
+                    : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "B|%s|H:%s ", g_pid, name.c_str());
+                WriteToTraceMarker(buf, bytes);
             } else if (type == MARKER_END) {
                 bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
                     "E|%s|", g_pid);
+                WriteToTraceMarker(buf, bytes);    
             } else {
                 char marktypestr = g_markTypes[type];
-                if (isValid) {
-                    bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                    "%c|%s|H:[%llx,%llx,%llx]#%s %lld", marktypestr, g_pid, hiTraceId.GetChainId(),
-                    hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str(), value);
-                }else{
-                    bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
+                bytes = isValid ? snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
+                    "%c|%s|H:[%llx,%llx,%llx]#%s %lld", marktypestr, g_pid,
+                    hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str(), value)
+                    : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
                     "%c|%s|H:%s %lld", marktypestr, g_pid, name.c_str(), value);
-                }
+                 WriteToTraceMarker(buf, bytes);
             }
-            WriteToTraceMarker(buf, bytes);
         } else {
             AddTraceMarkerLarge(name, type, value);
         }
