@@ -220,7 +220,7 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
                     hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str(), value)
                     : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
                     "%c|%s|H:%s %lld", marktypestr, g_pid, name.c_str(), value);
-                 WriteToTraceMarker(buf, bytes);
+                WriteToTraceMarker(buf, bytes);
             }
         } else {
             AddTraceMarkerLarge(name, type, value);
