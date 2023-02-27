@@ -136,9 +136,8 @@ void FuncMain(uint64_t label)
     StartTrace(label, "funcBStart", SLEEP_TWO_SECOND);
     FuncB();
     FinishTrace(label);
-    usleep(USLEEP_HALF_SECOND);
+    sleep(SLEEP_ONE_SECOND);
 
-    usleep(USLEEP_HALF_SECOND);
     FinishTrace(label);
     FuncC(label);
 }
