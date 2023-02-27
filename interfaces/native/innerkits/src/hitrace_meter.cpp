@@ -147,9 +147,6 @@ void WriteFailedLog()
 
 void WriteToTraceMarker(const char* buf, const int count)
 {
-    if (UNEXPECTANTLY(count <= 0)) {
-        return;
-    }
     if (write(g_markerFd, buf, count) < 0) {
         std::call_once(g_onceWriteMarkerFailedFlag, WriteFailedLog);
     }
@@ -180,7 +177,11 @@ void AddTraceMarkerLarge(const std::string& name, MarkerType type, const int64_t
     if (value != 0) {
         record += std::to_string(value);
     }
-    WriteToTraceMarker(record.c_str(), record.size());
+    int size = record.size();
+    if (UNEXPECTANTLY(size <= 0)) {
+         return;
+    }
+    WriteToTraceMarker(record.c_str(), size);
 }
 
 void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& name, const int64_t value)
@@ -207,12 +208,16 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
                 bytes = isValid ? snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
                     "B|%s|H:[%llx,%llx,%llx]#%s ", g_pid, hiTraceId.GetChainId(),
                     hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str()) 
-                    : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "B|%s|H:%s ", g_pid, name.c_str());
-                WriteToTraceMarker(buf, bytes);
+                    : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "B|%s|H:%s ", g_pid, name.c_str());\
+                if (UNEXPECTANTLY(bytes <= 0)) {
+                    return;
+                }    
             } else if (type == MARKER_END) {
                 bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
                     "E|%s|", g_pid);
-                WriteToTraceMarker(buf, bytes);    
+                if (UNEXPECTANTLY(bytes <= 0)) {
+                    return;
+                }     
             } else {
                 char marktypestr = g_markTypes[type];
                 bytes = isValid ? snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
@@ -220,8 +225,11 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
                     hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str(), value)
                     : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
                     "%c|%s|H:%s %lld", marktypestr, g_pid, name.c_str(), value);
-                WriteToTraceMarker(buf, bytes);
+                if (UNEXPECTANTLY(bytes <= 0)) {
+                    return;
+                }     
             }
+            WriteToTraceMarker(buf, bytes);
         } else {
             AddTraceMarkerLarge(name, type, value);
         }
