@@ -201,23 +201,23 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
         int len = name.length();
         if (UNEXPECTANTLY(len <= NAME_NORMAL_LEN)) {
             HiTraceId hiTraceId = HiTraceChain::GetId();
-            bool isValid = hiTraceId.IsValid();
+            bool isHiTraceIdValid = hiTraceId.IsValid();
             int bytes = 0;
             if (type == MARKER_BEGIN) {
-                bytes = isValid ? snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
+                bytes = isHiTraceIdValid ? snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
                     "B|%s|H:[%llx,%llx,%llx]#%s ", g_pid, hiTraceId.GetChainId(),
-                    hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str()) 
-                    : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "B|%s|H:%s ", g_pid, name.c_str());   
+                    hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str())
+                    : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "B|%s|H:%s ", g_pid, name.c_str());
             } else if (type == MARKER_END) {
                 bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                    "E|%s|", g_pid);     
+                    "E|%s|", g_pid);
             } else {
                 char marktypestr = g_markTypes[type];
-                bytes = isValid ? snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
+                bytes = isHiTraceIdValid ? snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
                     "%c|%s|H:[%llx,%llx,%llx]#%s %lld", marktypestr, g_pid,
                     hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str(), value)
                     : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                    "%c|%s|H:%s %lld", marktypestr, g_pid, name.c_str(), value);   
+                    "%c|%s|H:%s %lld", marktypestr, g_pid, name.c_str(), value);
             }
             WriteToTraceMarker(buf, bytes);
         } else {
@@ -395,7 +395,7 @@ void MiddleTrace(uint64_t label, const string& beforeValue UNUSED_PARAM, const s
     AddHitraceMeterMarker(MARKER_BEGIN, label, afterValue, 0);
 }
 
-void MiddleTraceDebug(bool isDebug, uint64_t label, const string& beforeValue UNUSED_PARAM, 
+void MiddleTraceDebug(bool isDebug, uint64_t label, const string& beforeValue UNUSED_PARAM,
     const std::string& afterValue)
 {
     if (!isDebug) {
