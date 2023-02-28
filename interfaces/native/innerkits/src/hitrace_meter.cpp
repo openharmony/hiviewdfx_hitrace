@@ -27,6 +27,7 @@
 #include "parameter.h"
 #include "parameters.h"
 #include "hitrace_meter.h"
+#include "hitrace/tracechain.h"
 
 using namespace std;
 using namespace OHOS::HiviewDFX;
@@ -49,9 +50,10 @@ const std::string KEY_APP_NUMBER = "debug.hitrace.app_number";
 const std::string KEY_RO_DEBUGGABLE = "ro.debuggable";
 const std::string KEY_PREFIX = "debug.hitrace.app_";
 
-constexpr int NAME_MAX_SIZE = 1000;
-constexpr int VAR_NAME_MAX_SIZE = 256;
+constexpr int NAME_MAX_SIZE = 960;
+constexpr int VAR_NAME_MAX_SIZE = 900;
 constexpr int NAME_NORMAL_LEN = 200;
+constexpr int HITRACEID_LEN = 64;
 
 static const int PID_BUF_SIZE = 6;
 static char g_pid[PID_BUF_SIZE];
@@ -153,13 +155,22 @@ void WriteToTraceMarker(const char* buf, const int count)
     }
 }
 
-void AddTraceMarkerLarge(const std::string& name, MarkerType& type, const int64_t& value)
+void AddTraceMarkerLarge(const std::string& name, MarkerType type, const int64_t value)
 {
     std::string record;
     record += g_markTypes[type];
     record += "|";
     record += g_pid;
     record += "|H:";
+    HiTraceId hiTraceId = HiTraceChain::GetId();
+    if (hiTraceId.IsValid()) {
+        char buf[HITRACEID_LEN] = {0};
+        int bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "[%llx,%llx,%llx]#",
+            hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId());
+        if (EXPECTANTLY(bytes > 0)) {
+            record += buf;
+        }
+    }
     std::string nameNew = name;
     if (name.size() > NAME_MAX_SIZE) {
         nameNew = name.substr(0, NAME_MAX_SIZE);
@@ -172,7 +183,7 @@ void AddTraceMarkerLarge(const std::string& name, MarkerType& type, const int64_
     WriteToTraceMarker(record.c_str(), record.size());
 }
 
-void AddHitraceMeterMarker(MarkerType type, uint64_t& tag, const std::string& name, const int64_t& value)
+void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& name, const int64_t value)
 {
     if (UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
         return;
@@ -189,16 +200,23 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t& tag, const std::string& na
         char buf[NAME_NORMAL_LEN];
         int len = name.length();
         if (UNEXPECTANTLY(len <= NAME_NORMAL_LEN)) {
+            HiTraceId hiTraceId = HiTraceChain::GetId();
+            bool isHiTraceIdValid = hiTraceId.IsValid();
             int bytes = 0;
             if (type == MARKER_BEGIN) {
-                bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                    "B|%s|H:%s ", g_pid, name.c_str());
+                bytes = isHiTraceIdValid ? snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
+                    "B|%s|H:[%llx,%llx,%llx]#%s ", g_pid, hiTraceId.GetChainId(),
+                    hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str())
+                    : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "B|%s|H:%s ", g_pid, name.c_str());
             } else if (type == MARKER_END) {
                 bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
                     "E|%s|", g_pid);
             } else {
                 char marktypestr = g_markTypes[type];
-                bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
+                bytes = isHiTraceIdValid ? snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
+                    "%c|%s|H:[%llx,%llx,%llx]#%s %lld", marktypestr, g_pid,
+                    hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str(), value)
+                    : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
                     "%c|%s|H:%s %lld", marktypestr, g_pid, name.c_str(), value);
             }
             WriteToTraceMarker(buf, bytes);
@@ -377,7 +395,7 @@ void MiddleTrace(uint64_t label, const string& beforeValue UNUSED_PARAM, const s
     AddHitraceMeterMarker(MARKER_BEGIN, label, afterValue, 0);
 }
 
-void MiddleTraceDebug(bool isDebug, uint64_t label, const string& beforeValue UNUSED_PARAM, 
+void MiddleTraceDebug(bool isDebug, uint64_t label, const string& beforeValue UNUSED_PARAM,
     const std::string& afterValue)
 {
     if (!isDebug) {

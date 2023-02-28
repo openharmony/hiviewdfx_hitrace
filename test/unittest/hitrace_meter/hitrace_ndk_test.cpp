@@ -19,15 +19,18 @@
 #include <fcntl.h>
 #include <gtest/gtest.h>
 #include <hilog/log.h>
-
+#include "securec.h"
 #include "hitrace_meter.h"
 #include "hitrace_osal.h"
 #include "parameters.h"
+#include "hitrace/tracechain.h"
 
 using namespace testing::ext;
 using namespace std;
 using namespace OHOS::HiviewDFX;
 using namespace OHOS::HiviewDFX::HitraceOsal;
+
+#define EXPECTANTLY(exp) (__builtin_expect(!!(exp), true))
 
 namespace OHOS {
 namespace HiviewDFX {
@@ -64,6 +67,7 @@ constexpr uint64_t TRACE_INVALIDATE_TAG = 0x1000000;
 constexpr uint64_t HITRACE_TAG = 0xD002D33;
 const constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, HITRACE_TAG, "Hitrace_TEST"};
 const uint64_t TAG = HITRACE_TAG_OHOS;
+constexpr int HITRACEID_LEN = 64;
 static string g_traceRootPath;
 
 bool SetProperty(const string& property, const string& value);
@@ -430,6 +434,35 @@ HWTEST_F(HitraceNDKTest, StartTrace_001, TestSize.Level0)
     vector<string> list = ReadTrace();
     MyTrace startTrace = GetTraceResult(TRACE_START + "(StartTraceTest001) ", list);
     ASSERT_TRUE(startTrace.IsLoaded()) << "Can't find \"B|pid|StartTraceTest001\" from trace.";
+    MyTrace finishTrace = GetTraceResult(GetFinishTraceRegex(startTrace), list);
+    ASSERT_TRUE(finishTrace.IsLoaded()) << "Can't find \"E|\" from trace.";
+}
+
+
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: tracing_mark_write file node normal output  hitraceId.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, StartHiTraceIdTest_001, TestSize.Level0)
+{
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    HiTraceId hiTraceId = HiTraceChain::Begin("StartHiTraceIdTest001", HiTraceFlag::HITRACE_FLAG_DEFAULT);
+    std::string record;
+    char buf[HITRACEID_LEN] = {0};
+    int bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "\\[%llx,%llx,%llx\\]#",
+        hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId());
+    if (EXPECTANTLY(bytes > 0)) {
+        record += buf;
+    }
+    StartTrace(TAG, "StartHiTraceIdTest001");
+    FinishTrace(TAG);
+    HiTraceChain::End(hiTraceId);
+    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    vector<string> list = ReadTrace();
+    MyTrace startTrace = GetTraceResult(TRACE_START + record + "(StartHiTraceIdTest001) ", list);
+    ASSERT_TRUE(startTrace.IsLoaded()) << "Can't find \"B|pid|StartHiTraceIdTest001\" from trace.";
     MyTrace finishTrace = GetTraceResult(GetFinishTraceRegex(startTrace), list);
     ASSERT_TRUE(finishTrace.IsLoaded()) << "Can't find \"E|\" from trace.";
 }
