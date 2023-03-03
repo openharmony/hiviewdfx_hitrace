@@ -100,4 +100,5 @@ group("unittest") {
   if (support_jsapi) {
     deps += [ "unittest/common/napi:unittest" ]
   }
+  deps += [ "unittest/rust/hitracechain:rust_hitracechain_test" ]
 }
