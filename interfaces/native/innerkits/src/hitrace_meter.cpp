@@ -150,6 +150,9 @@ void WriteToTraceMarker(const char* buf, const int count)
     if (UNEXPECTANTLY(count <= 0)) {
         return;
     }
+    if (UNEXPECTANTLY(count > NAME_MAX_SIZE)) {
+        return;
+    }
     if (write(g_markerFd, buf, count) < 0) {
         std::call_once(g_onceWriteMarkerFailedFlag, WriteFailedLog);
     }
