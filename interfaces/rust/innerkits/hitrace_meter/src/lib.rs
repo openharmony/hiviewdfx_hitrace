@@ -19,6 +19,7 @@ use std::ffi::{CString, c_char, c_int, c_longlong, c_ulonglong};
 /// Track the beginning of a context
 pub fn start_trace(label: u64, value: &str) {
     let value_raw_ptr = CString::new(value).unwrap();
+    // Safty: call C ffi border function, all risks are under control.
     unsafe {
         StartTraceWrapper(label, value_raw_ptr.as_ptr() as *const c_char);
     }
@@ -26,6 +27,7 @@ pub fn start_trace(label: u64, value: &str) {
 
 /// Track the end of a context
 pub fn finish_trace(label: u64) {
+    // Safty: call C ffi border function, all risks are under control.
     unsafe {
         FinishTrace(label);
     }
@@ -34,6 +36,7 @@ pub fn finish_trace(label: u64) {
 /// Track the beginning of an asynchronous event
 pub fn start_trace_async(label: u64, value: &str, task_id: i32) {
     let value_raw_ptr = CString::new(value).unwrap();
+    // Safty: call C ffi border function, all risks are under control.
     unsafe {
         StartAsyncTraceWrapper(label, value_raw_ptr.as_ptr() as *const c_char, task_id);
     }
@@ -42,32 +45,34 @@ pub fn start_trace_async(label: u64, value: &str, task_id: i32) {
 /// Track the end of an asynchronous event
 pub fn finish_trace_async(label: u64, value: &str, task_id: i32) {
     let value_raw_ptr = CString::new(value).unwrap();
+    // Safty: call C ffi border function, all risks are under control.
     unsafe {
         FinishAsyncTraceWrapper(label, value_raw_ptr.as_ptr() as *const c_char, task_id);
     }
 }
 
 /// Track the 64-bit integer counter value
-pub fn count_trace(label: u64, value: &str, count: i64) {
-    let value_raw_ptr = CString::new(value).unwrap();
+pub fn count_trace(label: u64, name: &str, count: i64) {
+    let name_raw_ptr = CString::new(name).unwrap();
+    // Safty: call C ffi border function, all risks are under control.
     unsafe {
-        CountTraceWrapper(label, value_raw_ptr.as_ptr() as *const c_char, count);
+        CountTraceWrapper(label, name_raw_ptr.as_ptr() as *const c_char, count);
     }
 }
 
 extern "C" {
     /// ffi border function -> start trace
-    pub(create) fn StartTraceWrapper(label: c_ulonglong, value: *const c_char);
+    pub(crate) fn StartTraceWrapper(label: c_ulonglong, value: *const c_char);
 
     /// ffi border function -> finish trace
-    pub(create) fn FinishTrace(label: c_ulonglong);
+    pub(crate) fn FinishTrace(label: c_ulonglong);
 
     /// ffi border function -> start async trace
-    pub(create) fn StartAsyncTraceWrapper(label: c_ulonglong, value: *const c_char, taskId: c_int);
+    pub(crate) fn StartAsyncTraceWrapper(label: c_ulonglong, value: *const c_char, taskId: c_int);
 
     /// ffi border function -> finish async trace
-    pub(create) fn FinishAsyncTraceWrapper(label: c_ulonglong, value: *const c_char, taskId: c_int);
+    pub(crate) fn FinishAsyncTraceWrapper(label: c_ulonglong, value: *const c_char, taskId: c_int);
 
     /// ffi border function -> count trace
-    pub(create) fn CounttTraceWrapper(label: c_ulonglong, value: *const c_char, count: c_longlong);
+    pub(crate) fn CountTraceWrapper(label: c_ulonglong, name: *const c_char, count: c_longlong);
 }

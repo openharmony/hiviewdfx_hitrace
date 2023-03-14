@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-//! hitrace_meter example_create for rust.
-extern create hitrace_meter_rust;
+//! hitrace_meter example_crate for rust.
+extern crate hitrace_meter_rust;
 use hitrace_meter_rust::{start_trace, finish_trace, start_trace_async, finish_trace_async, count_trace};
 const HITRACE_TAG_OHOS : u64 = 1 << 30;
 const HITRACE_TASK_ID : i32 = 666;
