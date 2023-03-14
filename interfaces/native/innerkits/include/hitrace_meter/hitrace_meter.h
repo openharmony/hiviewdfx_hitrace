@@ -108,6 +108,7 @@ void StartTrace(uint64_t label, const std::string& value, float limit = -1);
 void StartTraceDebug(bool isDebug, uint64_t label, const std::string& value, float limit = -1);
 void StartTraceArgs(uint64_t label, const char *fmt, ...);
 void StartTraceArgsDebug(bool isDebug, uint64_t label, const char *fmt, ...);
+void StartTraceWrapper(uint64_t label, const char *value);
 
 /**
  * Track the end of a context.
@@ -122,6 +123,7 @@ void StartAsyncTrace(uint64_t label, const std::string& value, int32_t taskId, f
 void StartAsyncTraceDebug(bool isDebug, uint64_t label, const std::string& value, int32_t taskId, float limit = -1);
 void StartAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...);
 void StartAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, const char *fmt, ...);
+void StartAsyncTraceWrapper(uint64_t label, const char *value, int32_t taskId);
 
 /**
  * Track the end of an asynchronous event.
@@ -130,6 +132,7 @@ void FinishAsyncTrace(uint64_t label, const std::string& value, int32_t taskId);
 void FinishAsyncTraceDebug(bool isDebug, uint64_t label, const std::string& value, int32_t taskId);
 void FinishAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...);
 void FinishAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, const char *fmt, ...);
+void FinishAsyncTraceWrapper(uint64_t label, const char *value, int32_t taskId);
 
 /**
  * Track the middle of a context. Match the previous function of StartTrace before it.
@@ -142,6 +145,7 @@ void MiddleTraceDebug(bool isDebug, uint64_t label, const std::string& beforeVal
  */
 void CountTrace(uint64_t label, const std::string& name, int64_t count);
 void CountTraceDebug(bool isDebug, uint64_t label, const std::string& name, int64_t count);
+void CountTraceWrapper(uint64_t label, const char *name, int64_t count);
 
 class HitraceScoped {
 public:

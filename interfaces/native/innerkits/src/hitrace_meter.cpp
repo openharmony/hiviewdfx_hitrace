@@ -242,6 +242,12 @@ void SetTraceDisabled(bool disable)
     g_isHitraceMeterDisabled = disable;
 }
 
+void StartTraceWrapper(uint64_t label, const char *value)
+{
+    std::string traceValue = value;
+    StartTrace(label, traceValue);
+}
+
 void StartTrace(uint64_t label, const string& value, float limit UNUSED_PARAM)
 {
     AddHitraceMeterMarker(MARKER_BEGIN, label, value, 0);
@@ -305,6 +311,12 @@ void StartAsyncTrace(uint64_t label, const string& value, int32_t taskId, float 
     AddHitraceMeterMarker(MARKER_ASYNC_BEGIN, label, value, taskId);
 }
 
+void StartAsyncTraceWrapper(uint64_t label, const char *value, int32_t taskId)
+{
+    std::string traceValue = value;
+    StartAsyncTrace(label, traceValue, taskId);
+}
+
 void StartAsyncTraceDebug(bool isDebug, uint64_t label, const string& value, int32_t taskId, float limit UNUSED_PARAM)
 {
     if (!isDebug) {
@@ -349,6 +361,12 @@ void StartAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, cons
 void FinishAsyncTrace(uint64_t label, const string& value, int32_t taskId)
 {
     AddHitraceMeterMarker(MARKER_ASYNC_END, label, value, taskId);
+}
+
+void FinishAsyncTraceWrapper(uint64_t label, const char *value, int32_t taskId)
+{
+    std::string traceValue = value;
+    FinishAsyncTrace(label, traceValue, taskId);
 }
 
 void FinishAsyncTraceDebug(bool isDebug, uint64_t label, const string& value, int32_t taskId)
@@ -419,6 +437,12 @@ void CountTraceDebug(bool isDebug, uint64_t label, const string& name, int64_t c
         return;
     }
     AddHitraceMeterMarker(MARKER_INT, label, name, count);
+}
+
+void CountTraceWrapper(uint64_t label, const char *name, int64_t count)
+{
+    std::string traceName = name;
+    CountTrace(label, traceName, count);
 }
 
 HitraceMeterFmtScoped::HitraceMeterFmtScoped(uint64_t label, const char *fmt, ...) : mTag(label)

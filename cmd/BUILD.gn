@@ -66,6 +66,15 @@ ohos_executable("hitrace_example") {
   part_name = "hitrace_native"
 }
 
+ohos_rust_executable("hitrace_example_rust") {
+  sources = [ "example/rust/main.rs" ]
+
+  external_deps = [ "../interfaces/rust/innerkits/hitrace_meter:hitrace_meter_rust" ]
+  install_enable = false
+  subsystem_name = "hiviewdfx"
+  part_name = "hitrace_native"
+}
+
 group("hitrace_target") {
   deps = [
     ":hitrace",
