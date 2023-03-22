@@ -222,6 +222,9 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
                     : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
                     "%c|%s|H:%s %lld", marktypestr, g_pid, name.c_str(), value);
             }
+            if (bytes == -1) {
+                bytes = sizeof(buf);
+            }
             WriteToTraceMarker(buf, bytes);
         } else {
             AddTraceMarkerLarge(name, type, value);
