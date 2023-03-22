@@ -60,6 +60,7 @@ constexpr uint32_t PID = 9;
 constexpr uint32_t TRACE_NAME = 10;
 constexpr uint32_t NUM = 11;
 constexpr uint32_t SLEEP_ONE_SECOND = 1;
+constexpr uint32_t NAME_MAX_SIZE = 960;
 
 constexpr uint32_t TRACE_FMA11 = 11;
 constexpr uint32_t TRACE_FMA12 = 12;
@@ -420,7 +421,7 @@ bool RunCmd(const string& cmdstr)
     return true;
 }
 
-string GetRecord (HiTraceId hiTraceId)
+string GetRecord(HiTraceId hiTraceId)
 {
     std::string record;
     char buf[HITRACEID_LEN] = {0};
@@ -487,8 +488,6 @@ HWTEST_F(HitraceNDKTest, StartHiTraceIdTest_002, TestSize.Level0)
     longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTestt002";
     longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTestt002";
     longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTestt002";
-    //longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTestt002";
-   longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
     HiTraceId hiTraceId = HiTraceChain::Begin("StartHiTraceIdTest002", HiTraceFlag::HITRACE_FLAG_DEFAULT);
@@ -497,10 +496,9 @@ HWTEST_F(HitraceNDKTest, StartHiTraceIdTest_002, TestSize.Level0)
     HiTraceChain::End(hiTraceId);
     ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
-
-    printf("list:%s\n", (TRACE_START + GetRecord(hiTraceId) +  longTraceName).c_str());
-    MyTrace startTrace = GetTraceResult(TRACE_START + GetRecord(hiTraceId) + "(" + longTraceName + ") ", list);
-    ASSERT_TRUE(startTrace.IsLoaded()) << "Can't find \"B|pid| " + longTraceName + "\" from trace.";
+    std::string nameNew = longTraceName.substr(0, NAME_MAX_SIZE);
+    MyTrace startTrace = GetTraceResult(TRACE_START + GetRecord(hiTraceId) + "(" + nameNew + ") ", list);
+    ASSERT_TRUE(startTrace.IsLoaded()) << "Can't find \"B|pid| " + nameNew + "\" from trace.";
     MyTrace finishTrace = GetTraceResult(GetFinishTraceRegex(startTrace), list);
     ASSERT_TRUE(finishTrace.IsLoaded()) << "Can't find \"E|\" from trace.";
 }
@@ -521,10 +519,12 @@ HWTEST_F(HitraceNDKTest, StartAsyncHiTraceIdTest_001, TestSize.Level0)
     HiTraceChain::End(hiTraceId);
     ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
-    MyTrace startTrace = GetTraceResult(TRACE_ASYNC_START  + GetRecord(hiTraceId) + "(StartAsyncHiTraceIdTest001) (.*)", list);
+    MyTrace startTrace = 
+    GetTraceResult(TRACE_ASYNC_START  + GetRecord(hiTraceId) + "(StartAsyncHiTraceIdTest001) (.*)", list);
     ASSERT_TRUE(startTrace.IsLoaded()) << "Can't find \"S|pid|StartAsyncHiTraceIdTest001\" from trace.";
     MyTrace finishTrace =
-        GetTraceResult(TRACE_ASYNC_FINISH + GetRecord(hiTraceId) + startTrace.GetTraceName() + " " + startTrace.GetNum(), list);
+        GetTraceResult(TRACE_ASYNC_FINISH + GetRecord(hiTraceId) + startTrace.GetTraceName()
+        + " " + startTrace.GetNum(), list);
     ASSERT_TRUE(finishTrace.IsLoaded()) << "Can't find \"F|\" from trace.";
 }
 
