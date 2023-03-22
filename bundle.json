@@ -34,7 +34,6 @@
       "sub_component": [
         "//base/hiviewdfx/hitrace/cmd:hitrace_target",
         "//base/hiviewdfx/hitrace/cmd:hitrace.cfg",
-        "//base/hiviewdfx/hitrace/interfaces/native/innerkits:hitrace_inner",
         "//base/hiviewdfx/hitrace/interfaces/native/innerkits:hitrace_meter",
         "//base/hiviewdfx/hitrace/interfaces/native/innerkits:libhitracechain",
         "//base/hiviewdfx/hitrace/interfaces/js/kits:hitrace_napi",
@@ -42,15 +41,6 @@
         "//base/hiviewdfx/hitrace/interfaces/rust/innerkits/hitrace_meter:hitrace_meter_rust"
       ],
       "inner_kits": [
-        {
-          "name": "//base/hiviewdfx/hitrace/interfaces/native/innerkits:hitrace_inner",
-          "header": {
-            "header_base": "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/hitrace_meter/",
-            "header_files": [
-              "hitrace_meter.h"
-            ]
-          }
-        },
         {
           "type": "so",
           "name": "//base/hiviewdfx/hitrace/interfaces/native/innerkits:hitrace_meter",

@@ -52,7 +52,7 @@ const std::string KEY_PREFIX = "debug.hitrace.app_";
 
 constexpr int NAME_MAX_SIZE = 960;
 constexpr int VAR_NAME_MAX_SIZE = 900;
-constexpr int NAME_NORMAL_LEN = 200;
+constexpr int NAME_NORMAL_LEN = 300;
 constexpr int HITRACEID_LEN = 64;
 
 static const int PID_BUF_SIZE = 6;
@@ -202,7 +202,7 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
         // record fomart: "type|pid|name value".
         char buf[NAME_NORMAL_LEN];
         int len = name.length();
-        if (UNEXPECTANTLY(len <= NAME_NORMAL_LEN)) {
+        if (UNEXPECTANTLY(len <= NAME_NORMAL_LEN - 11)) {
             HiTraceId hiTraceId = HiTraceChain::GetId();
             bool isHiTraceIdValid = hiTraceId.IsValid();
             int bytes = 0;
@@ -221,6 +221,9 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
                     hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str(), value)
                     : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
                     "%c|%s|H:%s %lld", marktypestr, g_pid, name.c_str(), value);
+            }
+            if (bytes == -1) {
+                bytes = sizeof(buf);
             }
             WriteToTraceMarker(buf, bytes);
         } else {
