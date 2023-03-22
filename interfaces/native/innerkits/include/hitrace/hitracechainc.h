@@ -20,6 +20,8 @@
 #include <stdarg.h>
 #include <stdint.h>
 
+#include "securec.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -234,8 +236,14 @@ static inline HiTraceIdStruct HiTraceChainBytesToId(const uint8_t* pIdArray, int
         return id;
     }
 
-    *((uint64_t*)(&id)) = be64toh(*((uint64_t*)pIdArray));
-    *((uint64_t*)(&id) + 1) = be64toh(*((uint64_t*)pIdArray + 1));
+    uint64_t tmp1 = 0;
+    uint64_t tmp2 = 0;
+    if (memcpy_s(&tmp1, sizeof(uint64_t), pIdArray, sizeof(uint64_t)) != EOK ||
+        memcpy_s(&tmp2, sizeof(uint64_t), pIdArray + sizeof(uint64_t), sizeof(uint64_t)) != EOK) {
+        return id;
+    }
+    *((uint64_t*)(&id)) = be64toh(tmp1);
+    *((uint64_t*)(&id) + 1) = be64toh(tmp2);
     return id;
 }
 
