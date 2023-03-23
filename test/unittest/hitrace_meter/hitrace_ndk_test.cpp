@@ -512,7 +512,7 @@ HWTEST_F(HitraceNDKTest, StartAsyncHiTraceIdTest_001, TestSize.Level0)
     HiTraceChain::End(hiTraceId);
     ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
-    MyTrace startTrace = 
+    MyTrace startTrace =
         GetTraceResult(TRACE_ASYNC_START + GetRecord(hiTraceId) + "(StartAsyncHiTraceIdTest001) (.*)", list);
     ASSERT_TRUE(startTrace.IsLoaded()) << "Can't find \"S|pid|StartAsyncHiTraceIdTest001\" from trace.";
     MyTrace finishTrace =
