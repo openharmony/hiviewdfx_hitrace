@@ -60,7 +60,6 @@ constexpr uint32_t PID = 9;
 constexpr uint32_t TRACE_NAME = 10;
 constexpr uint32_t NUM = 11;
 constexpr uint32_t SLEEP_ONE_SECOND = 1;
-constexpr uint32_t NAME_MAX_SIZE = 960;
 
 constexpr uint32_t TRACE_FMA11 = 11;
 constexpr uint32_t TRACE_FMA12 = 12;
