@@ -50,9 +50,9 @@ const std::string KEY_APP_NUMBER = "debug.hitrace.app_number";
 const std::string KEY_RO_DEBUGGABLE = "ro.debuggable";
 const std::string KEY_PREFIX = "debug.hitrace.app_";
 
-constexpr int NAME_MAX_SIZE = 960;
-constexpr int VAR_NAME_MAX_SIZE = 900;
-constexpr int NAME_NORMAL_LEN = 300;
+constexpr int VAR_NAME_MAX_SIZE = 400;
+constexpr int NAME_NORMAL_LEN = 512;
+constexpr int BUFFER_LEN = 640;
 constexpr int HITRACEID_LEN = 64;
 
 static const int PID_BUF_SIZE = 6;
@@ -150,7 +150,7 @@ void WriteToTraceMarker(const char* buf, const int count)
     if (UNEXPECTANTLY(count <= 0)) {
         return;
     }
-    if (UNEXPECTANTLY(count > NAME_MAX_SIZE)) {
+    if (UNEXPECTANTLY(count >= BUFFER_LEN)) {
         return;
     }
     if (write(g_markerFd, buf, count) < 0) {
@@ -174,11 +174,7 @@ void AddTraceMarkerLarge(const std::string& name, MarkerType type, const int64_t
             record += buf;
         }
     }
-    std::string nameNew = name;
-    if (name.size() > NAME_MAX_SIZE) {
-        nameNew = name.substr(0, NAME_MAX_SIZE);
-    }
-    record += nameNew;
+    record += name;
     record += " ";
     if (value != 0) {
         record += std::to_string(value);
@@ -202,7 +198,7 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
         // record fomart: "type|pid|name value".
         char buf[NAME_NORMAL_LEN];
         int len = name.length();
-        if (UNEXPECTANTLY(len <= NAME_NORMAL_LEN - 11)) {
+        if (UNEXPECTANTLY(len <= NAME_NORMAL_LEN)) {
             HiTraceId hiTraceId = HiTraceChain::GetId();
             bool isHiTraceIdValid = hiTraceId.IsValid();
             int bytes = 0;
@@ -221,9 +217,6 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
                     hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str(), value)
                     : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
                     "%c|%s|H:%s %lld", marktypestr, g_pid, name.c_str(), value);
-            }
-            if (bytes == -1) {
-                bytes = sizeof(buf);
             }
             WriteToTraceMarker(buf, bytes);
         } else {
