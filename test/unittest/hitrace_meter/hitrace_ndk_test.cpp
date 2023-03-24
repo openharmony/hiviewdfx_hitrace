@@ -59,6 +59,7 @@ constexpr uint32_t TIMESTAMP = 6;
 constexpr uint32_t PID = 9;
 constexpr uint32_t TRACE_NAME = 10;
 constexpr uint32_t NUM = 11;
+constexpr uint32_t SLEEP_ONE_SECOND = 1;
 
 constexpr uint32_t TRACE_FMA11 = 11;
 constexpr uint32_t TRACE_FMA12 = 12;
@@ -419,6 +420,17 @@ bool RunCmd(const string& cmdstr)
     return true;
 }
 
+string GetRecord(HiTraceId hiTraceId)
+{
+    std::string record;
+    char buf[HITRACEID_LEN] = {0};
+    int bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "\\[%llx,%llx,%llx\\]#",
+        hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId());
+    if (EXPECTANTLY(bytes > 0)) {
+        record += buf;
+    }
+    return record;
+}
 /**
  * @tc.name: Hitrace
  * @tc.desc: tracing_mark_write file node normal output start tracing and end tracing.
@@ -449,22 +461,64 @@ HWTEST_F(HitraceNDKTest, StartHiTraceIdTest_001, TestSize.Level0)
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
     HiTraceId hiTraceId = HiTraceChain::Begin("StartHiTraceIdTest001", HiTraceFlag::HITRACE_FLAG_DEFAULT);
-    std::string record;
-    char buf[HITRACEID_LEN] = {0};
-    int bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "\\[%llx,%llx,%llx\\]#",
-        hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId());
-    if (EXPECTANTLY(bytes > 0)) {
-        record += buf;
-    }
     StartTrace(TAG, "StartHiTraceIdTest001");
     FinishTrace(TAG);
     HiTraceChain::End(hiTraceId);
     ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
-    MyTrace startTrace = GetTraceResult(TRACE_START + record + "(StartHiTraceIdTest001) ", list);
+    MyTrace startTrace = GetTraceResult(TRACE_START + GetRecord(hiTraceId) + "(StartHiTraceIdTest001) ", list);
     ASSERT_TRUE(startTrace.IsLoaded()) << "Can't find \"B|pid|StartHiTraceIdTest001\" from trace.";
     MyTrace finishTrace = GetTraceResult(GetFinishTraceRegex(startTrace), list);
     ASSERT_TRUE(finishTrace.IsLoaded()) << "Can't find \"E|\" from trace.";
+}
+
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: tracing_mark_write file node large output  hitraceId.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, StartHiTraceIdTest_002, TestSize.Level0)
+{
+    std::string longTraceName = "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
+    longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
+    longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    HiTraceId hiTraceId = HiTraceChain::Begin("StartHiTraceIdTest002", HiTraceFlag::HITRACE_FLAG_DEFAULT);
+    StartTrace(TAG, longTraceName, SLEEP_ONE_SECOND);
+    FinishTrace(TAG);
+    HiTraceChain::End(hiTraceId);
+    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    vector<string> list = ReadTrace();
+    MyTrace startTrace = GetTraceResult(TRACE_START + GetRecord(hiTraceId) + "(" + longTraceName + ") ", list);
+    ASSERT_TRUE(startTrace.IsLoaded()) << "Can't find \"B|pid| " + longTraceName + "\" from trace.";
+    MyTrace finishTrace = GetTraceResult(GetFinishTraceRegex(startTrace), list);
+    ASSERT_TRUE(finishTrace.IsLoaded()) << "Can't find \"E|\" from trace.";
+}
+
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: tracing_mark_write file node normal output start trace and end trace
+ * @tc.type: FUNC
+ */
+
+HWTEST_F(HitraceNDKTest, StartAsyncHiTraceIdTest_001, TestSize.Level0)
+{
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    HiTraceId hiTraceId = HiTraceChain::Begin("StartHiTraceIdTest002", HiTraceFlag::HITRACE_FLAG_DEFAULT);
+    StartAsyncTrace(TAG, "StartAsyncHiTraceIdTest001", 123);
+    FinishAsyncTrace(TAG, "StartAsyncHiTraceIdTest001", 123);
+    HiTraceChain::End(hiTraceId);
+    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    vector<string> list = ReadTrace();
+    MyTrace startTrace =
+        GetTraceResult(TRACE_ASYNC_START + GetRecord(hiTraceId) + "(StartAsyncHiTraceIdTest001) (.*)", list);
+    ASSERT_TRUE(startTrace.IsLoaded()) << "Can't find \"S|pid|StartAsyncHiTraceIdTest001\" from trace.";
+    MyTrace finishTrace =
+        GetTraceResult(TRACE_ASYNC_FINISH + GetRecord(hiTraceId) + startTrace.GetTraceName()
+        + " " + startTrace.GetNum(), list);
+    ASSERT_TRUE(finishTrace.IsLoaded()) << "Can't find \"F|\" from trace.";
 }
 
 /**
@@ -800,6 +854,61 @@ HWTEST_F(HitraceNDKTest, StartTrace_020, TestSize.Level1)
 
 /**
  * @tc.name: Hitrace
+ * @tc.desc: Testing StartTraceWrapper function
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, StartTraceWrapper_001, TestSize.Level0)
+{
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    StartTraceWrapper(TAG, "StartTraceWrapper001");
+    FinishTrace(TAG);
+    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    vector<string> list = ReadTrace();
+    MyTrace startTrace = GetTraceResult(TRACE_START + "(StartTraceWrapper001) ", list);
+    ASSERT_TRUE(startTrace.IsLoaded()) << "Can't find \"B|pid|StartTraceWrapper001\" from trace.";
+    MyTrace finishTrace = GetTraceResult(GetFinishTraceRegex(startTrace), list);
+    ASSERT_TRUE(finishTrace.IsLoaded()) << "Can't find \"E|\" from trace.";
+}
+
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: Testing  StartAsyncTraceWrapper function
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, StartAsyncTraceWrapper_001, TestSize.Level1)
+{
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    StartAsyncTraceWrapper(TRACE_INVALIDATE_TAG, "StartAsyncTraceWrapper009", 123);
+    FinishAsyncTraceWrapper(TRACE_INVALIDATE_TAG, "StartAsyncTraceWrapper009", 123);
+    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    vector<string> list = ReadTrace();
+    MyTrace startTrace = GetTraceResult(TRACE_ASYNC_START + "(StartAsyncTraceWrapper009)\\|(.*)", list);
+    EXPECT_FALSE(startTrace.IsLoaded()) << "Can't find \"S|pid|StartAsyncTraceWrapper009\" from trace.";
+    MyTrace finishTrace = GetTraceResult(TRACE_ASYNC_FINISH + startTrace.GetTraceName() + "\\|"
+        + startTrace.GetNum(), list);
+    EXPECT_FALSE(finishTrace.IsLoaded()) << "Can't find \"F|\" from trace.";
+}
+
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: Testing CountTraceWrapper function
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, CountTraceWrapper_001, TestSize.Level0)
+{
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    CountTraceWrapper(TAG, "CountTraceWrapper001", 1);
+    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    vector<string> list = ReadTrace();
+    MyTrace countTrace = GetTraceResult(TRACE_COUNT + "(CountTraceWrapper001) (.*)", list);
+    ASSERT_TRUE(countTrace.IsLoaded()) << "Can't find \"C|\" from trace.";
+}
+
+/**
+ * @tc.name: Hitrace
  * @tc.desc: Testing SetTraceDisabled function
  * @tc.type: FUNC
  */
@@ -869,6 +978,8 @@ HWTEST_F(HitraceNDKTest, StartTrace_024, TestSize.Level1)
     ASSERT_TRUE(RunCmd("hitrace -t 1 --trace_clock mono ohos > /data/log/trace05"));
     ASSERT_TRUE(RunCmd("hitrace -t 1 --trace_clock uptime ohos > /data/log/trace06"));
     ASSERT_TRUE(RunCmd("hitrace -t 1 --trace_clock perf ohos > /data/log/trace07"));
+    ASSERT_TRUE(RunCmd("hitrace -b 2048 -t 10 -o  /data/log/test20.txt sched"));
+    ASSERT_TRUE(RunCmd("hitrace -b 2048 -t 10 -o /data/log/test21 load"));
 }
 
 /**
@@ -903,6 +1014,8 @@ HWTEST_F(HitraceNDKTest, StartTrace_025, TestSize.Level1)
     ASSERT_TRUE(RunCmd("bytrace -t 1 --trace_clock mono ohos > /data/log/trace05"));
     ASSERT_TRUE(RunCmd("bytrace -t 1 --trace_clock uptime ohos > /data/log/trace06"));
     ASSERT_TRUE(RunCmd("bytrace -t 1 --trace_clock perf ohos > /data/log/trace07"));
+    ASSERT_TRUE(RunCmd("bytrace -b 2048 -t 10 -o  /data/log/test20.txt sched"));
+    ASSERT_TRUE(RunCmd("bytrace -b 2048 -t 10 -o /data/log/test21 load"));
 }
 
 } // namespace HitraceTest
