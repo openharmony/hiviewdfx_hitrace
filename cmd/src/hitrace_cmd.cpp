@@ -557,6 +557,7 @@ static bool TruncateFile(const string& path)
         return false;
     }
     close(fd);
+    fd = -1;
     return true;
 }
 
