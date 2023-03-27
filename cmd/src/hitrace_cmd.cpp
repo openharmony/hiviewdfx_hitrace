@@ -992,6 +992,7 @@ int main(int argc, char **argv)
             DumpTrace(outFd, TRACE_PATH);
             if (outFd != STDOUT_FILENO) {
                 close(outFd);
+                outFd = -1;
             }
         }
         ClearTrace();
