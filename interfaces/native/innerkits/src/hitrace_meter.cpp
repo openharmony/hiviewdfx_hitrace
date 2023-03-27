@@ -196,7 +196,7 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
     }
     if (UNEXPECTANTLY(g_tagsProperty & tag) && g_markerFd != -1) {
         // record fomart: "type|pid|name value".
-        char buf[NAME_NORMAL_LEN];
+        char buf[BUFFER_LEN];
         int len = name.length();
         if (UNEXPECTANTLY(len <= NAME_NORMAL_LEN)) {
             HiTraceId hiTraceId = HiTraceChain::GetId();

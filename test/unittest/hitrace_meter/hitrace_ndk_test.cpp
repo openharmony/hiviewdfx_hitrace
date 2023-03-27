@@ -439,15 +439,15 @@ string GetRecord(HiTraceId hiTraceId)
 HWTEST_F(HitraceNDKTest, StartTrace_001, TestSize.Level0)
 {
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
-    StartTrace(TAG, "StartTraceTest001");
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    StartTrace(TAG, "HitraceStartTrace001");
     FinishTrace(TAG);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     MyTrace startTrace = GetTraceResult(TRACE_START + "(StartTraceTest001) ", list);
-    ASSERT_TRUE(startTrace.IsLoaded()) << "Can't find \"B|pid|StartTraceTest001\" from trace.";
+    ASSERT_TRUE(startTrace.IsLoaded()) << "Hitrace Can't find \"B|pid|HitraceStartTrace001\" from trace.";
     MyTrace finishTrace = GetTraceResult(GetFinishTraceRegex(startTrace), list);
-    ASSERT_TRUE(finishTrace.IsLoaded()) << "Can't find \"E|\" from trace.";
+    ASSERT_TRUE(finishTrace.IsLoaded()) << "Hitrace Can't find \"E|\" from trace.";
 }
 
 
@@ -482,6 +482,10 @@ HWTEST_F(HitraceNDKTest, StartHiTraceIdTest_002, TestSize.Level0)
     std::string longTraceName = "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
     longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
     longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
+    longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
+    longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
+    longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
+    longTraceName += "StartHiTraceIdTest002";
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
     HiTraceId hiTraceId = HiTraceChain::Begin("StartHiTraceIdTest002", HiTraceFlag::HITRACE_FLAG_DEFAULT);
@@ -528,9 +532,13 @@ HWTEST_F(HitraceNDKTest, StartAsyncHiTraceIdTest_001, TestSize.Level0)
  */
 HWTEST_F(HitraceNDKTest, StartTrace_002, TestSize.Level0)
 {
-    std::string longTraceName = "StartTraceTest002StartTraceTest002StartTraceTest002";
-    longTraceName += "StartTraceTest002StartTraceTest002StartTraceTest002StartTraceTest002StartTraceTest002";
-    longTraceName += "StartTraceTest002StartTraceTest002StartTraceTest002StartTraceTest002";
+    std::string longTraceName = "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
+    longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
+    longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
+    longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
+    longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
+    longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
+    longTraceName += "StartHiTraceIdTest002";
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
     StartTrace(TAG, longTraceName);
