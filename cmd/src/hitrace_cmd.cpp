@@ -557,7 +557,6 @@ static bool TruncateFile(const string& path)
         return false;
     }
     close(fd);
-    fd = -1;
     return true;
 }
 
@@ -993,7 +992,6 @@ int main(int argc, char **argv)
             DumpTrace(outFd, TRACE_PATH);
             if (outFd != STDOUT_FILENO) {
                 close(outFd);
-                outFd = -1;
             }
         }
         ClearTrace();
