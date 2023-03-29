@@ -444,7 +444,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_001, TestSize.Level0)
     FinishTrace(TAG);
     ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
     vector<string> list = ReadTrace();
-    MyTrace startTrace = GetTraceResult(TRACE_START + "(StartTraceTest001) ", list);
+    MyTrace startTrace = GetTraceResult(TRACE_START + "(HitraceStartTrace001) ", list);
     ASSERT_TRUE(startTrace.IsLoaded()) << "Hitrace Can't find \"B|pid|HitraceStartTrace001\" from trace.";
     MyTrace finishTrace = GetTraceResult(GetFinishTraceRegex(startTrace), list);
     ASSERT_TRUE(finishTrace.IsLoaded()) << "Hitrace Can't find \"E|\" from trace.";
