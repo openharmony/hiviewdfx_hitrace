@@ -920,6 +920,7 @@ static void InitAllSupportTags()
     g_tagMap["hdf"] = {"hdf", "hdf subsystem", HITRACE_TAG_HDF, USER, {}};
     g_tagMap["commonlibrary"] = {"commonlibrary", "commonlibrary subsystem", HITRACE_TAG_COMMONLIBRARY, USER, {}};
     g_tagMap["hdcd"] = {"hdcd", "hdcd", HITRACE_TAG_HDCD, USER, {}};
+    g_tagMap["deviceauth"] = {"deviceauth", "Device Auth", HITRACE_TAG_DEV_AUTH, USER, {}};
 
     // Kernel os
     InitKernelSupportTags();
