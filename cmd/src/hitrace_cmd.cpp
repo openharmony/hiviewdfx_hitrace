@@ -241,7 +241,7 @@ static bool SetClock(const string& timeclock)
     size_t end = allClocks.find("]");
     string newClock;
     if (begin != string::npos && end != string::npos &&
-        timeclock.compare(0, timeclock.size(), allClocks, begin + 1, end - begin - 1) >= 0) {
+        timeclock.compare(0, timeclock.size(), allClocks, begin + 1, end - begin - 1) == 0) {
         return true;
     } else if (allClocks.find(timeclock) != string::npos) {
         newClock = timeclock;
