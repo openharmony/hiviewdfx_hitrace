@@ -60,6 +60,7 @@ const int SHELL_UID = 2000;
 const int WAIT_MILLISECONDS = 10;
 
 constexpr const char *TRACE_TAG_PROPERTY = "debug.hitrace.tags.enableflags";
+constexpr const char *TRACE_TAG_STATE = "debug.hitrace.enable.state";
 
 // various operating paths of ftrace
 constexpr const char *TRACING_ON_PATH = "tracing_on";
@@ -567,6 +568,7 @@ static bool ClearTrace()
 
 static bool StartTrace()
 {
+    SetPropertyInner(TRACE_TAG_STATE, "1");
     if (!SetFtraceEnabled(TRACING_ON_PATH, true)) {
         return false;
     }
