@@ -18,9 +18,7 @@ module_output_path = "hiviewdfx/hitrace"
 config("module_private_config") {
   visibility = [ ":*" ]
   include_dirs = [
-    "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include",
-    "//base/hiviewdfx/hilog/frameworks/native/include",
-    "//commonlibrary/c_utils/base/include",
+    "../interfaces/native/innerkits/include",
   ]
 }
 
@@ -28,7 +26,7 @@ ohos_unittest("HitraceCTest") {
   module_out_path = module_output_path
 
   sources = [
-    "//base/hiviewdfx/hitrace/frameworks/native/hitracechainc.c",
+    "../frameworks/native/hitracechainc.c",
     "unittest/common/native/hitracechainc_test.cpp",
   ]
 
@@ -46,9 +44,9 @@ ohos_unittest("HitraceCppTest") {
   module_out_path = module_output_path
 
   sources = [
-    "//base/hiviewdfx/hitrace/frameworks/native/hitracechain.cpp",
-    "//base/hiviewdfx/hitrace/frameworks/native/hitracechainc.c",
-    "//base/hiviewdfx/hitrace/frameworks/native/hitraceid.cpp",
+    "../frameworks/native/hitracechain.cpp",
+    "../frameworks/native/hitracechainc.c",
+    "../frameworks/native/hitraceid.cpp",
     "unittest/common/native/hitracechaincpp_test.cpp",
   ]
 
@@ -66,8 +64,8 @@ config("HitraceNDKTest_config") {
   visibility = [ ":*" ]
 
   include_dirs = [
-    "//base/hiviewdfx/hitrace/cmd/include",
-    "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/hitrace_meter",
+    "../cmd/include",
+    "../interfaces/native/innerkits/include/hitrace_meter",
   ]
 }
 
@@ -79,9 +77,9 @@ ohos_unittest("HitraceNDKTest") {
   configs = [ ":HitraceNDKTest_config" ]
 
   deps = [
-    "//base/hiviewdfx/hitrace/cmd:hitrace_osal_inner",
-    "//base/hiviewdfx/hitrace/interfaces/native/innerkits:hitrace_meter",
-    "//base/hiviewdfx/hitrace/interfaces/native/innerkits:libhitracechain",
+    "../cmd:hitrace_osal_inner",
+    "../interfaces/native/innerkits:hitrace_meter",
+    "../interfaces/native/innerkits:libhitracechain",
     "//third_party/googletest:gtest_main",
   ]
 
