@@ -924,6 +924,8 @@ static void InitAllSupportTags()
     g_tagMap["hdcd"] = {"hdcd", "hdcd", HITRACE_TAG_HDCD, USER, {}};
     g_tagMap["deviceauth"] = {"deviceauth", "Device Auth", HITRACE_TAG_DEV_AUTH, USER, {}};
     g_tagMap["cloud"] = {"cloud", "Cloud subsystem", HITRACE_TAG_CLOUD, USER, {}};
+    g_tagMap["musl"] = {"musl", "Musl Module", HITRACE_TAG_MUSL, USER, {}};
+    g_tagMap["ffrt"] = {"ffrt", "Ffrt Tasks", HITRACE_TAG_FFRT, USER, {}};
 
     // Kernel os
     InitKernelSupportTags();
