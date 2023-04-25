@@ -1,7 +1,7 @@
 {
   "name": "@ohos/hitrace_native",
   "description": "cross-thread, cross-process, and cross-device service call chain",
-  "version": "3.1",
+  "version": "4.0",
   "license": "Apache License 2.0",
   "publishAs": "code-segment",
   "segment": {
@@ -25,10 +25,11 @@
         "c_utils",
         "hilog_native",
         "init",
-        "ipc",
         "napi"
       ],
-      "third_party": []
+      "third_party": [
+        "zlib"
+      ]
     },
     "build": {
       "sub_component": [
