@@ -17,9 +17,7 @@ module_output_path = "hiviewdfx/hitrace"
 
 config("module_private_config") {
   visibility = [ ":*" ]
-  include_dirs = [
-    "../interfaces/native/innerkits/include",
-  ]
+  include_dirs = [ "../interfaces/native/innerkits/include" ]
 }
 
 ohos_unittest("HitraceCTest") {

@@ -34,12 +34,8 @@ unittest("HitraceCTest") {
 
   configs = [ ":module_private_config" ]
 
-  public_deps = [
-    "//third_party/bounds_checking_function:libsec_shared",
-  ]
-  external_deps = [
-    "hilog_lite:hilog_shared",
-  ]
+  public_deps = [ "//third_party/bounds_checking_function:libsec_shared" ]
+  external_deps = [ "hilog_lite:hilog_shared" ]
 }
 
 unittest("HitraceCppTest") {
@@ -52,12 +48,8 @@ unittest("HitraceCppTest") {
 
   configs = [ ":module_private_config" ]
 
-  public_deps = [
-    "//third_party/bounds_checking_function:libsec_shared",
-  ]
-  external_deps = [
-    "hilog_lite:hilog_shared",
-  ]
+  public_deps = [ "//third_party/bounds_checking_function:libsec_shared" ]
+  external_deps = [ "hilog_lite:hilog_shared" ]
 }
 
 group("unittest") {
