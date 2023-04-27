@@ -24,8 +24,8 @@ extern "C" {
 
 constexpr uint64_t HITRACE_TAG_NEVER = 0; // This tag is never enabled.
 constexpr uint64_t HITRACE_TAG_ALWAYS = (1ULL << 0); // This tag is always enabled.
-constexpr uint64_t HITRACE_TAG_FFRT = (1ULL << 11); // This tag is ffrt tasks.
-constexpr uint64_t HITRACE_TAG_MUSL = (1ULL << 12); // This tag is musl module.
+constexpr uint64_t HITRACE_TAG_MUSL = (1ULL << 12); // musl module.
+constexpr uint64_t HITRACE_TAG_FFRT = (1ULL << 13); // ffrt tasks.
 constexpr uint64_t HITRACE_TAG_CLOUD = (1ULL << 14); // Cloud subsystem tag.
 constexpr uint64_t HITRACE_TAG_DEV_AUTH = (1ULL << 15); // Device auth module tag.
 constexpr uint64_t HITRACE_TAG_COMMONLIBRARY = (1ULL << 16); // Commonlibrary subsystem tag.
