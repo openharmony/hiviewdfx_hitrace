@@ -93,6 +93,16 @@ bool ParseDoubleParam(const napi_env& env, const napi_value& value, double& dest
     return true;
 }
 
+bool ParseUndefinedParam(const napi_env& env, const napi_value& value)
+{
+    if (!TypeCheck(env, value, napi_undefined)) {
+        HiLog::Error(LABEL, "not napi_undefined.");
+        return false;
+    }
+    HiLog::Error(LABEL, "napi_undefined.");
+    return true;
+}
+
 bool JsStrNumParamsFunc(napi_env& env, napi_callback_info& info, STR_NUM_PARAM_FUNC nativeCall)
 {
     size_t argc = ARGC_NUMBER_TWO;
@@ -134,7 +144,8 @@ static napi_value JSTraceStart(napi_env env, napi_callback_info info)
         StartAsyncTrace(HITRACE_TAG_APP, name, taskId);
     } else {
         double limit = 0.0;
-        if (!ParseDoubleParam(env, argv[THIRD_ARG_INDEX], limit)) {
+        if (!ParseDoubleParam(env, argv[THIRD_ARG_INDEX], limit) !ParseUndefinedParam(env, argv[THIRD_ARG_INDEX])) {
+            HiLog::Error(LABEL, "not pass.");
             return nullptr;
         }
         StartAsyncTrace(HITRACE_TAG_APP, name, taskId, limit);
