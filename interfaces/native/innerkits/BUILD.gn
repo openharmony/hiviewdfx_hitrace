@@ -22,7 +22,7 @@ config("libhitrace_pub_config") {
 ohos_shared_library("libhitracechain") {
   public_configs = [ ":libhitrace_pub_config" ]
 
-  deps = [ "//base/hiviewdfx/hitrace/frameworks/native:hitracechain_source" ]
+  deps = [ "../../../frameworks/native:hitracechain_source" ]
 
   external_deps = [ "hilog_native:libhilog" ]
 
@@ -66,7 +66,6 @@ ohos_shared_library("hitrace_meter") {
     ":libhitracechain",
   ]
   external_deps = [ "c_utils:utils" ]
-  include_dirs = [ "//commonlibrary/c_utils/base/include" ]
   output_extension = "so"
 
   innerapi_tags = [

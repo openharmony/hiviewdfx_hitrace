@@ -17,7 +17,7 @@ config("hitrace_osal_inner_config") {
   visibility = [ ":*" ]
   include_dirs = [
     "./include",
-    "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/hitrace_meter",
+    "../interfaces/native/innerkits/include/hitrace_meter",
   ]
 }
 
@@ -43,7 +43,6 @@ ohos_executable("hitrace") {
 
   include_dirs = [
     "./include",
-    "//commonlibrary/c_utils/base/include",
     "//third_party/zlib",
   ]
   subsystem_name = "hiviewdfx"

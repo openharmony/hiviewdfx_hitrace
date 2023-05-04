@@ -17,8 +17,8 @@ group("hitrace_napi") {
   deps = []
   if (support_jsapi) {
     deps += [
-      "//base/hiviewdfx/hitrace/interfaces/js/kits/napi:hitracechain_napi",
-      "//base/hiviewdfx/hitrace/interfaces/js/kits/napi:hitracemeter_napi",
+      "napi:hitracechain_napi",
+      "napi:hitracemeter_napi",
     ]
   }
 }

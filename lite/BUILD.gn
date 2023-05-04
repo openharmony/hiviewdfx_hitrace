@@ -15,17 +15,15 @@ import("//build/lite/config/component/lite_component.gni")
 import("//build/lite/ndk/ndk.gni")
 
 hitrace_sources = [
-  "//base/hiviewdfx/hitrace/frameworks/native/hitrace.cpp",
-  "//base/hiviewdfx/hitrace/frameworks/native/hitracec.c",
-  "//base/hiviewdfx/hitrace/frameworks/native/hitraceid.cpp",
+  "../frameworks/native/hitrace.cpp",
+  "../frameworks/native/hitracec.c",
+  "../frameworks/native/hitraceid.cpp",
 ]
 
 config("hitrace_config") {
   include_dirs = [
-    "//base/hiviewdfx/hitrace/interfaces/native/innerkits",
-    "//base/hiviewdfx/hilog_lite/interfaces/native/innerkits",
-    "//base/hiviewdfx/hilog_lite/interfaces/native/innerkits/hilog",
-    "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include",
+    "../interfaces/native/innerkits",
+    "../interfaces/native/innerkits/include",
     "//third_party/bounds_checking_function/include",
   ]
 }
@@ -34,9 +32,7 @@ lite_library("hitrace") {
   target_type = "shared_library"
   sources = hitrace_sources
   public_configs = [ ":hitrace_config" ]
-  public_deps = [
-    "//base/hiviewdfx/hilog_lite/frameworks/featured:hilog_shared",
-    "//third_party/bounds_checking_function:libsec_shared",
-  ]
+  public_deps = [ "//third_party/bounds_checking_function:libsec_shared" ]
+  external_deps = [ "hilog_lite:hilog_shared" ]
   cflags = [ "-Wall" ]
 }
