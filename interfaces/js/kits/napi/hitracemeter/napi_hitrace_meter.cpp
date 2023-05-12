@@ -24,7 +24,6 @@ using namespace OHOS::HiviewDFX;
 namespace {
 constexpr int FIRST_ARG_INDEX = 0;
 constexpr int SECOND_ARG_INDEX = 1;
-constexpr int THIRD_ARG_INDEX = 2;
 constexpr int ARGC_NUMBER_TWO = 2;
 constexpr int ARGC_NUMBER_THREE = 3;
 constexpr uint64_t HITRACE_METER_TAG = 0xD002D33;
@@ -100,15 +99,6 @@ bool ParseInt64Param(const napi_env& env, const napi_value& value, int64_t& dest
         return false;
     }
     napi_get_value_int64(env, value, &dest);
-    return true;
-}
-
-bool ParseDoubleParam(const napi_env& env, const napi_value& value, double& dest)
-{
-    if (!TypeCheck(env, value, napi_number)) {
-        return false;
-    }
-    napi_get_value_double(env, value, &dest);
     return true;
 }
 
