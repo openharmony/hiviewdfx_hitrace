@@ -54,6 +54,12 @@ bool ParseTraceIdObject(const napi_env& env, const napi_value& origin, HiTraceId
     NapiHitraceUtil::TransHiTraceIdJsObjectToNative(env, traceId, origin);
     return true;
 }
+
+bool IsNullOrUndefinedType(const napi_env& env, const napi_value& origin)
+{
+    return NapiHitraceUtil::CheckValueTypeValidity(env, origin, napi_valuetype::napi_null) ||
+        NapiHitraceUtil::CheckValueTypeValidity(env, origin, napi_valuetype::napi_undefined);
+}
 }
 
 static napi_value Begin(napi_env env, napi_callback_info info)
@@ -78,8 +84,9 @@ static napi_value Begin(napi_env env, napi_callback_info info)
     }
     int flag = HiTraceFlag::HITRACE_FLAG_DEFAULT;
     if (paramNum == ParamNum::TOTAL_TWO &&
-            !ParseInt32Param(env, params[ParamIndex::PARAM_SECOND], flag)) {
-        HiLog::Error(LABEL, "flag type must be number.");
+        !ParseInt32Param(env, params[ParamIndex::PARAM_SECOND], flag) &&
+        !IsNullOrUndefinedType(env, params[ParamIndex::PARAM_SECOND])) {
+        HiLog::Error(LABEL, "flag type must be number, null or undefined.");
         return val;
     }
     traceId = HiTraceChain::Begin(name, flag);
@@ -158,9 +165,9 @@ static napi_value Tracepoint(napi_env env, napi_callback_info info)
     napi_value thisArg = nullptr;
     void* data = nullptr;
     NAPI_CALL(env, napi_get_cb_info(env, info, &paramNum, params, &thisArg, &data));
-    if (paramNum != ParamNum::TOTAL_FOUR) {
+    if (paramNum != ParamNum::TOTAL_THREE && paramNum != ParamNum::TOTAL_FOUR) {
         HiLog::Error(LABEL,
-            "failed to trace point, count of parameters is not equal to 4.");
+            "failed to trace point, count of parameters is not equal to 3 or 4.");
         return nullptr;
     }
     int communicationModeInt = 0;
@@ -181,8 +188,10 @@ static napi_value Tracepoint(napi_env env, napi_callback_info info)
         return nullptr;
     }
     std::string description;
-    if (!ParseStringParam(env, params[ParamIndex::PARAM_FORTH], description)) {
-        HiLog::Error(LABEL, "descriptione type must be string.");
+    if (paramNum == ParamNum::TOTAL_FOUR &&
+        !ParseStringParam(env, params[ParamIndex::PARAM_FORTH], description) &&
+        !IsNullOrUndefinedType(env, params[ParamIndex::PARAM_FORTH])) {
+        HiLog::Error(LABEL, "description type must be string, null or undefined.");
         return nullptr;
     }
     HiTraceChain::Tracepoint(communicationMode, tracePointType, traceId, "%s", description.c_str());
