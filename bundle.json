@@ -33,6 +33,7 @@
     },
     "build": {
       "sub_component": [
+        "//base/hiviewdfx/hitrace/interfaces/native/innerkits:hitrace_dump",
         "//base/hiviewdfx/hitrace/cmd:hitrace_target",
         "//base/hiviewdfx/hitrace/cmd:hitrace.cfg",
         "//base/hiviewdfx/hitrace/interfaces/native/innerkits:hitrace_meter",

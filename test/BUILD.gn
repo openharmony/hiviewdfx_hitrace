@@ -88,11 +88,31 @@ ohos_unittest("HitraceNDKTest") {
   ]
 }
 
+ohos_unittest("HitraceDumpTest") {
+  module_out_path = module_output_path
+
+  sources = [ "unittest/hitrace_dump/hitrace_dump_test.cpp" ]
+
+  include_dirs = [ "../interfaces/native/innerkits/include" ]
+
+  deps = [
+    "../interfaces/native/innerkits:hitrace_dump",
+    "//third_party/googletest:gtest_main",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog_native:libhilog",
+    "init:libbegetutil",
+  ]
+}
+
 group("unittest") {
   testonly = true
   deps = [
     ":HitraceCTest",
     ":HitraceCppTest",
+    ":HitraceDumpTest",
     ":HitraceNDKTest",
   ]
   if (support_jsapi) {
