@@ -58,6 +58,31 @@ ohos_static_library("hitrace_inner") {
   subsystem_name = "hiviewdfx"
 }
 
+ohos_shared_library("hitrace_dump") {
+  include_dirs = [
+    "./include",
+    "//commonlibrary/c_utils/base/include",
+    "//third_party/zlib",
+  ]
+
+  sources = [ "./src/hitrace_dump.cpp" ]
+
+  deps = [
+    "../../../config:hitrace_utils",
+    "//third_party/jsoncpp:jsoncpp",
+    "//third_party/zlib:libz",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog_native:libhilog",
+    "init:libbegetutil",
+  ]
+
+  part_name = "hitrace_native"
+  subsystem_name = "hiviewdfx"
+}
+
 ohos_shared_library("hitrace_meter") {
   public_configs = [ ":hitrace_meter_config" ]
   deps = [
