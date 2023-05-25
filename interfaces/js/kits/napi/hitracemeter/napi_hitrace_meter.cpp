@@ -24,7 +24,6 @@ using namespace OHOS::HiviewDFX;
 namespace {
 constexpr int FIRST_ARG_INDEX = 0;
 constexpr int SECOND_ARG_INDEX = 1;
-constexpr int THIRD_ARG_INDEX = 2;
 constexpr int ARGC_NUMBER_TWO = 2;
 constexpr int ARGC_NUMBER_THREE = 3;
 constexpr uint64_t HITRACE_METER_TAG = 0xD002D33;
@@ -53,17 +52,36 @@ bool TypeCheck(const napi_env& env, const napi_value& value, const napi_valuetyp
     return true;
 }
 
-bool ParseStringParam(const napi_env& env, const napi_value& value, std::string& dest)
+void GetStringParam(const napi_env& env, const napi_value& value, std::string& dest)
 {
-    if (!TypeCheck(env, value, napi_string)) {
-        return false;
-    }
     constexpr int nameMaxSize = 1024;
     char buf[nameMaxSize] = {0};
     size_t len = 0;
     napi_get_value_string_utf8(env, value, buf, nameMaxSize, &len);
     dest = std::string {buf};
-    return true;
+}
+
+bool ParseStringParam(const napi_env& env, const napi_value& value, std::string& dest)
+{
+    if (TypeCheck(env, value, napi_string)) {
+        GetStringParam(env, value, dest);
+        return true;
+    }
+    if (TypeCheck(env, value, napi_number)) {
+        int64_t destI64;
+        napi_get_value_int64(env, value, &destI64);
+        dest = std::to_string(destI64);
+        return true;
+    }
+    if (TypeCheck(env, value, napi_undefined)) {
+        dest = "undefined";
+        return true;
+    }
+    if (TypeCheck(env, value, napi_null)) {
+        dest = "null";
+        return true;
+    }
+    return false;
 }
 
 bool ParseInt32Param(const napi_env& env, const napi_value& value, int& dest)
@@ -81,15 +99,6 @@ bool ParseInt64Param(const napi_env& env, const napi_value& value, int64_t& dest
         return false;
     }
     napi_get_value_int64(env, value, &dest);
-    return true;
-}
-
-bool ParseDoubleParam(const napi_env& env, const napi_value& value, double& dest)
-{
-    if (!TypeCheck(env, value, napi_number)) {
-        return false;
-    }
-    napi_get_value_double(env, value, &dest);
     return true;
 }
 
@@ -118,8 +127,8 @@ static napi_value JSTraceStart(napi_env env, napi_callback_info info)
     size_t argc = ARGC_NUMBER_THREE;
     napi_value argv[ARGC_NUMBER_THREE];
     ParseParams(env, info, argc, argv);
-    NAPI_ASSERT(env, argc == ARGC_NUMBER_TWO || argc == ARGC_NUMBER_THREE, "Wrong number of arguments");
-    if (argc != ARGC_NUMBER_TWO && argc != ARGC_NUMBER_THREE) {
+    NAPI_ASSERT(env, argc >= ARGC_NUMBER_TWO, "Wrong number of arguments");
+    if (argc < ARGC_NUMBER_TWO) {
         HiLog::Error(LABEL, "Wrong number of parameters.");
     }
     std::string name;
@@ -130,15 +139,7 @@ static napi_value JSTraceStart(napi_env env, napi_callback_info info)
     if (!ParseInt32Param(env, argv[SECOND_ARG_INDEX], taskId)) {
         return nullptr;
     }
-    if (argc == ARGC_NUMBER_TWO) {
-        StartAsyncTrace(HITRACE_TAG_APP, name, taskId);
-    } else {
-        double limit = 0.0;
-        if (!ParseDoubleParam(env, argv[THIRD_ARG_INDEX], limit)) {
-            return nullptr;
-        }
-        StartAsyncTrace(HITRACE_TAG_APP, name, taskId, limit);
-    }
+    StartAsyncTrace(HITRACE_TAG_APP, name, taskId);
     return nullptr;
 }
 
