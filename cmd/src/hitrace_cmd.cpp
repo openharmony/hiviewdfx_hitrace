@@ -49,7 +49,7 @@ constexpr struct option LONG_OPTIONS[] = {
     { "time",              required_argument, nullptr, 0 },
     { "trace_begin",       no_argument,       nullptr, 0 },
     { "trace_finish",      no_argument,       nullptr, 0 },
-    { "trace_finish_ndump",no_argument,       nullptr, 0 },
+    { "trace_finish_ndump",      no_argument,       nullptr, 0 },
     { "trace_dump",        no_argument,       nullptr, 0 },
     { "list_categories",   no_argument,       nullptr, 0 },
     { "overwrite",         no_argument,       nullptr, 0 },
