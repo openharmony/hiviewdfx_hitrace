@@ -49,6 +49,7 @@ constexpr struct option LONG_OPTIONS[] = {
     { "time",              required_argument, nullptr, 0 },
     { "trace_begin",       no_argument,       nullptr, 0 },
     { "trace_finish",      no_argument,       nullptr, 0 },
+    { "trace_finish_ndump",no_argument,       nullptr, 0 },
     { "trace_dump",        no_argument,       nullptr, 0 },
     { "list_categories",   no_argument,       nullptr, 0 },
     { "overwrite",         no_argument,       nullptr, 0 },
@@ -456,6 +457,10 @@ static bool ParseLongOpt(const string& cmd, int optionIndex)
         g_traceStart = START_NONE;
         g_traceStop = true;
         g_traceDump = true;
+    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_finish_ndump")) {
+        g_traceStart = START_NONE;
+        g_traceStop = true;
+        g_traceDump = false;
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_dump")) {
         g_traceStart = START_NONE;
         g_traceStop = false;
