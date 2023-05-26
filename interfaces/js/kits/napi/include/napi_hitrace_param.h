@@ -21,6 +21,7 @@ namespace HiviewDFX {
 enum ParamNum {
     TOTAL_ONE = 1,
     TOTAL_TWO,
+    TOTAL_THREE,
     TOTAL_FOUR = 4,
 };
 
