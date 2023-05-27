@@ -27,9 +27,10 @@ ohos_shared_library("hitracechain_napi") {
     "./src/napi_hitrace_util.cpp",
   ]
 
+  deps = [ "../../../native/innerkits:libhitracechain" ]
+
   external_deps = [
     "hilog_native:libhilog",
-    "hitrace_native:libhitracechain",
     "napi:ace_napi",
   ]
 
