@@ -22,6 +22,8 @@ ohos_shared_library("hitracechain_c_wrapper") {
 
   sources = [ "./source/hitracechain_c_wrapper.c" ]
 
+  deps = [ "../../../interfaces/native/innerkits:libhitracechain" ]
+
   external_deps = [
     "c_utils:utils",
     "hitrace_native:libhitracechain",

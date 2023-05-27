@@ -66,6 +66,13 @@
               "hitrace/tracechain.h"
             ]
           }
+        },
+        {
+          "name": "//base/hiviewdfx/hitrace/interfaces/rust/innerkits/hitracechain:hitracechain_rust",
+          "header": {
+            "header_files": [],
+            "header_base": []
+          }
         }
       ],
       "test": [ "//base/hiviewdfx/hitrace/test:unittest" ]

@@ -19,7 +19,10 @@ ohos_rust_shared_library("hitracechain_rust") {
     "src/macros.rs",
   ]
 
-  deps = [ "../../../../frameworks/native/c_wrapper:hitracechain_c_wrapper" ]
+  deps = [
+    "../../../../frameworks/native/c_wrapper:hitracechain_c_wrapper",
+    "../../../native/innerkits:libhitracechain",
+  ]
 
   external_deps = [ "hitrace_native:libhitracechain" ]
 
