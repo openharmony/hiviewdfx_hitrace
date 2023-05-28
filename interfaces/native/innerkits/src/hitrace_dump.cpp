@@ -37,7 +37,6 @@
 #include "parameters.h"
 #include "hilog/log.h"
 #include "securec.h"
-#include "zlib.h"
 
 
 using OHOS::HiviewDFX::HiLog;
@@ -161,7 +160,7 @@ bool IsTraceMounted()
 bool ParseTagInfo(std::map<std::string, TagCategory> &allTags,
                   std::map<std::string, std::vector<std::string>> &tagGroupTable)
 {
-    std::string traceUtilsPath = "/system/etc/hitrace/hitrace_utils.cfg";
+    std::string traceUtilsPath = "/system/etc/hiview/hitrace_utils.json";
     std::ifstream inFile(traceUtilsPath, std::ios::in);
     if (!inFile.is_open()) {
         HiLog::Error(LABEL, "ParseTagInfo: %{pubilc}s is not existed.", traceUtilsPath.c_str());
@@ -497,7 +496,8 @@ size_t GetFileSize(const std::string &fileName)
 
 bool WriteFile(uint8_t contentType, const std::string &src, std::ofstream &ofs)
 {
-    int srcFd = open(src.c_str(), O_RDONLY | O_NONBLOCK);
+    std::string srcPath = CanonicalizeSpecPath(src.c_str());
+    int srcFd = open(srcPath.c_str(), O_RDONLY | O_NONBLOCK);
     if (srcFd < 0) {
         HiLog::Error(LABEL, "WriteFile: open %{public}s failed.", src.c_str());
         return false;
@@ -712,7 +712,10 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
     uint64_t nowSec = now.tv_sec;
     uint64_t nowUsec = now.tv_usec;
     if (!g_dumpEnd) {
-        while (!g_dumpEnd) {
+        const int maxSleepTime = 10 * 2000; // 2s
+        int cur = 0;
+        while (!g_dumpEnd && cur < maxSleepTime) {
+            cur += 1;
             usleep(UNIT_TIME);
         }
         SearchFromTable(outputFiles, nowSec);
@@ -734,8 +737,7 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
     std::string outputFileName = DEFAULT_OUTPUT_DIR + "trace_" + std::to_string(nowSec)
                                  + "_" + std::to_string(nowUsec) + ".sys";
     std::string reOutPath = CanonicalizeSpecPath(outputFileName.c_str());
-    bool ret = true;
-    ReadRawTrace(reOutPath);
+    bool ret = ReadRawTrace(reOutPath);
 
     SearchFromTable(outputFiles, nowSec);
     if (ret) {

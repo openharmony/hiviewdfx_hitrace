@@ -55,6 +55,16 @@
         },
         {
           "type": "so",
+          "name": "//base/hiviewdfx/hitrace/interfaces/native/innerkits:hitrace_dump",
+          "header": {
+            "header_base": "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/",
+            "header_files": [
+              "hitrace_dump.h"
+            ]
+          }
+        },
+        {
+          "type": "so",
           "name": "//base/hiviewdfx/hitrace/interfaces/native/innerkits:libhitracechain",
           "header": {
             "header_base": "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/",
