@@ -24,8 +24,6 @@ ohos_rust_shared_library("hitracechain_rust") {
     "../../../native/innerkits:libhitracechain",
   ]
 
-  external_deps = [ "hitrace_native:libhitracechain" ]
-
   crate_name = "hitracechain"
   crate_type = "dylib"
 

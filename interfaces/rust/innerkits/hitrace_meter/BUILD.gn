@@ -16,8 +16,7 @@ import("//build/ohos.gni")
 ohos_rust_shared_library("hitrace_meter_rust") {
   sources = [ "src/lib.rs" ]
 
-  external_deps = [ "hitrace_native:hitrace_meter" ]
-
+  deps = [ "../../../native/innerkits:hitrace_meter" ]
   crate_name = "hitrace_meter_rust"
   crate_type = "dylib"
 
