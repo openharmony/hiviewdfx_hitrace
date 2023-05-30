@@ -138,7 +138,6 @@ void OpenTraceMarkerFile()
     }
     g_isHitraceMeterInit = true;
 }
-}; // namespace
 
 void WriteFailedLog()
 {
@@ -224,6 +223,7 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
         }
     }
 }
+}; // namespace
 
 void UpdateTraceLabel()
 {
