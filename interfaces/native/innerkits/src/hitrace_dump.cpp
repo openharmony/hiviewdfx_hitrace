@@ -120,7 +120,7 @@ std::atomic<bool> g_dumpEnd(true);
 bool g_monitor = false; // close service monitor for now
 TraceMode g_traceMode = TraceMode::CLOSE;
 std::string g_traceRootPath;
-std::vector<std::pair<std::string, uint64_t>> g_traceFilesTable;
+std::vector<std::pair<std::string, int>> g_traceFilesTable;
 std::vector<std::string> g_outputFilesForCmd;
 
 TraceParams g_currentTraceParams = {};
@@ -494,7 +494,7 @@ size_t GetFileSize(const std::string &fileName)
     return statbuf.st_size;
 }
 
-bool WriteFile(uint8_t contentType, const std::string &src, std::ofstream &ofs)
+bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
 {
     std::string srcPath = CanonicalizeSpecPath(src.c_str());
     int srcFd = open(srcPath.c_str(), O_RDONLY | O_NONBLOCK);
@@ -504,41 +504,39 @@ bool WriteFile(uint8_t contentType, const std::string &src, std::ofstream &ofs)
     }
     struct TraceFileContentHeader contentHeader;
     contentHeader.type = contentType;
-    ofs.write(reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
-    int readLen = 0;
+    write(outFd, reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
+    uint32_t readLen = 0;
     uint8_t buffer[PAGE_SIZE];
-    do {
-        int len = read(srcFd, buffer, PAGE_SIZE);
-        if (len <= 0) {
-            contentHeader.length = readLen;
-            uint32_t offset = contentHeader.length + sizeof(TraceFileContentHeader);
-            long pos = ofs.tellp();
-            ofs.seekp(pos - offset);
-            ofs.write(reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
-            ofs.seekp(pos);
-            readLen = 0;
+    const int maxReadSize = DEFAULT_BUFFER_SIZE * 1024;
+    while (readLen < maxReadSize) {
+        ssize_t readBytes = TEMP_FAILURE_RETRY(read(srcFd, buffer, PAGE_SIZE));
+        if (readBytes <= 0) {
             break;
         }
-        ofs.write(reinterpret_cast<char *>(&buffer), len);
-        readLen += len;
-    } while (true);
+        write(outFd, buffer, readBytes);
+        readLen += readBytes;
+    }
+    contentHeader.length = readLen;
+    uint32_t offset = contentHeader.length + sizeof(contentHeader);
+    off_t pos = lseek(outFd, 0, SEEK_CUR);
+    lseek(outFd, pos - offset, SEEK_SET);
+    write(outFd, reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
+    lseek(outFd, pos, SEEK_SET);
     close(srcFd);
     return true;
 }
 
-bool WriteEventsFormat(std::ofstream &ofs)
+bool WriteEventsFormat(int outFd)
 {
     const std::string savedEventsFormatPath = DEFAULT_OUTPUT_DIR + "/saved_events_format";
     if (access(savedEventsFormatPath.c_str(), F_OK) != -1) {
-        return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, savedEventsFormatPath, ofs);
+        return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, savedEventsFormatPath, outFd);
     }
-
-    int fd = open(savedEventsFormatPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0777);
+    int fd = open(savedEventsFormatPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0666);
     if (fd < 0) {
         HiLog::Error(LABEL, "WriteEventsFormat: open %{public}s failed.", savedEventsFormatPath.c_str());
         return false;
     }
-
     const std::vector<std::string> priorityTracingCategory = {
         "events/sched/sched_waking/format",
         "events/sched/sched_wakeup/format",
@@ -559,16 +557,16 @@ bool WriteEventsFormat(std::ofstream &ofs)
         "events/binder/binder_transaction_received/format",
     };
     uint8_t buffer[PAGE_SIZE];
-    int len = 0;
     for (size_t i = 0; i < priorityTracingCategory.size(); i++) {
         std::string srcPath = g_traceRootPath + priorityTracingCategory[i];
-        int srcFd = open(srcPath.c_str(), O_RDONLY);
+        std::string srcSpecPath = CanonicalizeSpecPath(srcPath.c_str());
+        int srcFd = open(srcSpecPath.c_str(), O_RDONLY);
         if (srcFd < 0) {
             HiLog::Error(LABEL, "WriteEventsFormat: open %{public}s failed.", srcPath.c_str());
             continue;
         }
         do {
-            len = read(srcFd, buffer, PAGE_SIZE);
+            int len = read(srcFd, buffer, PAGE_SIZE);
             if (len <= 0) {
                 close(srcFd);
                 break;
@@ -577,57 +575,57 @@ bool WriteEventsFormat(std::ofstream &ofs)
         } while (true);
     }
     close(fd);
-    
-    return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, savedEventsFormatPath, ofs);
+    return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, savedEventsFormatPath, outFd);
 }
 
-bool WriteCpuRaw(std::ofstream &ofs)
+bool WriteCpuRaw(int outFd)
 {
     int cpuNums = GetCpuProcessors();
     int ret = true;
     uint8_t type = CONTENT_TYPE_CPU_RAW;
     for (int i = 0; i < cpuNums; i++) {
         std::string src = g_traceRootPath + "per_cpu/cpu" + std::to_string(i) + "/trace_pipe_raw";
-        ret &= WriteFile(static_cast<uint8_t>(type + i), src, ofs);
+        if (!WriteFile(static_cast<uint8_t>(type + i), src, outFd)) {
+            ret = false;
+            break;
+        }
     }
     return ret;
 }
 
-bool WriteCmdlines(std::ofstream &ofs)
+bool WriteCmdlines(int outFd)
 {
     std::string cmdlinesPath = g_traceRootPath + "saved_cmdlines";
-    return WriteFile(CONTENT_TYPE_CMDLINES, cmdlinesPath, ofs);
+    return WriteFile(CONTENT_TYPE_CMDLINES, cmdlinesPath, outFd);
 }
 
-bool WriteTgids(std::ofstream &ofs)
+bool WriteTgids(int outFd)
 {
     std::string tgidsPath = g_traceRootPath + "saved_tgids";
-    return WriteFile(CONTENT_TYPE_TGIDS, tgidsPath, ofs);
+    return WriteFile(CONTENT_TYPE_TGIDS, tgidsPath, outFd);
 }
 
 bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
 {
     const int sleepTime = 1;
     const int fileSizeThreshold = 96 * 1024 * 1024;
-    std::ofstream ofs;
-    ofs.open(outputFileName, std::ios::out | std::ios::trunc);
-    if (!ofs.is_open()) {
-        HiLog::Error(LABEL, "DumpTraceLoop: open fail.");
+    int outFd = open(outputFileName.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0666);
+    if (outFd < 0) {
         return false;
     }
     struct TraceFileHeader header;
-    ofs.write(reinterpret_cast<char*>(&header), sizeof(header));
+    write(outFd, reinterpret_cast<char*>(&header), sizeof(header));
     while (g_dumpFlag) {
         if (isLimited && GetFileSize(outputFileName) > fileSizeThreshold) {
             break;
         }
         sleep(sleepTime);
-        WriteCpuRaw(ofs);
+        WriteCpuRaw(outFd);
     }
-    WriteCmdlines(ofs);
-    WriteTgids(ofs);
-    WriteEventsFormat(ofs);
-    ofs.close();
+    WriteCmdlines(outFd);
+    WriteTgids(outFd);
+    WriteEventsFormat(outFd);
+    close(outFd);
     return true;
 }
 
@@ -662,10 +660,10 @@ void ProcessDumpTask()
     g_dumpEnd = true;
 }
 
-void SearchFromTable(std::vector<std::string> &outputFiles, uint64_t nowSec)
+void SearchFromTable(std::vector<std::string> &outputFiles, int nowSec)
 {
-    const uint64_t maxInterval = 20;
-    const uint64_t agingTime = 30 * 60;
+    const int maxInterval = 20;
+    const int agingTime = 30 * 60;
 
     for (auto iter = g_traceFilesTable.begin(); iter != g_traceFilesTable.end();) {
         if (nowSec - iter->second >= agingTime) {
@@ -688,29 +686,30 @@ void SearchFromTable(std::vector<std::string> &outputFiles, uint64_t nowSec)
 bool ReadRawTrace(std::string &outputFileName)
 {
     // read trace data from /per_cpu/cpux/trace_pipe_raw
-    std::ofstream ofs;
-    ofs.open(outputFileName, std::ios::out | std::ios::trunc);
-    if (!ofs.is_open()) {
-        HiLog::Error(LABEL, "ReadRawTrace: open %{public}s failed.", outputFileName.c_str());
-        return TraceErrorCode::FILE_ERROR;
+    int outFd = open(outputFileName.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0666);
+    if (outFd < 0) {
+        return false;
     }
     struct TraceFileHeader header;
-    ofs.write(reinterpret_cast<char*>(&header), sizeof(header));
-    int ret = true;
-    ret &= WriteCpuRaw(ofs);
-    ret &= WriteCmdlines(ofs);
-    ret &= WriteTgids(ofs);
-    ret &= WriteEventsFormat(ofs);
-    ofs.close();
-    return ret;
+    write(outFd, reinterpret_cast<char*>(&header), sizeof(header));
+    if (!WriteCpuRaw(outFd)) {
+        HiLog::Error(LABEL, "WriteCpuRaw failed.");
+        close(outFd);
+        return false;
+    }
+    WriteCmdlines(outFd);
+    WriteTgids(outFd);
+    WriteEventsFormat(outFd);
+    close(outFd);
+    return true;
 }
 
 TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
 {
     struct timeval now = {0, 0};
     gettimeofday(&now, nullptr);
-    uint64_t nowSec = now.tv_sec;
-    uint64_t nowUsec = now.tv_usec;
+    int nowSec = now.tv_sec;
+    int nowUsec = now.tv_usec;
     if (!g_dumpEnd) {
         const int maxSleepTime = 10 * 2000; // 2s
         int cur = 0;
@@ -789,7 +788,7 @@ bool CpuTraceBufferSizeAdjust(std::vector<LastCpuInfo> &lastData, const int cpuN
     while (std::getline(statFile, data)) {
         if (data.substr(0, pos) == "cpu" && data[pos] != ' ') {
             CpuStat cpuStat = {};
-            int ret = sscanf_s(data.c_str(), "%*s %lld %lld %lld %lld %lld %lld %lld %lld %lld %lld", &cpuStat.user,
+            int ret = sscanf_s(data.c_str(), "%*s %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu", &cpuStat.user,
                                &cpuStat.nice, &cpuStat.system, &cpuStat.idle, &cpuStat.iowait, &cpuStat.irq,
                                &cpuStat.softirq, &cpuStat.steal, &cpuStat.guest, &cpuStat.guestNice);
             if (ret != formatNumber) {
@@ -899,7 +898,7 @@ bool ParseArgs(const std::string &args, TraceParams &cmdTraceParams, const std::
 {
     std::vector<std::string> argList = Split(args, ' ');
     for (std::string item : argList) {
-        int pos = item.find(":");
+        size_t pos = item.find(":");
         if (pos == std::string::npos) {
             HiLog::Error(LABEL, "ParseArgs: failed.");
             return false;
