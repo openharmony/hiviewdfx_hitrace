@@ -33,6 +33,10 @@ ohos_shared_library("libhitracechain") {
     install_enable = false
   }
 
+  innerapi_tags = [
+    "chipsetsdk_indirect",
+    "platformsdk",
+  ]
   part_name = "hitrace_native"
   subsystem_name = "hiviewdfx"
 }
