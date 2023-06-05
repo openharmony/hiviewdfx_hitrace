@@ -120,7 +120,6 @@ std::atomic<bool> g_dumpEnd(true);
 bool g_monitor = false; // close service monitor for now
 TraceMode g_traceMode = TraceMode::CLOSE;
 std::string g_traceRootPath;
-std::vector<std::pair<std::string, int>> g_traceFilesTable;
 std::vector<std::string> g_outputFilesForCmd;
 
 TraceParams g_currentTraceParams = {};
@@ -665,14 +664,15 @@ void SearchFromTable(std::vector<std::string> &outputFiles, int nowSec)
     const int maxInterval = 20;
     const int agingTime = 30 * 60;
 
-    for (auto iter = g_traceFilesTable.begin(); iter != g_traceFilesTable.end();) {
+    for (auto iter = OHOS::HiviewDFX::Hitrace::g_traceFilesTable.begin();
+            iter != OHOS::HiviewDFX::Hitrace::g_traceFilesTable.end();) {
         if (nowSec - iter->second >= agingTime) {
             // delete outdated trace file
             if (access(iter->first.c_str(), F_OK) == 0) {
                 remove(iter->first.c_str());
                 HiLog::Info(LABEL, "delete old %{public}s file success.", iter->first.c_str());
             }
-            iter = g_traceFilesTable.erase(iter);
+            iter = OHOS::HiviewDFX::Hitrace::g_traceFilesTable.erase(iter);
             continue;
         }
 
@@ -741,7 +741,7 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
     SearchFromTable(outputFiles, nowSec);
     if (ret) {
         outputFiles.push_back(outputFileName);
-        g_traceFilesTable.push_back({outputFileName, nowSec});
+        OHOS::HiviewDFX::Hitrace::g_traceFilesTable.push_back({outputFileName, nowSec});
     } else {
         HiLog::Error(LABEL, "DumpTraceInner: write %{public}s failed.", outputFileName.c_str());
         g_dumpEnd = true;
