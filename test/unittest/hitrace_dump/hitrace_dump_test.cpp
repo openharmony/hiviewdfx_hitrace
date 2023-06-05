@@ -48,7 +48,8 @@ uint64_t GetNow()
 {
     struct timeval now = {0, 0};
     gettimeofday(&now, nullptr);
-    return now.tv_sec * 1000000 + now.tv_usec;
+    int64_t unitUs = 1000000;
+    return now.tv_sec * unitUs + now.tv_usec;
 }
 
 bool CreateFile(std::string outputFileName)
@@ -272,7 +273,8 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_003, TestSize.Level0)
     HiLog::Info(LABEL, "DumpForServiceMode_003 cost: %{public}llu us.\n", end - start);
 
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
-    ASSERT_FALSE(TraverseFiles(ret.outputFiles, outputFileName)) << "Returned files that should have been deleted half an hour ago.";
+    ASSERT_FALSE(TraverseFiles(ret.outputFiles, outputFileName))
+        << "Returned files that should have been deleted half an hour ago.";
     ASSERT_TRUE(access(outputFileName.c_str(), F_OK) < 0) << "The file was not deleted half an hour ago";
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
