@@ -120,7 +120,6 @@ std::atomic<bool> g_dumpEnd(true);
 bool g_monitor = false; // close service monitor for now
 TraceMode g_traceMode = TraceMode::CLOSE;
 std::string g_traceRootPath;
-std::vector<std::pair<std::string, int>> g_traceFilesTable;
 std::vector<std::string> g_outputFilesForCmd;
 
 TraceParams g_currentTraceParams = {};
