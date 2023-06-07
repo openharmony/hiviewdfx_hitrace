@@ -645,6 +645,7 @@ void ProcessDumpTask()
         if (DumpTraceLoop(g_currentTraceParams.outputFile, false)) {
             g_outputFilesForCmd.push_back(g_currentTraceParams.outputFile);
         }
+        g_dumpEnd = true;
         return;
     }
     
@@ -952,7 +953,7 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
         return TAG_ERROR;
     }
 
-    if (tagGroups.size() == 0 && !CheckTagGroup(tagGroups, tagGroupTable)) {
+    if (tagGroups.size() == 0 || !CheckTagGroup(tagGroups, tagGroupTable)) {
         HiLog::Error(LABEL, "OpenTrace: TAG_ERROR.");
         return TAG_ERROR;
     }
