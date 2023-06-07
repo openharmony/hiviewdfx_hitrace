@@ -120,6 +120,7 @@ std::atomic<bool> g_dumpEnd(true);
 bool g_monitor = false; // close service monitor for now
 TraceMode g_traceMode = TraceMode::CLOSE;
 std::string g_traceRootPath;
+std::vector<std::pair<std::string, int>> g_traceFilesTable;
 std::vector<std::string> g_outputFilesForCmd;
 
 TraceParams g_currentTraceParams = {};
@@ -664,15 +665,14 @@ void SearchFromTable(std::vector<std::string> &outputFiles, int nowSec)
     const int maxInterval = 20;
     const int agingTime = 30 * 60;
 
-    for (auto iter = OHOS::HiviewDFX::Hitrace::g_hitraceFilesTable.begin();
-            iter != OHOS::HiviewDFX::Hitrace::g_hitraceFilesTable.end();) {
+    for (auto iter = g_traceFilesTable.begin(); iter != g_traceFilesTable.end();) {
         if (nowSec - iter->second >= agingTime) {
             // delete outdated trace file
             if (access(iter->first.c_str(), F_OK) == 0) {
                 remove(iter->first.c_str());
                 HiLog::Info(LABEL, "delete old %{public}s file success.", iter->first.c_str());
             }
-            iter = OHOS::HiviewDFX::Hitrace::g_hitraceFilesTable.erase(iter);
+            iter = g_traceFilesTable.erase(iter);
             continue;
         }
 
@@ -741,7 +741,7 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
     SearchFromTable(outputFiles, nowSec);
     if (ret) {
         outputFiles.push_back(outputFileName);
-        OHOS::HiviewDFX::Hitrace::g_hitraceFilesTable.push_back({outputFileName, nowSec});
+        g_traceFilesTable.push_back({outputFileName, nowSec});
     } else {
         HiLog::Error(LABEL, "DumpTraceInner: write %{public}s failed.", outputFileName.c_str());
         g_dumpEnd = true;
@@ -1075,6 +1075,16 @@ TraceErrorCode CloseTrace()
     g_traceMode = CLOSE;
     usleep(UNIT_TIME);
     return SUCCESS;
+}
+
+std::vector<std::pair<std::string, int>> GetTraceFilesTable()
+{
+    return g_traceFilesTable;
+}
+
+void SetTraceFilesTable(std::vector<std::pair<std::string, int>>& traceFilesTable)
+{
+    g_traceFilesTable = traceFilesTable;
 }
 
 } // Hitrace

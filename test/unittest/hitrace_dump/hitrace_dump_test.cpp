@@ -44,6 +44,13 @@ const std::string LOG_DIR = "/data/log/";
 
 std::string g_traceRootPath;
 
+void AddPair2Table(std::string outputFileName, int nowSec)
+{
+    std::vector<std::pair<std::string, int>> traceFilesTable = GetTraceFilesTable();
+    traceFilesTable.push_back({outputFileName, nowSec});
+    SetTraceFilesTable(traceFilesTable);
+}
+
 bool CreateFile(std::string outputFileName)
 {
     std::ofstream ofs;
@@ -55,14 +62,15 @@ bool CreateFile(std::string outputFileName)
 
 void EraseFile(std::string outputFileName)
 {
-    for (auto iter = OHOS::HiviewDFX::Hitrace::g_hitraceFilesTable.begin();
-                iter != OHOS::HiviewDFX::Hitrace::g_hitraceFilesTable.end();) {
+    std::vector<std::pair<std::string, int>> traceFilesTable = GetTraceFilesTable();
+    for (auto iter = traceFilesTable.begin(); iter != traceFilesTable.end();) {
         if (strcmp(iter->first.c_str(), outputFileName.c_str())) {
-            iter = OHOS::HiviewDFX::Hitrace::g_hitraceFilesTable.erase(iter);
+            iter = traceFilesTable.erase(iter);
             continue;
         }
         iter++;
     }
+    SetTraceFilesTable(traceFilesTable);
 }
 
 bool TraverseFiles(std::vector<std::string> files, std::string outputFileName)
@@ -212,14 +220,14 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_002, TestSize.Level0)
 
     struct timeval now = {0, 0};
     gettimeofday(&now, nullptr);
-    uint64_t nowSec = now.tv_sec;
-    uint64_t nowUsec = now.tv_usec;
+    int nowSec = now.tv_sec;
+    int nowUsec = now.tv_usec;
     nowSec--;
     std::string outputFileName = DEFAULT_OUTPUT_DIR + "trace_" + std::to_string(nowSec)
         + "_" + std::to_string(nowUsec) + ".sys";
     ASSERT_TRUE(CreateFile(outputFileName)) << "create log file failed.";
-    OHOS::HiviewDFX::Hitrace::g_hitraceFilesTable.push_back({outputFileName, nowSec});
     HiLog::Info(LABEL, "outputFileName: %{public}s", outputFileName.c_str());
+    AddPair2Table(outputFileName, nowSec);
     
     TraceRetInfo ret = DumpTrace();
     // Remove outputFileName in g_hitraceFilesTable
@@ -242,15 +250,15 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_003, TestSize.Level0)
 
     struct timeval now = {0, 0};
     gettimeofday(&now, nullptr);
-    uint64_t nowSec = now.tv_sec;
-    uint64_t nowUsec = now.tv_usec;
+    int nowSec = now.tv_sec;
+    int nowUsec = now.tv_usec;
     nowSec = nowSec - 1900;
     std::string outputFileName = DEFAULT_OUTPUT_DIR + "trace_" + std::to_string(nowSec)
         + "_" + std::to_string(nowUsec) + ".sys";
     ASSERT_TRUE(CreateFile(outputFileName)) << "create log file failed.";
-    OHOS::HiviewDFX::Hitrace::g_hitraceFilesTable.push_back({outputFileName, nowSec});
     HiLog::Info(LABEL, "outputFileName: %{public}s", outputFileName.c_str());
-    
+    AddPair2Table(outputFileName, nowSec);
+
     TraceRetInfo ret = DumpTrace();
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_FALSE(TraverseFiles(ret.outputFiles, outputFileName))
