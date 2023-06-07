@@ -45,7 +45,7 @@ struct TraceRetInfo {
     std::vector<std::string> outputFiles;
 };
 
-std::vector<std::pair<std::string, uint64_t>> g_traceFilesTable;
+std::vector<std::pair<std::string, uint64_t>> g_hitraceFilesTable;
 
 /**
  * Get the current trace mode.

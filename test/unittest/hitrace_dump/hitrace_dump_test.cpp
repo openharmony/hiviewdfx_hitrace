@@ -44,14 +44,6 @@ const std::string LOG_DIR = "/data/log/";
 
 std::string g_traceRootPath;
 
-uint64_t GetNow()
-{
-    struct timeval now = {0, 0};
-    gettimeofday(&now, nullptr);
-    int64_t unitUs = 1000000;
-    return now.tv_sec * unitUs + now.tv_usec;
-}
-
 bool CreateFile(std::string outputFileName)
 {
     std::ofstream ofs;
@@ -63,10 +55,10 @@ bool CreateFile(std::string outputFileName)
 
 void EraseFile(std::string outputFileName)
 {
-    for (auto iter = OHOS::HiviewDFX::Hitrace::g_traceFilesTable.begin();
-                iter != OHOS::HiviewDFX::Hitrace::g_traceFilesTable.end();) {
+    for (auto iter = OHOS::HiviewDFX::Hitrace::g_hitraceFilesTable.begin();
+                iter != OHOS::HiviewDFX::Hitrace::g_hitraceFilesTable.end();) {
         if (strcmp(iter->first.c_str(), outputFileName.c_str())) {
-            iter = OHOS::HiviewDFX::Hitrace::g_traceFilesTable.erase(iter);
+            iter = OHOS::HiviewDFX::Hitrace::g_hitraceFilesTable.erase(iter);
             continue;
         }
         iter++;
@@ -79,7 +71,7 @@ bool TraverseFiles(std::vector<std::string> files, std::string outputFileName)
     bool isExists = false;
     for (std::vector<std::string>::iterator iter = files.begin(); iter != files.end(); iter++) {
         isExists |= (strcmp(iter->c_str(), outputFileName.c_str()) == 0);
-        HiLog::Info(LABEL, "ret.outputFile%{public}d: %{public}s\n", i++, iter->c_str());
+        HiLog::Info(LABEL, "ret.outputFile%{public}d: %{public}s", i++, iter->c_str());
     }
     return isExists;
 }
@@ -160,13 +152,9 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_001, TestSize.Level0)
     const std::vector<std::string> tagGroups = {"scene_performance"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
 
-    uint64_t start = GetNow();
     TraceRetInfo ret = DumpTrace();
-    uint64_t end = GetNow();
-    HiLog::Info(LABEL, "DumpForServiceMode_001 cost: %{public}llu us.\n", end - start);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(ret.outputFiles.size() > 0);
-
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -222,7 +210,6 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_002, TestSize.Level0)
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(access(DEFAULT_OUTPUT_DIR.c_str(), F_OK) == 0) << "/data/log/hitrace not exists.";
 
-    uint64_t start = GetNow();
     struct timeval now = {0, 0};
     gettimeofday(&now, nullptr);
     uint64_t nowSec = now.tv_sec;
@@ -231,15 +218,12 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_002, TestSize.Level0)
     std::string outputFileName = DEFAULT_OUTPUT_DIR + "trace_" + std::to_string(nowSec)
         + "_" + std::to_string(nowUsec) + ".sys";
     ASSERT_TRUE(CreateFile(outputFileName)) << "create log file failed.";
-    OHOS::HiviewDFX::Hitrace::g_traceFilesTable.push_back({outputFileName, nowSec});
-    HiLog::Info(LABEL, "outputFileName: %{public}s\n", outputFileName.c_str());
+    OHOS::HiviewDFX::Hitrace::g_hitraceFilesTable.push_back({outputFileName, nowSec});
+    HiLog::Info(LABEL, "outputFileName: %{public}s", outputFileName.c_str());
     
     TraceRetInfo ret = DumpTrace();
-    // Remove outputFileName in g_traceFilesTable
+    // Remove outputFileName in g_hitraceFilesTable
     EraseFile(outputFileName);
-    uint64_t end = GetNow();
-    HiLog::Info(LABEL, "DumpForServiceMode_002 cost: %{public}llu us.\n", end - start);
-
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(TraverseFiles(ret.outputFiles, outputFileName)) << "file created by user is not exists.";
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
@@ -256,7 +240,6 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_003, TestSize.Level0)
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(access(DEFAULT_OUTPUT_DIR.c_str(), F_OK) == 0) << "/data/log/hitrace not exists.";
 
-    uint64_t start = GetNow();
     struct timeval now = {0, 0};
     gettimeofday(&now, nullptr);
     uint64_t nowSec = now.tv_sec;
@@ -265,13 +248,10 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_003, TestSize.Level0)
     std::string outputFileName = DEFAULT_OUTPUT_DIR + "trace_" + std::to_string(nowSec)
         + "_" + std::to_string(nowUsec) + ".sys";
     ASSERT_TRUE(CreateFile(outputFileName)) << "create log file failed.";
-    OHOS::HiviewDFX::Hitrace::g_traceFilesTable.push_back({outputFileName, nowSec});
-    HiLog::Info(LABEL, "outputFileName: %{public}s\n", outputFileName.c_str());
+    OHOS::HiviewDFX::Hitrace::g_hitraceFilesTable.push_back({outputFileName, nowSec});
+    HiLog::Info(LABEL, "outputFileName: %{public}s", outputFileName.c_str());
     
     TraceRetInfo ret = DumpTrace();
-    uint64_t end = GetNow();
-    HiLog::Info(LABEL, "DumpForServiceMode_003 cost: %{public}llu us.\n", end - start);
-
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_FALSE(TraverseFiles(ret.outputFiles, outputFileName))
         << "Returned files that should have been deleted half an hour ago.";
