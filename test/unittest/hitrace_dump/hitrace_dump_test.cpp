@@ -187,6 +187,90 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_001, TestSize.Level0)
 }
 
 /**
+ * @tc.name: DumpForCmdMode_002
+ * @tc.desc: Specifies the path of the command in CMD_MODE.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForCmdMode_002, TestSize.Level0)
+{
+    std::string filePathName = "/data/local/tmp/mytrace.sys";
+    std::string args = "tags:sched clockType:boot bufferSize:1024 overwrite:1 output:" + filePathName;
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::SUCCESS);
+    sleep(1);
+
+    TraceRetInfo ret = DumpTraceOff();
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
+    
+    ASSERT_TRUE(TraverseFiles(ret.outputFiles, filePathName));
+  
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpForCmdMode_003
+ * @tc.desc: Invalid args verification in CMD_MODE.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForCmdMode_003, TestSize.Level0)
+{
+    std::string args = "tags:hdcc clockType:boot bufferSize:1024 overwrite:1 ";
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::TAG_ERROR);
+
+    args = "tags:hdcc clockType:boot bufferSize:1024 overwrite:1 descriptions:123";
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::TAG_ERROR);
+    
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::CALL_ERROR);
+}
+
+/**
+ * @tc.name: DumpForCmdMode_004
+ * @tc.desc: The CMD_MODE cannot be interrupted by the SERVICE_MODE.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForCmdMode_004, TestSize.Level0)
+{
+    std::string args = "tags:memory clockType:boot1 bufferSize:1024 overwrite:0";
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
+
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::TRACE_IS_OCCUPIED);
+
+    ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::SUCCESS);
+    sleep(1);
+    
+    TraceRetInfo ret = DumpTraceOff();
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(ret.outputFiles.size() > 0);
+
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+
+    args = "tags:memory clockType: bufferSize:1024 overwrite:1";
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+
+    args = "tags:memory clockType:perf bufferSize:1024 overwrite:1";
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpForCmdMode_005
+ * @tc.desc: Enable the cmd mode in non-close mode.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForCmdMode_005, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    std::string args = "tags:sched clockType:boot bufferSize:1024 overwrite:1";
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::CALL_ERROR);
+    ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::CALL_ERROR);
+    
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
  * @tc.name: ParammeterCheck_001
  * @tc.desc: Check parameter after interface call.
  * @tc.type: FUNC
@@ -266,4 +350,43 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_003, TestSize.Level0)
     ASSERT_TRUE(access(outputFileName.c_str(), F_OK) < 0) << "The file was not deleted half an hour ago";
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
+/**
+ * @tc.name: DumpForServiceMode_004
+ * @tc.desc: Invalid parameter verification in CMD_MODE.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForServiceMode_004, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups;
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::TAG_ERROR);
+
+    const std::vector<std::string> tagGroups1 = {"scene_performance1"};
+    ASSERT_TRUE(OpenTrace(tagGroups1) == TraceErrorCode::TAG_ERROR);
+    ASSERT_TRUE(DumpTrace().errorCode == TraceErrorCode::CALL_ERROR);
+
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::CALL_ERROR);
+}
+
+/**
+ * @tc.name: DumpForServiceMode_005
+ * @tc.desc: Enable the service mode in CMD_MODE.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForServiceMode_005, TestSize.Level0)
+{
+    std::string args = "tags:sched clockType:boot bufferSize:1024 overwrite:1";
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
+
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::TRACE_IS_OCCUPIED);
+    
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::CALL_ERROR);
+
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
 } // namespace
