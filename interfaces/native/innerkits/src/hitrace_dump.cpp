@@ -526,13 +526,33 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
     return true;
 }
 
+void WriteEventFile(std::string &srcPath, int outFd)
+{
+    uint8_t buffer[PAGE_SIZE];
+    std::string srcSpecPath = CanonicalizeSpecPath(srcPath.c_str());
+    int srcFd = open(srcSpecPath.c_str(), O_RDONLY);
+    if (srcFd < 0) {
+        HiLog::Error(LABEL, "WriteEventsFormat: open %{public}s failed.", srcPath.c_str());
+        return;
+    }
+    do {
+        int len = read(srcFd, buffer, PAGE_SIZE);
+        if (len <= 0) {
+            break;
+        }
+        write(outFd, buffer, len);
+    } while (true);
+    close(srcFd);
+}
+
 bool WriteEventsFormat(int outFd)
 {
     const std::string savedEventsFormatPath = DEFAULT_OUTPUT_DIR + "/saved_events_format";
     if (access(savedEventsFormatPath.c_str(), F_OK) != -1) {
         return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, savedEventsFormatPath, outFd);
     }
-    int fd = open(savedEventsFormatPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0666);
+    std::string filePath = CanonicalizeSpecPath(savedEventsFormatPath.c_str());
+    int fd = open(filePath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
     if (fd < 0) {
         HiLog::Error(LABEL, "WriteEventsFormat: open %{public}s failed.", savedEventsFormatPath.c_str());
         return false;
@@ -556,26 +576,12 @@ bool WriteEventsFormat(int outFd)
         "events/binder/binder_transaction/format",
         "events/binder/binder_transaction_received/format",
     };
-    uint8_t buffer[PAGE_SIZE];
     for (size_t i = 0; i < priorityTracingCategory.size(); i++) {
         std::string srcPath = g_traceRootPath + priorityTracingCategory[i];
-        std::string srcSpecPath = CanonicalizeSpecPath(srcPath.c_str());
-        int srcFd = open(srcSpecPath.c_str(), O_RDONLY);
-        if (srcFd < 0) {
-            HiLog::Error(LABEL, "WriteEventsFormat: open %{public}s failed.", srcPath.c_str());
-            continue;
-        }
-        do {
-            int len = read(srcFd, buffer, PAGE_SIZE);
-            if (len <= 0) {
-                close(srcFd);
-                break;
-            }
-            write(fd, buffer, len);
-        } while (true);
+        WriteEventFile(srcPath, fd);
     }
     close(fd);
-    return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, savedEventsFormatPath, outFd);
+    return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, filePath, outFd);
 }
 
 bool WriteCpuRaw(int outFd)
@@ -590,6 +596,24 @@ bool WriteCpuRaw(int outFd)
             break;
         }
     }
+    return ret;
+}
+
+bool WriteCpuSnapshotRaw(int outFd)
+{
+    WriteStrToFile("snapshot", "1");
+    int cpuNums = GetCpuProcessors();
+    int ret = true;
+    uint8_t type = CONTENT_TYPE_CPU_RAW;
+    for (int i = 0; i < cpuNums; i++) {
+        std::string src = g_traceRootPath + "per_cpu/cpu" + std::to_string(i) + "/snapshot_raw";
+        if (!WriteFile(static_cast<uint8_t>(type + i), src, outFd)) {
+            ret = false;
+            break;
+        }
+    }
+    WriteStrToFile("snapshot", "0");
+    HiLog::Info(LABEL, "WriteCpuSnapshotRaw: read snapshot_raw done.");
     return ret;
 }
 
@@ -609,14 +633,15 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
 {
     const int sleepTime = 1;
     const int fileSizeThreshold = 96 * 1024 * 1024;
-    int outFd = open(outputFileName.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0666);
+    std::string outPath = CanonicalizeSpecPath(outputFileName.c_str());
+    int outFd = open(outPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
     if (outFd < 0) {
         return false;
     }
     struct TraceFileHeader header;
     write(outFd, reinterpret_cast<char*>(&header), sizeof(header));
     while (g_dumpFlag) {
-        if (isLimited && GetFileSize(outputFileName) > fileSizeThreshold) {
+        if (isLimited && GetFileSize(outPath) > fileSizeThreshold) {
             break;
         }
         sleep(sleepTime);
@@ -663,7 +688,7 @@ void ProcessDumpTask()
 
 void SearchFromTable(std::vector<std::string> &outputFiles, int nowSec)
 {
-    const int maxInterval = 20;
+    const int maxInterval = 8;
     const int agingTime = 30 * 60;
 
     for (auto iter = g_traceFilesTable.begin(); iter != g_traceFilesTable.end();) {
@@ -684,25 +709,47 @@ void SearchFromTable(std::vector<std::string> &outputFiles, int nowSec)
     }
 }
 
+bool CheckTraceSnapshot()
+{
+    const std::string snapshotPath = g_traceRootPath + "snapshot";
+    const std::string snapshotRawPath = g_traceRootPath + "per_cpu/cpu0/snapshot_raw";
+    if (access(snapshotPath.c_str(), F_OK) != 0) {
+        return false;
+    }
+
+    if (access(snapshotRawPath.c_str(), F_OK) != 0) {
+        return false;
+    }
+    return true;
+}
+
 bool ReadRawTrace(std::string &outputFileName)
 {
     // read trace data from /per_cpu/cpux/trace_pipe_raw
-    int outFd = open(outputFileName.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0666);
+    std::string outPath = CanonicalizeSpecPath(outputFileName.c_str());
+    int outFd = open(outPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
     if (outFd < 0) {
         return false;
     }
     struct TraceFileHeader header;
     write(outFd, reinterpret_cast<char*>(&header), sizeof(header));
-    if (!WriteCpuRaw(outFd)) {
-        HiLog::Error(LABEL, "WriteCpuRaw failed.");
-        close(outFd);
-        return false;
+
+    bool isSnapshot = CheckTraceSnapshot();
+
+    bool ret = false;
+    if (isSnapshot) {
+        ret = WriteCpuSnapshotRaw(outFd);
+    } else {
+        ret = WriteCpuRaw(outFd);
     }
-    WriteCmdlines(outFd);
-    WriteTgids(outFd);
-    WriteEventsFormat(outFd);
+
+    if (ret && WriteCmdlines(outFd) && WriteTgids(outFd) && WriteEventsFormat(outFd)) {
+        close(outFd);
+        return true;
+    }
+    HiLog::Error(LABEL, "ReadRawTrace failed.");
     close(outFd);
-    return true;
+    return false;
 }
 
 TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
@@ -783,7 +830,7 @@ bool CpuTraceBufferSizeAdjust(std::vector<LastCpuInfo> &lastData, const int cpuN
     }
     std::string data;
     std::vector<CpuStat> cpuStats;
-    
+
     const int pos = 3;
     const int formatNumber = 10;
     while (std::getline(statFile, data)) {
@@ -800,7 +847,7 @@ bool CpuTraceBufferSizeAdjust(std::vector<LastCpuInfo> &lastData, const int cpuN
         }
     }
     statFile.close();
-    if (cpuNums != cpuStats.size()) {
+    if (cpuNums != (int)cpuStats.size()) {
         HiLog::Error(LABEL, "CpuTraceBufferSizeAdjust: read /proc/stat error.");
         return false;
     }
