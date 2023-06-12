@@ -27,6 +27,7 @@ ohos_shared_library("libhitracechain") {
   external_deps = [ "hilog_native:libhilog" ]
 
   output_extension = "so"
+
   if (build_public_version) {
     install_enable = true
   } else {
@@ -37,7 +38,11 @@ ohos_shared_library("libhitracechain") {
     "chipsetsdk_indirect",
     "platformsdk",
   ]
+
+  version_script = "libhitracechain.map"
+
   part_name = "hitrace_native"
+
   subsystem_name = "hiviewdfx"
 }
 

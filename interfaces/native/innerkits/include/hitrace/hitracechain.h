@@ -26,14 +26,53 @@ namespace OHOS {
 namespace HiviewDFX {
 class HiTraceChain final {
 public:
+    /**
+     * @brief Start tracing a process impl.
+     * @param name      name or description for current trace.
+     * @param flags     trace flags to be set for current trace.
+     * @return trace id.
+     */
     static HiTraceId Begin(const std::string& name, int flags);
+
+    /**
+     * @brief Stop process tracing and clear trace id of current thread
+     *     if the given trace id is valid, otherwise do nothing.
+     * @param id      the trace id to end.
+     */
     static void End(const HiTraceId& id);
+
+    // Get trace id of current thread, and return a invalid trace id if no
+    // trace id belong to current thread.
     static HiTraceId GetId();
+
+    /**
+     * @brief Set id as trace id of current thread. Do nothing if id is invalid.
+     * @param id      the trace id to set.
+     */
     static void SetId(const HiTraceId& id);
+
+    // Clear trace id of current thread and set it invalid.
     static void ClearId();
+
+    // Create a new span id according to the trace id of current thread.
     static HiTraceId CreateSpan();
+
+    /**
+     * @brief tracepoint hitracechain information.
+     * @param type      type of tracepoint.
+     * @param id        the trace id of current thread.
+     * @param fmt       format of trace information.
+     */
     static void Tracepoint(HiTraceTracepointType type, const HiTraceId& id, const char* fmt, ...)
         __attribute__((__format__(os_log, 3, 4)));
+
+    /**
+     * @brief tracepoint hitracechain information.
+     * @param mode      mode of communication.
+     * @param type      type of tracepoint.
+     * @param id        the trace id of current thread.
+     * @param fmt       format of trace information.
+     */
     static void Tracepoint(HiTraceCommunicationMode mode, HiTraceTracepointType type, const HiTraceId& id,
         const char* fmt, ...) __attribute__((__format__(os_log, 4, 5)));
 private:
