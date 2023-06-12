@@ -29,17 +29,63 @@ public:
     HiTraceId(const uint8_t* pIdArray, int len);
     ~HiTraceId() = default;
 
+    // Judge whether the trace id is valid or not.
     bool IsValid() const;
+
+    /**
+     * @brief Judge whether the trace id has enabled a trace flag or not.
+     * @param flag      the trace flag to check.
+     * @return true means this trace flag has been enabled.
+     */
     bool IsFlagEnabled(HiTraceFlag flag) const;
+
+    /**
+     * @brief Enable the designative trace flag for the trace id.
+     * @param flag      the trace flag to check.
+     */
     void EnableFlag(HiTraceFlag flag);
+
+    // Get trace flag of the trace id.
     int GetFlags() const;
+
+    /**
+     * @brief Set trace flag for the trace id.
+     * @param flag      the trace flag to set.
+     */
     void SetFlags(int flags);
+
+    // Get chain id of the trace id.
     uint64_t GetChainId() const;
+ 
+    /**
+     * @brief Set chain id for the trace id.
+     * @param chainId      the chain id to set.
+     */
     void SetChainId(uint64_t chainId);
+
+    // Get span id of the trace id.
     uint64_t GetSpanId() const;
+
+    /**
+     * @brief Set span id for the trace id.
+     * @param spanId      the span id to set.
+     */
     void SetSpanId(uint64_t spanId);
+
+    // Get parent span id of the trace id.
     uint64_t GetParentSpanId() const;
+
+    /**
+     * @brief Set parent span id for the trace id.
+     * @param parentSpanId      the parent span id to set.
+     */
     void SetParentSpanId(uint64_t parentSpanId);
+
+    /**
+     * @brief Serialize the trace id into bytes
+     * @param pIdArray      bytes array which load the serialized trace id.
+     * @param len           len of the array.
+     */
     int ToBytes(uint8_t* pIdArray, int len) const;
 
 private:
