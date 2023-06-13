@@ -1,0 +1,17 @@
+[
+    {
+        "name": "OH_HiTrace_StartTrace"
+    },
+    {
+        "name": "OH_HiTrace_FinishTrace"
+    },
+    {
+        "name": "OH_HiTrace_StartAsyncTrace"
+    },
+    {
+        "name": "OH_HiTrace_FinishAsyncTrace"
+    },
+    {
+        "name": "OH_HiTrace_CountTrace"
+    }
+]
