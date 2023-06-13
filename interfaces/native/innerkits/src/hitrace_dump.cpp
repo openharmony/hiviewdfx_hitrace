@@ -547,7 +547,7 @@ void WriteEventFile(std::string &srcPath, int outFd)
 
 bool WriteEventsFormat(int outFd)
 {
-    const std::string savedEventsFormatPath = DEFAULT_OUTPUT_DIR + "/saved_events_format";
+    const std::string savedEventsFormatPath = DEFAULT_OUTPUT_DIR + "saved_events_format";
     if (access(savedEventsFormatPath.c_str(), F_OK) != -1) {
         return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, savedEventsFormatPath, outFd);
     }
@@ -752,12 +752,31 @@ bool ReadRawTrace(std::string &outputFileName)
     return false;
 }
 
+std::string GenerateName()
+{
+    // eg: /data/log/hitrace/trace_localtime@monotime.sys
+    std::string name = DEFAULT_OUTPUT_DIR + "trace_";
+    // get localtime
+    time_t currentTime;
+    time(&currentTime);
+    struct tm* timeInfo = localtime(&currentTime);
+    const int bufferSize = 16;
+    char timeStr[bufferSize];
+    strftime(timeStr, bufferSize, "%Y%m%d%H%M%S", timeInfo);
+    name += std::string(timeStr);
+    // get monotime
+    struct timespec mts = {0, 0};
+    clock_gettime(CLOCK_MONOTONIC, &mts);
+    name += "@" + std::to_string(mts.tv_sec) + "-" + std::to_string(mts.tv_nsec) + ".sys";
+    HiLog::Info(LABEL, "Generate trace name: %{public}s.", name.c_str());
+    return name;
+}
+
 TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
 {
     struct timeval now = {0, 0};
     gettimeofday(&now, nullptr);
     int nowSec = now.tv_sec;
-    int nowUsec = now.tv_usec;
     if (!g_dumpEnd) {
         const int maxSleepTime = 10 * 2000; // 2s
         int cur = 0;
@@ -781,8 +800,7 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
         HiLog::Info(LABEL, "DumpTraceInner: creat %{public}s success.", DEFAULT_OUTPUT_DIR.c_str());
     }
 
-    std::string outputFileName = DEFAULT_OUTPUT_DIR + "trace_" + std::to_string(nowSec)
-                                 + "_" + std::to_string(nowUsec) + ".sys";
+    std::string outputFileName = GenerateName();
     std::string reOutPath = CanonicalizeSpecPath(outputFileName.c_str());
     bool ret = ReadRawTrace(reOutPath);
 
