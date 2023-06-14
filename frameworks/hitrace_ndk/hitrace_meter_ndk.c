@@ -20,7 +20,7 @@ void OH_HiTrace_StartTrace(const char *name)
     StartTraceCwrapper(name);
 }
 
-void OH_HiTrace_FinishTrace()
+void OH_HiTrace_FinishTrace(void)
 {
     FinishTraceCwrapper();
 }

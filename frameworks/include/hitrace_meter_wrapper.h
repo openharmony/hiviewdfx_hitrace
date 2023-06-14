@@ -26,7 +26,7 @@ extern "C" {
 
 void StartTraceCwrapper(const char *value);
 
-void FinishTraceCwrapper();
+void FinishTraceCwrapper(void);
 
 void StartAsyncTraceCwrapper(const char *value, int32_t taskId);
 

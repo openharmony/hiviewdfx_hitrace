@@ -25,7 +25,7 @@ void StartTraceCwrapper(const char *value)
     StartTrace(HITRACE_TAG_APP, value);
 }
 
-void FinishTraceCwrapper()
+void FinishTraceCwrapper(void)
 {
     FinishTrace(HITRACE_TAG_APP);
 }
