@@ -16,7 +16,7 @@
       "SystemCapability.HiviewDFX.HiTrace"
     ],
     "adapted_system_type": [
-      "standard"
+      "small,standard"
     ],
     "rom": "330KB",
     "ram": "~320KB",
