@@ -30,7 +30,7 @@ ohos_shared_library("hitracechain_napi") {
   deps = [ "../../../native/innerkits:libhitracechain" ]
 
   external_deps = [
-    "hilog_native:libhilog",
+    "hilog:libhilog",
     "napi:ace_napi",
   ]
 
@@ -45,7 +45,7 @@ ohos_shared_library("hitracemeter_napi") {
   sources = [ "./hitracemeter/napi_hitrace_meter.cpp" ]
   deps = [ "../../../native/innerkits:hitrace_meter" ]
   external_deps = [
-    "hilog_native:libhilog",
+    "hilog:libhilog",
     "napi:ace_napi",
   ]
 
