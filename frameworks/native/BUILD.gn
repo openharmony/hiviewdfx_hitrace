@@ -24,7 +24,7 @@ ohos_source_set("hitracechain_source") {
 
   external_deps = [
     "c_utils:utils",
-    "hilog_native:libhilog",
+    "hilog:libhilog",
   ]
 
   part_name = "hitrace_native"

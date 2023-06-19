@@ -34,7 +34,7 @@ ohos_unittest("HitraceCTest") {
 
   external_deps = [
     "c_utils:utils",
-    "hilog_native:libhilog",
+    "hilog:libhilog",
   ]
 }
 
@@ -54,7 +54,7 @@ ohos_unittest("HitraceCppTest") {
 
   external_deps = [
     "c_utils:utils",
-    "hilog_native:libhilog",
+    "hilog:libhilog",
   ]
 }
 
@@ -83,7 +83,7 @@ ohos_unittest("HitraceNDKTest") {
 
   external_deps = [
     "c_utils:utils",
-    "hilog_native:libhilog",
+    "hilog:libhilog",
     "init:libbegetutil",
   ]
 }
@@ -102,7 +102,7 @@ ohos_unittest("HitraceDumpTest") {
 
   external_deps = [
     "c_utils:utils",
-    "hilog_native:libhilog",
+    "hilog:libhilog",
     "init:libbegetutil",
   ]
 }

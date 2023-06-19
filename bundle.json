@@ -23,7 +23,7 @@
     "deps": {
       "components": [
         "c_utils",
-        "hilog_native",
+        "hilog",
         "init",
         "napi"
       ],

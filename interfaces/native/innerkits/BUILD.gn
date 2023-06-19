@@ -24,7 +24,7 @@ ohos_shared_library("libhitracechain") {
 
   deps = [ "../../../frameworks/native:hitracechain_source" ]
 
-  external_deps = [ "hilog_native:libhilog" ]
+  external_deps = [ "hilog:libhilog" ]
 
   output_extension = "so"
 
@@ -58,7 +58,7 @@ ohos_static_library("hitrace_inner") {
   sources = [ "src/hitrace_meter.cpp" ]
   public_configs = [ ":hitrace_meter_config" ]
   external_deps = [
-    "hilog_native:libhilog",
+    "hilog:libhilog",
     "init:libbeget_proxy",
     "init:libbegetutil",
   ]
@@ -79,7 +79,7 @@ ohos_shared_library("hitrace_dump") {
 
   external_deps = [
     "c_utils:utils",
-    "hilog_native:libhilog",
+    "hilog:libhilog",
     "init:libbegetutil",
   ]
 
