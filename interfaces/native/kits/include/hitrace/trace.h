@@ -53,7 +53,6 @@
  *     <...>-2638    (-------) [002] ....   458.904382: tracing_mark_write: C|2638|H:hitraceTest 500 \n
  *
  * @syscap SystemCapability.HiviewDFX.HiTrace
- * 
  * @since 10
  */
 #include <stdint.h>
@@ -71,7 +70,6 @@ extern "C" {
  * @param name Name of a trace task.
  *
  * @syscap SystemCapability.HiviewDFX.HiTrace
- * 
  * @since 10
  */
 void OH_HiTrace_StartTrace(const char *name);
@@ -83,7 +81,6 @@ void OH_HiTrace_StartTrace(const char *name);
  * it with the <b>OH_HiTrace_StartTrace</b> API recently invoked in the service process.
  *
  * @syscap SystemCapability.HiviewDFX.HiTrace
- * 
  * @since 10
  */
 void OH_HiTrace_FinishTrace(void);
@@ -106,7 +103,6 @@ void OH_HiTrace_FinishTrace(void);
  * unique task ID together.
  *
  * @syscap SystemCapability.HiviewDFX.HiTrace
- * 
  * @since 10
  */
 void OH_HiTrace_StartAsyncTrace(const char *name, int32_t taskId);
@@ -124,7 +120,6 @@ void OH_HiTrace_StartAsyncTrace(const char *name, int32_t taskId);
  * unique task ID together.
  *
  * @syscap SystemCapability.HiviewDFX.HiTrace
- * 
  * @since 10
  */
 void OH_HiTrace_FinishAsyncTrace(const char *name, int32_t taskId);
@@ -139,7 +134,6 @@ void OH_HiTrace_FinishAsyncTrace(const char *name, int32_t taskId);
  * @param count Integer value. Generally, an integer variable can be passed.
  *
  * @syscap SystemCapability.HiviewDFX.HiTrace
- * 
  * @since 10
  */
 void OH_HiTrace_CountTrace(const char *name, int64_t count);
