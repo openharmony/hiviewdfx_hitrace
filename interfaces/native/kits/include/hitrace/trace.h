@@ -34,24 +34,26 @@
  *
  * @brief Defines APIs of the HiTraceMeter module for performance trace.
  *
- * Sample code:\n
- * Synchronous timeslice trace event:\n
+ * Sample code: \n
+ * Synchronous timeslice trace event: \n
  *     OH_HiTrace_StartTrace("hitraceTest");\n
- * 	   OH_HiTrace_FinishTrace();\n
+ *     OH_HiTrace_FinishTrace();\n
  * Output: \n
- *     <...>-1668    (-------) [003] ....   135.059377: tracing_mark_write: B|1668|H:hitraceTest\n
- *     <...>-1668    (-------) [003] ....   135.059415: tracing_mark_write: E|1668|\n
+ *     <...>-1668    (-------) [003] ....   135.059377: tracing_mark_write: B|1668|H:hitraceTest \n
+ *     <...>-1668    (-------) [003] ....   135.059415: tracing_mark_write: E|1668| \n
  * Asynchronous timeslice trace event:\n
- * 	   OH_HiTrace_StartAsyncTrace("hitraceTest", 123);\n
- *     OH_HiTrace_FinishAsyncTrace("hitraceTest", 123);\n
+ *     OH_HiTrace_StartAsyncTrace("hitraceTest", 123); \n
+ *     OH_HiTrace_FinishAsyncTrace("hitraceTest", 123); \n
  * Output: \n
- *     <...>-2477    (-------) [001] ....   396.427165: tracing_mark_write: S|2477|H:hitraceTest 123\n
- *     <...>-2477    (-------) [001] ....   396.427196: tracing_mark_write: F|2477|H:hitraceTest 123\n
+ *     <...>-2477    (-------) [001] ....   396.427165: tracing_mark_write: S|2477|H:hitraceTest 123 \n
+ *     <...>-2477    (-------) [001] ....   396.427196: tracing_mark_write: F|2477|H:hitraceTest 123 \n
  * Integer value trace event:\n
- *     OH_HiTrace_CountTrace("hitraceTest", 500);\n
+ *     OH_HiTrace_CountTrace("hitraceTest", 500); \n
  * Output: \n
- *     <...>-2638    (-------) [002] ....   458.904382: tracing_mark_write: C|2638|H:hitraceTest 500\n
+ *     <...>-2638    (-------) [002] ....   458.904382: tracing_mark_write: C|2638|H:hitraceTest 500 \n
  *
+ * @syscap SystemCapability.HiviewDFX.HiTrace
+ * 
  * @since 10
  */
 #include <stdint.h>
@@ -62,31 +64,32 @@ extern "C" {
 
 /**
  * @brief Marks the start of a synchronous trace task.
- * @syscap SystemCapability.HiviewDFX.HiTrace
  *
  * The <b>OH_HiTrace_StartTrace</b> and <b>OH_HiTrace_FinishTrace</b> APIs must be used in pairs.
  * The two APIs can be used in nested mode. The stack data structure is used for matching during trace data parsing.
  *
  * @param name Name of a trace task.
  *
+ * @syscap SystemCapability.HiviewDFX.HiTrace
+ * 
  * @since 10
  */
 void OH_HiTrace_StartTrace(const char *name);
 
 /**
  * @brief Marks the end of a synchronous trace task.
- * @syscap SystemCapability.HiviewDFX.HiTrace
  *
  * This API must be used with <b>OH_HiTrace_StartTrace</b> in pairs. During trace data parsing, the system matches
  * it with the <b>OH_HiTrace_StartTrace</b> API recently invoked in the service process.
  *
+ * @syscap SystemCapability.HiviewDFX.HiTrace
+ * 
  * @since 10
  */
 void OH_HiTrace_FinishTrace(void);
 
 /**
  * @brief Marks the start of an asynchronous trace task.
- * @syscap SystemCapability.HiviewDFX.HiTrace
  *
  * This API is called to implement performance trace in asynchronous manner. The start and end of an asynchronous
  * trace task do not occur in sequence. Therefore, a unique <b>taskId</b> is required to ensure proper data parsing.
@@ -102,13 +105,14 @@ void OH_HiTrace_FinishTrace(void);
  * sequence. Therefore, the start and end of an asynchronous trace need to be matched based on the task name and the
  * unique task ID together.
  *
+ * @syscap SystemCapability.HiviewDFX.HiTrace
+ * 
  * @since 10
  */
 void OH_HiTrace_StartAsyncTrace(const char *name, int32_t taskId);
 
 /**
  * @brief Marks the end of an asynchronous trace task.
- * @syscap SystemCapability.HiviewDFX.HiTrace
  *
  * This API is called in the callback function after an asynchronous trace is complete.
  * It is used with <b>OH_HiTrace_StartAsyncTrace</b> in pairs. Its name and task ID must be the same as those of
@@ -119,13 +123,14 @@ void OH_HiTrace_StartAsyncTrace(const char *name, int32_t taskId);
  * sequence. Therefore, the start and end of an asynchronous trace need to be matched based on the task name and the
  * unique task ID together.
  *
+ * @syscap SystemCapability.HiviewDFX.HiTrace
+ * 
  * @since 10
  */
 void OH_HiTrace_FinishAsyncTrace(const char *name, int32_t taskId);
 
 /**
  * @brief Traces the value change of an integer variable based on its name.
- * @syscap SystemCapability.HiviewDFX.HiTrace
  *
  * This API can be executed for multiple times to trace the value change of a given integer variable at different
  * time points.
@@ -133,6 +138,8 @@ void OH_HiTrace_FinishAsyncTrace(const char *name, int32_t taskId);
  * @param name Name of the integer variable. It does not need to be the same as the real variable name.
  * @param count Integer value. Generally, an integer variable can be passed.
  *
+ * @syscap SystemCapability.HiviewDFX.HiTrace
+ * 
  * @since 10
  */
 void OH_HiTrace_CountTrace(const char *name, int64_t count);
