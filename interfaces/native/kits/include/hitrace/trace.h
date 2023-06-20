@@ -62,6 +62,7 @@ extern "C" {
 
 /**
  * @brief Marks the start of a synchronous trace task.
+ * @syscap SystemCapability.HiviewDFX.HiTrace
  *
  * The <b>OH_HiTrace_StartTrace</b> and <b>OH_HiTrace_FinishTrace</b> APIs must be used in pairs.
  * The two APIs can be used in nested mode. The stack data structure is used for matching during trace data parsing.
@@ -74,6 +75,7 @@ void OH_HiTrace_StartTrace(const char *name);
 
 /**
  * @brief Marks the end of a synchronous trace task.
+ * @syscap SystemCapability.HiviewDFX.HiTrace
  *
  * This API must be used with <b>OH_HiTrace_StartTrace</b> in pairs. During trace data parsing, the system matches
  * it with the <b>OH_HiTrace_StartTrace</b> API recently invoked in the service process.
@@ -84,6 +86,7 @@ void OH_HiTrace_FinishTrace(void);
 
 /**
  * @brief Marks the start of an asynchronous trace task.
+ * @syscap SystemCapability.HiviewDFX.HiTrace
  *
  * This API is called to implement performance trace in asynchronous manner. The start and end of an asynchronous
  * trace task do not occur in sequence. Therefore, a unique <b>taskId</b> is required to ensure proper data parsing.
@@ -105,6 +108,7 @@ void OH_HiTrace_StartAsyncTrace(const char *name, int32_t taskId);
 
 /**
  * @brief Marks the end of an asynchronous trace task.
+ * @syscap SystemCapability.HiviewDFX.HiTrace
  *
  * This API is called in the callback function after an asynchronous trace is complete.
  * It is used with <b>OH_HiTrace_StartAsyncTrace</b> in pairs. Its name and task ID must be the same as those of
@@ -121,6 +125,7 @@ void OH_HiTrace_FinishAsyncTrace(const char *name, int32_t taskId);
 
 /**
  * @brief Traces the value change of an integer variable based on its name.
+ * @syscap SystemCapability.HiviewDFX.HiTrace
  *
  * This API can be executed for multiple times to trace the value change of a given integer variable at different
  * time points.
