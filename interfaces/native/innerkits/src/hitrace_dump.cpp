@@ -33,6 +33,7 @@
 #include <cinttypes>
 #include <utility>
 #include <json/json.h>
+#include <dirent.h>
 
 #include "parameters.h"
 #include "hilog/log.h"
@@ -759,10 +760,14 @@ std::string GenerateName()
     // get localtime
     time_t currentTime;
     time(&currentTime);
-    struct tm* timeInfo = localtime(&currentTime);
+    struct tm timeInfo = {};
     const int bufferSize = 16;
-    char timeStr[bufferSize];
-    strftime(timeStr, bufferSize, "%Y%m%d%H%M%S", timeInfo);
+    char timeStr[bufferSize] = {0};
+    if (localtime_r(&currentTime, &timeInfo) == nullptr) {
+        HiLog::Error(LABEL, "Get localtime failed.");
+        return "";
+    }
+    strftime(timeStr, bufferSize, "%Y%m%d%H%M%S", &timeInfo);
     name += std::string(timeStr);
     // get monotime
     struct timespec mts = {0, 0};
@@ -993,6 +998,32 @@ bool ParseArgs(const std::string &args, TraceParams &cmdTraceParams, const std::
     return false;
 }
 
+/**
+ * When the SERVICE_MODE is started, clear the remaining trace files in the folder.
+*/
+void ClearRemainingTrace()
+{
+    if (access(DEFAULT_OUTPUT_DIR.c_str(), F_OK) != 0) {
+        return;
+    }
+    DIR* dirPtr = opendir(DEFAULT_OUTPUT_DIR.c_str());
+    if (dirPtr == nullptr) {
+        HiLog::Error(LABEL, "opendir failed.");
+        return;
+    }
+    struct dirent* ptr = nullptr;
+    while ((ptr = readdir(dirPtr)) != nullptr) {
+        if (ptr->d_type == DT_REG) {
+            std::string subFileName = DEFAULT_OUTPUT_DIR + std::string(ptr->d_name);
+            if (remove(subFileName.c_str()) == 0) {
+                HiLog::Info(LABEL, "Delete old trace file: %{public}s success.", subFileName.c_str());
+            } else {
+                HiLog::Error(LABEL, "Delete old trace file: %{public}s failed.", subFileName.c_str());
+            }
+        }
+    }
+}
+
 } // namespace
 
 namespace OHOS {
@@ -1039,6 +1070,8 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
         return ret;
     }
     g_traceMode = SERVICE_MODE;
+
+    ClearRemainingTrace();
     // open SERVICE_MODE monitor thread
     std::thread auxiliaryTask(MonitorServiceTask);
     auxiliaryTask.detach();
