@@ -51,11 +51,15 @@ config("hitrace_meter_config") {
   include_dirs = [
     "include/hitrace_meter",
     "include",
+    "../../../frameworks/include/",
   ]
 }
 
 ohos_static_library("hitrace_inner") {
-  sources = [ "src/hitrace_meter.cpp" ]
+  sources = [
+    "src/hitrace_meter.cpp",
+    "src/hitrace_meter_wrapper.cpp",
+  ]
   public_configs = [ ":hitrace_meter_config" ]
   external_deps = [
     "hilog:libhilog",
