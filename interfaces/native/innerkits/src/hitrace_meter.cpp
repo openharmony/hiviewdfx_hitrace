@@ -130,7 +130,8 @@ void OpenTraceMarkerFile()
     if (ret != 0) {
         strcpy_s(g_pid, PID_BUF_SIZE, pidStr.c_str());
     }
-    HiLog::Error(LABEL, "pid[%{public}s] first get g_tagsProperty: %{public}s", pidStr.c_str(), to_string(g_tagsProperty.load()).c_str());
+    HiLog::Error(LABEL, "pid[%{public}s] first get g_tagsProperty: %{public}s", pidStr.c_str(),
+        to_string(g_tagsProperty.load()).c_str());
 
     g_isHitraceMeterInit = true;
 }
@@ -190,11 +191,11 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
         std::call_once(g_onceFlag, OpenTraceMarkerFile);
     }
     int changed = 0;
-    const char * paramValue = CachedParameterGetChanged(cachedHandle, &changed);
+    const char *paramValue = CachedParameterGetChanged(cachedHandle, &changed);
     if (changed == 1) {
         HiLog::Info(LABEL, "g_tagsProperty changed, previous is %{public}s.", to_string(g_tagsProperty.load()).c_str());
-        char *p = nullptr;
-        uint64_t tags = strtoul(paramValue, &p, 0);
+        char **p;
+        uint64_t tags = strtoul(paramValue, p, 0);
         g_tagsProperty = (tags | HITRACE_TAG_ALWAYS) & HITRACE_TAG_VALID_MASK;
         HiLog::Info(LABEL, "g_tagsProperty changed, now is %{public}s.", to_string(g_tagsProperty.load()).c_str());
     }

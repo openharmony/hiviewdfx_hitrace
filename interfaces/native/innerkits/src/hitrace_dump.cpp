@@ -962,11 +962,12 @@ TraceErrorCode HandleServiceTraceOpen(const std::vector<std::string> &tagGroups,
 
 void RemoveUnSpace(std::string str, std::string& args)
 {
+    const size_t symbolAndSpaceLen = 2;
     std::string strSpace = str + " ";
     while (true) {
         std::string::size_type index = args.find(strSpace);
         if (index != std::string::npos) {
-            args.replace(index, 2, str);
+            args.replace(index, symbolAndSpaceLen, str);
         } else {
             break;
         }
@@ -1006,7 +1007,8 @@ bool ParseArgs(const std::string &args, TraceParams &cmdTraceParams, const std::
         } else if (itemName == "output") {
             cmdTraceParams.outputFile = item.substr(pos + 1);
         } else {
-            HiLog::Error(LABEL, "Extra trace command line options appear when ParseArgs: %{public}s, return false.", itemName.c_str());
+            HiLog::Error(LABEL, "Extra trace command line options appear when ParseArgs: %{public}s, return false.",
+                itemName.c_str());
             return false;
         }
     }
