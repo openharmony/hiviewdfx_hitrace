@@ -231,6 +231,14 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
 }
 }; // namespace
 
+void UpdateTraceLabel()
+{
+    if (!g_isHitraceMeterInit) {
+        return;
+    }
+    g_tagsProperty = GetSysParamTags();
+}
+
 void SetTraceDisabled(bool disable)
 {
     g_isHitraceMeterDisabled = disable;
