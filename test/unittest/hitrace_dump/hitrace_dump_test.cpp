@@ -271,6 +271,26 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_005, TestSize.Level0)
 }
 
 /**
+ * @tc.name: DumpForCmdMode_006
+ * @tc.desc: Test the CMD_MODE when there's extra space in args.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForCmdMode_006, TestSize.Level0)
+{
+    std::string args = "tags: sched clockType: boot bufferSize:1024 overwrite: 1";
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
+
+    ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::SUCCESS);
+    sleep(1);
+    
+    TraceRetInfo ret = DumpTraceOff();
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(ret.outputFiles.size() > 0);
+
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
  * @tc.name: ParammeterCheck_001
  * @tc.desc: Check parameter after interface call.
  * @tc.type: FUNC
@@ -388,5 +408,4 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_005, TestSize.Level0)
 
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
-
 } // namespace

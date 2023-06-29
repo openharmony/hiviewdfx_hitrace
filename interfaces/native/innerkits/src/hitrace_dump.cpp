@@ -893,7 +893,7 @@ void MonitorServiceTask()
 
     while (true) {
         if (g_traceMode != TraceMode::SERVICE_MODE || !g_monitor) {
-            HiLog::Info(LABEL, "MonitorServiceTask: monitor thread exit.");
+            HiLog::Info(LABEL, "MonitorServiceTask: monitor thread exit because of g_monitor.");
             break;
         }
         if (curServiceTimes >= maxServiceTimes) {
@@ -960,6 +960,20 @@ TraceErrorCode HandleServiceTraceOpen(const std::vector<std::string> &tagGroups,
     return HandleTraceOpen(serviceTraceParams, allTags, tagGroupTable);
 }
 
+void RemoveUnSpace(std::string str, std::string& args)
+{
+    const size_t symbolAndSpaceLen = 2;
+    std::string strSpace = str + " ";
+    while (true) {
+        std::string::size_type index = args.find(strSpace);
+        if (index != std::string::npos) {
+            args.replace(index, symbolAndSpaceLen, str);
+        } else {
+            break;
+        }
+    }
+}
+
 /**
  * args:  tags:tag1,tags2... tagGroups:group1,group2... clockType:boot bufferSize:1024 overwrite:1 output:filename
  * cmdTraceParams:  Save the above parameters
@@ -967,12 +981,17 @@ TraceErrorCode HandleServiceTraceOpen(const std::vector<std::string> &tagGroups,
 bool ParseArgs(const std::string &args, TraceParams &cmdTraceParams, const std::map<std::string, TagCategory> &allTags,
                const std::map<std::string, std::vector<std::string>> &tagGroupTable)
 {
-    std::vector<std::string> argList = Split(args, ' ');
+    std::string userArgs = args;
+    std::string str = ":";
+    RemoveUnSpace(str, userArgs);
+    str = ",";
+    RemoveUnSpace(str, userArgs);
+    std::vector<std::string> argList = Split(userArgs, ' ');
     for (std::string item : argList) {
         size_t pos = item.find(":");
         if (pos == std::string::npos) {
-            HiLog::Error(LABEL, "ParseArgs: failed.");
-            return false;
+            HiLog::Error(LABEL, "trace command line without colon appears: %{public}s, continue.", item.c_str());
+            continue;
         }
         std::string itemName = item.substr(0, pos);
         if (itemName == "tags") {
@@ -988,7 +1007,8 @@ bool ParseArgs(const std::string &args, TraceParams &cmdTraceParams, const std::
         } else if (itemName == "output") {
             cmdTraceParams.outputFile = item.substr(pos + 1);
         } else {
-            HiLog::Error(LABEL, "ParseArgs: failed.");
+            HiLog::Error(LABEL, "Extra trace command line options appear when ParseArgs: %{public}s, return false.",
+                itemName.c_str());
             return false;
         }
     }
@@ -1097,7 +1117,7 @@ TraceErrorCode OpenTrace(const std::string &args)
         HiLog::Error(LABEL, "Hitrace OpenTrace: TAG_ERROR.");
         return TAG_ERROR;
     }
-    
+
     if (g_traceMode != CLOSE) {
         HiLog::Error(LABEL, "Hitrace OpenTrace: CALL_ERROR.");
         return CALL_ERROR;
@@ -1187,6 +1207,5 @@ void SetTraceFilesTable(std::vector<std::pair<std::string, int>>& traceFilesTabl
 }
 
 } // Hitrace
-
 } // HiviewDFX
 } // OHOS

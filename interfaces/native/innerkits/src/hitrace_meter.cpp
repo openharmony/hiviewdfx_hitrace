@@ -24,6 +24,7 @@
 #include <vector>
 #include "securec.h"
 #include "hilog/log.h"
+#include "param/sys_param.h"
 #include "parameter.h"
 #include "parameters.h"
 #include "hitrace_meter.h"
@@ -40,6 +41,7 @@ namespace {
 int g_markerFd = -1;
 std::once_flag g_onceFlag;
 std::once_flag g_onceWriteMarkerFailedFlag;
+CachedHandle cachedHandle;
 
 std::atomic<bool> g_isHitraceMeterDisabled(false);
 std::atomic<bool> g_isHitraceMeterInit(false);
@@ -64,12 +66,6 @@ enum MarkerType { MARKER_BEGIN, MARKER_END, MARKER_ASYNC_BEGIN, MARKER_ASYNC_END
 
 constexpr uint64_t HITRACE_TAG = 0xD002D33;
 constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, HITRACE_TAG, "HitraceMeter"};
-
-static void ParameterChange(const char* key, const char* value, void* context)
-{
-    HiLog::Info(LABEL, "ParameterChange enableflags %{public}s", value);
-    UpdateTraceLabel();
-}
 
 bool IsAppValid()
 {
@@ -125,17 +121,18 @@ void OpenTraceMarkerFile()
             return;
         }
     }
+    // get tags and pid
     g_tagsProperty = GetSysParamTags();
+    const char* devValue = "true";
+    cachedHandle = CachedParameterCreate(KEY_TRACE_TAG.c_str(), devValue);
     std::string pidStr = std::to_string(getpid());
     errno_t ret = strcpy_s(g_pid, PID_BUF_SIZE, pidStr.c_str());
     if (ret != 0) {
         strcpy_s(g_pid, PID_BUF_SIZE, pidStr.c_str());
     }
+    HiLog::Error(LABEL, "pid[%{public}s] first get g_tagsProperty: %{public}s", pidStr.c_str(),
+        to_string(g_tagsProperty.load()).c_str());
 
-    if (WatchParameter(KEY_TRACE_TAG.c_str(), ParameterChange, nullptr) != 0) {
-        HiLog::Error(LABEL, "WatchParameter %{public}s failed", KEY_TRACE_TAG.c_str());
-        return;
-    }
     g_isHitraceMeterInit = true;
 }
 
@@ -192,6 +189,14 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
             return;
         }
         std::call_once(g_onceFlag, OpenTraceMarkerFile);
+    }
+    int changed = 0;
+    const char *paramValue = CachedParameterGetChanged(cachedHandle, &changed);
+    if (changed == 1) {
+        HiLog::Info(LABEL, "g_tagsProperty changed, previous is %{public}s.", to_string(g_tagsProperty.load()).c_str());
+        uint64_t tags = strtoull(paramValue, nullptr, 0);
+        g_tagsProperty = (tags | HITRACE_TAG_ALWAYS) & HITRACE_TAG_VALID_MASK;
+        HiLog::Info(LABEL, "g_tagsProperty changed, now is %{public}s.", to_string(g_tagsProperty.load()).c_str());
     }
     if (UNEXPECTANTLY(g_tagsProperty & tag) && g_markerFd != -1) {
         // record fomart: "type|pid|name value".
