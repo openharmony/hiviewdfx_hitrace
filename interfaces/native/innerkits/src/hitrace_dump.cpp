@@ -459,7 +459,7 @@ bool SetTraceSetting(const TraceParams &traceParams, const std::map<std::string,
         WriteStrToFile("options/overwrite", "0");
     }
 
-    WriteStrToFile("saved_cmdlines_size", to_string(SAVED_CMDLINES_SIZE));
+    WriteStrToFile("saved_cmdlines_size", std::to_string(SAVED_CMDLINES_SIZE));
     WriteStrToFile("options/record-tgid", "1");
     WriteStrToFile("options/record-cmd", "1");
 

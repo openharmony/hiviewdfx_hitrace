@@ -233,7 +233,7 @@ static bool SetBufferSize(int bufferSize)
         fprintf(stderr, "Error: write \"nop\" to %s\n", currentTracerPath);
     }
     constexpr const char *bufferSizePath = "buffer_size_kb";
-    return WriteStrToFile(bufferSizePath, to_string(bufferSize));
+    return WriteStrToFile(bufferSizePath, std::to_string(bufferSize));
 }
 
 static bool SetClock(const string& timeclock)
@@ -284,7 +284,7 @@ static bool SetTgidEnable(bool enabled)
 static bool SetCmdLinesSize(int cmedLinesSize)
 {
     constexpr const char *savedCmdLineSizePath = "saved_cmdlines_size";
-    return WriteStrToFile(savedCmdLineSizePath, to_string(cmedLinesSize));
+    return WriteStrToFile(savedCmdLineSizePath, std::to_string(cmedLinesSize));
 }
 
 static bool DisableAllFtraceEvents()
@@ -312,7 +312,7 @@ static bool SetProperty(const string& property, const string& value)
 
 static bool SetTraceTagsEnabled(uint64_t tags)
 {
-    string value = to_string(tags);
+    string value = std::to_string(tags);
     return SetProperty(TRACE_TAG_PROPERTY, value);
 }
 
