@@ -337,8 +337,8 @@ static bool ClearUserSpaceSettings()
 
 static bool SetKernelSpaceSettings()
 {
-    if (!(SetBufferSize(g_bufferSizeKB) && SetClock(g_clock) &&
-        SetOverWriteEnable(g_overwrite) && SetTgidEnable(true))) {
+    if (!(SetBufferSize(g_bufferSizeKB) && SetClock(g_clock) && SetOverWriteEnable(g_overwrite) &&
+        SetTgidEnable(true) && SetCmdLinesSize(SAVED_CMDLINES_SIZE))) {
         fprintf(stderr, "Set trace kernel settings failed\n");
         return false;
     }
