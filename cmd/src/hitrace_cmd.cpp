@@ -71,6 +71,7 @@ constexpr const char *TRACE_MARKER_PATH = "trace_marker";
 // support customization of some parameters
 const int MIN_BUFFER_SIZE = 256;
 const int MAX_BUFFER_SIZE = 307200; // 300 MB
+const int SAVED_CMDLINES_SIZE = 640;
 constexpr unsigned int MAX_OUTPUT_LEN = 255;
 const int PAGE_SIZE_KB = 4; // 4 KB
 int g_traceDuration = 5;
