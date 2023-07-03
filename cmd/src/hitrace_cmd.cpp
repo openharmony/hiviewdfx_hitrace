@@ -59,6 +59,7 @@ const unsigned int CHUNK_SIZE = 65536;
 const int BLOCK_SIZE = 4096;
 const int SHELL_UID = 2000;
 const int WAIT_MILLISECONDS = 10;
+const int SAVED_CMDLINES_SIZE = 640;
 
 constexpr const char *TRACE_TAG_PROPERTY = "debug.hitrace.tags.enableflags";
 constexpr const char *TRACE_TAG_STATE = "debug.hitrace.enable.state";
@@ -71,7 +72,6 @@ constexpr const char *TRACE_MARKER_PATH = "trace_marker";
 // support customization of some parameters
 const int MIN_BUFFER_SIZE = 256;
 const int MAX_BUFFER_SIZE = 307200; // 300 MB
-const int SAVED_CMDLINES_SIZE = 640;
 constexpr unsigned int MAX_OUTPUT_LEN = 255;
 const int PAGE_SIZE_KB = 4; // 4 KB
 int g_traceDuration = 5;
