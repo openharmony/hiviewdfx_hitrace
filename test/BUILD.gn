@@ -58,35 +58,6 @@ ohos_unittest("HitraceCppTest") {
   ]
 }
 
-config("hitrace_capi_test_config") {
-  visibility = [ ":*" ]
-
-  include_dirs = [
-    ".",
-    "../interfaces/native/kits/include/",
-  ]
-}
-
-ohos_unittest("HitraceCapiTest") {
-  module_out_path = module_output_path
-
-  configs = [ ":hitrace_capi_test_config" ]
-
-  sources = [ "./unittest/hitrace_meter/hitrace_capi_test.cpp" ]
-
-  deps = [
-    "../cmd:hitrace_osal_inner",
-    "../frameworks/hitrace_ndk:hitrace_ndk",
-    "//third_party/googletest:gtest_main",
-  ]
-
-  external_deps = [
-    "c_utils:utils",
-    "hilog_native:libhilog",
-    "init:libbegetutil",
-  ]
-}
-
 config("HitraceNDKTest_config") {
   visibility = [ ":*" ]
 

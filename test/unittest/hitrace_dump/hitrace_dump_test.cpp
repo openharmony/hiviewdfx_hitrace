@@ -282,7 +282,7 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_006, TestSize.Level0)
 
     ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::SUCCESS);
     sleep(1);
-    
+
     TraceRetInfo ret = DumpTraceOff();
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(ret.outputFiles.size() > 0);

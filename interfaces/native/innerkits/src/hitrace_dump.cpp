@@ -962,9 +962,12 @@ TraceErrorCode HandleServiceTraceOpen(const std::vector<std::string> &tagGroups,
 
 void RemoveUnSpace(std::string str, std::string& args)
 {
+    int maxCircleTimes = 30;
+    int curTimes = 0;
     const size_t symbolAndSpaceLen = 2;
     std::string strSpace = str + " ";
-    while (true) {
+    while (curTimes < maxCircleTimes) {
+        curTimes++;
         std::string::size_type index = args.find(strSpace);
         if (index != std::string::npos) {
             args.replace(index, symbolAndSpaceLen, str);
@@ -1042,6 +1045,7 @@ void ClearRemainingTrace()
             }
         }
     }
+    closedir(dirPtr);
 }
 
 } // namespace
