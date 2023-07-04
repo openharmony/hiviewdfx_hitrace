@@ -59,6 +59,7 @@ const unsigned int CHUNK_SIZE = 65536;
 const int BLOCK_SIZE = 4096;
 const int SHELL_UID = 2000;
 const int WAIT_MILLISECONDS = 10;
+const int SAVED_CMDLINES_SIZE = 640;
 
 constexpr const char *TRACE_TAG_PROPERTY = "debug.hitrace.tags.enableflags";
 constexpr const char *TRACE_TAG_STATE = "debug.hitrace.enable.state";
@@ -232,7 +233,7 @@ static bool SetBufferSize(int bufferSize)
         fprintf(stderr, "Error: write \"nop\" to %s\n", currentTracerPath);
     }
     constexpr const char *bufferSizePath = "buffer_size_kb";
-    return WriteStrToFile(bufferSizePath, to_string(bufferSize));
+    return WriteStrToFile(bufferSizePath, std::to_string(bufferSize));
 }
 
 static bool SetClock(const string& timeclock)
@@ -280,6 +281,12 @@ static bool SetTgidEnable(bool enabled)
     return SetFtraceEnabled(recordTgidPath, enabled);
 }
 
+static bool SetCmdLinesSize(int cmdLinesSize)
+{
+    constexpr const char *savedCmdLineSizePath = "saved_cmdlines_size";
+    return WriteStrToFile(savedCmdLineSizePath, std::to_string(cmdLinesSize));
+}
+
 static bool DisableAllFtraceEvents()
 {
     bool isTrue = true;
@@ -305,7 +312,7 @@ static bool SetProperty(const string& property, const string& value)
 
 static bool SetTraceTagsEnabled(uint64_t tags)
 {
-    string value = to_string(tags);
+    string value = std::to_string(tags);
     return SetProperty(TRACE_TAG_PROPERTY, value);
 }
 
@@ -337,8 +344,8 @@ static bool ClearUserSpaceSettings()
 
 static bool SetKernelSpaceSettings()
 {
-    if (!(SetBufferSize(g_bufferSizeKB) && SetClock(g_clock) &&
-        SetOverWriteEnable(g_overwrite) && SetTgidEnable(true))) {
+    if (!(SetBufferSize(g_bufferSizeKB) && SetClock(g_clock) && SetOverWriteEnable(g_overwrite) &&
+        SetTgidEnable(true) && SetCmdLinesSize(SAVED_CMDLINES_SIZE))) {
         fprintf(stderr, "Set trace kernel settings failed\n");
         return false;
     }

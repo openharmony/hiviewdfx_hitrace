@@ -70,6 +70,7 @@ constexpr int UNIT_TIME = 100;
 
 const int DEFAULT_BUFFER_SIZE = 12 * 1024;
 const int HIGHER_BUFFER_SIZE = 18 * 1024;
+const int SAVED_CMDLINES_SIZE = 640;
 
 const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
 const std::string LOG_DIR = "/data/log/";
@@ -458,6 +459,7 @@ bool SetTraceSetting(const TraceParams &traceParams, const std::map<std::string,
         WriteStrToFile("options/overwrite", "0");
     }
 
+    WriteStrToFile("saved_cmdlines_size", std::to_string(SAVED_CMDLINES_SIZE));
     WriteStrToFile("options/record-tgid", "1");
     WriteStrToFile("options/record-cmd", "1");
 
