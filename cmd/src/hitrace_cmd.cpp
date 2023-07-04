@@ -281,10 +281,10 @@ static bool SetTgidEnable(bool enabled)
     return SetFtraceEnabled(recordTgidPath, enabled);
 }
 
-static bool SetCmdLinesSize(int cmedLinesSize)
+static bool SetCmdLinesSize(int cmdLinesSize)
 {
     constexpr const char *savedCmdLineSizePath = "saved_cmdlines_size";
-    return WriteStrToFile(savedCmdLineSizePath, std::to_string(cmedLinesSize));
+    return WriteStrToFile(savedCmdLineSizePath, std::to_string(cmdLinesSize));
 }
 
 static bool DisableAllFtraceEvents()
