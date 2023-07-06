@@ -41,6 +41,7 @@ using namespace std;
 using namespace OHOS::HiviewDFX::HitraceOsal;
 
 namespace {
+constexpr unsigned int MAX_OUTPUT_LEN = 255;
 constexpr struct option LONG_OPTIONS[] = {
     { "buffer_size",       required_argument, nullptr, 0 },
     { "trace_clock",       required_argument, nullptr, 0 },
@@ -55,20 +56,18 @@ constexpr struct option LONG_OPTIONS[] = {
     { "overwrite",         no_argument,       nullptr, 0 },
     { nullptr,             0,                 nullptr, 0 },
 };
-constexpr char *TRACE_TAG_PROPERTY = "debug.hitrace.tags.enableflags";
-constexpr char *TRACE_TAG_STATE = "debug.hitrace.enable.state";
+const char *TRACE_TAG_PROPERTY = "debug.hitrace.tags.enableflags";
+const char *TRACE_TAG_STATE = "debug.hitrace.enable.state";
 // various operating paths of ftrace
-constexpr char *TRACING_ON_PATH = "tracing_on";
-constexpr char *TRACE_PATH = "trace";
-constexpr char *TRACE_MARKER_PATH = "trace_marker";
-constexpr char *currentTracerPath = "current_tracer";
-constexpr char *bufferSizePath = "buffer_size_kb";
-constexpr char *traceClockPath = "trace_clock";
-constexpr char *overWritePath = "options/overwrite";
-constexpr char *recordTgidPath = "options/record-tgid";
-constexpr char *savedCmdLineSizePath = "saved_cmdlines_size";
-constexpr unsigned int MAX_OUTPUT_LEN = 255;
-
+const char *TRACING_ON_PATH = "tracing_on";
+const char *TRACE_PATH = "trace";
+const char *TRACE_MARKER_PATH = "trace_marker";
+const char *currentTracerPath = "current_tracer";
+const char *bufferSizePath = "buffer_size_kb";
+const char *traceClockPath = "trace_clock";
+const char *overWritePath = "options/overwrite";
+const char *recordTgidPath = "options/record-tgid";
+const char *savedCmdLineSizePath = "saved_cmdlines_size";
 const unsigned int CHUNK_SIZE = 65536;
 const int BLOCK_SIZE = 4096;
 const int SHELL_UID = 2000;
