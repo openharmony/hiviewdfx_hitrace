@@ -228,17 +228,17 @@ static string ReadFile(const string& filename)
 
 static bool SetBufferSize(int bufferSize)
 {
-    constexpr const char *currentTracerPath = "current_tracer";
+    const char *currentTracerPath = "current_tracer";
     if (!WriteStrToFile(currentTracerPath, "nop")) {
         fprintf(stderr, "Error: write \"nop\" to %s\n", currentTracerPath);
     }
-    constexpr const char *bufferSizePath = "buffer_size_kb";
+    const char *bufferSizePath = "buffer_size_kb";
     return WriteStrToFile(bufferSizePath, std::to_string(bufferSize));
 }
 
 static bool SetClock(const string& timeclock)
 {
-    constexpr const char *traceClockPath = "trace_clock";
+    const char *traceClockPath = "trace_clock";
     string allClocks = ReadFile(traceClockPath);
     size_t begin = allClocks.find("[");
     size_t end = allClocks.find("]");
@@ -271,19 +271,19 @@ static bool SetClock(const string& timeclock)
 
 static bool SetOverWriteEnable(bool enabled)
 {
-    constexpr const char *overWritePath = "options/overwrite";
+    const char *overWritePath = "options/overwrite";
     return SetFtraceEnabled(overWritePath, enabled);
 }
 
 static bool SetTgidEnable(bool enabled)
 {
-    constexpr const char *recordTgidPath = "options/record-tgid";
+    const char *recordTgidPath = "options/record-tgid";
     return SetFtraceEnabled(recordTgidPath, enabled);
 }
 
 static bool SetCmdLinesSize(int cmdLinesSize)
 {
-    constexpr const char *savedCmdLineSizePath = "saved_cmdlines_size";
+    const char *savedCmdLineSizePath = "saved_cmdlines_size";
     return WriteStrToFile(savedCmdLineSizePath, std::to_string(cmdLinesSize));
 }
 
