@@ -41,7 +41,6 @@ using namespace std;
 using namespace OHOS::HiviewDFX::HitraceOsal;
 
 namespace {
-constexpr unsigned int MAX_OUTPUT_LEN = 255;
 constexpr struct option LONG_OPTIONS[] = {
     { "buffer_size",       required_argument, nullptr, 0 },
     { "trace_clock",       required_argument, nullptr, 0 },
@@ -56,32 +55,25 @@ constexpr struct option LONG_OPTIONS[] = {
     { "overwrite",         no_argument,       nullptr, 0 },
     { nullptr,             0,                 nullptr, 0 },
 };
-const char *TRACE_TAG_PROPERTY = "debug.hitrace.tags.enableflags";
-const char *TRACE_TAG_STATE = "debug.hitrace.enable.state";
-// various operating paths of ftrace
-const char *TRACING_ON_PATH = "tracing_on";
-const char *TRACE_PATH = "trace";
-const char *TRACE_MARKER_PATH = "trace_marker";
-const char *currentTracerPath = "current_tracer";
-const char *bufferSizePath = "buffer_size_kb";
-const char *traceClockPath = "trace_clock";
-const char *overWritePath = "options/overwrite";
-const char *recordTgidPath = "options/record-tgid";
-const char *savedCmdLineSizePath = "saved_cmdlines_size";
 const unsigned int CHUNK_SIZE = 65536;
 const int BLOCK_SIZE = 4096;
 const int SHELL_UID = 2000;
 const int WAIT_MILLISECONDS = 10;
 const int SAVED_CMDLINES_SIZE = 640;
+
+constexpr const char *TRACE_TAG_PROPERTY = "debug.hitrace.tags.enableflags";
+constexpr const char *TRACE_TAG_STATE = "debug.hitrace.enable.state";
+
+// various operating paths of ftrace
+constexpr const char *TRACING_ON_PATH = "tracing_on";
+constexpr const char *TRACE_PATH = "trace";
+constexpr const char *TRACE_MARKER_PATH = "trace_marker";
+
 // support customization of some parameters
 const int MIN_BUFFER_SIZE = 256;
 const int MAX_BUFFER_SIZE = 307200; // 300 MB
+constexpr unsigned int MAX_OUTPUT_LEN = 255;
 const int PAGE_SIZE_KB = 4; // 4 KB
-
-const unsigned int START_NONE = 0;
-const unsigned int START_NORMAL = 1;
-const unsigned int START_ASYNC = 2;
-
 int g_traceDuration = 5;
 int g_bufferSizeKB = 2048;
 string g_clock = "boot";
@@ -90,6 +82,10 @@ string g_outputFile;
 bool g_compress = false;
 
 string g_traceRootPath;
+
+const unsigned int START_NONE = 0;
+const unsigned int START_NORMAL = 1;
+const unsigned int START_ASYNC = 2;
 unsigned int g_traceStart = START_NORMAL;
 bool g_traceStop = true;
 bool g_traceDump = true;
@@ -232,14 +228,17 @@ static string ReadFile(const string& filename)
 
 static bool SetBufferSize(int bufferSize)
 {
+    const char *currentTracerPath = "current_tracer";
     if (!WriteStrToFile(currentTracerPath, "nop")) {
         fprintf(stderr, "Error: write \"nop\" to %s\n", currentTracerPath);
     }
+    const char *bufferSizePath = "buffer_size_kb";
     return WriteStrToFile(bufferSizePath, std::to_string(bufferSize));
 }
 
 static bool SetClock(const string& timeclock)
 {
+    const char *traceClockPath = "trace_clock";
     string allClocks = ReadFile(traceClockPath);
     size_t begin = allClocks.find("[");
     size_t end = allClocks.find("]");
@@ -272,16 +271,19 @@ static bool SetClock(const string& timeclock)
 
 static bool SetOverWriteEnable(bool enabled)
 {
+    const char *overWritePath = "options/overwrite";
     return SetFtraceEnabled(overWritePath, enabled);
 }
 
 static bool SetTgidEnable(bool enabled)
 {
+    const char *recordTgidPath = "options/record-tgid";
     return SetFtraceEnabled(recordTgidPath, enabled);
 }
 
 static bool SetCmdLinesSize(int cmdLinesSize)
 {
+    const char *savedCmdLineSizePath = "saved_cmdlines_size";
     return WriteStrToFile(savedCmdLineSizePath, std::to_string(cmdLinesSize));
 }
 
