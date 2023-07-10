@@ -43,6 +43,11 @@ ohos_shared_library("libhitracechain") {
 
   part_name = "hitrace_native"
 
+  install_images = [
+    "system",
+    "updater",
+  ]
+
   subsystem_name = "hiviewdfx"
 }
 
