@@ -36,7 +36,7 @@ ohos_shared_library("hitracechain_napi") {
 
   relative_install_dir = "module"
 
-  part_name = "hitrace_native"
+  part_name = "hitrace"
 
   subsystem_name = "hiviewdfx"
 }
@@ -52,5 +52,5 @@ ohos_shared_library("hitracemeter_napi") {
   relative_install_dir = "module"
 
   subsystem_name = "hiviewdfx"
-  part_name = "hitrace_native"
+  part_name = "hitrace"
 }

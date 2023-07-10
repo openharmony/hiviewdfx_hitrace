@@ -1,5 +1,5 @@
 {
-  "name": "@ohos/hitrace_native",
+  "name": "@ohos/hitrace",
   "description": "cross-thread, cross-process, and cross-device service call chain",
   "version": "4.0",
   "license": "Apache License 2.0",
@@ -10,7 +10,7 @@
   "dirs": {},
   "scripts": {},
   "component": {
-    "name": "hitrace_native",
+    "name": "hitrace",
     "subsystem": "hiviewdfx",
     "syscap": [
       "SystemCapability.HiviewDFX.HiTrace"

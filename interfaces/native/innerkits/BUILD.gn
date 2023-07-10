@@ -41,7 +41,7 @@ ohos_shared_library("libhitracechain") {
 
   version_script = "libhitracechain.map"
 
-  part_name = "hitrace_native"
+  part_name = "hitrace"
 
   subsystem_name = "hiviewdfx"
 }
@@ -67,7 +67,7 @@ ohos_static_library("hitrace_inner") {
     "init:libbegetutil",
   ]
 
-  part_name = "hitrace_native"
+  part_name = "hitrace"
   subsystem_name = "hiviewdfx"
 }
 
@@ -87,7 +87,7 @@ ohos_shared_library("hitrace_dump") {
     "init:libbegetutil",
   ]
 
-  part_name = "hitrace_native"
+  part_name = "hitrace"
   subsystem_name = "hiviewdfx"
 }
 
@@ -105,7 +105,7 @@ ohos_shared_library("hitrace_meter") {
     "chipsetsdk",
     "platformsdk",
   ]
-  part_name = "hitrace_native"
+  part_name = "hitrace"
   subsystem_name = "hiviewdfx"
 }
 
@@ -116,7 +116,7 @@ ohos_prebuilt_etc("hitrace.para") {
     "updater",
   ]
   module_install_dir = "etc/param"
-  part_name = "hitrace_native"
+  part_name = "hitrace"
   subsystem_name = "hiviewdfx"
 }
 
@@ -127,7 +127,7 @@ ohos_prebuilt_etc("hitrace.para.dac") {
     "updater",
   ]
   module_install_dir = "etc/param"
-  part_name = "hitrace_native"
+  part_name = "hitrace"
   subsystem_name = "hiviewdfx"
 }
 

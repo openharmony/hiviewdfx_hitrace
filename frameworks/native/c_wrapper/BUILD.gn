@@ -26,6 +26,6 @@ ohos_shared_library("hitracechain_c_wrapper") {
 
   output_extension = "so"
 
-  part_name = "hitrace_native"
+  part_name = "hitrace"
   subsystem_name = "hiviewdfx"
 }

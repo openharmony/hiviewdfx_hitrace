@@ -27,7 +27,7 @@ ohos_static_library("hitrace_osal_inner") {
   external_deps = [ "init:libbegetutil" ]
 
   subsystem_name = "hiviewdfx"
-  part_name = "hitrace_native"
+  part_name = "hitrace"
 }
 
 ohos_executable("hitrace") {
@@ -46,14 +46,14 @@ ohos_executable("hitrace") {
     "//third_party/zlib",
   ]
   subsystem_name = "hiviewdfx"
-  part_name = "hitrace_native"
+  part_name = "hitrace"
 }
 
 ohos_prebuilt_etc("hitrace.cfg") {
   source = "./config/hitrace.cfg"
   relative_install_dir = "init"
   subsystem_name = "hiviewdfx"
-  part_name = "hitrace_native"
+  part_name = "hitrace"
 }
 
 ohos_executable("hitrace_example") {
@@ -61,7 +61,7 @@ ohos_executable("hitrace_example") {
   deps = [ "../interfaces/native/innerkits:hitrace_meter" ]
   install_enable = false
   subsystem_name = "hiviewdfx"
-  part_name = "hitrace_native"
+  part_name = "hitrace"
 }
 
 ohos_rust_executable("hitrace_example_rust") {
@@ -70,7 +70,7 @@ ohos_rust_executable("hitrace_example_rust") {
   deps = [ "../interfaces/rust/innerkits/hitrace_meter:hitrace_meter_rust" ]
   install_enable = false
   subsystem_name = "hiviewdfx"
-  part_name = "hitrace_native"
+  part_name = "hitrace"
 }
 
 group("hitrace_target") {

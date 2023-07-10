@@ -24,6 +24,6 @@ ohos_shared_library("hitrace_ndk") {
   deps = [ "../../interfaces/native/innerkits:hitrace_meter" ]
 
   innerapi_tags = [ "ndk" ]
-  part_name = "hitrace_native"
+  part_name = "hitrace"
   subsystem_name = "hiviewdfx"
 }
