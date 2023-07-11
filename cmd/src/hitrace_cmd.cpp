@@ -59,7 +59,7 @@ const unsigned int CHUNK_SIZE = 65536;
 const int BLOCK_SIZE = 4096;
 const int SHELL_UID = 2000;
 const int WAIT_MILLISECONDS = 10;
-const int SAVED_CMDLINES_SIZE = 2048;
+const int SAVED_CMDLINES_SIZE = 1024;
 
 constexpr const char *TRACE_TAG_PROPERTY = "debug.hitrace.tags.enableflags";
 constexpr const char *TRACE_TAG_STATE = "debug.hitrace.enable.state";
