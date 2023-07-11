@@ -70,7 +70,7 @@ constexpr int UNIT_TIME = 100;
 
 const int DEFAULT_BUFFER_SIZE = 12 * 1024;
 const int HIGHER_BUFFER_SIZE = 18 * 1024;
-const int SAVED_CMDLINES_SIZE = 640;
+const int SAVED_CMDLINES_SIZE = 1024;
 
 const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
 const std::string LOG_DIR = "/data/log/";
