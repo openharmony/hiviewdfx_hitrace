@@ -23,6 +23,6 @@ ohos_rust_unittest("rust_hitracechain_test") {
   deps =
       [ "../../../../interfaces/rust/innerkits/hitracechain:hitracechain_rust" ]
 
-  part_name = "hitrace_native"
+  part_name = "hitrace"
   subsystem_name = "hiviewdfx"
 }

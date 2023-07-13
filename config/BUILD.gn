@@ -17,5 +17,5 @@ ohos_prebuilt_etc("hitrace_utils") {
   source = "./hitrace_utils.json"
   relative_install_dir = "hiview"
   subsystem_name = "hiviewdfx"
-  part_name = "hitrace_native"
+  part_name = "hitrace"
 }
