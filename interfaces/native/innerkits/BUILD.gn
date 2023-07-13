@@ -111,6 +111,10 @@ ohos_shared_library("hitrace_meter") {
     "platformsdk",
   ]
   part_name = "hitrace"
+  install_images = [
+    "system",
+    "updater",
+  ]
   subsystem_name = "hiviewdfx"
 }
 
