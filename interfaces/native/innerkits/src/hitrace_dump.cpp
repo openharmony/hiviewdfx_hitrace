@@ -66,7 +66,7 @@ struct TraceParams {
 constexpr uint16_t MAGIC_NUMBER = 57161;
 constexpr uint16_t VERSION_NUMBER = 1;
 constexpr uint8_t FILE_RAW_TRACE = 0;
-constexpr int UNIT_TIME = 100;
+constexpr int UNIT_TIME = 100000;
 
 const int DEFAULT_BUFFER_SIZE = 12 * 1024;
 const int HIGHER_BUFFER_SIZE = 18 * 1024;
@@ -112,6 +112,14 @@ struct CpuStat {
     uint64_t steal = 0;
     uint64_t guest = 0;
     uint64_t guestNice = 0;
+};
+
+struct PageHeader {
+    uint64_t timestamp = 0;
+    uint64_t size = 0;
+    uint8_t overwrite = 0;
+    uint8_t *startPos = nullptr;
+    uint8_t *endPos = nullptr;
 };
 
 const size_t PAGE_SIZE = getpagesize();
@@ -511,6 +519,10 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
     uint32_t readLen = 0;
     uint8_t buffer[PAGE_SIZE];
     const int maxReadSize = DEFAULT_BUFFER_SIZE * 1024;
+    const int pageThreshold = PAGE_SIZE / 2;
+    PageHeader *pageHeader = nullptr;
+    int count = 0;
+    const int maxCount = 2;
     while (readLen < maxReadSize) {
         ssize_t readBytes = TEMP_FAILURE_RETRY(read(srcFd, buffer, PAGE_SIZE));
         if (readBytes <= 0) {
@@ -518,6 +530,17 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
         }
         write(outFd, buffer, readBytes);
         readLen += readBytes;
+
+        // Check raw_trace page size.
+        if (contentType >= CONTENT_TYPE_CPU_RAW) {
+            pageHeader = reinterpret_cast<PageHeader*>(&buffer);
+            if (pageHeader->size < pageThreshold) {
+                count++;
+            }
+            if (count >= maxCount) {
+                break;
+            }
+        }
     }
     contentHeader.length = readLen;
     uint32_t offset = contentHeader.length + sizeof(contentHeader);
@@ -599,24 +622,6 @@ bool WriteCpuRaw(int outFd)
             break;
         }
     }
-    return ret;
-}
-
-bool WriteCpuSnapshotRaw(int outFd)
-{
-    WriteStrToFile("snapshot", "1");
-    int cpuNums = GetCpuProcessors();
-    int ret = true;
-    uint8_t type = CONTENT_TYPE_CPU_RAW;
-    for (int i = 0; i < cpuNums; i++) {
-        std::string src = g_traceRootPath + "per_cpu/cpu" + std::to_string(i) + "/snapshot_raw";
-        if (!WriteFile(static_cast<uint8_t>(type + i), src, outFd)) {
-            ret = false;
-            break;
-        }
-    }
-    WriteStrToFile("snapshot", "0");
-    HiLog::Info(LABEL, "WriteCpuSnapshotRaw: read snapshot_raw done.");
     return ret;
 }
 
@@ -712,20 +717,6 @@ void SearchFromTable(std::vector<std::string> &outputFiles, int nowSec)
     }
 }
 
-bool CheckTraceSnapshot()
-{
-    const std::string snapshotPath = g_traceRootPath + "snapshot";
-    const std::string snapshotRawPath = g_traceRootPath + "per_cpu/cpu0/snapshot_raw";
-    if (access(snapshotPath.c_str(), F_OK) != 0) {
-        return false;
-    }
-
-    if (access(snapshotRawPath.c_str(), F_OK) != 0) {
-        return false;
-    }
-    return true;
-}
-
 bool ReadRawTrace(std::string &outputFileName)
 {
     // read trace data from /per_cpu/cpux/trace_pipe_raw
@@ -737,15 +728,7 @@ bool ReadRawTrace(std::string &outputFileName)
     struct TraceFileHeader header;
     write(outFd, reinterpret_cast<char*>(&header), sizeof(header));
 
-    bool isSnapshot = CheckTraceSnapshot();
-
-    bool ret = false;
-    if (isSnapshot) {
-        ret = WriteCpuSnapshotRaw(outFd);
-    } else {
-        ret = WriteCpuRaw(outFd);
-    }
-
+    bool ret = WriteCpuRaw(outFd);
     if (ret && WriteCmdlines(outFd) && WriteTgids(outFd) && WriteEventsFormat(outFd)) {
         close(outFd);
         return true;
@@ -785,7 +768,7 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
     gettimeofday(&now, nullptr);
     int nowSec = now.tv_sec;
     if (!g_dumpEnd) {
-        const int maxSleepTime = 10 * 2000; // 2s
+        const int maxSleepTime = 2 * 1000 * 1000 / UNIT_TIME; // 2s
         int cur = 0;
         while (!g_dumpEnd && cur < maxSleepTime) {
             cur += 1;
