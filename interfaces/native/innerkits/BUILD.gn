@@ -109,6 +109,7 @@ ohos_shared_library("hitrace_meter") {
   innerapi_tags = [
     "chipsetsdk",
     "platformsdk",
+    "sasdk",
   ]
   part_name = "hitrace"
   install_images = [
