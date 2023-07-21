@@ -73,7 +73,6 @@ const int HIGHER_BUFFER_SIZE = 18 * 1024;
 const int SAVED_CMDLINES_SIZE = 1024;
 
 const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
-const std::string LOG_DIR = "/data/log/";
 
 struct TraceFileHeader {
     uint16_t magicNumber {MAGIC_NUMBER};
@@ -122,7 +121,10 @@ struct PageHeader {
     uint8_t *endPos = nullptr;
 };
 
-const size_t PAGE_SIZE = getpagesize();
+#ifndef PAGE_SIZE
+constexpr size_t PAGE_SIZE = 4096;
+#endif
+
 constexpr uint64_t HITRACE_TAG = 0xD002D33;
 constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, HITRACE_TAG, "HitraceDump"};
 std::atomic<bool> g_dumpFlag(false);
@@ -165,6 +167,17 @@ bool IsTraceMounted()
     }
     HiLog::Error(LABEL, "IsTraceMounted: Did not find trace folder");
     return false;
+}
+
+// Arch is 64bit when reserved = 0; Arch is 32bit when reserved = 1.
+void GetArchWordSize(TraceFileHeader& header)
+{
+    if (sizeof(void*) == sizeof(uint64_t)) {
+        header.reserved = 0;
+    } else if (sizeof(void*) == sizeof(uint32_t)) {
+        header.reserved = 1;
+    }
+    HiLog::Info(LABEL, "Kernel bit is %{public}d.", header.reserved);
 }
 
 bool ParseTagInfo(std::map<std::string, TagCategory> &allTags,
@@ -517,7 +530,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
     contentHeader.type = contentType;
     write(outFd, reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
     uint32_t readLen = 0;
-    uint8_t buffer[PAGE_SIZE];
+    uint8_t buffer[PAGE_SIZE] = {0};
     const int maxReadSize = DEFAULT_BUFFER_SIZE * 1024;
     const int pageThreshold = PAGE_SIZE / 2;
     PageHeader *pageHeader = nullptr;
@@ -554,7 +567,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
 
 void WriteEventFile(std::string &srcPath, int outFd)
 {
-    uint8_t buffer[PAGE_SIZE];
+    uint8_t buffer[PAGE_SIZE] = {0};
     std::string srcSpecPath = CanonicalizeSpecPath(srcPath.c_str());
     int srcFd = open(srcSpecPath.c_str(), O_RDONLY);
     if (srcFd < 0) {
@@ -601,6 +614,7 @@ bool WriteEventsFormat(int outFd)
         "events/block/block_rq_complete/format",
         "events/binder/binder_transaction/format",
         "events/binder/binder_transaction_received/format",
+        "events/ftrace/print/format",
     };
     for (size_t i = 0; i < priorityTracingCategory.size(); i++) {
         std::string srcPath = g_traceRootPath + priorityTracingCategory[i];
@@ -647,7 +661,9 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
         return false;
     }
     struct TraceFileHeader header;
+    GetArchWordSize(header);
     write(outFd, reinterpret_cast<char*>(&header), sizeof(header));
+    WriteEventsFormat(outFd);
     while (g_dumpFlag) {
         if (isLimited && GetFileSize(outPath) > fileSizeThreshold) {
             break;
@@ -657,7 +673,6 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
     }
     WriteCmdlines(outFd);
     WriteTgids(outFd);
-    WriteEventsFormat(outFd);
     close(outFd);
     return true;
 }
@@ -726,10 +741,11 @@ bool ReadRawTrace(std::string &outputFileName)
         return false;
     }
     struct TraceFileHeader header;
+    GetArchWordSize(header);
     write(outFd, reinterpret_cast<char*>(&header), sizeof(header));
 
-    bool ret = WriteCpuRaw(outFd);
-    if (ret && WriteCmdlines(outFd) && WriteTgids(outFd) && WriteEventsFormat(outFd)) {
+    if (WriteEventsFormat(outFd) && WriteCpuRaw(outFd) &&
+        WriteCmdlines(outFd) && WriteTgids(outFd)) {
         close(outFd);
         return true;
     }
@@ -781,15 +797,6 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
         return TraceErrorCode::SUCCESS;
     }
     g_dumpEnd = false;
-    // create DEFAULT_OUTPUT_DIR dir
-    if (access(DEFAULT_OUTPUT_DIR.c_str(), F_OK) != 0) {
-        if (access(LOG_DIR.c_str(), F_OK) != 0) {
-            mkdir(LOG_DIR.c_str(), S_IRUSR | S_IWUSR | S_IXUSR | S_IRWXG | S_IRWXO);
-        }
-        mkdir(DEFAULT_OUTPUT_DIR.c_str(), S_IRUSR | S_IWUSR | S_IXUSR | S_IROTH);
-        HiLog::Info(LABEL, "DumpTraceInner: creat %{public}s success.", DEFAULT_OUTPUT_DIR.c_str());
-    }
-
     std::string outputFileName = GenerateName();
     std::string reOutPath = CanonicalizeSpecPath(outputFileName.c_str());
     bool ret = ReadRawTrace(reOutPath);
