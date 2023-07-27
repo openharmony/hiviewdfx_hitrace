@@ -547,7 +547,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
         // Check raw_trace page size.
         if (contentType >= CONTENT_TYPE_CPU_RAW) {
             pageHeader = reinterpret_cast<PageHeader*>(&buffer);
-            if (pageHeader->size < pageThreshold) {
+            if (pageHeader->size < static_cast<uint64_t>(pageThreshold)) {
                 count++;
             }
             if (count >= maxCount) {
