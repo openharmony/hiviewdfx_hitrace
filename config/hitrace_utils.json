@@ -312,17 +312,9 @@
             "sysFiles": [
                 "events/sched/sched_switch/enable",
                 "events/sched/sched_wakeup/enable",
-                "events/sched/sched_wakeup_new/enable",
-                "events/sched/sched_waking/enable",
-                "events/sched/sched_blocked_reason/enable",
-                "events/sched/sched_pi_setprio/enable",
-                "events/sched/sched_process_exit/enable",
-                "events/cgroup/enable",
-                "events/oom/oom_score_adj_update/enable",
-                "events/task/task_rename/enable",
-                "events/task/task_newtask/enable"
+                "events/sched/sched_blocked_reason/enable"
             ],
-            "type": 1 // user_tag
+            "type": 1 // kernel_tag
         },
         "preemptoff": {
             "description": "Preempt-disabled code section tracing",
@@ -338,12 +330,7 @@
             "tag_offset": 0,
             "sysFiles": [
                 "events/binder/binder_transaction/enable",
-                "events/binder/binder_transaction_received/enable",
-                "events/binder/binder_transaction_alloc_buf/enable",
-                "events/binder/binder_set_priority/enable",
-                "events/binder/binder_lock/enable",
-                "events/binder/binder_locked/enable",
-                "events/binder/binder_unlock/enable"
+                "events/binder/binder_transaction_received/enable"
             ],
             "type": 1
         },
@@ -356,7 +343,10 @@
         "workq": {
             "description": "Kernel Workqueues",
             "tag_offset": 0,
-            "sysFiles": ["events/workqueue/enable"],
+            "sysFiles": [
+                "events/workqueue/workqueue_execute_end/enable",
+                "events/workqueue/workqueue_execute_start/enable"
+            ],
             "type": 1
         },
         "memreclaim": {
@@ -399,11 +389,6 @@
             "sysFiles": [
                 "events/power/cpu_frequency/enable",
                 "events/power/clock_set_rate/enable",
-                "events/power/clock_disable/enable",
-                "events/power/clock_enable/enable",
-                "events/clk/clk_set_rate/enable",
-                "events/clk/clk_disable/enable",
-                "events/clk/clk_enable/enable",
                 "events/power/cpu_frequency_limits/enable"
             ],
             "type": 1
@@ -444,14 +429,21 @@
             "sysFiles": [
                 "events/f2fs/f2fs_sync_file_enter/enable",
                 "events/f2fs/f2fs_sync_file_exit/enable",
-                "events/f2fs/f2fs_write_begin/enable",
-                "events/f2fs/f2fs_write_end/enable",
+                "events/f2fs/f2fs_readpage/enable",
+                "events/f2fs/f2fs_readpages/enable",
+                "events/f2fs/f2fs_sync_fs/enable",
+                "events/hmdfs/hmdfs_syncfs_enter/enable",
+                "events/hmdfs/hmdfs_syncfs_exit/enable",
+                "events/erofs/erofs_readpage/enable",
+                "events/erofs/erofs_readpages/enable",
                 "events/ext4/ext4_da_write_begin/enable",
                 "events/ext4/ext4_da_write_end/enable",
                 "events/ext4/ext4_sync_file_enter/enable",
                 "events/ext4/ext4_sync_file_exit/enable",
+                "events/block/block_bio_remap/enable",
                 "events/block/block_rq_issue/enable",
-                "events/block/block_rq_complete/enable"
+                "events/block/block_rq_complete/enable",
+                "events/block/block_rq_insert/enable"
             ],
             "type": 1
         },
@@ -494,13 +486,18 @@
             "tag_offset": 0,
             "sysFiles": ["events/memory_bus/enable"],
             "type": 1
+        },
+        "ipa": {
+            "description": "thermal power allocator",
+            "tag_offset": 0,
+            "sysFiles": ["events/thermal_power_allocator/enable"],
+            "type": 1
         }
     },
     "tag_groups": {
-        "default": ["sched", "freq", "disk", "sync", "memreclaim", "binder", "ohos", "graphic", "ability", "ark", "app", "zcamera",
-                    "zmedia", "ace", "samgr", "zbinder"],
-        "scene_performance": ["zimage", "zaudio", "distributeddatamgr", "mdfs", "notification", "misc", "sensors", "accessibility",
-                              "window", "multimodalinput", "dsched", "power", "mmc", "ufs", "irqoff", "irq", "i2c", "regulators",
-                              "membus", "idle", "load", "preemptoff", "pagecache", "memory"]
+        "default": ["sched", "freq", "disk", "sync", "binder", "mmc", "membus", "load", "pagecache", "workq", "ipa"],
+        "scene_performance": ["net", "dsched", "graphic", "multimodalinput", "dinput", "ark", "ace", "window",
+                              "zaudio", "daudio", "zmedia", "dcamera", "zcamera", "dhfwk", "app", "gresource", "ability",
+                              "power", "samgr"]
     }
 }
