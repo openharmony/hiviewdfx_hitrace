@@ -28,7 +28,7 @@
         "napi"
       ],
       "third_party": [
-        "jsoncpp",
+        "cJSON",
         "zlib"
       ]
     },
