@@ -195,12 +195,13 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
     if (changed == 1) {
         HiLog::Info(LABEL, "g_tagsProperty changed, previous is %{public}s.", to_string(g_tagsProperty.load()).c_str());
         uint64_t tags = strtoull(paramValue, nullptr, 0);
+		
         g_tagsProperty = (tags | HITRACE_TAG_ALWAYS) & HITRACE_TAG_VALID_MASK;
         HiLog::Info(LABEL, "g_tagsProperty changed, now is %{public}s.", to_string(g_tagsProperty.load()).c_str());
     }
     if (UNEXPECTANTLY(g_tagsProperty & tag) && g_markerFd != -1) {
         // record fomart: "type|pid|name value".
-        char buf[BUFFER_LEN] = { 0 };
+        char buf[BUFFER_LEN] = {0};
         int len = name.length();
         if (UNEXPECTANTLY(len <= NAME_NORMAL_LEN)) {
             HiTraceId hiTraceId = HiTraceChain::GetId();

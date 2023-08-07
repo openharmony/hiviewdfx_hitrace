@@ -180,7 +180,8 @@ void GetArchWordSize(TraceFileHeader& header)
     HiLog::Info(LABEL, "Kernel bit is %{public}d.", header.reserved);
 }
 
-cJSON* ParseJsonFromFile(const std::string& filePath) {
+cJSON* ParseJsonFromFile(const std::string& filePath)
+{
     std::ifstream inFile(filePath, std::ios::in);
     if (!inFile.is_open()) {
         HiLog::Error(LABEL, "ParseJsonFromFile: %{pubilc}s is not existed.", filePath.c_str());
@@ -195,7 +196,8 @@ cJSON* ParseJsonFromFile(const std::string& filePath) {
     return root;
 }
 
-bool ParseTagCategory(cJSON* tagCategoryNode, std::map<std::string, TagCategory>& allTags) {
+bool ParseTagCategory(cJSON* tagCategoryNode, std::map<std::string, TagCategory>& allTags)
+{
     cJSON* tags = nullptr;
     cJSON_ArrayForEach(tags, tagCategoryNode) {
         TagCategory tagCategory;
@@ -218,7 +220,6 @@ bool ParseTagCategory(cJSON* tagCategoryNode, std::map<std::string, TagCategory>
                 if (cJSON_IsString(sysFile)) {
                     tagCategory.sysFiles.push_back(sysFile->valuestring);
                 }
-
             }
         }
         allTags.insert(std::pair<std::string, TagCategory>(tags->string, tagCategory));
@@ -226,7 +227,8 @@ bool ParseTagCategory(cJSON* tagCategoryNode, std::map<std::string, TagCategory>
     return true;
 }
 
-bool ParseTagGroups(cJSON* tagGroupsNode, std::map<std::string, std::vector<std::string>> &tagGroupTable) {
+bool ParseTagGroups(cJSON* tagGroupsNode, std::map<std::string, std::vector<std::string>> &tagGroupTable)
+{
     cJSON* tagGroup = nullptr;
     cJSON_ArrayForEach(tagGroup, tagGroupsNode) {
         std::string tagGroupName = tagGroup->string;
