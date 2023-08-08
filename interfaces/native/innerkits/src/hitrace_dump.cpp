@@ -32,9 +32,9 @@
 #include <fcntl.h>
 #include <cinttypes>
 #include <utility>
-#include <json/json.h>
 #include <dirent.h>
 
+#include "cJSON.h"
 #include "parameters.h"
 #include "hilog/log.h"
 #include "securec.h"
@@ -180,45 +180,97 @@ void GetArchWordSize(TraceFileHeader& header)
     HiLog::Info(LABEL, "Kernel bit is %{public}d.", header.reserved);
 }
 
+cJSON* ParseJsonFromFile(const std::string& filePath)
+{
+    std::ifstream inFile(filePath, std::ios::in);
+    if (!inFile.is_open()) {
+        HiLog::Error(LABEL, "ParseJsonFromFile: %{pubilc}s is not existed.", filePath.c_str());
+        return nullptr;
+    }
+    std::string fileContent((std::istreambuf_iterator<char>(inFile)), std::istreambuf_iterator<char>());
+    cJSON* root = cJSON_Parse(fileContent.c_str());
+    if (root == nullptr) {
+        HiLog::Error(LABEL, "ParseJsonFromFile: %{pubilc}s is not in JSON format.", filePath.c_str());
+    }
+    inFile.close();
+    return root;
+}
+
+bool ParseTagCategory(cJSON* tagCategoryNode, std::map<std::string, TagCategory>& allTags)
+{
+    cJSON* tags = nullptr;
+    cJSON_ArrayForEach(tags, tagCategoryNode) {
+        TagCategory tagCategory;
+        cJSON* description = cJSON_GetObjectItem(tags, "description");
+        if (description != nullptr) {
+            tagCategory.description = description->valuestring;
+        }
+        cJSON* tagOffset = cJSON_GetObjectItem(tags, "tag_offset");
+        if (tagOffset != nullptr) {
+            tagCategory.tag = 1ULL << tagOffset->valueint; 
+        }
+        cJSON* type = cJSON_GetObjectItem(tags, "type");
+        if (type != nullptr) {
+            tagCategory.type = type->valueint; 
+        }
+        cJSON* sysFiles = cJSON_GetObjectItem(tags, "sysFiles");
+        if (sysFiles != nullptr && cJSON_IsArray(sysFiles)) {
+            cJSON* sysFile = nullptr;
+            cJSON_ArrayForEach(sysFile, sysFiles) {
+                if (cJSON_IsString(sysFile)) {
+                    tagCategory.sysFiles.push_back(sysFile->valuestring);
+                }
+            }
+        }
+        allTags.insert(std::pair<std::string, TagCategory>(tags->string, tagCategory));
+    }
+    return true;
+}
+
+bool ParseTagGroups(cJSON* tagGroupsNode, std::map<std::string, std::vector<std::string>> &tagGroupTable)
+{
+    cJSON* tagGroup = nullptr;
+    cJSON_ArrayForEach(tagGroup, tagGroupsNode) {
+        std::string tagGroupName = tagGroup->string;
+        std::vector<std::string> tagList;
+        cJSON* tag = nullptr;
+        cJSON_ArrayForEach(tag, tagGroup) {
+            tagList.push_back(tag->valuestring);
+        }
+        tagGroupTable.insert(std::pair<std::string, std::vector<std::string>>(tagGroupName, tagList));
+    }
+    return true;
+}
+
 bool ParseTagInfo(std::map<std::string, TagCategory> &allTags,
                   std::map<std::string, std::vector<std::string>> &tagGroupTable)
 {
     std::string traceUtilsPath = "/system/etc/hiview/hitrace_utils.json";
-    std::ifstream inFile(traceUtilsPath, std::ios::in);
-    if (!inFile.is_open()) {
-        HiLog::Error(LABEL, "ParseTagInfo: %{pubilc}s is not existed.", traceUtilsPath.c_str());
+    cJSON* root = ParseJsonFromFile(traceUtilsPath);
+    if (root == nullptr) {
         return false;
     }
-    Json::Reader reader;
-    Json::Value root;
-    if (!reader.parse(inFile, root)) {
-        HiLog::Error(LABEL, "ParseTagInfo: %{pubilc}s is not in JSON format.", traceUtilsPath.c_str());
+    cJSON* tagCategory = cJSON_GetObjectItem(root, "tag_category");
+    if (tagCategory == nullptr) {
+        HiLog::Error(LABEL, "ParseTagInfo: %{pubilc}s is not contain tag_category node.", traceUtilsPath.c_str());
+        cJSON_Delete(root);
         return false;
     }
-    // parse tag_category
-    Json::Value::Members tags = root["tag_category"].getMemberNames();
-    for (Json::Value::Members::iterator it = tags.begin(); it != tags.end(); it++) {
-        Json::Value tagInfo = root["tag_category"][*it];
-        TagCategory tagCategory;
-        tagCategory.description = tagInfo["description"].asString();
-        tagCategory.tag = 1ULL << tagInfo["tag_offset"].asInt();
-        tagCategory.type = tagInfo["type"].asInt();
-        for (unsigned int i = 0; i < tagInfo["sysFiles"].size(); i++) {
-            tagCategory.sysFiles.push_back(tagInfo["sysFiles"][i].asString());
-        }
-        allTags.insert(std::pair<std::string, TagCategory>(*it, tagCategory));
+    if (!ParseTagCategory(tagCategory, allTags)) {
+        cJSON_Delete(root);
+        return false;
     }
-
-    // parse tagGroup
-    Json::Value::Members tagGroups = root["tag_groups"].getMemberNames();
-    for (Json::Value::Members::iterator it = tagGroups.begin(); it != tagGroups.end(); it++) {
-        std::string tagGroupName = *it;
-        std::vector<std::string> tagList;
-        for (unsigned int i = 0; i < root["tag_groups"][tagGroupName].size(); i++) {
-            tagList.push_back(root["tag_groups"][tagGroupName][i].asString());
-        }
-        tagGroupTable.insert(std::pair<std::string, std::vector<std::string>>(tagGroupName, tagList));
+    cJSON* tagGroups = cJSON_GetObjectItem(root, "tag_groups");
+    if (tagGroups == nullptr) {
+        HiLog::Error(LABEL, "ParseTagInfo: %{pubilc}s is not contain tag_groups node.", traceUtilsPath.c_str());
+        cJSON_Delete(root);
+        return false;
     }
+    if (!ParseTagGroups(tagGroups, tagGroupTable)) {
+        cJSON_Delete(root);
+        return false;
+    }
+    cJSON_Delete(root);
     HiLog::Info(LABEL, "ParseTagInfo: parse done.");
     return true;
 }

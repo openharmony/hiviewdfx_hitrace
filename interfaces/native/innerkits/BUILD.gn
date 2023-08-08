@@ -83,7 +83,7 @@ ohos_shared_library("hitrace_dump") {
 
   deps = [
     "../../../config:hitrace_utils",
-    "//third_party/jsoncpp:jsoncpp",
+    "//third_party/cJSON:cjson",
   ]
 
   external_deps = [
