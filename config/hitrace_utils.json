@@ -4,7 +4,7 @@
             "description": "musl module",
             "tag_offset": 12,
             "sysFiles": [],
-            "type": 0 // user_tag
+            "type": 0
         },
         "ffrt": {
             "description": "ffrt tasks",
@@ -314,7 +314,7 @@
                 "events/sched/sched_wakeup/enable",
                 "events/sched/sched_blocked_reason/enable"
             ],
-            "type": 1 // kernel_tag
+            "type": 1
         },
         "preemptoff": {
             "description": "Preempt-disabled code section tracing",

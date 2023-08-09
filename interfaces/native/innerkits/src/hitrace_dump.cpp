@@ -207,11 +207,11 @@ bool ParseTagCategory(cJSON* tagCategoryNode, std::map<std::string, TagCategory>
         }
         cJSON* tagOffset = cJSON_GetObjectItem(tags, "tag_offset");
         if (tagOffset != nullptr) {
-            tagCategory.tag = 1ULL << tagOffset->valueint; 
+            tagCategory.tag = 1ULL << tagOffset->valueint;
         }
         cJSON* type = cJSON_GetObjectItem(tags, "type");
         if (type != nullptr) {
-            tagCategory.type = type->valueint; 
+            tagCategory.type = type->valueint;
         }
         cJSON* sysFiles = cJSON_GetObjectItem(tags, "sysFiles");
         if (sysFiles != nullptr && cJSON_IsArray(sysFiles)) {
