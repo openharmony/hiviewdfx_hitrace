@@ -217,9 +217,7 @@ bool ParseTagCategory(cJSON* tagCategoryNode, std::map<std::string, TagCategory>
         if (sysFiles != nullptr && cJSON_IsArray(sysFiles)) {
             cJSON* sysFile = nullptr;
             cJSON_ArrayForEach(sysFile, sysFiles) {
-                if (cJSON_IsString(sysFile)) {
-                    tagCategory.sysFiles.push_back(sysFile->valuestring);
-                }
+                tagCategory.sysFiles.push_back(sysFile->valuestring);
             }
         }
         allTags.insert(std::pair<std::string, TagCategory>(tags->string, tagCategory));
