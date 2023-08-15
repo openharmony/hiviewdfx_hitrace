@@ -197,7 +197,7 @@ cJSON* ParseJsonFromFile(const std::string& filePath)
 }
 
 void ParseSysFiles(cJSON *tags, TagCategory& tagCategory)
- {
+{
     cJSON *sysFiles = cJSON_GetObjectItem(tags, "sysFiles");
     if (sysFiles != nullptr && cJSON_IsArray(sysFiles)) {
         cJSON *sysFile = nullptr;
@@ -241,14 +241,14 @@ bool ParseTagGroups(cJSON* tagGroupsNode, std::map<std::string, std::vector<std:
     cJSON_ArrayForEach(tagGroup, tagGroupsNode) {
         if (tagGroup == nullptr || tagGroup->string == nullptr) {
             continue;
-        } 
+        }
         std::string tagGroupName = tagGroup->string;
         std::vector<std::string> tagList;
         cJSON* tag = nullptr;
         cJSON_ArrayForEach(tag, tagGroup) {
             if (cJSON_IsString(tag)) {
                 tagList.push_back(tag->valuestring);
-            }            
+            }
         }
         tagGroupTable.insert(std::pair<std::string, std::vector<std::string>>(tagGroupName, tagList));
     }
