@@ -196,72 +196,64 @@ cJSON* ParseJsonFromFile(const std::string& filePath)
     return root;
 }
 
-    void ParseSysFiles(cJSON *tags, TagCategory tagCategory)
-    {
-        cJSON *sysFiles = cJSON_GetObjectItem(tags, "sysFiles");
-        if (sysFiles != nullptr && cJSON_IsArray(sysFiles))
-        {
-            cJSON *sysFile = nullptr;
-            cJSON_ArrayForEach(sysFile, sysFiles)
-            {
-                if (cJSON_IsString(sysFile))
-                {
-                    tagCategory.sysFiles.push_back(sysFile->valuestring);
-                }
+void ParseSysFiles(cJSON *tags, TagCategory& tagCategory)
+ {
+    cJSON *sysFiles = cJSON_GetObjectItem(tags, "sysFiles");
+    if (sysFiles != nullptr && cJSON_IsArray(sysFiles)) {
+        cJSON *sysFile = nullptr;
+        cJSON_ArrayForEach(sysFile, sysFiles) {
+            if (cJSON_IsString(sysFile)) {
+                tagCategory.sysFiles.push_back(sysFile->valuestring);
             }
         }
     }
+}
 
-    bool ParseTagCategory(cJSON *tagCategoryNode, std::map<std::string, TagCategory> &allTags)
-    {
-        cJSON *tags = nullptr;
-        cJSON_ArrayForEach(tags, tagCategoryNode)
-        {
-            if (tags == nullptr || !cJSON_IsString(tags))
-                continue;
-            TagCategory tagCategory;
-            cJSON *description = cJSON_GetObjectItem(tags, "description");
-            if (description != nullptr && cJSON_IsString(description))
-            {
-                tagCategory.description = description->valuestring;
-            }
-            cJSON *tagOffset = cJSON_GetObjectItem(tags, "tag_offset");
-            if (tagOffset != nullptr && cJSON_IsNumber(tagOffset))
-            {
-                tagCategory.tag = 1ULL << tagOffset->valueint;
-            }
-            cJSON *type = cJSON_GetObjectItem(tags, "type");
-            if (type != nullptr && cJSON_IsNumber(type))
-            {
-                tagCategory.type = type->valueint;
-            }
-            ParseSysFiles(tags, tagCategory);
-            allTags.insert(std::pair<std::string, TagCategory>(tags->string, tagCategory));
+bool ParseTagCategory(cJSON* tagCategoryNode, std::map<std::string, TagCategory>& allTags)
+{
+    cJSON* tags = nullptr;
+    cJSON_ArrayForEach(tags, tagCategoryNode) {
+        if (tags == nullptr || tags->string == nullptr) {
+            continue;
         }
-        return true;
+        TagCategory tagCategory;
+        cJSON* description = cJSON_GetObjectItem(tags, "description");
+        if (description != nullptr && cJSON_IsString(description)) {
+            tagCategory.description = description->valuestring;
+        }
+        cJSON* tagOffset = cJSON_GetObjectItem(tags, "tag_offset");
+        if (tagOffset != nullptr && cJSON_IsNumber(tagOffset)) {
+            tagCategory.tag = 1ULL << tagOffset->valueint;
+        }
+        cJSON* type = cJSON_GetObjectItem(tags, "type");
+        if (type != nullptr && cJSON_IsNumber(type)) {
+            tagCategory.type = type->valueint;
+        }
+        ParseSysFiles(tags, tagCategory);
+        allTags.insert(std::pair<std::string, TagCategory>(tags->string, tagCategory));
     }
+    return true;
+}
 
-    bool ParseTagGroups(cJSON *tagGroupsNode, std::map<std::string, std::vector<std::string>> &tagGroupTable)
-    {
-        cJSON *tagGroup = nullptr;
-        cJSON_ArrayForEach(tagGroup, tagGroupsNode)
-        {
-            if (tagGroup == nullptr || !cJSON_IsString(tagGroup))
-                continue;
-            std::string tagGroupName = tagGroup->string;
-            std::vector<std::string> tagList;
-            cJSON *tag = nullptr;
-            cJSON_ArrayForEach(tag, tagGroup)
-            {
-                if (cJSON_IsString(tag))
-                {
-                    tagList.push_back(tag->valuestring);
-                }
-            }
-            tagGroupTable.insert(std::pair<std::string, std::vector<std::string>>(tagGroupName, tagList));
+bool ParseTagGroups(cJSON* tagGroupsNode, std::map<std::string, std::vector<std::string>> &tagGroupTable)
+{
+    cJSON* tagGroup = nullptr;
+    cJSON_ArrayForEach(tagGroup, tagGroupsNode) {
+        if (tagGroup == nullptr || tagGroup->string == nullptr) {
+            continue;
+        } 
+        std::string tagGroupName = tagGroup->string;
+        std::vector<std::string> tagList;
+        cJSON* tag = nullptr;
+        cJSON_ArrayForEach(tag, tagGroup) {
+            if (cJSON_IsString(tag)) {
+                tagList.push_back(tag->valuestring);
+            }            
         }
-        return true;
+        tagGroupTable.insert(std::pair<std::string, std::vector<std::string>>(tagGroupName, tagList));
     }
+    return true;
+}
 
 bool ParseTagInfo(std::map<std::string, TagCategory> &allTags,
                   std::map<std::string, std::vector<std::string>> &tagGroupTable)
