@@ -80,6 +80,13 @@
           }
         },
         {
+          "name": "//base/hiviewdfx/hitrace/interfaces/rust/innerkits/hitrace_meter:hitrace_meter_rust",
+          "header": {
+            "header_files": [],
+            "header_base": []
+          }
+        },
+        {
           "name": "//base/hiviewdfx/hitrace/interfaces/rust/innerkits/hitracechain:hitracechain_rust",
           "header": {
             "header_files": [],
