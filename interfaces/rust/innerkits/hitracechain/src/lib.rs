@@ -293,10 +293,10 @@ extern "C" {
     fn HiTraceChainCreateSpan() -> HiTraceId;
 
     /// ffi border function
-    fn HiTraceChainIdToBytesWrapper(id: *const HiTraceId, p_id_array: *const c_char, len: c_int) -> c_int;
+    fn HiTraceChainIdToBytesWrapper(id: *const HiTraceId, p_id_array: *const u8, len: c_int) -> c_int;
 
     /// ffi border function
-    fn HiTraceChainBytesToIdWrapper(p_id_array: *const c_char, len: c_int) -> HiTraceId;
+    fn HiTraceChainBytesToIdWrapper(p_id_array: *const u8, len: c_int) -> HiTraceId;
 
     /// ffi border function
     #[allow(dead_code)]
