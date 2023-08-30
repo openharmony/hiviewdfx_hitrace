@@ -185,7 +185,7 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
     }
     if (UNEXPECTANTLY(!g_isHitraceMeterInit)) {
         struct timespec ts = { 0, 0 };
-        if (clock_gettime(CLOCK_MONOTONIC, &ts) == -1 || ts.tv_sec < 20) { // 20 : register after boot 20s
+        if (clock_gettime(CLOCK_MONOTONIC, &ts) == -1 || ts.tv_sec < 25) { // 25 : register after boot 25s
             return;
         }
         std::call_once(g_onceFlag, OpenTraceMarkerFile);
