@@ -14,6 +14,8 @@
  */
 
 #include "hitrace_dump.h"
+#include "common_utils.h"
+#include "dynamic_buffer.h"
 
 #include <map>
 #include <atomic>
@@ -22,6 +24,7 @@
 #include <thread>
 #include <vector>
 #include <string>
+#include <memory>
 
 #include <unistd.h>
 #include <cstdio>
@@ -41,9 +44,10 @@
 
 
 using OHOS::HiviewDFX::HiLog;
-using OHOS::HiviewDFX::Hitrace::TraceErrorCode;
-using OHOS::HiviewDFX::Hitrace::TraceRetInfo;
-using OHOS::HiviewDFX::Hitrace::TraceMode;
+
+namespace OHOS {
+namespace HiviewDFX {
+namespace Hitrace {
 
 namespace {
 
@@ -68,8 +72,7 @@ constexpr uint16_t VERSION_NUMBER = 1;
 constexpr uint8_t FILE_RAW_TRACE = 0;
 constexpr int UNIT_TIME = 100000;
 
-const int DEFAULT_BUFFER_SIZE = 18 * 1024;
-const int HIGHER_BUFFER_SIZE = 18 * 1024;
+const int DEFAULT_BUFFER_SIZE = 12 * 1024;
 const int SAVED_CMDLINES_SIZE = 1024;
 
 const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
@@ -94,25 +97,6 @@ struct TraceFileContentHeader {
     uint32_t length = 0;
 };
 
-struct LastCpuInfo {
-    std::pair<uint64_t, uint64_t> idleAndTotal = {0, 0};
-    bool isNormal = true;
-};
-
-struct CpuStat {
-    int8_t cpuId = -1; // 总的为-1
-    uint64_t user = 0;
-    uint64_t nice = 0;
-    uint64_t system = 0;
-    uint64_t idle = 0;
-    uint64_t iowait = 0;
-    uint64_t irq = 0;
-    uint64_t softirq = 0;
-    uint64_t steal = 0;
-    uint64_t guest = 0;
-    uint64_t guestNice = 0;
-};
-
 struct PageHeader {
     uint64_t timestamp = 0;
     uint64_t size = 0;
@@ -125,11 +109,11 @@ struct PageHeader {
 constexpr size_t PAGE_SIZE = 4096;
 #endif
 
-constexpr uint64_t HITRACE_TAG = 0xD002D33;
-constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, HITRACE_TAG, "HitraceDump"};
 std::atomic<bool> g_dumpFlag(false);
 std::atomic<bool> g_dumpEnd(true);
-bool g_monitor = false; // close service monitor for now
+
+bool g_serviceThreadIsStart = false;
+uint64_t g_sysInitParamTags = 0;
 TraceMode g_traceMode = TraceMode::CLOSE;
 std::string g_traceRootPath;
 std::vector<std::pair<std::string, int>> g_traceFilesTable;
@@ -177,7 +161,7 @@ void GetArchWordSize(TraceFileHeader& header)
     } else if (sizeof(void*) == sizeof(uint32_t)) {
         header.reserved = 1;
     }
-    HiLog::Info(LABEL, "Kernel bit is %{public}d.", header.reserved);
+    HiLog::Debug(LABEL, "Kernel bit is %{public}d.", header.reserved);
 }
 
 cJSON* ParseJsonFromFile(const std::string& filePath)
@@ -429,40 +413,6 @@ void SetAllTags(const TraceParams &traceParams, const std::map<std::string, TagC
     SetProperty("debug.hitrace.tags.enableflags", std::to_string(enabledUserTags));
 }
 
-std::string CanonicalizeSpecPath(const char* src)
-{
-    if (src == nullptr || strlen(src) >= PATH_MAX) {
-        HiLog::Error(LABEL, "CanonicalizeSpecPath: %{pubilc}s failed.", src);
-        return "";
-    }
-    char resolvedPath[PATH_MAX] = { 0 };
-#if defined(_WIN32)
-    if (!_fullpath(resolvedPath, src, PATH_MAX)) {
-        return "";
-    }
-#else
-    if (access(src, F_OK) == 0) {
-        if (realpath(src, resolvedPath) == nullptr) {
-            HiLog::Error(LABEL, "CanonicalizeSpecPath: realpath %{pubilc}s failed.", src);
-            return "";
-        }
-    } else {
-        std::string fileName(src);
-        if (fileName.find("..") == std::string::npos) {
-            if (sprintf_s(resolvedPath, PATH_MAX, "%s", src) == -1) {
-                HiLog::Error(LABEL, "CanonicalizeSpecPath: sprintf_s %{pubilc}s failed.", src);
-                return "";
-            }
-        } else {
-            HiLog::Error(LABEL, "CanonicalizeSpecPath: find .. src failed.");
-            return "";
-        }
-    }
-#endif
-    std::string res(resolvedPath);
-    return res;
-}
-
 std::string ReadFile(const std::string& filename)
 {
     std::string resolvedPath = CanonicalizeSpecPath((g_traceRootPath + filename).c_str());
@@ -596,12 +546,11 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
     write(outFd, reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
     uint32_t readLen = 0;
     uint8_t buffer[PAGE_SIZE] = {0};
-    const int maxReadSize = DEFAULT_BUFFER_SIZE * 1024;
     const int pageThreshold = PAGE_SIZE / 2;
     PageHeader *pageHeader = nullptr;
     int count = 0;
     const int maxCount = 2;
-    while (readLen < maxReadSize) {
+    while (true) {
         ssize_t readBytes = TEMP_FAILURE_RETRY(read(srcFd, buffer, PAGE_SIZE));
         if (readBytes <= 0) {
             break;
@@ -879,92 +828,88 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
     return TraceErrorCode::SUCCESS;
 }
 
-void AdjustInner(CpuStat &cpuStat, LastCpuInfo &lastCpuInfo, int i)
+uint64_t GetSysParamTags()
 {
-    const int cpuUsageThreshold = 80;
-    const int percentage = 100;
-    uint64_t totalCpuTime = cpuStat.user + cpuStat.nice + cpuStat.system + cpuStat.idle + cpuStat.iowait +
-                            cpuStat.irq + cpuStat.softirq;
-    uint64_t cpuUsage = percentage - percentage * (cpuStat.idle - lastCpuInfo.idleAndTotal.first) /
-                        (totalCpuTime - lastCpuInfo.idleAndTotal.second);
-    if (cpuUsage >= cpuUsageThreshold && lastCpuInfo.isNormal) {
-        std::string subPath = "per_cpu/cpu" + std::to_string(i) + "/buffer_size_kb";
-        WriteStrToFile(subPath, std::to_string(HIGHER_BUFFER_SIZE));
-        lastCpuInfo.isNormal = false;
-    }
-    if (!lastCpuInfo.isNormal && cpuUsage < cpuUsageThreshold) {
-        std::string subPath = "per_cpu/cpu" + std::to_string(i) + "/buffer_size_kb";
-        WriteStrToFile(subPath, std::to_string(DEFAULT_BUFFER_SIZE));
-        lastCpuInfo.isNormal = true;
-    }
-    lastCpuInfo.idleAndTotal.first = cpuStat.idle;
-    lastCpuInfo.idleAndTotal.second = totalCpuTime;
+    return OHOS::system::GetUintParameter<uint64_t>("debug.hitrace.tags.enableflags", 0);
 }
 
-bool CpuTraceBufferSizeAdjust(std::vector<LastCpuInfo> &lastData, const int cpuNums)
+void RestartService()
 {
-    std::ifstream statFile("/proc/stat");
-    if (!statFile.is_open()) {
-        HiLog::Error(LABEL, "CpuTraceBufferSizeAdjust: open /proc/stat failed.");
-        return false;
-    }
-    std::string data;
-    std::vector<CpuStat> cpuStats;
+    CloseTrace();
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    OpenTrace(tagGroups);
+}
 
-    const int pos = 3;
-    const int formatNumber = 10;
-    while (std::getline(statFile, data)) {
-        if (data.substr(0, pos) == "cpu" && data[pos] != ' ') {
-            CpuStat cpuStat = {};
-            int ret = sscanf_s(data.c_str(), "%*s %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu", &cpuStat.user,
-                               &cpuStat.nice, &cpuStat.system, &cpuStat.idle, &cpuStat.iowait, &cpuStat.irq,
-                               &cpuStat.softirq, &cpuStat.steal, &cpuStat.guest, &cpuStat.guestNice);
-            if (ret != formatNumber) {
-                HiLog::Error(LABEL, "CpuTraceBufferSizeAdjust: format error.");
-                return false;
-            }
-            cpuStats.push_back(cpuStat);
-        }
+bool CheckParam()
+{
+    uint64_t currentTags = GetSysParamTags();
+    if (currentTags == g_sysInitParamTags) {
+        return true;
     }
-    statFile.close();
-    if (cpuNums != (int)cpuStats.size()) {
-        HiLog::Error(LABEL, "CpuTraceBufferSizeAdjust: read /proc/stat error.");
+
+    if (currentTags == 0) {
+        HiLog::Error(LABEL, "tag is 0, restart it.");
+        RestartService();
         return false;
     }
-    for (size_t i = 0; i < cpuStats.size(); i++) {
-        AdjustInner(cpuStats[i], lastData[i], i);
+    HiLog::Error(LABEL, "trace is being used, restart later.");
+    return false;
+}
+
+bool CheckTraceFile()
+{
+    if (ReadFile("tracing_on") == "1\n") {
+        return true;
     }
-    return true;
+    HiLog::Error(LABEL, "tracing_on is 0, restart it.");
+    RestartService();
+    return false;
+}
+
+/**
+ * SERVICE_MODE is running, check param and tracing_on.
+*/
+bool CheckServiceRunning()
+{
+    if (CheckParam() && CheckTraceFile()) {
+        return true;
+    }
+    return false;
 }
 
 void MonitorServiceTask()
 {
+    g_serviceThreadIsStart = true;
     HiLog::Info(LABEL, "MonitorServiceTask: monitor thread start.");
-    const int maxServiceTimes = 3 * 1000 * 1000 / UNIT_TIME; // 3s
-    int curServiceTimes = 0;
-    const int cpuNums = GetCpuProcessors();
-    std::vector<LastCpuInfo> lastData;
-    for (int i = 0; i < cpuNums; i++) {
-        lastData.push_back({{0, 0}, true});
-    }
-
+    const int intervalTime = 15;
     while (true) {
-        if (g_traceMode != TraceMode::SERVICE_MODE || !g_monitor) {
-            HiLog::Info(LABEL, "MonitorServiceTask: monitor thread exit because of g_monitor.");
+        sleep(intervalTime);
+        if (g_traceMode != TraceMode::SERVICE_MODE) {
             break;
         }
-        if (curServiceTimes >= maxServiceTimes) {
-            // trace ringbuffer dynamic tuning
-            if (!CpuTraceBufferSizeAdjust(lastData, cpuNums)) {
-                HiLog::Info(LABEL, "MonitorServiceTask: monitor thread exit.");
-                break;
-            }
-            curServiceTimes = 0;
-        } else {
-            curServiceTimes++;
+
+        if (!CheckServiceRunning()) {
+            continue;
         }
-        usleep(UNIT_TIME);
+
+        const int cpuNums = GetCpuProcessors();
+        std::vector<int> result;
+        std::unique_ptr<DynamicBuffer> dynamicBuffer = std::make_unique<DynamicBuffer>(g_traceRootPath, cpuNums);
+        dynamicBuffer->CalculateBufferSize(result);
+
+        if (result.size() != cpuNums) {
+            HiLog::Error(LABEL, "CalculateAllNewBufferSize failed.");
+            break;
+        }
+
+        for (size_t i = 0; i < result.size(); i++) {
+            HiLog::Debug(LABEL, "cpu%{public}zu set size %{public}d.", i, result[i]);
+            std::string path = "per_cpu/cpu" + std::to_string(i) + "/buffer_size_kb";
+            WriteStrToFile(path, std::to_string(result[i]));
+        }
     }
+    HiLog::Info(LABEL, "MonitorServiceTask: monitor thread exit.");
+    g_serviceThreadIsStart = false;
 }
 
 void MonitorCmdTask()
@@ -1107,10 +1052,6 @@ void ClearRemainingTrace()
 
 } // namespace
 
-namespace OHOS {
-namespace HiviewDFX {
-
-namespace Hitrace {
 
 TraceMode GetTraceMode()
 {
@@ -1153,9 +1094,12 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
     g_traceMode = SERVICE_MODE;
 
     ClearRemainingTrace();
-    // open SERVICE_MODE monitor thread
-    std::thread auxiliaryTask(MonitorServiceTask);
-    auxiliaryTask.detach();
+    if (!g_serviceThreadIsStart) {
+        // open SERVICE_MODE monitor thread
+        std::thread auxiliaryTask(MonitorServiceTask);
+        auxiliaryTask.detach();
+    }
+    g_sysInitParamTags = GetSysParamTags();
     HiLog::Info(LABEL, "OpenTrace: SERVICE_MODE open success.");
     return ret;
 }
@@ -1199,13 +1143,21 @@ TraceErrorCode OpenTrace(const std::string &args)
 
 TraceRetInfo DumpTrace()
 {
+    HiLog::Debug(LABEL, "DumpTrace start.");
     TraceRetInfo ret;
     if (g_traceMode != SERVICE_MODE) {
         HiLog::Error(LABEL, "DumpTrace: CALL_ERROR.");
         ret.errorCode = CALL_ERROR;
         return ret;
     }
+    
+    if (!CheckServiceRunning()) {
+        ret.errorCode = TRACE_IS_OCCUPIED;
+        return ret;
+    }
+    
     ret.errorCode = DumpTraceInner(ret.outputFiles);
+    HiLog::Debug(LABEL, "DumpTrace done.");
     return ret;
 }
 
