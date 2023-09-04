@@ -95,6 +95,7 @@ ohos_rust_executable("hitrace_example_rust") {
 group("hitrace_target") {
   deps = [
     ":hitrace",
+    ":bytrace",
     ":hitrace_example",
   ]
 }
