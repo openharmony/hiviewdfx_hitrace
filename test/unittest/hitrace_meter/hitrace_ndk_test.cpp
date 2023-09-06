@@ -194,7 +194,8 @@ bool GetTraceResult(const char type, const string& traceName, const HiTraceId* h
         if (hiTraceId != nullptr) {
             chainStr = GetRecord(*hiTraceId);
         }
-        std::string str = prefix + std::to_string(g_pid) + LABEL_HEADER + chainStr + traceName + " " + to_string(taskId);
+        std::string str = prefix + std::to_string(g_pid) + LABEL_HEADER + chainStr
+        + traceName + " " + to_string(taskId);
         printf("start str: %s\n", str.c_str());
         return FindResult(str, list);
     } else if (type == 'F') {
@@ -203,7 +204,8 @@ bool GetTraceResult(const char type, const string& traceName, const HiTraceId* h
         if (hiTraceId != nullptr) {
             chainStr = GetRecord(*hiTraceId);
         }
-        std::string str = prefix + std::to_string(g_pid) + LABEL_HEADER + chainStr + traceName + " " + to_string(taskId);
+        std::string str = prefix + std::to_string(g_pid) + LABEL_HEADER + chainStr
+        + traceName + " " + to_string(taskId);
         printf("finish str: %s\n", str.c_str());
         return FindResult(str, list);
     } else if (type == 'C') {
