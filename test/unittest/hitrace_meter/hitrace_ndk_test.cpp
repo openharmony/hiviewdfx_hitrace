@@ -383,7 +383,7 @@ HWTEST_F(HitraceNDKTest, StartHiTraceIdTest_002, TestSize.Level0)
     HiTraceChain::End(hiTraceId);
     ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
-    
+
     bool isStartSuc = GetTraceResult('B', longTraceName, &hiTraceId, 0, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + longTraceName + "\" from trace.";
 
@@ -551,7 +551,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_007, TestSize.Level1)
     FinishTrace(TRACE_INVALIDATE_TAG);
     ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
-    
+
     bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
     EXPECT_FALSE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
     bool isFinishSuc = GetTraceResult('E', traceName, nullptr, 0, list);
@@ -718,7 +718,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_017, TestSize.Level1)
     FinishTrace(TAG);
     ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
-    
+
     bool isStartSuc = GetTraceResult('B', traceName.replace(18, 2, to_string(var)), nullptr, 0, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
     bool isFinishSuc = GetTraceResult('E', traceName.replace(18, 2, to_string(var)), nullptr, 0, list);
@@ -833,7 +833,7 @@ HWTEST_F(HitraceNDKTest, CountTraceWrapper_001, TestSize.Level0)
     CountTraceWrapper(TAG, traceName.c_str(), count);
     ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
-    
+
     bool isStartSuc = GetTraceResult('C', traceName, nullptr, count, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"C|" + traceName + "\" from trace.";
 }
