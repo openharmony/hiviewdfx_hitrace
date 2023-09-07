@@ -1,5 +1,11 @@
 {
     "tag_category": {
+        "virse": {
+            "description": "Virtualization Service",
+            "tag_offset": 11,
+            "sysFiles": [],
+            "type": 0
+        },
         "musl": {
             "description": "musl module",
             "tag_offset": 12,
