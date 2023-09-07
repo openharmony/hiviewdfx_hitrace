@@ -174,51 +174,36 @@ bool GetTraceResult(const char type, const string& traceName, const HiTraceId* h
     if (list.empty()) {
         return false;
     }
-    if (type == 'B') {
-        std::string prefix = "tracing_mark_write: B|";
-        std::string chainStr = "";
-        if (hiTraceId != nullptr) {
-            chainStr = GetRecord(*hiTraceId);
-        }
-        std::string str = prefix + std::to_string(g_pid) + LABEL_HEADER + chainStr + traceName;
-        printf("start str: %s\n", str.c_str());
-        return FindResult(str, list);
-    } else if (type == 'E') {
-        std::string prefix = "tracing_mark_write: E|";
-        std::string str = prefix + std::to_string(g_pid) + VERTICAL_LINE;
-        printf("finish str: %s\n", str.c_str());
-        return FindResult(str, list);
-    } else if (type == 'S') {
-        std::string prefix = "tracing_mark_write: S|";
-        std::string chainStr = "";
-        if (hiTraceId != nullptr) {
-            chainStr = GetRecord(*hiTraceId);
-        }
-        std::string str = prefix + std::to_string(g_pid) + LABEL_HEADER + chainStr
-        + traceName + " " + to_string(taskId);
-        printf("start str: %s\n", str.c_str());
-        return FindResult(str, list);
-    } else if (type == 'F') {
-        std::string prefix = "tracing_mark_write: F|";
-        std::string chainStr = "";
-        if (hiTraceId != nullptr) {
-            chainStr = GetRecord(*hiTraceId);
-        }
-        std::string str = prefix + std::to_string(g_pid) + LABEL_HEADER + chainStr
-        + traceName + " " + to_string(taskId);
-        printf("finish str: %s\n", str.c_str());
-        return FindResult(str, list);
-    } else if (type == 'C') {
-        std::string prefix = "tracing_mark_write: C|";
-        std::string chainStr = "";
-        if (hiTraceId != nullptr) {
-            chainStr = GetRecord(*hiTraceId);
-        }
-        std::string str = prefix + std::to_string(g_pid) + LABEL_HEADER + chainStr + traceName;
-        printf("start str: %s\n", str.c_str());
-        return FindResult(str, list);
+
+    std::string prefix;
+    std::string chainStr = "";
+    std::string str;
+
+    if (hiTraceId != nullptr) {
+        chainStr = GetRecord(*hiTraceId);
     }
-    return false;
+
+    if (type == 'B') {
+        prefix = "tracing_mark_write: B|";
+        str = prefix + std::to_string(g_pid) + LABEL_HEADER + chainStr + traceName;
+    } else if (type == 'E') {
+        prefix = "tracing_mark_write: E|";
+        str = prefix + std::to_string(g_pid) + VERTICAL_LINE;
+    } else if (type == 'S') {
+        prefix = "tracing_mark_write: S|";
+        str = prefix + std::to_string(g_pid) + LABEL_HEADER + chainStr
+        + traceName + " " + to_string(taskId);
+    } else if (type == 'F') {
+        prefix = "tracing_mark_write: F|";
+        str = prefix + std::to_string(g_pid) + LABEL_HEADER + chainStr
+        + traceName + " " + to_string(taskId);
+    } else if (type == 'C') {
+        prefix = "tracing_mark_write: C|";
+        str = prefix + std::to_string(g_pid) + LABEL_HEADER + chainStr + traceName;
+    } else {
+        return false;
+    }
+    return FindResult(str, list);
 }
 
 static bool WriteStringToFile(const string& fileName, const string& str)
@@ -326,9 +311,6 @@ HWTEST_F(HitraceNDKTest, StartTrace_001, TestSize.Level0)
     FinishTrace(TAG);
     ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
     vector<string> list = ReadTrace();
-    for (string ele : list) {
-        printf("StartTrace_001 list : %s\n", ele.c_str());
-    }
     bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
     bool isFinishSuc = GetTraceResult('E', traceName, nullptr, 0, list);
@@ -352,9 +334,6 @@ HWTEST_F(HitraceNDKTest, StartHiTraceIdTest_001, TestSize.Level0)
     HiTraceChain::End(hiTraceId);
     ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
-    for (string ele : list) {
-        printf("%s list : %s\n", traceName.c_str(), ele.c_str());
-    }
     bool isStartSuc = GetTraceResult('B', traceName, &hiTraceId, 0, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
     bool isFinishSuc = GetTraceResult('E', traceName, &hiTraceId, 0, list);
@@ -383,7 +362,6 @@ HWTEST_F(HitraceNDKTest, StartHiTraceIdTest_002, TestSize.Level0)
     HiTraceChain::End(hiTraceId);
     ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
-
     bool isStartSuc = GetTraceResult('B', longTraceName, &hiTraceId, 0, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + longTraceName + "\" from trace.";
 
@@ -408,9 +386,6 @@ HWTEST_F(HitraceNDKTest, StartAsyncHiTraceIdTest_001, TestSize.Level0)
     HiTraceChain::End(hiTraceId);
     ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
-    for (string ele : list) {
-        printf("%s list : %s\n", traceName.c_str(), ele.c_str());
-    }
     bool isStartSuc = GetTraceResult('S', traceName, &hiTraceId, taskId, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"S|pid|" + traceName + "\" from trace.";
     bool isFinishSuc = GetTraceResult('F', traceName, &hiTraceId, taskId, list);
@@ -530,9 +505,6 @@ HWTEST_F(HitraceNDKTest, StartTrace_006, TestSize.Level0)
     CountTrace(TAG, traceName, count);
     ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
-    for (string ele : list) {
-        printf("%s list : %s\n", traceName.c_str(), ele.c_str());
-    }
     bool isCountSuc = GetTraceResult('C', traceName, nullptr, count, list);
     ASSERT_TRUE(isCountSuc) << "Hitrace Can't find \"C|" + traceName + "\" from trace.";
 }
@@ -551,7 +523,6 @@ HWTEST_F(HitraceNDKTest, StartTrace_007, TestSize.Level1)
     FinishTrace(TRACE_INVALIDATE_TAG);
     ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
-
     bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
     EXPECT_FALSE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
     bool isFinishSuc = GetTraceResult('E', traceName, nullptr, 0, list);
@@ -741,7 +712,6 @@ HWTEST_F(HitraceNDKTest, StartTrace_018, TestSize.Level1)
     FinishAsyncTraceArgs(TAG, taskId, traceName.c_str(), var);
     ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
-
     bool isStartSuc = GetTraceResult('S', traceName.replace(18, 2, to_string(var)), nullptr, taskId, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"S|pid|" + traceName + "\" from trace.";
     bool isFinishSuc = GetTraceResult('F', traceName.replace(18, 2, to_string(var)), nullptr, taskId, list);
@@ -790,7 +760,6 @@ HWTEST_F(HitraceNDKTest, StartTraceWrapper_001, TestSize.Level0)
     FinishTrace(TAG);
     ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
-
     bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
     bool isFinishSuc = GetTraceResult('E', traceName, nullptr, 0, list);
@@ -812,7 +781,6 @@ HWTEST_F(HitraceNDKTest, StartAsyncTraceWrapper_001, TestSize.Level1)
     FinishAsyncTraceWrapper(TRACE_INVALIDATE_TAG, traceName.c_str(), taskId);
     ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
-
     bool isStartSuc = GetTraceResult('S', traceName, nullptr, 0, list);
     EXPECT_FALSE(isStartSuc) << "Hitrace Can't find \"S|pid|" + traceName + "\" from trace.";
     bool isFinishSuc = GetTraceResult('F', traceName, nullptr, 0, list);
@@ -833,7 +801,6 @@ HWTEST_F(HitraceNDKTest, CountTraceWrapper_001, TestSize.Level0)
     CountTraceWrapper(TAG, traceName.c_str(), count);
     ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
-
     bool isStartSuc = GetTraceResult('C', traceName, nullptr, count, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"C|" + traceName + "\" from trace.";
 }
