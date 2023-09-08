@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import("//base/hiviewdfx/hitrace/hitrace.gni")
 import("//build/ohos.gni")
 
 config("hitrace_osal_inner_config") {
@@ -18,6 +19,7 @@ config("hitrace_osal_inner_config") {
   include_dirs = [
     "./include",
     "../interfaces/native/innerkits/include/hitrace_meter",
+    "${OHOS_HITRACE_DIR}/interfaces/native/innerkits/include/",
   ]
 }
 
@@ -36,6 +38,7 @@ ohos_executable("hitrace") {
 
   deps = [
     ":hitrace_osal_inner",
+    "${OHOS_HITRACE_DIR}/interfaces/native/innerkits:hitrace_dump",
     "//third_party/zlib:libz",
   ]
 
@@ -55,6 +58,7 @@ ohos_executable("bytrace") {
 
   deps = [
     ":hitrace_osal_inner",
+    "${OHOS_HITRACE_DIR}/interfaces/native/innerkits:hitrace_dump",
     "//third_party/zlib:libz",
   ]
 
