@@ -34,6 +34,7 @@
 #include <zlib.h>
 
 #include "hitrace_meter.h"
+#include "hitrace_dump.h"
 #include "hitrace_osal.h"
 #include "securec.h"
 
@@ -89,6 +90,8 @@ const unsigned int START_ASYNC = 2;
 unsigned int g_traceStart = START_NORMAL;
 bool g_traceStop = true;
 bool g_traceDump = true;
+bool g_defaultMode = false;
+bool g_closeService = false;
 
 map<string, TagCategory> g_tagMap;
 vector<uint64_t> g_userEnabledTags;
@@ -339,6 +342,9 @@ static bool SetUserSpaceSettings()
 
 static bool ClearUserSpaceSettings()
 {
+    if (g_closeService) {
+        return SetTraceTagsEnabled(HITRACE_TAG_ALWAYS) && RefreshServices();
+    }
     return SetTraceTagsEnabled(0) && RefreshServices();
 }
 
@@ -466,10 +472,12 @@ static bool ParseLongOpt(const string& cmd, int optionIndex)
         g_traceStart = START_NONE;
         g_traceStop = true;
         g_traceDump = true;
+        g_closeService = true;
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_finish_nodump")) {
         g_traceStart = START_NONE;
         g_traceStop = true;
         g_traceDump = false;
+        g_closeService = true;
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_dump")) {
         g_traceStart = START_NONE;
         g_traceStop = false;
@@ -560,6 +568,10 @@ static bool HandleOpt(int argc, char** argv)
             break;
         }
         isTrue = ParseOpt(opt, argv, optionIndex);
+    }
+
+    if (g_userEnabledTags.size() == 0 && g_kernelEnabledPaths.size() == 0) {
+        g_defaultMode = true;
     }
     return isTrue;
 }
@@ -988,6 +1000,10 @@ int main(int argc, char **argv)
             exit(-1);
         }
         if (g_traceStart == START_ASYNC) {
+            if (g_defaultMode) {
+                const std::vector<std::string> tagGroups = {"scene_performance"};
+                OHOS::HiviewDFX::Hitrace::OpenTrace(tagGroups);
+            }
             return isTrue ? 0 : -1;
         }
         WaitForTraceDone();
