@@ -151,6 +151,7 @@ void MiddleTraceDebug(bool isDebug, uint64_t label, const std::string& beforeVal
 void CountTrace(uint64_t label, const std::string& name, int64_t count);
 void CountTraceDebug(bool isDebug, uint64_t label, const std::string& name, int64_t count);
 void CountTraceWrapper(uint64_t label, const char *name, int64_t count);
+bool IsTagEnabled(uint64_t tag);
 
 class HitraceScoped {
 public:
