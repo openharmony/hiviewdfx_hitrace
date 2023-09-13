@@ -41,7 +41,7 @@ namespace {
 int g_markerFd = -1;
 std::once_flag g_onceFlag;
 std::once_flag g_onceWriteMarkerFailedFlag;
-CachedHandle cachedHandle;
+CachedHandle g_cachedHandle;
 
 std::atomic<bool> g_isHitraceMeterDisabled(false);
 std::atomic<bool> g_isHitraceMeterInit(false);
@@ -97,16 +97,16 @@ uint64_t GetSysParamTags()
 {
     // Get the system parameters of KEY_TRACE_TAG.
     uint64_t tags = 0;
-    if (cachedHandle == nullptr) {
+    if (g_cachedHandle == nullptr) {
         tags = OHOS::system::GetUintParameter<uint64_t>(KEY_TRACE_TAG, 0);
         if (tags == 0) {
             // HiLog::Error(LABEL, "GetUintParameter %s error .\n", KEY_TRACE_TAG.c_str());
             return 0;
         }
-        cachedHandle = CachedParameterCreate(KEY_TRACE_TAG.c_str(), nullptr);
+        g_cachedHandle = CachedParameterCreate(KEY_TRACE_TAG.c_str(), nullptr);
     } else {
         int changed = 0;
-        const char *paramValue = CachedParameterGetChanged(cachedHandle, &changed);
+        const char *paramValue = CachedParameterGetChanged(g_cachedHandle, &changed);
         if (changed == 1) {
             HiLog::Info(LABEL, "g_tagsProperty changed, previous is %{public}s.", to_string(g_tagsProperty.load()).c_str());
             tags = strtoull(paramValue, nullptr, 0);
