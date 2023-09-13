@@ -168,13 +168,13 @@ cJSON* ParseJsonFromFile(const std::string& filePath)
 {
     std::ifstream inFile(filePath, std::ios::in);
     if (!inFile.is_open()) {
-        HiLog::Error(LABEL, "ParseJsonFromFile: %{pubilc}s is not existed.", filePath.c_str());
+        HiLog::Error(LABEL, "ParseJsonFromFile: %{public}s is not existed.", filePath.c_str());
         return nullptr;
     }
     std::string fileContent((std::istreambuf_iterator<char>(inFile)), std::istreambuf_iterator<char>());
     cJSON* root = cJSON_Parse(fileContent.c_str());
     if (root == nullptr) {
-        HiLog::Error(LABEL, "ParseJsonFromFile: %{pubilc}s is not in JSON format.", filePath.c_str());
+        HiLog::Error(LABEL, "ParseJsonFromFile: %{public}s is not in JSON format.", filePath.c_str());
     }
     inFile.close();
     return root;
@@ -249,7 +249,7 @@ bool ParseTagInfo(std::map<std::string, TagCategory> &allTags,
     }
     cJSON* tagCategory = cJSON_GetObjectItem(root, "tag_category");
     if (tagCategory == nullptr) {
-        HiLog::Error(LABEL, "ParseTagInfo: %{pubilc}s is not contain tag_category node.", traceUtilsPath.c_str());
+        HiLog::Error(LABEL, "ParseTagInfo: %{public}s is not contain tag_category node.", traceUtilsPath.c_str());
         cJSON_Delete(root);
         return false;
     }
@@ -259,7 +259,7 @@ bool ParseTagInfo(std::map<std::string, TagCategory> &allTags,
     }
     cJSON* tagGroups = cJSON_GetObjectItem(root, "tag_groups");
     if (tagGroups == nullptr) {
-        HiLog::Error(LABEL, "ParseTagInfo: %{pubilc}s is not contain tag_groups node.", traceUtilsPath.c_str());
+        HiLog::Error(LABEL, "ParseTagInfo: %{public}s is not contain tag_groups node.", traceUtilsPath.c_str());
         cJSON_Delete(root);
         return false;
     }
@@ -276,7 +276,7 @@ bool CheckTags(const std::vector<std::string> &tags, const std::map<std::string,
 {
     for (auto tag : tags) {
         if (allTags.find(tag) == allTags.end()) {
-            HiLog::Error(LABEL, "CheckTags: %{pubilc}s is not provided.", tag.c_str());
+            HiLog::Error(LABEL, "CheckTags: %{public}s is not provided.", tag.c_str());
             return false;
         }
     }
@@ -288,7 +288,7 @@ bool CheckTagGroup(const std::vector<std::string> &tagGroups,
 {
     for (auto groupName : tagGroups) {
         if (tagGroupTable.find(groupName) == tagGroupTable.end()) {
-            HiLog::Error(LABEL, "CheckTagGroup: %{pubilc}s is not provided.", groupName.c_str());
+            HiLog::Error(LABEL, "CheckTagGroup: %{public}s is not provided.", groupName.c_str());
             return false;
         }
     }
@@ -300,12 +300,12 @@ bool WriteStrToFile(const std::string& filename, const std::string& str)
     std::ofstream out;
     out.open(g_traceRootPath + filename, std::ios::out);
     if (out.fail()) {
-        HiLog::Error(LABEL, "WriteStrToFile: %{pubilc}s open failed.", filename.c_str());
+        HiLog::Error(LABEL, "WriteStrToFile: %{public}s open failed.", filename.c_str());
         return false;
     }
     out << str;
     if (out.bad()) {
-        HiLog::Error(LABEL, "WriteStrToFile: %{pubilc}s write failed.", filename.c_str());
+        HiLog::Error(LABEL, "WriteStrToFile: %{public}s write failed.", filename.c_str());
         out.close();
         return false;
     }
@@ -334,9 +334,9 @@ bool SetProperty(const std::string& property, const std::string& value)
 {
     bool result = OHOS::system::SetParameter(property, value);
     if (!result) {
-        HiLog::Error(LABEL, "SetProperty: set %{pubilc}s failed.", value.c_str());
+        HiLog::Error(LABEL, "SetProperty: set %{public}s failed.", value.c_str());
     } else {
-        HiLog::Info(LABEL, "SetProperty: set %{pubilc}s success.", value.c_str());
+        HiLog::Info(LABEL, "SetProperty: set %{public}s success.", value.c_str());
     }
     return result;
 }
@@ -406,7 +406,6 @@ void SetAllTags(const TraceParams &traceParams, const std::map<std::string, TagC
         if (iter->second.type == 1) {
             for (const auto& path : iter->second.sysFiles) {
                 SetFtraceEnabled(path, true);
-                HiLog::Info(LABEL, "Ftrace Enabled: set %{pubilc}s success.", path.c_str());
             }
         }
     }
@@ -418,7 +417,7 @@ std::string ReadFile(const std::string& filename)
     std::string resolvedPath = CanonicalizeSpecPath((g_traceRootPath + filename).c_str());
     std::ifstream fileIn(resolvedPath.c_str());
     if (!fileIn.is_open()) {
-        HiLog::Error(LABEL, "ReadFile: %{pubilc}s open failed.", filename.c_str());
+        HiLog::Error(LABEL, "ReadFile: %{public}s open failed.", filename.c_str());
         return "";
     }
 
@@ -436,7 +435,7 @@ void SetClock(const std::string& clockType)
     }
     std::string allClocks = ReadFile(traceClockPath);
     if (allClocks.find(clockType) == std::string::npos) {
-        HiLog::Error(LABEL, "SetClock: %{pubilc}s is non-existent, set to boot", clockType.c_str());
+        HiLog::Error(LABEL, "SetClock: %{public}s is non-existent, set to boot", clockType.c_str());
         WriteStrToFile(traceClockPath, "boot"); // set default: boot
         return;
     }
@@ -611,7 +610,6 @@ bool WriteEventsFormat(int outFd)
         return false;
     }
     const std::vector<std::string> priorityTracingCategory = {
-        "events/sched/sched_waking/format",
         "events/sched/sched_wakeup/format",
         "events/sched/sched_switch/format",
         "events/sched/sched_blocked_reason/format",
@@ -620,14 +618,42 @@ bool WriteEventsFormat(int outFd)
         "events/power/cpu_frequency_limits/format",
         "events/f2fs/f2fs_sync_file_enter/format",
         "events/f2fs/f2fs_sync_file_exit/format",
+        "events/f2fs/f2fs_readpage/format",
+        "events/f2fs/f2fs_readpages/format",
+        "events/f2fs/f2fs_sync_fs/format",
+        "events/hmdfs/hmdfs_syncfs_enter/format",
+        "events/hmdfs/hmdfs_syncfs_exit/format",
+        "events/erofs/erofs_readpage/format",
+        "events/erofs/erofs_readpages/format",
         "events/ext4/ext4_da_write_begin/format",
         "events/ext4/ext4_da_write_end/format",
         "events/ext4/ext4_sync_file_enter/format",
         "events/ext4/ext4_sync_file_exit/format",
+        "events/block/block_bio_remap/format",
         "events/block/block_rq_issue/format",
         "events/block/block_rq_complete/format",
+        "events/block/block_rq_insert/format",
+        "event/dma_fence/dma_fence_emit/format",
+        "event/dma_fence/dma_fence_destroy/format",
+        "event/dma_fence/dma_fence_enable_signa;/format",
+        "event/dma_fence/dma_fence_signaled/format",
+        "event/dma_fence/dma_fence_wait_end/format",
+        "event/dma_fence/dma_fence_wait_start/format",
+        "event/dma_fence/dma_fence_init/format",
         "events/binder/binder_transaction/format",
         "events/binder/binder_transaction_received/format",
+        "events/mmc/mmc_request_start/format",
+        "events/mmc/mmc_request_done/format",
+        "events/memory_bus/format",
+        "events/cpufreq_interactive/format",
+        "events/filemap/file_check_and_advance_wb_err/format",
+        "events/filemap/filemap_set_wb_err/format",
+        "events/filemap/mm_filemap_add_to_page_cache/format",
+        "events/filemap/mm_filemap_delete_from_page_cache/format",
+        "events/workqueue/workqueue_execute_end/format",
+        "events/workqueue/workqueue_execute_start/format",
+        "events/thermal_power_allocator/thermal_power_allocator/format",
+        "events/thermal_power_allocator/thermal_power_allocator_pid/format",
         "events/ftrace/print/format",
     };
     for (size_t i = 0; i < priorityTracingCategory.size(); i++) {
