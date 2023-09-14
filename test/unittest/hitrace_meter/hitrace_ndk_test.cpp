@@ -921,7 +921,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_025, TestSize.Level1)
  * @tc.desc: Testing IsTagEnabled
  * @tc.type: FUNC
  */
-HWTEST_F(HitraceNDKTest, StartTrace_025, TestSize.Level1)
+HWTEST_F(HitraceNDKTest, StartTrace_026, TestSize.Level1)
 {
     const std::string KEY_TRACE_TAG = "debug.hitrace.tags.enableflags";
     ASSERT_TRUE(SetProperty(KEY_TRACE_TAG, std::to_string(HITRACE_TAG_USB | HITRACE_TAG_HDF)));
@@ -937,7 +937,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_025, TestSize.Level1)
  * @tc.desc: Testing IsTagEnabled with multiple tags
  * @tc.type: FUNC
  */
-HWTEST_F(HitraceNDKTest, StartTrace_025, TestSize.Level1)
+HWTEST_F(HitraceNDKTest, StartTrace_027, TestSize.Level1)
 {
     const std::string KEY_TRACE_TAG = "debug.hitrace.tags.enableflags";
     ASSERT_TRUE(SetProperty(KEY_TRACE_TAG, std::to_string(HITRACE_TAG_ZIMAGE | HITRACE_TAG_HDF | HITRACE_TAG_ZAUDIO)));
