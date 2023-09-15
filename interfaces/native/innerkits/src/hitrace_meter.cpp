@@ -465,7 +465,8 @@ HitraceMeterFmtScoped::HitraceMeterFmtScoped(uint64_t label, const char *fmt, ..
     AddHitraceMeterMarker(MARKER_BEGIN, label, name, 0);
 }
 
-bool IsTagEnabled(uint64_t tag) {
+bool IsTagEnabled(uint64_t tag)
+{
     uint64_t enabledUserTags = GetSysParamTags();
     return ((tag & enabledUserTags) == tag);
 }
