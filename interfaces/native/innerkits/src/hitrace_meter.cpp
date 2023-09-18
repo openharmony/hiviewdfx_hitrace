@@ -109,7 +109,7 @@ uint64_t GetSysParamTags()
         const char *paramValue = CachedParameterGetChanged(g_cachedHandle, &changed);
         if (changed == 1) {
             HiLog::Info(LABEL, "g_tagsProperty changed, previous is %{public}s.",
-            to_string(g_tagsProperty.load()).c_str());
+                        to_string(g_tagsProperty.load()).c_str());
             tags = strtoull(paramValue, nullptr, 0);
         } else {
             return g_tagsProperty;
