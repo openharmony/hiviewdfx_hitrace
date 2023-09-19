@@ -41,7 +41,7 @@ namespace {
 int g_markerFd = -1;
 std::once_flag g_onceFlag;
 std::once_flag g_onceWriteMarkerFailedFlag;
-CachedHandle cachedHandle;
+CachedHandle g_cachedHandle;
 
 std::atomic<bool> g_isHitraceMeterDisabled(false);
 std::atomic<bool> g_isHitraceMeterInit(false);
@@ -96,10 +96,23 @@ bool IsAppValid()
 uint64_t GetSysParamTags()
 {
     // Get the system parameters of KEY_TRACE_TAG.
-    uint64_t tags = OHOS::system::GetUintParameter<uint64_t>(KEY_TRACE_TAG, 0);
-    if (tags == 0) {
-        // HiLog::Error(LABEL, "GetUintParameter %s error.\n", KEY_TRACE_TAG.c_str());
-        return 0;
+    uint64_t tags = 0;
+    if (g_cachedHandle == nullptr) {
+        tags = OHOS::system::GetUintParameter<uint64_t>(KEY_TRACE_TAG, 0);
+        if (tags == 0) {
+            // HiLog::Error(LABEL, "GetUintParameter %s error .\n", KEY_TRACE_TAG.c_str());
+            return 0;
+        }
+        g_cachedHandle = CachedParameterCreate(KEY_TRACE_TAG.c_str(), nullptr);
+    } else {
+        int changed = 0;
+        const char *paramValue = CachedParameterGetChanged(g_cachedHandle, &changed);
+        if (changed == 1) {
+            HiLog::Info(LABEL, "g_tagsProperty changed, previous is %{public}s.", to_string(g_tagsProperty.load()).c_str());
+            tags = strtoull(paramValue, nullptr, 0);
+        } else {
+            return g_tagsProperty;
+        }
     }
 
     IsAppValid();
@@ -123,8 +136,6 @@ void OpenTraceMarkerFile()
     }
     // get tags and pid
     g_tagsProperty = GetSysParamTags();
-    const char* devValue = "true";
-    cachedHandle = CachedParameterCreate(KEY_TRACE_TAG.c_str(), devValue);
     std::string pidStr = std::to_string(getpid());
     errno_t ret = strcpy_s(g_pid, PID_BUF_SIZE, pidStr.c_str());
     if (ret != 0) {
@@ -190,14 +201,7 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
         }
         std::call_once(g_onceFlag, OpenTraceMarkerFile);
     }
-    int changed = 0;
-    const char *paramValue = CachedParameterGetChanged(cachedHandle, &changed);
-    if (changed == 1) {
-        HiLog::Info(LABEL, "g_tagsProperty changed, previous is %{public}s.", to_string(g_tagsProperty.load()).c_str());
-        uint64_t tags = strtoull(paramValue, nullptr, 0);
-        g_tagsProperty = (tags | HITRACE_TAG_ALWAYS) & HITRACE_TAG_VALID_MASK;
-        HiLog::Info(LABEL, "g_tagsProperty changed, now is %{public}s.", to_string(g_tagsProperty.load()).c_str());
-    }
+    g_tagsProperty = GetSysParamTags();
     if (UNEXPECTANTLY(g_tagsProperty & tag) && g_markerFd != -1) {
         // record fomart: "type|pid|name value".
         char buf[BUFFER_LEN] = {0};
@@ -459,4 +463,9 @@ HitraceMeterFmtScoped::HitraceMeterFmtScoped(uint64_t label, const char *fmt, ..
         return;
     }
     AddHitraceMeterMarker(MARKER_BEGIN, label, name, 0);
+}
+
+bool IsTagEnabled(uint64_t tag) {
+    uint64_t enabledUserTags = GetSysParamTags();
+    return ((tag & enabledUserTags) == tag);
 }
