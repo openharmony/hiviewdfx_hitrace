@@ -108,7 +108,8 @@ uint64_t GetSysParamTags()
         int changed = 0;
         const char *paramValue = CachedParameterGetChanged(g_cachedHandle, &changed);
         if (changed == 1) {
-            HiLog::Info(LABEL, "g_tagsProperty changed, previous is %{public}s.", to_string(g_tagsProperty.load()).c_str());
+            HiLog::Info(LABEL, "g_tagsProperty changed, previous is %{public}s.",
+                        to_string(g_tagsProperty.load()).c_str());
             tags = strtoull(paramValue, nullptr, 0);
         } else {
             return g_tagsProperty;
@@ -465,7 +466,8 @@ HitraceMeterFmtScoped::HitraceMeterFmtScoped(uint64_t label, const char *fmt, ..
     AddHitraceMeterMarker(MARKER_BEGIN, label, name, 0);
 }
 
-bool IsTagEnabled(uint64_t tag) {
+bool IsTagEnabled(uint64_t tag)
+{
     uint64_t enabledUserTags = GetSysParamTags();
     return ((tag & enabledUserTags) == tag);
 }
