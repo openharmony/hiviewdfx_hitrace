@@ -68,7 +68,7 @@ void DynamicBuffer::UpdateTraceLoad()
     totalCpusLoad = 0.0;
     totalAverage = 0;
     maxAverage = 0;
-    for (size_t i = 0; i < cpuNums; i++) {
+    for (int i = 0; i < cpuNums; i++) {
         TraceStatsInfo traceStats = {};
         if (!GetPerCpuStatsInfo(i, traceStats)) {
             HiLog::Error(LABEL, "GetPerCpuStatsInfo failed.");
@@ -89,7 +89,7 @@ void DynamicBuffer::UpdateTraceLoad()
 void DynamicBuffer::CalculateBufferSize(std::vector<int>& result)
 {
     UpdateTraceLoad();
-    if (allTraceStats.size() != cpuNums) {
+    if (static_cast<int>(allTraceStats.size()) != cpuNums) {
         return;
     }
     HiLog::Debug(LABEL, "hitrace: average = %{public}d.", totalAverage / cpuNums);
@@ -99,7 +99,7 @@ void DynamicBuffer::CalculateBufferSize(std::vector<int>& result)
         totalBonus = EXPANSION_SIZE * cpuNums;
     }
 
-    for (size_t i = 0; i < cpuNums; i++) {
+    for (int i = 0; i < cpuNums; i++) {
         int newSize = BASE_SIZE + floor((allTraceStats[i].freq / totalCpusLoad) * totalBonus);
         newSize = newSize / PAGE_KB * PAGE_KB;
         result.push_back(newSize);
