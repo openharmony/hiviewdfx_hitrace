@@ -73,7 +73,7 @@ ohos_executable("bytrace") {
 }
 
 ohos_prebuilt_etc("hitrace.cfg") {
-  if (build_variant == "user") {
+  if (build_variant == "root") {
     source = "./config/hitrace_userdebug.cfg"
   } else {
     source = "./config/hitrace_user.cfg"
