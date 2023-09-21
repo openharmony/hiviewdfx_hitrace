@@ -33,6 +33,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <sys/prctl.h>
+#include <sys/wait.h>
 #include <cinttypes>
 #include <utility>
 #include <dirent.h>
@@ -633,13 +635,13 @@ bool WriteEventsFormat(int outFd)
         "events/block/block_rq_issue/format",
         "events/block/block_rq_complete/format",
         "events/block/block_rq_insert/format",
-        "event/dma_fence/dma_fence_emit/format",
-        "event/dma_fence/dma_fence_destroy/format",
-        "event/dma_fence/dma_fence_enable_signa;/format",
-        "event/dma_fence/dma_fence_signaled/format",
-        "event/dma_fence/dma_fence_wait_end/format",
-        "event/dma_fence/dma_fence_wait_start/format",
-        "event/dma_fence/dma_fence_init/format",
+        "events/dma_fence/dma_fence_emit/format",
+        "events/dma_fence/dma_fence_destroy/format",
+        "events/dma_fence/dma_fence_enable_signal/format",
+        "events/dma_fence/dma_fence_signaled/format",
+        "events/dma_fence/dma_fence_wait_end/format",
+        "events/dma_fence/dma_fence_wait_start/format",
+        "events/dma_fence/dma_fence_init/format",
         "events/binder/binder_transaction/format",
         "events/binder/binder_transaction_received/format",
         "events/mmc/mmc_request_start/format",
@@ -751,7 +753,7 @@ void ProcessDumpTask()
 
 void SearchFromTable(std::vector<std::string> &outputFiles, int nowSec)
 {
-    const int maxInterval = 8;
+    const int maxInterval = 30;
     const int agingTime = 30 * 60;
 
     for (auto iter = g_traceFilesTable.begin(); iter != g_traceFilesTable.end();) {
@@ -818,6 +820,24 @@ std::string GenerateName()
     return name;
 }
 
+void SetProcessName(std::string& processName)
+{
+    if (processName.size() <= 0) {
+        return;
+    }
+
+    const int maxNameLen = 16;
+    std::string setName;
+    if (processName.size() > maxNameLen) {
+        setName = processName.substr(0, maxNameLen);
+    } else {
+        setName = processName;
+    }
+
+    prctl(PR_SET_NAME, setName.c_str(), nullptr, nullptr, nullptr);
+    HiLog::Info(LABEL, "New process: %{public}s.", setName.c_str());
+}
+
 TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
 {
     struct timeval now = {0, 0};
@@ -839,7 +859,30 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
     g_dumpEnd = false;
     std::string outputFileName = GenerateName();
     std::string reOutPath = CanonicalizeSpecPath(outputFileName.c_str());
-    bool ret = ReadRawTrace(reOutPath);
+
+    /*Child process handles task, Father process wait.*/
+    pid_t pid = fork();
+    if (pid < 0) {
+        HiLog::Error(LABEL, "fork error.");
+        return TraceErrorCode::WRITE_TRACE_INFO_ERROR;
+    }
+    bool ret = false;
+    if (pid == 0) {
+        std::string processName = "HitraceDump";
+        SetProcessName(processName);
+        ReadRawTrace(reOutPath);
+        HiLog::Info(LABEL, "%{public}s exit.", processName.c_str());
+        _exit(EXIT_SUCCESS);
+    } else {
+        int exitCode = 0;
+        wait(&exitCode);
+        if (access(reOutPath.c_str(), F_OK) == 0) {
+            HiLog::Info(LABEL, "Output: %{public}s.", reOutPath.c_str());
+            ret = true;
+        } else {
+            HiLog::Error(LABEL, "Output error: %{public}s.", reOutPath.c_str());
+        }
+    }
 
     SearchFromTable(outputFiles, nowSec);
     if (ret) {
@@ -884,7 +927,8 @@ bool CheckParam()
 
 bool CheckTraceFile()
 {
-    if (ReadFile("tracing_on") == "1\n") {
+    const std::string enable = "1";
+    if (ReadFile("tracing_on").substr(0, enable.size()) == enable) {
         return true;
     }
     HiLog::Error(LABEL, "tracing_on is 0, restart it.");
@@ -923,7 +967,7 @@ void MonitorServiceTask()
         std::unique_ptr<DynamicBuffer> dynamicBuffer = std::make_unique<DynamicBuffer>(g_traceRootPath, cpuNums);
         dynamicBuffer->CalculateBufferSize(result);
 
-        if (result.size() != cpuNums) {
+        if (static_cast<int>(result.size()) != cpuNums) {
             HiLog::Error(LABEL, "CalculateAllNewBufferSize failed.");
             break;
         }
@@ -934,34 +978,8 @@ void MonitorServiceTask()
             WriteStrToFile(path, std::to_string(result[i]));
         }
     }
-    HiLog::Info(LABEL, "MonitorServiceTask: monitor thread exit.");
+    HiLog::Info(LABEL, "MonitorServiceTask: monitor thread exit."); 
     g_serviceThreadIsStart = false;
-}
-
-void MonitorCmdTask()
-{
-    int curCmdTimes = 0;
-    const int maxCmdTimes = 5 * 60 * 1000 * 1000 / UNIT_TIME; // 5min exit
-    HiLog::Info(LABEL, "MonitorCmdTask: monitor thread start.");
-    while (true) {
-        if (g_traceMode != TraceMode::CMD_MODE) {
-            HiLog::Info(LABEL, "MonitorCmdTask: monitor thread exit.");
-            return;
-        }
-
-        if (curCmdTimes >= maxCmdTimes) {
-            HiLog::Error(LABEL, "MonitorCmdTask: CMD_MODE Timeout exit.");
-            g_dumpFlag = false;
-            while (!g_dumpEnd) {
-                usleep(UNIT_TIME);
-            }
-            OHOS::HiviewDFX::Hitrace::CloseTrace();
-            break;
-        } else {
-            curCmdTimes++;
-        }
-        usleep(UNIT_TIME);
-    }
 }
 
 TraceErrorCode HandleTraceOpen(const TraceParams &traceParams,
@@ -1086,6 +1104,16 @@ TraceMode GetTraceMode()
 
 TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
 {
+    if (g_traceMode == SERVICE_MODE) {
+        HiLog::Info(LABEL, "SERVICE_MODE already open.");
+        return SUCCESS;
+    }
+
+    if (g_traceMode == CMD_MODE) {
+        HiLog::Error(LABEL, "OpenTrace: CALL_ERROR.");
+        return CALL_ERROR;
+    }
+
     if (!IsTraceMounted()) {
         HiLog::Error(LABEL, "OpenTrace: TRACE_NOT_SUPPORTED.");
         return TRACE_NOT_SUPPORTED;
@@ -1100,16 +1128,6 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
     if (tagGroups.size() == 0 || !CheckTagGroup(tagGroups, tagGroupTable)) {
         HiLog::Error(LABEL, "OpenTrace: TAG_ERROR.");
         return TAG_ERROR;
-    }
-
-    if (g_traceMode == CMD_MODE) {
-        HiLog::Error(LABEL, "OpenTrace: TRACE_IS_OCCUPIED.");
-        return TRACE_IS_OCCUPIED;
-    }
-
-    if (g_traceMode == SERVICE_MODE) {
-        HiLog::Error(LABEL, "OpenTrace: CALL_ERROR.");
-        return CALL_ERROR;
     }
 
     TraceErrorCode ret = HandleServiceTraceOpen(tagGroups, allTags, tagGroupTable);
@@ -1154,15 +1172,13 @@ TraceErrorCode OpenTrace(const std::string &args)
         return CALL_ERROR;
     }
 
+    g_traceMode = CMD_MODE;
     TraceErrorCode ret = HandleTraceOpen(cmdTraceParams, allTags, tagGroupTable);
     if (ret != SUCCESS) {
         HiLog::Error(LABEL, "Hitrace OpenTrace: CMD_MODE open failed.");
+        g_traceMode = CLOSE;
         return FILE_ERROR;
     }
-    g_traceMode = CMD_MODE;
-    // open SERVICE_MODE monitor thread
-    std::thread auxiliaryTask(MonitorCmdTask);
-    auxiliaryTask.detach();
     HiLog::Info(LABEL, "Hitrace OpenTrace: CMD_MODE open success.");
     return ret;
 }
@@ -1176,12 +1192,12 @@ TraceRetInfo DumpTrace()
         ret.errorCode = CALL_ERROR;
         return ret;
     }
-    
+
     if (!CheckServiceRunning()) {
         ret.errorCode = TRACE_IS_OCCUPIED;
         return ret;
     }
-    
+
     ret.errorCode = DumpTraceInner(ret.outputFiles);
     HiLog::Debug(LABEL, "DumpTrace done.");
     return ret;

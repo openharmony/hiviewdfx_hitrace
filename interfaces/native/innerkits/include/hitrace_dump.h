@@ -62,6 +62,7 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups);
 
 /**
  * Reading trace data once from ftrace ringbuffer in the kernel.
+ * Using child processes to process trace tasks.
 */
 TraceRetInfo DumpTrace();
 
