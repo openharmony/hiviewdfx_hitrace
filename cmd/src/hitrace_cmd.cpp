@@ -929,6 +929,7 @@ static void InitOtherUserTags()
     g_tagMap["ffrt"] = {"ffrt", "Ffrt Tasks", HITRACE_TAG_FFRT, USER, {}};
     g_tagMap["musl"] = {"musl", "Musl Module", HITRACE_TAG_MUSL, USER, {}};
     g_tagMap["virse"] = {"virse", "Virtualization Service", HITRACE_TAG_VIRSE, USER, {}};
+    g_tagMap["push"] = {"push", "Push subsystem", HITRACE_TAG_PUSH, USER, {}};
 }
 
 static void InitAllSupportTags()
