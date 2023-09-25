@@ -103,7 +103,8 @@ uint64_t GetSysParamTags()
             // HiLog::Error(LABEL, "GetUintParameter %s error .\n", KEY_TRACE_TAG.c_str());
             return 0;
         }
-        g_cachedHandle = CachedParameterCreate(KEY_TRACE_TAG.c_str(), nullptr);
+        const char* devValue = "true";
+        g_cachedHandle = CachedParameterCreate(KEY_TRACE_TAG.c_str(), devValue);
     } else {
         int changed = 0;
         const char *paramValue = CachedParameterGetChanged(g_cachedHandle, &changed);
