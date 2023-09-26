@@ -112,9 +112,9 @@ uint64_t GetSysParamTags()
             HiLog::Info(LABEL, "g_tagsProperty changed, previous is %{public}s.",
                         to_string(g_tagsProperty.load()).c_str());
             tags = strtoull(paramValue, nullptr, 0);
-        } else {
-            return g_tagsProperty;
+            g_tagsProperty = (tags | HITRACE_TAG_ALWAYS) & HITRACE_TAG_VALID_MASK;
         }
+        return g_tagsProperty;
     }
 
     IsAppValid();
