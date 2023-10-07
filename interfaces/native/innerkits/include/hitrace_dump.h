@@ -38,6 +38,8 @@ enum TraceMode : uint8_t {
     CLOSE = 0,
     CMD_MODE = 1,
     SERVICE_MODE = 2,
+    RECORDING_MODE = CMD_MODE,
+    SNAPSHOT_MODE = SERVICE_MODE,
 };
 
 struct TraceRetInfo {

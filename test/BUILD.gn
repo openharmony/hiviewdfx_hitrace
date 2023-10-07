@@ -93,7 +93,10 @@ ohos_unittest("HitraceDumpTest") {
 
   sources = [ "unittest/hitrace_dump/hitrace_dump_test.cpp" ]
 
-  include_dirs = [ "../interfaces/native/innerkits/include" ]
+  include_dirs = [
+    "../frameworks/include/",
+    "../interfaces/native/innerkits/include",
+  ]
 
   deps = [
     "../interfaces/native/innerkits:hitrace_dump",

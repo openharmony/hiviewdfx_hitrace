@@ -34,6 +34,13 @@ constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, HITRACE_TAG, "HitraceIn
 */
 std::string CanonicalizeSpecPath(const char* src);
 
+/**
+ * Clock sync: Use trace to mark the real-time and monotonic at this moment
+ * Example of trace output:
+ *  ...... 88.767049: tracing_mark_write: trace_event_clock_sync: realtime_ts=1501929219561
+ *  ...... 88.767072: tracing_mark_write: trace_event_clock_sync: parent_ts=88.767036
+*/
+bool MarkClockSync(const std::string& traceRootPath);
 
 } // Hitrace
 } // HiviewDFX

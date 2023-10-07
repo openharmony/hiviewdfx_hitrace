@@ -14,6 +14,7 @@
  */
 
 #include "hitrace_dump.h"
+#include "common_utils.h"
 
 #include <iostream>
 #include <memory>
@@ -23,6 +24,7 @@
 
 #include <unistd.h>
 #include <cstdio>
+#include <fcntl.h>
 #include "securec.h"
 
 #include "hilog/log.h"
@@ -88,9 +90,14 @@ class HitraceDumpTest : public testing::Test {
 public:
     static void SetUpTestCase(void);
     static void TearDownTestCase(void);
-    void SetUp() {}
+    void SetUp();
     void TearDown() {}
 };
+
+void HitraceDumpTest::SetUp()
+{
+    CloseTrace();
+}
 
 void HitraceDumpTest::SetUpTestCase()
 {
@@ -220,7 +227,7 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_003, TestSize.Level0)
     args = "tags:hdcc clockType:boot bufferSize:1024 overwrite:1 descriptions:123";
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::TAG_ERROR);
     
-    ASSERT_TRUE(CloseTrace() == TraceErrorCode::CALL_ERROR);
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
 /**
@@ -234,7 +241,7 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_004, TestSize.Level0)
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
 
     const std::vector<std::string> tagGroups = {"scene_performance"};
-    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::TRACE_IS_OCCUPIED);
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::CALL_ERROR);
 
     ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::SUCCESS);
     sleep(1);
@@ -384,7 +391,7 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_004, TestSize.Level0)
     ASSERT_TRUE(OpenTrace(tagGroups1) == TraceErrorCode::TAG_ERROR);
     ASSERT_TRUE(DumpTrace().errorCode == TraceErrorCode::CALL_ERROR);
 
-    ASSERT_TRUE(CloseTrace() == TraceErrorCode::CALL_ERROR);
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
 /**
@@ -398,7 +405,7 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_005, TestSize.Level0)
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
 
     const std::vector<std::string> tagGroups = {"scene_performance"};
-    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::TRACE_IS_OCCUPIED);
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::CALL_ERROR);
     
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
@@ -408,4 +415,59 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_005, TestSize.Level0)
 
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
+
+/**
+ * @tc.name: CommonUtils_001
+ * @tc.desc: Test canonicalizeSpecPath(), enter an existing file path.
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceDumpTest, CommonUtils_001, TestSize.Level0)
+{
+    // prepare a file
+    std::string filePath = "/data/local/tmp/tmp.txt";
+    if (access(filePath.c_str(), F_OK) != 0) {
+        int fd = open(filePath.c_str(), O_CREAT);
+        close(fd);
+    }
+    ASSERT_TRUE(CanonicalizeSpecPath(filePath.c_str()) == filePath);
+}
+
+/**
+ * @tc.name: CommonUtils_002
+ * @tc.desc: Test canonicalizeSpecPath(), enter a non-existent file path.
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceDumpTest, CommonUtils_002, TestSize.Level0)
+{
+    // prepare a file
+    std::string filePath = "/data/local/tmp/tmp1.txt";
+    if (access(filePath.c_str(), F_OK) != 0) {
+        ASSERT_TRUE(CanonicalizeSpecPath(filePath.c_str()) == filePath);
+    }
+}
+
+/**
+ * @tc.name: CommonUtils_003
+ * @tc.desc: Test canonicalizeSpecPath(), enter a non-existent file path with "..".
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceDumpTest, CommonUtils_003, TestSize.Level0)
+{
+    // prepare a file
+    std::string filePath = "../tmp2.txt";
+    if (access(filePath.c_str(), F_OK) != 0) {
+        ASSERT_TRUE(CanonicalizeSpecPath(filePath.c_str()) == "");
+    }
+}
+
+/**
+ * @tc.name: CommonUtils_004
+ * @tc.desc: Test MarkClockSync().
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceDumpTest, CommonUtils_004, TestSize.Level0)
+{
+    ASSERT_TRUE(MarkClockSync(g_traceRootPath) == true);
+}
+
 } // namespace
