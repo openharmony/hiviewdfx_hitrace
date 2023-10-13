@@ -15,8 +15,10 @@
 
 #include "common_utils.h"
 
+#include <cinttypes>
 #include <unistd.h>
 #include <cstdio>
+#include <fcntl.h>
 #include "securec.h"
 
 namespace OHOS {
@@ -51,6 +53,62 @@ std::string CanonicalizeSpecPath(const char* src)
 
     std::string res(resolvedPath);
     return res;
+}
+
+bool MarkClockSync(const std::string& traceRootPath)
+{
+    constexpr unsigned int bufferSize = 128;
+    char buffer[bufferSize] = { 0 };
+    std::string traceMarker = "trace_marker";
+    std::string resolvedPath = CanonicalizeSpecPath((traceRootPath + traceMarker).c_str());
+    int fd = open(resolvedPath.c_str(), O_WRONLY);
+    if (fd == -1) {
+        HiLog::Error(LABEL, "MarkClockSync: oepn %{public}s fail, errno(%{public}d)", resolvedPath.c_str(), errno);
+        return false;
+    }
+
+    // write realtime_ts
+    struct timespec rts = {0, 0};
+    if (clock_gettime(CLOCK_REALTIME, &rts) == -1) {
+        HiLog::Error(LABEL, "MarkClockSync: get realtime error, errno(%{public}d)", errno);
+        close(fd);
+        return false;
+    }
+    constexpr unsigned int nanoSeconds = 1000000000; // seconds converted to nanoseconds
+    constexpr unsigned int nanoToMill = 1000000; // millisecond converted to nanoseconds
+    int len = snprintf_s(buffer, sizeof(buffer), sizeof(buffer) - 1,
+        "trace_event_clock_sync: realtime_ts=%" PRId64 "\n",
+        static_cast<int64_t>((rts.tv_sec * nanoSeconds + rts.tv_nsec) / nanoToMill));
+    if (len < 0) {
+        HiLog::Error(LABEL, "MarkClockSync: entering realtime_ts into buffer error, errno(%{public}d)", errno);
+        close(fd);
+        return false;
+    }
+
+    if (write(fd, buffer, len) < 0) {
+        HiLog::Error(LABEL, "MarkClockSync: writing realtime error, errno(%{public}d)", errno);
+    }
+
+    // write parent_ts
+    struct timespec mts = {0, 0};
+    if (clock_gettime(CLOCK_MONOTONIC, &mts) == -1) {
+        HiLog::Error(LABEL, "MarkClockSync: get parent_ts error, errno(%{public}d)", errno);
+        close(fd);
+        return false;
+    }
+    constexpr float nanoToSecond = 1000000000.0f; // consistent with the ftrace timestamp format
+    len = snprintf_s(buffer, sizeof(buffer), sizeof(buffer) - 1, "trace_event_clock_sync: parent_ts=%f\n",
+        static_cast<float>(((static_cast<float>(mts.tv_sec)) * nanoSeconds + mts.tv_nsec) / nanoToSecond));
+    if (len < 0) {
+        HiLog::Error(LABEL, "MarkClockSync: entering parent_ts into buffer error, errno(%{public}d)", errno);
+        close(fd);
+        return false;
+    }
+    if (write(fd, buffer, len) < 0) {
+        HiLog::Error(LABEL, "MarkClockSync: writing parent_ts error, errno(%{public}d)", errno);
+    }
+    close(fd);
+    return true;
 }
 
 } // Hitrace

@@ -22,6 +22,7 @@
 #include <fstream>
 #include <set>
 #include <thread>
+#include <mutex>
 #include <vector>
 #include <string>
 #include <memory>
@@ -78,6 +79,8 @@ const int DEFAULT_BUFFER_SIZE = 12 * 1024;
 const int SAVED_CMDLINES_SIZE = 1024;
 
 const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
+const std::string SNAPSHOT_PREFIX = "trace_";
+const std::string RECORDING_PREFIX = "record_trace_";
 
 struct TraceFileHeader {
     uint16_t magicNumber {MAGIC_NUMBER};
@@ -113,6 +116,7 @@ constexpr size_t PAGE_SIZE = 4096;
 
 std::atomic<bool> g_dumpFlag(false);
 std::atomic<bool> g_dumpEnd(true);
+std::mutex g_traceMutex;
 
 bool g_serviceThreadIsStart = false;
 uint64_t g_sysInitParamTags = 0;
@@ -700,8 +704,10 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
     std::string outPath = CanonicalizeSpecPath(outputFileName.c_str());
     int outFd = open(outPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
     if (outFd < 0) {
+        HiLog::Error(LABEL, "open %{public}s failed, errno: %{public}d.", outPath.c_str(), errno);
         return false;
     }
+    MarkClockSync(g_traceRootPath);
     struct TraceFileHeader header;
     GetArchWordSize(header);
     write(outFd, reinterpret_cast<char*>(&header), sizeof(header));
@@ -719,12 +725,43 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
     return true;
 }
 
+std::string GenerateName(bool isSnapshot = true)
+{
+    // eg: /data/log/hitrace/trace_localtime@monotime.sys
+    std::string name = DEFAULT_OUTPUT_DIR;
+
+    if (isSnapshot) {
+        name += SNAPSHOT_PREFIX;
+    } else {
+        name += RECORDING_PREFIX;
+    }
+
+    // get localtime
+    time_t currentTime;
+    time(&currentTime);
+    struct tm timeInfo = {};
+    const int bufferSize = 16;
+    char timeStr[bufferSize] = {0};
+    if (localtime_r(&currentTime, &timeInfo) == nullptr) {
+        HiLog::Error(LABEL, "Get localtime failed.");
+        return "";
+    }
+    strftime(timeStr, bufferSize, "%Y%m%d%H%M%S", &timeInfo);
+    name += std::string(timeStr);
+    // get monotime
+    struct timespec mts = {0, 0};
+    clock_gettime(CLOCK_MONOTONIC, &mts);
+    name += "@" + std::to_string(mts.tv_sec) + "-" + std::to_string(mts.tv_nsec) + ".sys";
+    HiLog::Info(LABEL, "Generate trace name: %{public}s.", name.c_str());
+    return name;
+}
+
 /**
  * read trace data loop
  * g_dumpFlag: true = open，false = close
  * g_dumpEnd: true = end，false = not end
  * if user has own output file, Output all data to the file specified by the user;
- * if not, Then place all the result files in/data/local/tmp/and package them once in 96M.
+ * if not, Then place all the result files in /data/log/hitrace/ and package them once in 96M.
 */
 void ProcessDumpTask()
 {
@@ -741,11 +778,11 @@ void ProcessDumpTask()
     
     while (g_dumpFlag) {
         // Generate file name
-        struct timeval now = {0, 0};
-        gettimeofday(&now, nullptr);
-        std::string outputFileName = "/data/local/tmp/trace_" + std::to_string(now.tv_sec) + ".sys";
+        std::string outputFileName = GenerateName(false);
         if (DumpTraceLoop(outputFileName, true)) {
             g_outputFilesForCmd.push_back(outputFileName);
+        } else {
+            break;
         }
     }
     g_dumpEnd = true;
@@ -796,30 +833,6 @@ bool ReadRawTrace(std::string &outputFileName)
     return false;
 }
 
-std::string GenerateName()
-{
-    // eg: /data/log/hitrace/trace_localtime@monotime.sys
-    std::string name = DEFAULT_OUTPUT_DIR + "trace_";
-    // get localtime
-    time_t currentTime;
-    time(&currentTime);
-    struct tm timeInfo = {};
-    const int bufferSize = 16;
-    char timeStr[bufferSize] = {0};
-    if (localtime_r(&currentTime, &timeInfo) == nullptr) {
-        HiLog::Error(LABEL, "Get localtime failed.");
-        return "";
-    }
-    strftime(timeStr, bufferSize, "%Y%m%d%H%M%S", &timeInfo);
-    name += std::string(timeStr);
-    // get monotime
-    struct timespec mts = {0, 0};
-    clock_gettime(CLOCK_MONOTONIC, &mts);
-    name += "@" + std::to_string(mts.tv_sec) + "-" + std::to_string(mts.tv_nsec) + ".sys";
-    HiLog::Info(LABEL, "Generate trace name: %{public}s.", name.c_str());
-    return name;
-}
-
 void SetProcessName(std::string& processName)
 {
     if (processName.size() <= 0) {
@@ -840,22 +853,6 @@ void SetProcessName(std::string& processName)
 
 TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
 {
-    struct timeval now = {0, 0};
-    gettimeofday(&now, nullptr);
-    int nowSec = now.tv_sec;
-    if (!g_dumpEnd) {
-        const int maxSleepTime = 2 * 1000 * 1000 / UNIT_TIME; // 2s
-        int cur = 0;
-        while (!g_dumpEnd && cur < maxSleepTime) {
-            cur += 1;
-            usleep(UNIT_TIME);
-        }
-        SearchFromTable(outputFiles, nowSec);
-        if (outputFiles.size() == 0) {
-            return TraceErrorCode::WRITE_TRACE_INFO_ERROR;
-        }
-        return TraceErrorCode::SUCCESS;
-    }
     g_dumpEnd = false;
     std::string outputFileName = GenerateName();
     std::string reOutPath = CanonicalizeSpecPath(outputFileName.c_str());
@@ -870,6 +867,9 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
     if (pid == 0) {
         std::string processName = "HitraceDump";
         SetProcessName(processName);
+        MarkClockSync(g_traceRootPath);
+        const int waitTime = 10000; // 10ms
+        usleep(waitTime);
         ReadRawTrace(reOutPath);
         HiLog::Info(LABEL, "%{public}s exit.", processName.c_str());
         _exit(EXIT_SUCCESS);
@@ -884,6 +884,9 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
         }
     }
 
+    struct timeval now = {0, 0};
+    gettimeofday(&now, nullptr);
+    int nowSec = now.tv_sec;
     SearchFromTable(outputFiles, nowSec);
     if (ret) {
         outputFiles.push_back(outputFileName);
@@ -950,6 +953,8 @@ bool CheckServiceRunning()
 void MonitorServiceTask()
 {
     g_serviceThreadIsStart = true;
+    const std::string threadName = "TraceMonitor";
+    prctl(PR_SET_NAME, threadName.c_str());
     HiLog::Info(LABEL, "MonitorServiceTask: monitor thread start.");
     const int intervalTime = 15;
     while (true) {
@@ -1083,7 +1088,11 @@ void ClearRemainingTrace()
     struct dirent* ptr = nullptr;
     while ((ptr = readdir(dirPtr)) != nullptr) {
         if (ptr->d_type == DT_REG) {
-            std::string subFileName = DEFAULT_OUTPUT_DIR + std::string(ptr->d_name);
+            std::string name = std::string(ptr->d_name);
+            if (name.compare(0, SNAPSHOT_PREFIX.size(), SNAPSHOT_PREFIX) != 0) {
+                continue;
+            }
+            std::string subFileName = DEFAULT_OUTPUT_DIR + name;
             if (remove(subFileName.c_str()) == 0) {
                 HiLog::Info(LABEL, "Delete old trace file: %{public}s success.", subFileName.c_str());
             } else {
@@ -1104,16 +1113,11 @@ TraceMode GetTraceMode()
 
 TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
 {
-    if (g_traceMode == SERVICE_MODE) {
-        HiLog::Info(LABEL, "SERVICE_MODE already open.");
-        return SUCCESS;
-    }
-
-    if (g_traceMode == CMD_MODE) {
+    if (g_traceMode != CLOSE) {
         HiLog::Error(LABEL, "OpenTrace: CALL_ERROR.");
         return CALL_ERROR;
     }
-
+    std::lock_guard<std::mutex> lock(g_traceMutex);
     if (!IsTraceMounted()) {
         HiLog::Error(LABEL, "OpenTrace: TRACE_NOT_SUPPORTED.");
         return TRACE_NOT_SUPPORTED;
@@ -1150,6 +1154,12 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
 
 TraceErrorCode OpenTrace(const std::string &args)
 {
+    std::lock_guard<std::mutex> lock(g_traceMutex);
+    if (g_traceMode != CLOSE) {
+        HiLog::Error(LABEL, "Hitrace OpenTrace: CALL_ERROR.");
+        return CALL_ERROR;
+    }
+
     if (!IsTraceMounted()) {
         HiLog::Error(LABEL, "Hitrace OpenTrace: TRACE_NOT_SUPPORTED.");
         return TRACE_NOT_SUPPORTED;
@@ -1167,24 +1177,19 @@ TraceErrorCode OpenTrace(const std::string &args)
         return TAG_ERROR;
     }
 
-    if (g_traceMode != CLOSE) {
-        HiLog::Error(LABEL, "Hitrace OpenTrace: CALL_ERROR.");
-        return CALL_ERROR;
-    }
-
-    g_traceMode = CMD_MODE;
     TraceErrorCode ret = HandleTraceOpen(cmdTraceParams, allTags, tagGroupTable);
     if (ret != SUCCESS) {
         HiLog::Error(LABEL, "Hitrace OpenTrace: CMD_MODE open failed.");
-        g_traceMode = CLOSE;
         return FILE_ERROR;
     }
+    g_traceMode = CMD_MODE;
     HiLog::Info(LABEL, "Hitrace OpenTrace: CMD_MODE open success.");
     return ret;
 }
 
 TraceRetInfo DumpTrace()
 {
+    std::lock_guard<std::mutex> lock(g_traceMutex);
     HiLog::Debug(LABEL, "DumpTrace start.");
     TraceRetInfo ret;
     if (g_traceMode != SERVICE_MODE) {
@@ -1194,6 +1199,7 @@ TraceRetInfo DumpTrace()
     }
 
     if (!CheckServiceRunning()) {
+        HiLog::Error(LABEL, "DumpTrace: TRACE_IS_OCCUPIED.");
         ret.errorCode = TRACE_IS_OCCUPIED;
         return ret;
     }
@@ -1205,6 +1211,7 @@ TraceRetInfo DumpTrace()
 
 TraceErrorCode DumpTraceOn()
 {
+    std::lock_guard<std::mutex> lock(g_traceMutex);
     // check current trace status
     if (g_traceMode != CMD_MODE) {
         HiLog::Error(LABEL, "DumpTraceOn: CALL_ERROR.");
@@ -1214,29 +1221,45 @@ TraceErrorCode DumpTraceOn()
     // start task thread
     std::thread task(ProcessDumpTask);
     task.detach();
-    HiLog::Info(LABEL, "DumpTraceOn: Dumping trace.");
+    HiLog::Info(LABEL, "Recording trace on.");
     return SUCCESS;
 }
 
 TraceRetInfo DumpTraceOff()
 {
+    std::lock_guard<std::mutex> lock(g_traceMutex);
     TraceRetInfo ret;
+    // check current trace status
+    if (g_traceMode != CMD_MODE) {
+        HiLog::Error(LABEL, "DumpTraceOff: The current state is not Recording, data exception.");
+        ret.errorCode = CALL_ERROR;
+        ret.outputFiles = g_outputFilesForCmd;
+        return ret;
+    }
+    
     g_dumpFlag = false;
-    const int waitTime = 10000;
     while (!g_dumpEnd) {
-        usleep(waitTime);
+        usleep(UNIT_TIME);
     }
     ret.errorCode = SUCCESS;
     ret.outputFiles = g_outputFilesForCmd;
-    HiLog::Info(LABEL, "DumpTraceOff: trace files generated success.");
+    HiLog::Info(LABEL, "Recording trace off.");
     return ret;
 }
 
 TraceErrorCode CloseTrace()
 {
+    std::lock_guard<std::mutex> lock(g_traceMutex);
     if (g_traceMode == CLOSE) {
-        HiLog::Error(LABEL, "CloseTrace: CALL_ERROR.");
-        return CALL_ERROR;
+        HiLog::Info(LABEL, "Trace already close.");
+        return SUCCESS;
+    }
+
+    g_traceMode = CLOSE;
+    // Waiting for the data drop task to end
+    g_dumpFlag = false;
+    while (!g_dumpEnd) {
+        usleep(UNIT_TIME);
     }
     std::map<std::string, TagCategory> allTags;
     std::map<std::string, std::vector<std::string>> tagGroupTable;
@@ -1246,8 +1269,6 @@ TraceErrorCode CloseTrace()
     }
     TraceInit(allTags);
     TruncateFile();
-    g_traceMode = CLOSE;
-    usleep(UNIT_TIME);
     return SUCCESS;
 }
 
