@@ -76,7 +76,7 @@ constexpr uint8_t FILE_RAW_TRACE = 0;
 constexpr int UNIT_TIME = 100000;
 
 const int DEFAULT_BUFFER_SIZE = 12 * 1024;
-const int SAVED_CMDLINES_SIZE = 1024;
+const int SAVED_CMDLINES_SIZE = 2048;
 
 const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
 const std::string SNAPSHOT_PREFIX = "trace_";
