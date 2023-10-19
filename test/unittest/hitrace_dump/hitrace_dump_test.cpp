@@ -21,6 +21,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <map>
 
 #include <unistd.h>
 #include <cstdio>
@@ -221,10 +222,10 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_002, TestSize.Level0)
  */
 HWTEST_F(HitraceDumpTest, DumpForCmdMode_003, TestSize.Level0)
 {
-    std::string args = "tags:hdcc clockType:boot bufferSize:1024 overwrite:1 ";
+    std::string args = "clockType:boot bufferSize:1024 overwrite:1 ";
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::TAG_ERROR);
 
-    args = "tags:hdcc clockType:boot bufferSize:1024 overwrite:1 descriptions:123";
+    args = "tags:hdc clockType:boot bufferSize:1024 overwrite:1 descriptions:123";
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::TAG_ERROR);
     
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
@@ -468,6 +469,20 @@ HWTEST_F(HitraceDumpTest, CommonUtils_003, TestSize.Level0)
 HWTEST_F(HitraceDumpTest, CommonUtils_004, TestSize.Level0)
 {
     ASSERT_TRUE(MarkClockSync(g_traceRootPath) == true);
+}
+
+/**
+ * @tc.name: CommonUtils_005
+ * @tc.desc: Test ParseTagInfo().
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceDumpTest, CommonUtils_005, TestSize.Level0)
+{
+    std::map<std::string, OHOS::HiviewDFX::Hitrace::TagCategory> allTags;
+    std::map<std::string, std::vector<std::string>> tagGroupTable;
+    ASSERT_TRUE(ParseTagInfo(allTags, tagGroupTable) == true);
+    ASSERT_TRUE(allTags.size() > 0);
+    ASSERT_TRUE(tagGroupTable.size() > 0);
 }
 
 } // namespace
