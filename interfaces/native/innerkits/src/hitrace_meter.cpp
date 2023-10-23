@@ -67,58 +67,16 @@ enum MarkerType { MARKER_BEGIN, MARKER_END, MARKER_ASYNC_BEGIN, MARKER_ASYNC_END
 constexpr uint64_t HITRACE_TAG = 0xD002D33;
 constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, HITRACE_TAG, "HitraceMeter"};
 
-bool IsAppValid()
-{
-    // Judge if application-level tracing is enabled.
-    if (OHOS::system::GetBoolParameter(KEY_RO_DEBUGGABLE, 0)) {
-        std::ifstream fs;
-        fs.open("/proc/self/cmdline");
-        if (!fs.is_open()) {
-            fprintf(stderr, "IsAppValid, open /proc/self/cmdline failed.\n");
-            return false;
-        }
-
-        std::string lineStr;
-        std::getline(fs, lineStr);
-        int nums = OHOS::system::GetIntParameter<int>(KEY_APP_NUMBER, 0);
-        for (int i = 0; i < nums; i++) {
-            std::string keyStr = KEY_PREFIX + std::to_string(i);
-            std::string val = OHOS::system::GetParameter(keyStr, "");
-            if (val == "*" || val == lineStr) {
-                fs.close();
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-uint64_t GetSysParamTags()
+inline void UpdateSysParamTags()
 {
     // Get the system parameters of KEY_TRACE_TAG.
-    uint64_t tags = 0;
-    if (g_cachedHandle == nullptr) {
-        tags = OHOS::system::GetUintParameter<uint64_t>(KEY_TRACE_TAG, 0);
-        if (tags == 0) {
-            // HiLog::Error(LABEL, "GetUintParameter %s error .\n", KEY_TRACE_TAG.c_str());
-            return 0;
-        }
-        const char* devValue = "true";
-        g_cachedHandle = CachedParameterCreate(KEY_TRACE_TAG.c_str(), devValue);
-    } else {
-        int changed = 0;
-        const char *paramValue = CachedParameterGetChanged(g_cachedHandle, &changed);
-        if (changed == 1) {
-            HiLog::Info(LABEL, "g_tagsProperty changed, previous is %{public}s.",
-                        to_string(g_tagsProperty.load()).c_str());
-            tags = strtoull(paramValue, nullptr, 0);
-            g_tagsProperty = (tags | HITRACE_TAG_ALWAYS) & HITRACE_TAG_VALID_MASK;
-        }
-        return g_tagsProperty;
+    int changed = 0;
+    const char *paramValue = CachedParameterGetChanged(g_cachedHandle, &changed);
+    if (UNEXPECTANTLY(changed == 1)) {
+        uint64_t tags = 0;
+        tags = strtoull(paramValue, nullptr, 0);
+        g_tagsProperty = (tags | HITRACE_TAG_ALWAYS) & HITRACE_TAG_VALID_MASK;
     }
-
-    IsAppValid();
-    return (tags | HITRACE_TAG_ALWAYS) & HITRACE_TAG_VALID_MASK;
 }
 
 // open file "trace_marker".
@@ -137,7 +95,10 @@ void OpenTraceMarkerFile()
         }
     }
     // get tags and pid
-    g_tagsProperty = GetSysParamTags();
+    g_tagsProperty = OHOS::system::GetUintParameter<uint64_t>(KEY_TRACE_TAG, 0);
+    const char* devValue = "true";
+    g_cachedHandle = CachedParameterCreate(KEY_TRACE_TAG.c_str(), devValue);
+
     std::string pidStr = std::to_string(getpid());
     errno_t ret = strcpy_s(g_pid, PID_BUF_SIZE, pidStr.c_str());
     if (ret != 0) {
@@ -203,7 +164,7 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
         }
         std::call_once(g_onceFlag, OpenTraceMarkerFile);
     }
-    g_tagsProperty = GetSysParamTags();
+    UpdateSysParamTags();
     if (UNEXPECTANTLY(g_tagsProperty & tag) && g_markerFd != -1) {
         // record fomart: "type|pid|name value".
         char buf[BUFFER_LEN] = {0};
@@ -241,7 +202,7 @@ void UpdateTraceLabel()
     if (!g_isHitraceMeterInit) {
         return;
     }
-    g_tagsProperty = GetSysParamTags();
+    UpdateSysParamTags();
 }
 
 void SetTraceDisabled(bool disable)
@@ -469,6 +430,6 @@ HitraceMeterFmtScoped::HitraceMeterFmtScoped(uint64_t label, const char *fmt, ..
 
 bool IsTagEnabled(uint64_t tag)
 {
-    uint64_t enabledUserTags = GetSysParamTags();
-    return ((tag & enabledUserTags) == tag);
+    UpdateSysParamTags();
+    return ((tag & g_tagsProperty) == tag);
 }
