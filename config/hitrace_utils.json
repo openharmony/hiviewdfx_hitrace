@@ -1,5 +1,11 @@
 {
     "tag_category": {
+        "push": {
+            "description": "Push subsystem",
+            "tag_offset": 10,
+            "sysFiles": [],
+            "type": 0
+        },
         "virse": {
             "description": "Virtualization Service",
             "tag_offset": 11,
