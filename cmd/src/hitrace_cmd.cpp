@@ -31,10 +31,13 @@
 #include <thread>
 #include <unistd.h>
 #include <vector>
+#include <memory>
+#include <iostream>
 #include <zlib.h>
 
 #include "hitrace_meter.h"
-#include "hitrace_dump.h"
+#include "common_utils.h"
+#include "trace_collector.h"
 #include "hitrace_osal.h"
 #include "securec.h"
 
@@ -42,28 +45,85 @@ using namespace std;
 using namespace OHOS::HiviewDFX::HitraceOsal;
 
 namespace {
+
+struct TraceArgs {
+    std::string tags;
+    std::string tagGroups;
+    std::string clockType;
+    int bufferSize = 0;
+    bool overwrite = true;
+    std::string output;
+
+    int duration = 0;
+    bool isCompress = false;
+};
+
+enum RunningState {
+    /* Initial value */
+    STATE_NULL = 0,
+
+    /* Record a short trace */
+    RECORDING_SHORT_TEXT = 1,  // --text
+    RECORDING_SHORT_RAW = 2,  // --raw
+
+    /* Record a long trace */
+    RECORDING_LONG_BEGIN = 10,  // --trace_begin
+    RECORDING_LONG_DUMP = 11,  // --trace_dump
+    RECORDING_LONG_FINISH = 12,  // --trace_finish
+    RECORDING_LONG_FINISH_NODUMP = 13,  // --trace_finish_nodump
+    RECORDING_LONG_BEGIN_RECORD = 14,  // --trace_begin --record
+    RECORDING_LONG_FINISH_RECORD = 15,  // --trace_finish --record
+
+    /* Manipulating trace services in snapshot mode */
+    SNAPSHOT_START = 20,  // --start_bgsrv
+    SNAPSHOT_DUMP = 21,  // --dump_bgsrv
+    SNAPSHOT_STOP = 22,  // --stop_bgsrv
+
+    /* Help Info */
+    SHOW_HELP = 31,  // -h, --help
+    SHOW_LIST_CATEGORY = 32,  // -l, --list_categories
+};
+
+const std::map<RunningState, std::string> STATE_INFO = {
+    { STATE_NULL, "STATE_NULL" },
+    { RECORDING_SHORT_TEXT, "RECORDING_SHORT_TEXT" },
+    { RECORDING_SHORT_RAW, "RECORDING_SHORT_RAW" },
+    { RECORDING_LONG_BEGIN, "RECORDING_LONG_BEGIN" },
+    { RECORDING_LONG_DUMP, "RECORDING_LONG_DUMP" },
+    { RECORDING_LONG_FINISH_NODUMP, "RECORDING_LONG_FINISH_NODUMP" },
+    { RECORDING_LONG_BEGIN_RECORD, "RECORDING_LONG_BEGIN_RECORD" },
+    { RECORDING_LONG_FINISH_RECORD, "RECORDING_LONG_FINISH_RECORD" },
+    { SNAPSHOT_START, "SNAPSHOT_START" },
+    { SNAPSHOT_DUMP, "SNAPSHOT_DUMP" },
+    { SNAPSHOT_STOP, "SNAPSHOT_STOP" },
+    { SHOW_HELP, "SHOW_HELP" },
+    { SHOW_LIST_CATEGORY, "SHOW_LIST_CATEGORY" },
+};
+
 constexpr struct option LONG_OPTIONS[] = {
     { "buffer_size",       required_argument, nullptr, 0 },
     { "trace_clock",       required_argument, nullptr, 0 },
     { "help",              no_argument,       nullptr, 0 },
     { "output",            required_argument, nullptr, 0 },
     { "time",              required_argument, nullptr, 0 },
+    { "text",              no_argument,       nullptr, 0 },
+    { "raw",               no_argument,       nullptr, 0 },
     { "trace_begin",       no_argument,       nullptr, 0 },
     { "trace_finish",      no_argument,       nullptr, 0 },
     { "trace_finish_nodump",      no_argument,       nullptr, 0 },
+    { "record",            no_argument,       nullptr, 0 },
     { "trace_dump",        no_argument,       nullptr, 0 },
     { "list_categories",   no_argument,       nullptr, 0 },
     { "overwrite",         no_argument,       nullptr, 0 },
+    { "start_bgsrv",       no_argument,       nullptr, 0 },
+    { "dump_bgsrv",        no_argument,       nullptr, 0 },
+    { "stop_bgsrv",        no_argument,       nullptr, 0 },
     { nullptr,             0,                 nullptr, 0 },
 };
 const unsigned int CHUNK_SIZE = 65536;
-const int BLOCK_SIZE = 4096;
 const int SHELL_UID = 2000;
-const int WAIT_MILLISECONDS = 10;
-const int SAVED_CMDLINES_SIZE = 2048;
 
 constexpr const char *TRACE_TAG_PROPERTY = "debug.hitrace.tags.enableflags";
-constexpr const char *TRACE_TAG_STATE = "debug.hitrace.enable.state";
 
 // various operating paths of ftrace
 constexpr const char *TRACING_ON_PATH = "tracing_on";
@@ -73,29 +133,40 @@ constexpr const char *TRACE_MARKER_PATH = "trace_marker";
 // support customization of some parameters
 const int MIN_BUFFER_SIZE = 256;
 const int MAX_BUFFER_SIZE = 307200; // 300 MB
+const int DEFAULT_BUFFER_SIZE = 18432; // 18 MB
 constexpr unsigned int MAX_OUTPUT_LEN = 255;
 const int PAGE_SIZE_KB = 4; // 4 KB
-int g_traceDuration = 5;
-int g_bufferSizeKB = 2048;
-string g_clock = "boot";
-bool g_overwrite = true;
-string g_outputFile;
-bool g_compress = false;
 
 string g_traceRootPath;
 
-const unsigned int START_NONE = 0;
-const unsigned int START_NORMAL = 1;
-const unsigned int START_ASYNC = 2;
-unsigned int g_traceStart = START_NORMAL;
-bool g_traceStop = true;
-bool g_traceDump = true;
-bool g_defaultMode = false;
-bool g_closeService = false;
+std::shared_ptr<OHOS::HiviewDFX::UCollectClient::TraceCollector> g_traceCollector;
 
-map<string, TagCategory> g_tagMap;
-vector<uint64_t> g_userEnabledTags;
-vector<string> g_kernelEnabledPaths;
+TraceArgs g_traceArgs;
+std::map<std::string, OHOS::HiviewDFX::Hitrace::TagCategory> g_allTags;
+std::map<std::string, std::vector<std::string>> g_allTagGroups;
+RunningState g_runningState = STATE_NULL;
+}
+
+static void ConsoleLog(std::string logInfo)
+{
+    // get localtime
+    time_t currentTime;
+    time(&currentTime);
+    struct tm timeInfo = {};
+    const int bufferSize = 20;
+    char timeStr[bufferSize] = {0};
+    localtime_r(&currentTime, &timeInfo);
+    strftime(timeStr, bufferSize, "%Y/%m/%d %H:%M:%S", &timeInfo);
+    std::cout << timeStr << " " << logInfo << std::endl;
+}
+
+static std::string GetStateInfo(const RunningState state)
+{
+    if (STATE_INFO.find(state) == STATE_INFO.end()) {
+        ConsoleLog("error: running_state is invalid.");
+        return "";
+    }
+    return STATE_INFO.at(state);
 }
 
 static bool IsTraceMounted()
@@ -111,32 +182,21 @@ static bool IsTraceMounted()
         g_traceRootPath = tracefsPath;
         return true;
     }
-
-    (void)fprintf(stderr, "Error: Did not find trace folder\n");
     return false;
-}
-
-static bool IsFileExit(const string& filename)
-{
-    return access((g_traceRootPath + filename).c_str(), F_OK) != -1;
-}
-
-static bool IsWritableFile(const string& filename)
-{
-    return access((g_traceRootPath + filename).c_str(), W_OK) != -1;
 }
 
 static bool WriteStrToFile(const string& filename, const std::string& str)
 {
     ofstream out;
-    out.open(g_traceRootPath + filename, ios::out);
+    std::string inSpecPath = OHOS::HiviewDFX::Hitrace::CanonicalizeSpecPath((g_traceRootPath + filename).c_str());
+    out.open(inSpecPath, ios::out);
     if (out.fail()) {
-        fprintf(stderr, "Error: Did not open %s\n", filename.c_str());
+        ConsoleLog("error: open " + inSpecPath + " failed.");
         return false;
     }
     out << str;
     if (out.bad()) {
-        fprintf(stderr, "Error: Did not write %s\n", filename.c_str());
+        ConsoleLog("error: can not write " + inSpecPath);
         out.close();
         return false;
     }
@@ -150,164 +210,6 @@ static bool SetFtraceEnabled(const string& path, bool enabled)
     return WriteStrToFile(path, enabled ? "1" : "0");
 }
 
-static bool IsTagSupported(const string& name)
-{
-    auto it = g_tagMap.find(name);
-    if (it == g_tagMap.end()) {
-        return false;
-    }
-
-    TagCategory tagCategory = it->second;
-    if (tagCategory.type != KERNEL) {
-        g_userEnabledTags.push_back(tagCategory.tag);
-        return true;
-    }
-
-    bool findPath = false;
-    for (int i = 0; i < MAX_SYS_FILES; i++) {
-        string path = tagCategory.SysFiles[i].path;
-        if (path.size() == 0) {
-            continue;
-        }
-        if (IsWritableFile(path)) {
-            g_kernelEnabledPaths.push_back(std::move(path));
-            findPath = true;
-        } else if (IsFileExit(path)) {
-            fprintf(stderr, "Warning: category \"%s\" requires root "
-                "privileges.\n", name.c_str());
-        }
-    }
-    return findPath;
-}
-
-static string CanonicalizeSpecPath(const char* src)
-{
-    if (src == nullptr || strlen(src) >= PATH_MAX) {
-        fprintf(stderr, "Error: CanonicalizeSpecPath failed\n");
-        return "";
-    }
-    char resolvedPath[PATH_MAX] = { 0 };
-#if defined(_WIN32)
-    if (!_fullpath(resolvedPath, src, PATH_MAX)) {
-        fprintf(stderr, "Error: _fullpath %s failed\n", src);
-        return "";
-    }
-#else
-    if (access(src, F_OK) == 0) {
-        if (realpath(src, resolvedPath) == nullptr) {
-            fprintf(stderr, "Error: realpath %s failed\n", src);
-            return "";
-        }
-    } else {
-        string fileName(src);
-        if (fileName.find("..") == string::npos) {
-            if (sprintf_s(resolvedPath, PATH_MAX, "%s", src) == -1) {
-                fprintf(stderr, "Error: sprintf_s %s failed\n", src);
-                return "";
-            }
-        } else {
-            fprintf(stderr, "Error: find .. %s failed\n", src);
-            return "";
-        }
-    }
-#endif
-    string res(resolvedPath);
-    return res;
-}
-
-static string ReadFile(const string& filename)
-{
-    string resolvedPath = CanonicalizeSpecPath((g_traceRootPath + filename).c_str());
-    ifstream fin(resolvedPath.c_str());
-    if (!fin.is_open()) {
-        fprintf(stderr, "open file: %s failed!\n", (g_traceRootPath + filename).c_str());
-        return "";
-    }
-
-    string str((istreambuf_iterator<char>(fin)), istreambuf_iterator<char>());
-    fin.close();
-    return str;
-}
-
-static bool SetBufferSize(int bufferSize)
-{
-    const char *currentTracerPath = "current_tracer";
-    if (!WriteStrToFile(currentTracerPath, "nop")) {
-        fprintf(stderr, "Error: write \"nop\" to %s\n", currentTracerPath);
-    }
-    const char *bufferSizePath = "buffer_size_kb";
-    return WriteStrToFile(bufferSizePath, std::to_string(bufferSize));
-}
-
-static bool SetClock(const string& timeclock)
-{
-    const char *traceClockPath = "trace_clock";
-    string allClocks = ReadFile(traceClockPath);
-    size_t begin = allClocks.find("[");
-    size_t end = allClocks.find("]");
-    string newClock;
-    if (begin != string::npos && end != string::npos &&
-        timeclock.compare(0, timeclock.size(), allClocks, begin + 1, end - begin - 1) == 0) {
-        return true;
-    } else if (allClocks.find(timeclock) != string::npos) {
-        newClock = timeclock;
-    } else if (allClocks.find("boot") != string::npos) {
-        // boot: This is the boot clock (CLOCK_BOOTTIME) and is based on the fast monotonic clock,
-        // but also accounts for time in suspend.
-        newClock = "boot";
-    } else if (allClocks.find("mono") != string::npos) {
-        // mono: uses the fast monotonic clock (CLOCK_MONOTONIC)
-        // which is monotonic and is subject to NTP rate adjustments.
-        newClock = "mono";
-    } else if (allClocks.find("global") != string::npos) {
-        // global: is in sync with all CPUs but may be a bit slower than the local clock.
-        newClock = "global";
-    } else {
-        fprintf(stderr, "You can set trace clock in %s\n", allClocks.c_str());
-        return false;
-    }
-    if (newClock.size() != 0) {
-        return WriteStrToFile(traceClockPath, newClock);
-    }
-    return true;
-}
-
-static bool SetOverWriteEnable(bool enabled)
-{
-    const char *overWritePath = "options/overwrite";
-    return SetFtraceEnabled(overWritePath, enabled);
-}
-
-static bool SetTgidEnable(bool enabled)
-{
-    const char *recordTgidPath = "options/record-tgid";
-    return SetFtraceEnabled(recordTgidPath, enabled);
-}
-
-static bool SetCmdLinesSize(int cmdLinesSize)
-{
-    const char *savedCmdLineSizePath = "saved_cmdlines_size";
-    return WriteStrToFile(savedCmdLineSizePath, std::to_string(cmdLinesSize));
-}
-
-static bool DisableAllFtraceEvents()
-{
-    bool isTrue = true;
-    for (auto it = g_tagMap.begin(); it != g_tagMap.end(); ++it) {
-        TagCategory tag = it->second;
-        if (tag.type != KERNEL) {
-            continue;
-        }
-        for (int i = 0; i < MAX_SYS_FILES; i++) {
-            const string path = tag.SysFiles[i].path;
-            if ((path.size() > 0) && IsWritableFile(path)) {
-                isTrue = isTrue && SetFtraceEnabled(path, false);
-            }
-        }
-    }
-    return isTrue;
-}
-
 static bool SetProperty(const string& property, const string& value)
 {
     return SetPropertyInner(property, value);
@@ -319,66 +221,11 @@ static bool SetTraceTagsEnabled(uint64_t tags)
     return SetProperty(TRACE_TAG_PROPERTY, value);
 }
 
-static bool RefreshServices()
-{
-    bool res = false;
-
-    res = RefreshBinderServices();
-    if (!res) {
-        return res;
-    }
-    res = RefreshHalServices();
-    return res;
-}
-
-static bool SetUserSpaceSettings()
-{
-    uint64_t enabledTags = 0;
-    for (auto tag: g_userEnabledTags) {
-        enabledTags |= tag;
-    }
-    return SetTraceTagsEnabled(enabledTags) && RefreshServices();
-}
-
-static bool ClearUserSpaceSettings()
-{
-    if (g_closeService) {
-        return SetTraceTagsEnabled(HITRACE_TAG_ALWAYS) && RefreshServices();
-    }
-    return SetTraceTagsEnabled(0) && RefreshServices();
-}
-
-static bool SetKernelSpaceSettings()
-{
-    if (!(SetBufferSize(g_bufferSizeKB) && SetClock(g_clock) && SetOverWriteEnable(g_overwrite) &&
-        SetTgidEnable(true) && SetCmdLinesSize(SAVED_CMDLINES_SIZE))) {
-        fprintf(stderr, "Set trace kernel settings failed\n");
-        return false;
-    }
-    if (DisableAllFtraceEvents() == false) {
-        fprintf(stderr, "Pre-clear kernel tracers failed\n");
-        return false;
-    }
-    for (const auto& path : g_kernelEnabledPaths) {
-        SetFtraceEnabled(path, true);
-    }
-    return true;
-}
-
-static bool ClearKernelSpaceSettings()
-{
-    return DisableAllFtraceEvents() && SetOverWriteEnable(true) && SetBufferSize(1) && SetClock("boot");
-}
-
 static void ShowListCategory()
 {
     printf("  %18s   description:\n", "tagName:");
-    for (auto it = g_tagMap.begin(); it != g_tagMap.end(); ++it) {
-        string key = it->first;
-        TagCategory tag = it->second;
-        if (IsTagSupported(key)) {
-            printf("  %18s - %s\n", tag.name.c_str(), tag.description.c_str());
-        }
+    for (auto it = g_allTags.begin(); it != g_allTags.end(); ++it) {
+        printf("  %18s - %s\n", it->first.c_str(), it->second.description.c_str());
     }
 }
 
@@ -402,6 +249,8 @@ static void ShowHelp(const string& cmd)
            "  --trace_finish     Stops capturing traces and dumps traces to a specified path (stdout by default).\n"
            "  --trace_finish_nodump\n"
            "                     Stops capturing traces and not dumps traces.\n"
+           "  --record           Enable or disable long-term trace collection tasks in conjunction with\n"
+           "                    \"--trace_begin\" and \"--trace_finish\".\n"
            "  --overwrite        Sets the action to take when the buffer is full. If this option is used,\n"
            "                     the latest traces are discarded; if this option is not used (default setting),\n"
            "                     the earliest traces are discarded.\n"
@@ -409,6 +258,11 @@ static void ShowHelp(const string& cmd)
            "  --output filename\n"
            "                     Like \"-o filename\".\n"
            "  -z                 Compresses a captured trace.\n"
+           "  --text             Specify the output format of trace as text.\n"
+           "  --raw              Specify the output format of trace as raw trace, the default format is text.\n"
+           "  --start_bgsrv      Enable trace_service in snapshot mode.\n"
+           "  --dump_bgsrv       Trigger the dump trace task of the trace_service.\n"
+           "  --stop_bgsrv       Disable trace_service in snapshot mode.\n"
     );
 }
 
@@ -419,69 +273,94 @@ inline bool StrToNum(const std::string& sString, T &tX)
     return (iStream >> tX) ? true : false;
 }
 
+static bool SetRunningState(const RunningState& setValue)
+{
+    if (g_runningState != STATE_NULL) {
+        ConsoleLog("error: the parameter is set incorrectly, " + GetStateInfo(g_runningState) +
+                   " and " + GetStateInfo(setValue) + " cannot coexist.");
+        return false;
+    }
+    g_runningState = setValue;
+    return true;
+}
+
+static bool CheackOutputFile(const char* path)
+{
+    struct stat buf;
+    size_t len = strnlen(path, MAX_OUTPUT_LEN);
+    if (len == MAX_OUTPUT_LEN || len < 1 || (stat(path, &buf) == 0 && (buf.st_mode & S_IFDIR))) {
+        ConsoleLog("error: output file is illegal");
+        return false;
+    }
+    g_traceArgs.output = path;
+    return true;
+}
+
 static bool ParseLongOpt(const string& cmd, int optionIndex)
 {
     bool isTrue = true;
     if (!strcmp(LONG_OPTIONS[optionIndex].name, "buffer_size")) {
-        if (!StrToNum(optarg, g_bufferSizeKB)) {
-            fprintf(stderr, "Error: buffer size is illegal input. eg: \"--buffer_size 1024\"\n");
+        int bufferSizeKB = 0;
+        if (!StrToNum(optarg, bufferSizeKB)) {
+            ConsoleLog("error: buffer size is illegal input. eg: \"--buffer_size 1024\".");
             isTrue = false;
-        } else if (g_bufferSizeKB < MIN_BUFFER_SIZE || g_bufferSizeKB > MAX_BUFFER_SIZE) {
-            fprintf(stderr, "Error: buffer size must be from 256 KB to 300 MB. eg: \"--buffer_size 1024\"\n");
+        } else if (bufferSizeKB < MIN_BUFFER_SIZE || bufferSizeKB > MAX_BUFFER_SIZE) {
+            ConsoleLog("error: buffer size must be from 256 KB to 300 MB. eg: \"--buffer_size 1024\".");
             isTrue = false;
         }
-        g_bufferSizeKB = g_bufferSizeKB / PAGE_SIZE_KB * PAGE_SIZE_KB;
+        g_traceArgs.bufferSize = bufferSizeKB / PAGE_SIZE_KB * PAGE_SIZE_KB;
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_clock")) {
         regex re("[a-zA-Z]{4,6}");
         if (regex_match(optarg, re)) {
-            g_clock = optarg;
+            g_traceArgs.clockType = optarg;
         } else {
-            fprintf(stderr, "Error: \"--trace_clock\" is illegal input. eg: \"--trace_clock boot\"\n");
+            ConsoleLog("error: \"--trace_clock\" is illegal input. eg: \"--trace_clock boot\".");
             isTrue = false;
         }
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "help")) {
-        ShowHelp(cmd);
-        isTrue = false;
+        isTrue = SetRunningState(SHOW_HELP);
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "time")) {
-        if (!StrToNum(optarg, g_traceDuration)) {
-            fprintf(stderr, "Error: the time is illegal input. eg: \"--time 5\"\n");
+        if (!StrToNum(optarg, g_traceArgs.duration)) {
+            ConsoleLog("error: the time is illegal input. eg: \"--time 5\".");
             isTrue = false;
-        } else if (g_traceDuration < 1) {
-            fprintf(stderr, "Error: \"-t %s\" to be greater than zero. eg: \"--time 5\"\n", optarg);
+        } else if (g_traceArgs.duration < 1) {
+            ConsoleLog("error: \"-t " + std::string(optarg) + "\" to be greater than zero. eg: \"--time 5\".");
             isTrue = false;
         }
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "list_categories")) {
-        ShowListCategory();
-        isTrue = false;
+        isTrue = SetRunningState(SHOW_LIST_CATEGORY);
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "output")) {
-        struct stat buf;
-        size_t len = strnlen(optarg, MAX_OUTPUT_LEN);
-        if (len == MAX_OUTPUT_LEN || len < 1 || (stat(optarg, &buf) == 0 && (buf.st_mode & S_IFDIR))) {
-            fprintf(stderr, "Error: output file is illegal\n");
-            isTrue = false;
-        } else {
-            g_outputFile = optarg;
-        }
+        isTrue = CheackOutputFile(optarg);
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "overwrite")) {
-        g_overwrite = false;
+        g_traceArgs.overwrite = false;
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_begin")) {
-        g_traceStart = START_ASYNC;
-        g_traceStop = false;
-        g_traceDump = false;
+        isTrue = SetRunningState(RECORDING_LONG_BEGIN);
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_finish")) {
-        g_traceStart = START_NONE;
-        g_traceStop = true;
-        g_traceDump = true;
-        g_closeService = true;
+        isTrue = SetRunningState(RECORDING_LONG_FINISH);
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_finish_nodump")) {
-        g_traceStart = START_NONE;
-        g_traceStop = true;
-        g_traceDump = false;
-        g_closeService = true;
+        isTrue = SetRunningState(RECORDING_LONG_FINISH_NODUMP);
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_dump")) {
-        g_traceStart = START_NONE;
-        g_traceStop = false;
-        g_traceDump = true;
+        isTrue = SetRunningState(RECORDING_LONG_DUMP);
+    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "record")) {
+        if (g_runningState == RECORDING_LONG_BEGIN) {
+            g_runningState = RECORDING_LONG_BEGIN_RECORD;
+        } else if (g_runningState == RECORDING_LONG_FINISH) {
+            g_runningState = RECORDING_LONG_FINISH_RECORD;
+        } else {
+            ConsoleLog("error: \"--record\" is set incorrectly. eg: \"--trace_begin --record\","
+                       " \"--trace_finish --record\".");
+            isTrue = false;
+        }
+    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "start_bgsrv")) {
+        isTrue = SetRunningState(SNAPSHOT_START);
+    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "dump_bgsrv")) {
+        isTrue = SetRunningState(SNAPSHOT_DUMP);
+    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "stop_bgsrv")) {
+        isTrue = SetRunningState(SNAPSHOT_STOP);
+    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "text")) {
+        isTrue = SetRunningState(RECORDING_SHORT_TEXT);
+    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "raw")) {
+        isTrue = SetRunningState(RECORDING_SHORT_RAW);
     }
     return isTrue;
 }
@@ -491,67 +370,69 @@ static bool ParseOpt(int opt, char** argv, int optIndex)
     bool isTrue = true;
     switch (opt) {
         case 'b': {
-            if (!StrToNum(optarg, g_bufferSizeKB)) {
-                fprintf(stderr, "Error: buffer size is illegal input. eg: \"--buffer_size 1024\"\n");
+            int bufferSizeKB = 0;
+            if (!StrToNum(optarg, bufferSizeKB)) {
+                ConsoleLog("error: buffer size is illegal input. eg: \"--buffer_size 1024\".");
                 isTrue = false;
-            } else if (g_bufferSizeKB < MIN_BUFFER_SIZE || g_bufferSizeKB > MAX_BUFFER_SIZE) {
-                fprintf(stderr, "Error: buffer size must be from 256 KB to 300 MB. eg: \"--buffer_size 1024\"\n");
+            } else if (bufferSizeKB < MIN_BUFFER_SIZE || bufferSizeKB > MAX_BUFFER_SIZE) {
+                ConsoleLog("error: buffer size must be from 256 KB to 300 MB. eg: \"--buffer_size 1024\".");
                 isTrue = false;
             }
-            g_bufferSizeKB = g_bufferSizeKB / PAGE_SIZE_KB * PAGE_SIZE_KB;
+            g_traceArgs.bufferSize = bufferSizeKB / PAGE_SIZE_KB * PAGE_SIZE_KB;
             break;
         }
         case 'h':
-            ShowHelp(argv[0]);
-            isTrue = false;
+            isTrue = SetRunningState(SHOW_HELP);
             break;
         case 'l':
-            ShowListCategory();
-            isTrue = false;
+            isTrue = SetRunningState(SHOW_LIST_CATEGORY);
             break;
         case 't': {
-            if (!StrToNum(optarg, g_traceDuration)) {
-                fprintf(stderr, "Error: the time is illegal input. eg: \"--time 5\"\n");
+            if (!StrToNum(optarg, g_traceArgs.duration)) {
+                ConsoleLog("error: the time is illegal input. eg: \"--time 5\".");
                 isTrue = false;
-            } else if (g_traceDuration < 1) {
-                fprintf(stderr, "Error: \"-t %s\" to be greater than zero. eg: \"--time 5\"\n", optarg);
+            } else if (g_traceArgs.duration < 1) {
+                ConsoleLog("error: \"-t " + std::string(optarg) + "\" to be greater than zero. eg: \"--time 5\".");
                 isTrue = false;
             }
             break;
         }
         case 'o': {
-            struct stat buf;
-            size_t len = strnlen(optarg, MAX_OUTPUT_LEN);
-            if (len == MAX_OUTPUT_LEN || len < 1 || (stat(optarg, &buf) == 0 && (buf.st_mode & S_IFDIR))) {
-                fprintf(stderr, "Error: output file is illegal\n");
-                isTrue = false;
-            } else {
-                g_outputFile = optarg;
-            }
+            isTrue = CheackOutputFile(optarg);
             break;
         }
         case 'z':
-            g_compress = true;
+            g_traceArgs.isCompress = true;
             break;
         case 0: // long options
             isTrue = ParseLongOpt(argv[0], optIndex);
             break;
-        default:
-            ShowHelp(argv[0]);
+        case '?':
             isTrue = false;
+            break;
+        default:
             break;
     }
     return isTrue;
 }
 
-static void IsInvalidOpt(int argc, char** argv)
+static bool AddTagItems(int argc, char** argv)
 {
     for (int i = optind; i < argc; i++) {
-        if (!IsTagSupported(argv[i])) {
-            fprintf(stderr, "Error: \"%s\" is not support category on this device\n", argv[i]);
-            exit(-1);
+        std::string tag = std::string(argv[i]);
+        if (g_allTags.find(tag) == g_allTags.end()) {
+            std::string errorInfo = "error: " + tag + " is not support category on this device.";
+            ConsoleLog(errorInfo);
+            return false;
+        }
+
+        if (i == optind) {
+            g_traceArgs.tags = tag;
+        } else {
+            g_traceArgs.tags += ("," + tag);
         }
     }
+    return true;
 }
 
 static bool HandleOpt(int argc, char** argv)
@@ -563,58 +444,22 @@ static bool HandleOpt(int argc, char** argv)
     int argcSize = argc;
     while (isTrue && argcSize-- > 0) {
         opt = getopt_long(argc, argv, shortOption.c_str(), LONG_OPTIONS, &optionIndex);
-        if (opt < 0) {
-            IsInvalidOpt(argc, argv);
+        if (opt < 0 && (!AddTagItems(argc, argv))) {
+            isTrue = false;
             break;
         }
         isTrue = ParseOpt(opt, argv, optionIndex);
     }
 
-    if (g_userEnabledTags.size() == 0 && g_kernelEnabledPaths.size() == 0) {
-        g_defaultMode = true;
-    }
     return isTrue;
 }
 
-static bool TruncateFile(const string& path)
+static void StopTrace()
 {
-    int fd = creat((g_traceRootPath + path).c_str(), 0);
-    if (fd == -1) {
-        fprintf(stderr, "Error: clear %s, errno: %d\n", (g_traceRootPath + path).c_str(), errno);
-        return false;
-    }
-    close(fd);
-    return true;
-}
-
-static bool ClearTrace()
-{
-    return TruncateFile(TRACE_PATH);
-}
-
-static bool StartTrace()
-{
-    SetPropertyInner(TRACE_TAG_STATE, "1");
-    if (!SetFtraceEnabled(TRACING_ON_PATH, true)) {
-        return false;
-    }
-    ClearTrace();
-    printf("capturing trace...\n");
-    fflush(stdout);
-    return true;
-}
-
-static void WaitForTraceDone(void)
-{
-    struct timespec ts = {0, 0};
-    ts.tv_sec = g_traceDuration;
-    ts.tv_nsec = 0;
-    while ((nanosleep(&ts, &ts) == -1) && (errno == EINTR)) {}
-}
-
-static bool StopTrace()
-{
-    return SetFtraceEnabled(TRACING_ON_PATH, false);
+    const int napTime = 10000;
+    usleep(napTime);
+    SetTraceTagsEnabled(0);
+    SetFtraceEnabled(TRACING_ON_PATH, false);
 }
 
 static void DumpCompressedTrace(int traceFd, int outFd)
@@ -624,18 +469,18 @@ static void DumpCompressedTrace(int traceFd, int outFd)
     ssize_t bytesWritten;
     ssize_t bytesRead;
     if (memset_s(&zs, sizeof(zs), 0, sizeof(zs)) != 0) {
-        fprintf(stderr, "Error: zip stream buffer init failed\n");
+        ConsoleLog("error: zip stream buffer init failed.");
         return;
     }
     int ret = deflateInit(&zs, Z_DEFAULT_COMPRESSION);
     if (ret != Z_OK) {
-        fprintf(stderr, "Error: initializing zlib: %d\n", ret);
+        ConsoleLog("error: initializing zlib failed ret " + std::to_string(ret));
         return;
     }
     std::unique_ptr<uint8_t[]>  in = std::make_unique<uint8_t[]>(CHUNK_SIZE);
     std::unique_ptr<uint8_t[]>  out = std::make_unique<uint8_t[]>(CHUNK_SIZE);
     if (!in || !out) {
-        fprintf(stderr, "Error: couldn't allocate buffers\n");
+        ConsoleLog("error: couldn't allocate buffers.");
         return;
     }
     zs.next_out = reinterpret_cast<Bytef*>(out.get());
@@ -647,7 +492,7 @@ static void DumpCompressedTrace(int traceFd, int outFd)
             if (bytesRead == 0) {
                 flush = Z_FINISH;
             } else if (bytesRead == -1) {
-                fprintf(stderr, "Error: reading trace, errno: %d\n", errno);
+                ConsoleLog("error: reading trace, errno " + std::to_string(errno));
                 break;
             } else {
                 zs.next_in = reinterpret_cast<Bytef*>(in.get());
@@ -657,7 +502,7 @@ static void DumpCompressedTrace(int traceFd, int outFd)
         if (zs.avail_out == 0) {
             bytesWritten = TEMP_FAILURE_RETRY(write(outFd, out.get(), CHUNK_SIZE));
             if (bytesWritten < CHUNK_SIZE) {
-                fprintf(stderr, "Error: writing deflated trace, errno: %d\n", errno);
+                ConsoleLog("error: writing deflated trace, errno " + std::to_string(errno));
                 break;
             }
             zs.next_out = reinterpret_cast<Bytef*>(out.get());
@@ -668,14 +513,14 @@ static void DumpCompressedTrace(int traceFd, int outFd)
             size_t have = CHUNK_SIZE - zs.avail_out;
             bytesWritten = TEMP_FAILURE_RETRY(write(outFd, out.get(), have));
             if (static_cast<size_t>(bytesWritten) < have) {
-                fprintf(stderr, "Error: writing deflated trace, errno: %d\n", errno);
+                ConsoleLog("error: writing deflated trace, errno " + std::to_string(errno));
             }
             break;
         } else if (ret != Z_OK) {
             if (ret == Z_ERRNO) {
-                fprintf(stderr, "Error: deflate failed with errno %d\n", errno);
+                ConsoleLog("error: deflate failed with errno " + std::to_string(errno));
             } else {
-                fprintf(stderr, "Error: deflate failed return %d\n", ret);
+                ConsoleLog("error: deflate failed return " + std::to_string(ret));
             }
             break;
         }
@@ -683,366 +528,363 @@ static void DumpCompressedTrace(int traceFd, int outFd)
 
     ret = deflateEnd(&zs);
     if (ret != Z_OK) {
-        fprintf(stderr, "error cleaning up zlib: %d\n", ret);
+        ConsoleLog("error: cleaning up zlib return " + std::to_string(ret));
     }
 }
 
-static void DumpTrace(int outFd, const string& path)
+static void DumpTrace()
 {
-    string resolvedPath = CanonicalizeSpecPath((g_traceRootPath + path).c_str());
-    int traceFd = open(resolvedPath.c_str(), O_RDWR);
+    std::string tracePath = g_traceRootPath + TRACE_PATH;
+    string traceSpecPath = OHOS::HiviewDFX::Hitrace::CanonicalizeSpecPath(tracePath.c_str());
+    int traceFd = open(traceSpecPath.c_str(), O_RDONLY);
     if (traceFd == -1) {
-        fprintf(stderr, "error opening %s, errno: %d\n", path.c_str(), errno);
+        ConsoleLog("error: opening " + tracePath + ", errno: " + std::to_string(errno));
         return;
     }
+
+    int outFd = STDOUT_FILENO;
+    if (g_traceArgs.output.size() > 0) {
+        string outSpecPath = OHOS::HiviewDFX::Hitrace::CanonicalizeSpecPath(g_traceArgs.output.c_str());
+        outFd = open(g_traceArgs.output.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    }
+
+    if (outFd == -1) {
+        ConsoleLog("error: opening " + g_traceArgs.output + ", errno: " + std::to_string(errno));
+        close(traceFd);
+        return;
+    }
+
     ssize_t bytesWritten;
     ssize_t bytesRead;
-    if (g_compress) {
+    if (g_traceArgs.isCompress) {
         DumpCompressedTrace(traceFd, outFd);
     } else {
-        char buffer[BLOCK_SIZE];
+        const int blockSize = 4096;
+        char buffer[blockSize];
         do {
-            bytesRead = TEMP_FAILURE_RETRY(read(traceFd, buffer, BLOCK_SIZE));
+            bytesRead = TEMP_FAILURE_RETRY(read(traceFd, buffer, blockSize));
             if ((bytesRead == 0) || (bytesRead == -1)) {
                 break;
             }
             bytesWritten = TEMP_FAILURE_RETRY(write(outFd, buffer, bytesRead));
         } while (bytesWritten > 0);
     }
+
+    if (outFd != STDOUT_FILENO) {
+        ConsoleLog("trace read done, output: " + g_traceArgs.output);
+        close(outFd);
+    }
     close(traceFd);
 }
 
-static bool MarkOthersClockSync()
+static bool InitAllSupportTags()
 {
-    constexpr unsigned int bufferSize = 128; // buffer size
-    char buffer[bufferSize] = { 0 };
-    string resolvedPath = CanonicalizeSpecPath((g_traceRootPath + TRACE_MARKER_PATH).c_str());
-    int fd = open(resolvedPath.c_str(), O_WRONLY);
-    if (fd == -1) {
-        fprintf(stderr, "Error: opening %s, errno: %d\n", TRACE_MARKER_PATH, errno);
+    if (!OHOS::HiviewDFX::Hitrace::ParseTagInfo(g_allTags, g_allTagGroups)) {
+        ConsoleLog("error: hitrace_utils.json file is damaged.");
         return false;
     }
-
-    struct timespec mts = {0, 0};
-    struct timespec rts = {0, 0};
-    if (clock_gettime(CLOCK_REALTIME, &rts) == -1) {
-        fprintf(stderr, "Error: get realtime, errno: %d\n", errno);
-        close(fd);
-        return false;
-    } else if (clock_gettime(CLOCK_MONOTONIC, &mts) == -1) {
-        fprintf(stderr, "Error: get parent_ts, errno: %d\n", errno);
-        close(fd);
-        return false;
-    }
-    constexpr unsigned int nanoSeconds = 1000000000; // seconds converted to nanoseconds
-    constexpr unsigned int nanoToMill = 1000000; // millisecond converted to nanoseconds
-    constexpr float nanoToSecond = 1000000000.0f; // consistent with the ftrace timestamp format
-    int len = snprintf_s(buffer, sizeof(buffer), sizeof(buffer) - 1,
-        "trace_event_clock_sync: realtime_ts=%" PRId64 "\n",
-        static_cast<int64_t>((rts.tv_sec * nanoSeconds + rts.tv_nsec) / nanoToMill));
-    if (len < 0) {
-        fprintf(stderr, "Error: entering data into buffer, errno: %d\n", errno);
-        close(fd);
-        return false;
-    }
-    if (write(fd, buffer, len) < 0) {
-        fprintf(stderr, "Warning: writing clock sync marker, errno: %d\n", errno);
-        fprintf(stderr, "the buffer is not enough, please increase the buffer\n");
-    }
-    len = snprintf_s(buffer, sizeof(buffer), sizeof(buffer) - 1, "trace_event_clock_sync: parent_ts=%f\n",
-        static_cast<float>(((static_cast<float>(mts.tv_sec)) * nanoSeconds + mts.tv_nsec) / nanoToSecond));
-    if (len < 0) {
-        fprintf(stderr, "Error: entering data into buffer, errno: %d\n", errno);
-        close(fd);
-        return false;
-    }
-    if (write(fd, buffer, len) < 0) {
-        fprintf(stderr, "Warning: writing clock sync marker, errno: %d\n", errno);
-        fprintf(stderr, "the buffer is not enough, please increase the buffer\n");
-    }
-    close(fd);
     return true;
 }
 
-static void InitDiskSupportTags()
+static std::string ReloadTraceArgs()
 {
-    g_tagMap["disk"] = { "disk", "Disk I/O", 0, KERNEL, {
-        { "events/f2fs/f2fs_sync_file_enter/enable" },
-        { "events/f2fs/f2fs_sync_file_exit/enable" },
-        { "events/f2fs/f2fs_write_begin/enable" },
-        { "events/f2fs/f2fs_write_end/enable" },
-        { "events/ext4/ext4_da_write_begin/enable" },
-        { "events/ext4/ext4_da_write_end/enable" },
-        { "events/ext4/ext4_sync_file_enter/enable" },
-        { "events/ext4/ext4_sync_file_exit/enable" },
-        { "events/block/block_rq_issue/enable" },
-        { "events/block/block_rq_complete/enable" },
-    }};
-    g_tagMap["mmc"] = { "mmc", "eMMC commands", 0, KERNEL, {
-        { "events/mmc/enable" },
-    }};
-    g_tagMap["ufs"] = { "ufs", "UFS commands", 0, KERNEL, {
-        { "events/ufs/enable" },
-    }};
+    std::string args = "tags:" + g_traceArgs.tags;
+
+    if (g_traceArgs.bufferSize > 0) {
+        args += (" bufferSize:" + std::to_string(g_traceArgs.bufferSize));
+    } else {
+        args += (" bufferSize:" + std::to_string(DEFAULT_BUFFER_SIZE));
+    }
+
+    if (g_traceArgs.clockType.size() > 0) {
+        args += (" clockType:" + g_traceArgs.clockType);
+    }
+
+    if (g_traceArgs.overwrite) {
+        args += " overwrite:";
+        args += "1";
+    } else {
+        args += " overwrite:";
+        args += "0";
+    }
+    
+    if (g_runningState != RECORDING_SHORT_TEXT && g_runningState != RECORDING_LONG_DUMP &&
+        g_runningState != RECORDING_LONG_FINISH) {
+        ConsoleLog("args: " + args);
+    }
+    return args;
 }
 
-static void InitHardwareSupportTags()
+static bool HandleRecordingShortRaw()
 {
-    g_tagMap["irq"] = { "irq", "IRQ Events", 0, KERNEL, {
-        { "events/irq/enable" },
-        { "events/ipi/enable" },
-    }};
-    g_tagMap["irqoff"] = { "irqoff", "IRQ-disabled code section tracing", 0, KERNEL, {
-        { "events/preemptirq/irq_enable/enable" },
-        { "events/preemptirq/irq_disable/enable" },
-    }};
-    InitDiskSupportTags();
-    g_tagMap["i2c"] = { "i2c", "I2C Events", 0, KERNEL, {
-        { "events/i2c/enable" },
-        { "events/i2c/i2c_read/enable" },
-        { "events/i2c/i2c_write/enable" },
-        { "events/i2c/i2c_result/enable" },
-        { "events/i2c/i2c_reply/enable" },
-        { "events/i2c/smbus_read/enable" },
-        { "events/i2c/smbus_write/enable" },
-        { "events/i2c/smbus_result/enable" },
-        { "events/i2c/smbus_reply/enable" },
-    }};
-    g_tagMap["regulators"] = { "regulators", "Voltage and Current Regulators", 0, KERNEL, {
-        { "events/regulator/enable" },
-    }};
-    g_tagMap["membus"] = { "membus", "Memory Bus Utilization", 0, KERNEL, {
-        { "events/memory_bus/enable" },
-    }};
+    std::string args = ReloadTraceArgs();
+    if (g_traceArgs.output.size() > 0) {
+        ConsoleLog("warnning: The current state does not support specifying the output file path, " +
+                   g_traceArgs.output + " is invalid.");
+    }
+    auto openRet = g_traceCollector->OpenRecording(args);
+    if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
+        ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
+        return false;
+    }
+
+    auto recOnRet = g_traceCollector->RecordingOn();
+    if (recOnRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
+        ConsoleLog("error: RecordingOn failed, errorCode(" + std::to_string(recOnRet.retCode) +")");
+        return false;
+    }
+    ConsoleLog("start capture, please wait " + std::to_string(g_traceArgs.duration) +"s ...");
+    sleep(g_traceArgs.duration);
+
+    auto recOffRet = g_traceCollector->RecordingOff();
+    if (recOffRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
+        ConsoleLog("error: RecordingOff failed, errorCode(" + std::to_string(recOffRet.retCode) +")");
+        return false;
+    }
+    ConsoleLog("capture done, output files:");
+    for (std::string item : recOffRet.data) {
+        std::cout << "    " << item << std::endl;
+    }
+    return true;
 }
 
-static void InitCpuSupportTags()
+static bool HandleRecordingShortText()
 {
-    g_tagMap["freq"] = { "freq", "CPU Frequency", 0, KERNEL, {
-        { "events/power/cpu_frequency/enable" },
-        { "events/power/clock_set_rate/enable" },
-        { "events/power/clock_disable/enable" },
-        { "events/power/clock_enable/enable" },
-        { "events/clk/clk_set_rate/enable" },
-        { "events/clk/clk_disable/enable" },
-        { "events/clk/clk_enable/enable" },
-        { "events/power/cpu_frequency_limits/enable" },
-    }};
-    g_tagMap["idle"] = { "idle", "CPU Idle", 0, KERNEL, {
-        { "events/power/cpu_idle/enable" },
-    }};
-    g_tagMap["load"] = { "load", "CPU Load", 0, KERNEL, {
-        { "events/cpufreq_interactive/enable" },
-    }};
+    std::string args = ReloadTraceArgs();
+    auto openRet = g_traceCollector->OpenRecording(args);
+    if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
+        ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
+        return false;
+    }
+    ConsoleLog("start capture, please wait " + std::to_string(g_traceArgs.duration) +"s ...");
+    sleep(g_traceArgs.duration);
+
+    OHOS::HiviewDFX::Hitrace::MarkClockSync(g_traceRootPath);
+    StopTrace();
+
+    if (g_runningState != RECORDING_SHORT_TEXT && g_runningState != RECORDING_LONG_DUMP &&
+        g_runningState != RECORDING_LONG_FINISH) {
+        ConsoleLog("capture done, start to read trace.");
+    }
+    DumpTrace();
+    return true;
 }
 
-static void InitKernelSupportTags()
+static bool HandleRecordingLongBegin()
 {
-    g_tagMap["sched"] = { "sched", "CPU Scheduling", 0, KERNEL, {
-        { "events/sched/sched_switch/enable" },
-        { "events/sched/sched_wakeup/enable" },
-        { "events/sched/sched_wakeup_new/enable" },
-        { "events/sched/sched_waking/enable" },
-        { "events/sched/sched_blocked_reason/enable" },
-        { "events/sched/sched_pi_setprio/enable" },
-        { "events/sched/sched_process_exit/enable" },
-        { "events/cgroup/enable" },
-        { "events/oom/oom_score_adj_update/enable" },
-        { "events/task/task_rename/enable" },
-        { "events/task/task_newtask/enable" },
-    }};
-    g_tagMap["preemptoff"] = { "preemptoff", "Preempt-disabled code section tracing", 0, KERNEL, {
-        { "events/preemptirq/preempt_enable/enable" },
-        { "events/preemptirq/preempt_disable/enable" },
-    }};
-
-    g_tagMap["binder"] = { "binder", "Binder kernel Info", 0, KERNEL, {
-        { "events/binder/binder_transaction/enable" },
-        { "events/binder/binder_transaction_received/enable" },
-        { "events/binder/binder_transaction_alloc_buf/enable" },
-        { "events/binder/binder_set_priority/enable" },
-        { "events/binder/binder_lock/enable" },
-        { "events/binder/binder_locked/enable" },
-        { "events/binder/binder_unlock/enable" },
-    }};
-
-    g_tagMap["sync"] = { "sync", "Synchronization", 0, KERNEL, {
-        // linux kernel > 4.9
-        { "events/dma_fence/enable" },
-    }};
-    g_tagMap["workq"] = { "workq", "Kernel Workqueues", 0, KERNEL, {
-        { "events/workqueue/enable" },
-    }};
-    g_tagMap["memreclaim"] = { "memreclaim", "Kernel Memory Reclaim", 0, KERNEL, {
-        { "events/vmscan/mm_vmscan_direct_reclaim_begin/enable" },
-        { "events/vmscan/mm_vmscan_direct_reclaim_end/enable" },
-        { "events/vmscan/mm_vmscan_kswapd_wake/enable" },
-        { "events/vmscan/mm_vmscan_kswapd_sleep/enable" },
-        { "events/lowmemorykiller/enable" },
-    }};
-    g_tagMap["pagecache"] = { "pagecache", "Page cache", 0, KERNEL, {
-        { "events/filemap/enable" },
-    }};
-    g_tagMap["memory"] = { "memory", "Memory", 0, KERNEL, {
-        { "events/kmem/rss_stat/enable" },
-        { "events/kmem/ion_heap_grow/enable" },
-        { "events/kmem/ion_heap_shrink/enable" },
-    }};
-    InitCpuSupportTags();
-    InitHardwareSupportTags();
+    std::string args = ReloadTraceArgs();
+    if (g_traceArgs.output.size() > 0) {
+        ConsoleLog("warnning: The current state does not support specifying the output file path, " +
+                   g_traceArgs.output + " is invalid.");
+    }
+    auto openRet = g_traceCollector->OpenRecording(args);
+    if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
+        ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
+        g_traceCollector->Recover();
+        return false;
+    }
+    ConsoleLog("OpenRecording done.");
+    return true;
 }
 
-static void InitOtherUserTags()
+static bool HandleRecordingLongDump()
 {
-    g_tagMap["account"] = { "account", "Account Manager", HITRACE_TAG_ACCOUNT_MANAGER, USER, {}};
-    g_tagMap["dhfwk"] = { "dhfwk", "Distributed Hardware FWK", HITRACE_TAG_DISTRIBUTED_HARDWARE_FWK, USER, {}};
-    g_tagMap["dscreen"] = { "dscreen", "Distributed Screen", HITRACE_TAG_DISTRIBUTED_SCREEN, USER, {}};
-    g_tagMap["daudio"] = { "daudio", "Distributed Audio", HITRACE_TAG_DISTRIBUTED_AUDIO, USER, {}};
-    g_tagMap["dinput"] = { "dinput", "Distributed Input", HITRACE_TAG_DISTRIBUTED_INPUT, USER, {}};
-    g_tagMap["devicemanager"] = { "devicemanager", "Device Manager", HITRACE_TAG_DEVICE_MANAGER, USER, {}};
-    g_tagMap["deviceprofile"] = { "deviceprofile", "Device Profile", HITRACE_TAG_DEVICE_PROFILE, USER, {}};
-    g_tagMap["dsched"] = { "dsched", "Distributed Schedule", HITRACE_TAG_DISTRIBUTED_SCHEDULE, USER, {}};
-    g_tagMap["huks"] = { "huks", "Universal KeyStore", HITRACE_TAG_HUKS, USER, {}};
-    g_tagMap["dlpcre"] = { "dlpcre", "Dlp Credential Service", HITRACE_TAG_DLP_CREDENTIAL, USER, {}};
-    g_tagMap["samgr"] = { "samgr", "samgr", HITRACE_TAG_SAMGR, USER, {}};
-    g_tagMap["app"] = { "app", "APP Module", HITRACE_TAG_APP, USER, {}};
-    g_tagMap["dcamera"] = { "dcamera", "Distributed Camera", HITRACE_TAG_DISTRIBUTED_CAMERA, USER, {}};
-    g_tagMap["zbinder"] = { "zbinder", "OpenHarmony binder communication", 0, KERNEL, {
-        { "events/zbinder/enable" },
-    }};
-    g_tagMap["gresource"] = { "gresource", "Global Resource Manager", HITRACE_TAG_GLOBAL_RESMGR, USER, {}};
-    g_tagMap["power"] = { "power", "Power Manager", HITRACE_TAG_POWER, USER, {}};
-    g_tagMap["bluetooth"] = { "bluetooth", "communicatio bluetooth", HITRACE_TAG_BLUETOOTH, USER, {}};
-    g_tagMap["filemanagement"] = { "filemanagement", "filemanagement", HITRACE_TAG_FILEMANAGEMENT, USER, {}};
-    g_tagMap["dslm"] = {"dslm", "device security level", HITRACE_TAG_DLSM, USER, {}};
-    g_tagMap["useriam"] = {"useriam", "useriam", HITRACE_TAG_USERIAM, USER, {}};
-    g_tagMap["nweb"] = {"nweb", "NWEB Module", HITRACE_TAG_NWEB, USER, {}};
-    g_tagMap["net"] = {"net", "net", HITRACE_TAG_NET, USER, {}};
-    g_tagMap["accesscontrol"] = {"accesscontrol", "Access Control Module", HITRACE_TAG_ACCESS_CONTROL, USER, {}};
-    g_tagMap["interconn"] = {"interconn", "Interconnection subsystem", HITRACE_TAG_INTERCONNECTION, USER, {}};
-    g_tagMap["usb"] = {"usb", "usb subsystem", HITRACE_TAG_USB, USER, {}};
-    g_tagMap["hdf"] = {"hdf", "hdf subsystem", HITRACE_TAG_HDF, USER, {}};
-    g_tagMap["commonlibrary"] = {"commonlibrary", "commonlibrary subsystem", HITRACE_TAG_COMMONLIBRARY, USER, {}};
-    g_tagMap["hdcd"] = {"hdcd", "hdcd", HITRACE_TAG_HDCD, USER, {}};
-    g_tagMap["deviceauth"] = {"deviceauth", "Device Auth", HITRACE_TAG_DEV_AUTH, USER, {}};
-    g_tagMap["cloud"] = {"cloud", "Cloud subsystem", HITRACE_TAG_CLOUD, USER, {}};
-    g_tagMap["ffrt"] = {"ffrt", "Ffrt Tasks", HITRACE_TAG_FFRT, USER, {}};
-    g_tagMap["musl"] = {"musl", "Musl Module", HITRACE_TAG_MUSL, USER, {}};
-    g_tagMap["virse"] = {"virse", "Virtualization Service", HITRACE_TAG_VIRSE, USER, {}};
-    g_tagMap["push"] = {"push", "Push subsystem", HITRACE_TAG_PUSH, USER, {}};
+    OHOS::HiviewDFX::Hitrace::MarkClockSync(g_traceRootPath);
+    ConsoleLog("start to read trace.");
+    DumpTrace();
+    return true;
 }
 
-static void InitAllSupportTags()
+static bool HandleRecordingLongFinish()
 {
-    // OHOS
-    g_tagMap["ohos"] = { "ohos", "OpenHarmony", HITRACE_TAG_OHOS, USER, {}};
-    g_tagMap["ability"] = { "ability", "Ability Manager", HITRACE_TAG_ABILITY_MANAGER, USER, {}};
-    g_tagMap["zcamera"] = { "zcamera", "OpenHarmony Camera Module", HITRACE_TAG_ZCAMERA, USER, {}};
-    g_tagMap["zmedia"] = { "zmedia", "OpenHarmony Media Module", HITRACE_TAG_ZMEDIA, USER, {}};
-    g_tagMap["zimage"] = { "zimage", "OpenHarmony Image Module", HITRACE_TAG_ZIMAGE, USER, {}};
-    g_tagMap["zaudio"] = { "zaudio", "OpenHarmony Audio Module", HITRACE_TAG_ZAUDIO, USER, {}};
-    g_tagMap["distributeddatamgr"] = { "distributeddatamgr", "Distributed Data Manager",
-        HITRACE_TAG_DISTRIBUTEDDATA, USER, {}};
-    g_tagMap["mdfs"] = { "mdfs", "Mobile Distributed File System", HITRACE_TAG_MDFS, USER, {}};
-    g_tagMap["graphic"] = { "graphic", "Graphic Module", HITRACE_TAG_GRAPHIC_AGP, USER, {}};
-    g_tagMap["ace"] = { "ace", "ACE development framework", HITRACE_TAG_ACE, USER, {}};
-    g_tagMap["notification"] = { "notification", "Notification Module", HITRACE_TAG_NOTIFICATION, USER, {}};
-    g_tagMap["misc"] = { "misc", "Misc Module", HITRACE_TAG_MISC, USER, {}};
-    g_tagMap["multimodalinput"] = { "multimodalinput", "Multimodal Input Module",
-        HITRACE_TAG_MULTIMODALINPUT, USER, {}};
-    g_tagMap["sensors"] = { "sensors", "Sensors Module", HITRACE_TAG_SENSORS, USER, {}};
-    g_tagMap["msdp"] = { "msdp", "Multimodal Sensor Data Platform", HITRACE_TAG_MSDP, USER, {}};
-    g_tagMap["dsoftbus"] = { "dsoftbus", "Distributed Softbus", HITRACE_TAG_DSOFTBUS, USER, {}};
-    g_tagMap["rpc"] = { "rpc", "RPC and IPC", HITRACE_TAG_RPC, USER, {}};
-    g_tagMap["ark"] = { "ark", "ARK Module", HITRACE_TAG_ARK, USER, {}};
-    g_tagMap["window"] = { "window", "Window Manager", HITRACE_TAG_WINDOW_MANAGER, USER, {}};
-    g_tagMap["accessibility"] = { "accessibility", "Accessibility Manager",
-        HITRACE_TAG_ACCESSIBILITY_MANAGER, USER, {}};
-    InitOtherUserTags();
+    OHOS::HiviewDFX::Hitrace::MarkClockSync(g_traceRootPath);
+    StopTrace();
+    ConsoleLog("start to read trace and end capture trace.");
+    DumpTrace();
+    g_traceCollector->Recover();
+    return true;
+}
 
-    // Kernel os
-    InitKernelSupportTags();
+static bool HandleRecordingLongFinishNodump()
+{
+    g_traceCollector->Recover();
+    ConsoleLog("end capture trace.");
+    return true;
+}
+
+static bool HandleRecordingLongBeginRecord()
+{
+    std::string args = ReloadTraceArgs();
+    if (g_traceArgs.output.size() > 0) {
+        ConsoleLog("warnning: The current state does not support specifying the output file path, " +
+                   g_traceArgs.output + " is invalid.");
+    }
+    auto openRet = g_traceCollector->OpenRecording(args);
+    if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
+        ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
+        g_traceCollector->Recover();
+        return false;
+    }
+
+    auto recOnRet = g_traceCollector->RecordingOn();
+    if (recOnRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
+        ConsoleLog("error: RecordingOn failed, errorCode(" + std::to_string(recOnRet.retCode) +")");
+        g_traceCollector->Recover();
+        return false;
+    }
+    ConsoleLog("trace capturing. ");
+    return true;
+}
+
+static bool HandleRecordingLongFinishRecord()
+{
+    auto recOffRet = g_traceCollector->RecordingOff();
+    if (recOffRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
+        ConsoleLog("error: RecordingOff failed, errorCode(" + std::to_string(recOffRet.retCode) +")");
+        g_traceCollector->Recover();
+        return false;
+    }
+    ConsoleLog("capture done, output files:");
+    for (std::string item : recOffRet.data) {
+        std::cout << "    " << item << std::endl;
+    }
+    g_traceCollector->Recover();
+    return true;
+}
+
+static bool HandleOpenSnapshot()
+{
+    bool isSuccess = true;
+    std::vector<std::string> tagGroups = { "scene_performance" };
+    auto openRet = g_traceCollector->OpenSnapshot(tagGroups);
+    if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
+        ConsoleLog("error: OpenSnapshot failed, errorCode(" + std::to_string(openRet.retCode) +")");
+        isSuccess = false;
+    } else {
+        ConsoleLog("OpenSnapshot done.");
+    }
+    return isSuccess;
+}
+
+static bool HandleDumpSnapshot()
+{
+    bool isSuccess = true;
+    auto dumpRet = g_traceCollector->DumpSnapshot(OHOS::HiviewDFX::UCollectClient::TraceCollector::Caller::DEVELOP);
+    if (dumpRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
+        ConsoleLog("error: DumpSnapshot failed, errorCode(" + std::to_string(dumpRet.retCode) +")");
+        isSuccess = false;
+    } else {
+        ConsoleLog("DumpSnapshot done, output:");
+        for (std::string item : dumpRet.data) {
+            std::cout << "    " << item << std::endl;
+        }
+    }
+    return isSuccess;
+}
+
+static bool HandlCloseSnapshot()
+{
+    bool isSuccess = true;
+    auto closeRet = g_traceCollector->Close();
+    if (closeRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
+        ConsoleLog("error: CloseSnapshot failed, errorCode(" + std::to_string(closeRet.retCode) +")");
+        isSuccess = false;
+    } else {
+        ConsoleLog("CloseSnapshot done.");
+    }
+    return isSuccess;
 }
 
 static void InterruptExit(int signo)
 {
+    /**
+     * trace reset.
+    */
+    g_traceCollector->Recover();
     _exit(-1);
 }
 
 int main(int argc, char **argv)
 {
+    bool isSuccess = true;
     setgid(SHELL_UID);
+    g_traceCollector = OHOS::HiviewDFX::UCollectClient::TraceCollector::Create();
+    if (g_traceCollector == nullptr) {
+        ConsoleLog("error: traceCollector create failed, exit.");
+        return -1;
+    }
     (void)signal(SIGKILL, InterruptExit);
     (void)signal(SIGINT, InterruptExit);
 
     if (!IsTraceMounted()) {
-        exit(-1);
+        ConsoleLog("error: trace isn't mounted, exit.");
+        return -1;
     }
 
-    InitAllSupportTags();
+    if (!InitAllSupportTags()) {
+        return -1;
+    }
 
     if (!HandleOpt(argc, argv)) {
-        exit(-1);
+        ConsoleLog("error: parsing args failed, exit.");
+        return -1;
+    }
+    
+    if (g_runningState == STATE_NULL) {
+        g_runningState = RECORDING_SHORT_TEXT;
     }
 
-    if (g_traceStart != START_NONE) {
-        if (!SetKernelSpaceSettings()) {
-            ClearKernelSpaceSettings();
-            exit(-1);
-        }
+    if (g_runningState != RECORDING_SHORT_TEXT && g_runningState != RECORDING_LONG_DUMP &&
+        g_runningState != RECORDING_LONG_FINISH) {
+        ConsoleLog(std::string(argv[0]) + " enter, running_state is " + GetStateInfo(g_runningState));
     }
 
-    bool isTrue = true;
-    if (g_traceStart != START_NONE) {
-        isTrue = isTrue && StartTrace();
-        if (!SetUserSpaceSettings()) {
-            ClearKernelSpaceSettings();
-            ClearUserSpaceSettings();
-            exit(-1);
-        }
-        if (g_traceStart == START_ASYNC) {
-            if (g_defaultMode) {
-                const std::vector<std::string> tagGroups = {"scene_performance"};
-                OHOS::HiviewDFX::Hitrace::OpenTrace(tagGroups);
-            }
-            return isTrue ? 0 : -1;
-        }
-        WaitForTraceDone();
+    switch (g_runningState) {
+        case RECORDING_SHORT_RAW:
+            isSuccess = HandleRecordingShortRaw();
+            g_traceCollector->Recover();
+            break;
+        case RECORDING_SHORT_TEXT:
+            isSuccess = HandleRecordingShortText();
+            g_traceCollector->Recover();
+            break;
+        case RECORDING_LONG_BEGIN:
+            isSuccess = HandleRecordingLongBegin();
+            break;
+        case RECORDING_LONG_DUMP:
+            isSuccess = HandleRecordingLongDump();
+            break;
+        case RECORDING_LONG_FINISH:
+            isSuccess = HandleRecordingLongFinish();
+            break;
+        case RECORDING_LONG_FINISH_NODUMP:
+            isSuccess = HandleRecordingLongFinishNodump();
+            break;
+        case RECORDING_LONG_BEGIN_RECORD:
+            isSuccess = HandleRecordingLongBeginRecord();
+            break;
+        case RECORDING_LONG_FINISH_RECORD:
+            isSuccess = HandleRecordingLongFinishRecord();
+            break;
+        case SNAPSHOT_START:
+            isSuccess = HandleOpenSnapshot();
+            break;
+        case SNAPSHOT_DUMP:
+            isSuccess = HandleDumpSnapshot();
+            break;
+        case SNAPSHOT_STOP:
+            isSuccess = HandlCloseSnapshot();
+            break;
+        case SHOW_HELP:
+            ShowHelp(argv[0]);
+            break;
+        case SHOW_LIST_CATEGORY:
+            ShowListCategory();
+            break;
+        default:
+            ShowHelp(argv[0]);
+            isSuccess = false;
+            break;
     }
-
-    // following is dump and stop handling
-    isTrue = isTrue && MarkOthersClockSync();
-
-    if (g_traceStop) {
-        // clear user tags first and sleep a little to let apps already be notified.
-        ClearUserSpaceSettings();
-        std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_MILLISECONDS));
-        isTrue = isTrue && StopTrace();
-    }
-
-    if (isTrue && g_traceDump) {
-        int outFd = STDOUT_FILENO;
-        if (g_outputFile.size() > 0) {
-            printf("write trace to %s\n", g_outputFile.c_str());
-            string resolvedPath = CanonicalizeSpecPath(g_outputFile.c_str());
-            outFd = open(resolvedPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-        }
-        if (outFd == -1) {
-            fprintf(stderr, "Failed to open file '%s', err=%d", g_outputFile.c_str(), errno);
-            isTrue = false;
-        } else {
-            dprintf(outFd, "TRACE:\n");
-            DumpTrace(outFd, TRACE_PATH);
-            if (outFd != STDOUT_FILENO) {
-                close(outFd);
-            }
-        }
-        ClearTrace();
-    }
-
-    if (g_traceStop) {
-        // clear kernel setting including clock type after dump(MUST) and tracing_on is off.
-        ClearKernelSpaceSettings();
-    }
-    return isTrue ? 0 : -1;
+    return isSuccess ? 0 : -1;
 }

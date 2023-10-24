@@ -34,19 +34,32 @@ ohos_static_library("hitrace_osal_inner") {
 
 ohos_executable("hitrace") {
   install_enable = true
-  sources = [ "./src/hitrace_cmd.cpp" ]
+
+  sources = [
+    "${OHOS_HITRACE_DIR}/frameworks/native/common_utils.cpp",
+    "./src/hitrace_cmd.cpp",
+  ]
 
   deps = [
     ":hitrace_osal_inner",
-    "${OHOS_HITRACE_DIR}/interfaces/native/innerkits:hitrace_dump",
+    "${OHOS_HITRACE_DIR}/config:hitrace_utils",
+    "//third_party/cJSON:cjson",
     "//third_party/zlib:libz",
   ]
 
-  external_deps = [ "c_utils:utils" ]
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+  ]
+
+  if (!is_emulator && device_company != "qemu") {
+    external_deps += [ "hiview:libucollection_client" ]
+  }
 
   include_dirs = [
     "./include",
     "//third_party/zlib",
+    "${OHOS_HITRACE_DIR}/frameworks/include/",
   ]
   subsystem_name = "hiviewdfx"
   part_name = "hitrace"
@@ -54,19 +67,31 @@ ohos_executable("hitrace") {
 
 ohos_executable("bytrace") {
   install_enable = true
-  sources = [ "./src/hitrace_cmd.cpp" ]
+  sources = [
+    "${OHOS_HITRACE_DIR}/frameworks/native/common_utils.cpp",
+    "./src/hitrace_cmd.cpp",
+  ]
 
   deps = [
     ":hitrace_osal_inner",
-    "${OHOS_HITRACE_DIR}/interfaces/native/innerkits:hitrace_dump",
+    "${OHOS_HITRACE_DIR}/config:hitrace_utils",
+    "//third_party/cJSON:cjson",
     "//third_party/zlib:libz",
   ]
 
-  external_deps = [ "c_utils:utils" ]
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+  ]
+
+  if (!is_emulator && device_company != "qemu") {
+    external_deps += [ "hiview:libucollection_client" ]
+  }
 
   include_dirs = [
     "./include",
     "//third_party/zlib",
+    "${OHOS_HITRACE_DIR}/frameworks/include/",
   ]
   subsystem_name = "hiviewdfx"
   part_name = "hitrace"
@@ -101,9 +126,11 @@ ohos_rust_executable("hitrace_example_rust") {
 }
 
 group("hitrace_target") {
-  deps = [
-    ":bytrace",
-    ":hitrace",
-    ":hitrace_example",
-  ]
+  if (!is_emulator && device_company != "qemu") {
+    deps = [
+      ":bytrace",
+      ":hitrace",
+      ":hitrace_example",
+    ]
+  }
 }

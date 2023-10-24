@@ -17,7 +17,8 @@
 #define OHOS_HIVIEWDFX_HITRACE_COMMON_UTILS_H
 
 #include <string>
-
+#include <map>
+#include <vector>
 #include "hilog/log.h"
 
 using OHOS::HiviewDFX::HiLog;
@@ -25,6 +26,14 @@ using OHOS::HiviewDFX::HiLog;
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
+
+struct TagCategory {
+    std::string description;
+    uint64_t tag;
+    int type;
+    std::vector<std::string> sysFiles;
+};
+
 
 constexpr uint64_t HITRACE_TAG = 0xD002D33;
 constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, HITRACE_TAG, "HitraceInfo"};
@@ -41,6 +50,12 @@ std::string CanonicalizeSpecPath(const char* src);
  *  ...... 88.767072: tracing_mark_write: trace_event_clock_sync: parent_ts=88.767036
 */
 bool MarkClockSync(const std::string& traceRootPath);
+
+/**
+ * Parse trace tags info from /system/etc/hiview/hitrace_utils.json
+*/
+bool ParseTagInfo(std::map<std::string, TagCategory> &allTags,
+                  std::map<std::string, std::vector<std::string>> &tagGroupTable);
 
 } // Hitrace
 } // HiviewDFX
