@@ -24,7 +24,7 @@ extern "C" {
 
 constexpr uint64_t HITRACE_TAG_NEVER = 0; // This tag is never enabled.
 constexpr uint64_t HITRACE_TAG_ALWAYS = (1ULL << 0); // This tag is always enabled.
-constexpr uint64_t HITRACE_TAG_ANIMATION = (1ULL << 9); // Animation subsystem tag.
+constexpr uint64_t HITRACE_TAG_ANIMATION = (1ULL << 9); // Animation tag.
 constexpr uint64_t HITRACE_TAG_PUSH = (1ULL << 10); // Push subsystem tag.
 constexpr uint64_t HITRACE_TAG_VIRSE = (1ULL << 11); // virtualization service.
 constexpr uint64_t HITRACE_TAG_MUSL = (1ULL << 12); // musl module.
