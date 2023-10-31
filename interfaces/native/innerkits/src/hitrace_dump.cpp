@@ -87,7 +87,10 @@ enum ContentType : uint8_t {
     CONTENT_TYPE_EVENTS_FORMAT = 1,
     CONTENT_TYPE_CMDLINES  = 2,
     CONTENT_TYPE_TGIDS = 3,
-    CONTENT_TYPE_CPU_RAW = 4
+    CONTENT_TYPE_CPU_RAW = 4,
+    CONTENT_TYPE_HEADER_PAGE = 30,
+    CONTENT_TYPE_PRINTK_FORMATS = 31,
+    CONTENT_TYPE_KALLSYMS = 32
 };
 
 struct TraceFileContentHeader {
@@ -156,12 +159,33 @@ bool IsTraceMounted()
 void GetArchWordSize(TraceFileHeader& header)
 {
     if (sizeof(void*) == sizeof(uint64_t)) {
-        header.reserved = 0;
+        header.reserved |= 0;
     } else if (sizeof(void*) == sizeof(uint32_t)) {
-        header.reserved = 1;
+        header.reserved |= 1;
     }
     HiLog::Debug(LABEL, "Kernel bit is %{public}d.", header.reserved);
 }
+
+
+int GetCpuProcessors()
+{
+    int processors = 0;
+    processors = sysconf(_SC_NPROCESSORS_ONLN);
+    return (processors == 0) ? 1 : processors;
+}
+
+void GetCpuNums(TraceFileHeader& header)
+{
+    const int maxCpuNums = 24;
+    int cpuNums = GetCpuProcessors();
+    if (cpuNums > maxCpuNums || cpuNums <= 0) {
+        HiLog::Error(LABEL, "error: cpu_number is %{public}d.", cpuNums);
+        return;
+    }
+    header.reserved |= (cpuNums << 1);
+    HiLog::Debug(LABEL, "reserved info is %{public}d.", header.reserved);
+}
+
 
 bool CheckTagGroup(const std::vector<std::string> &tagGroups,
                    const std::map<std::string, std::vector<std::string>> &tagGroupTable)
@@ -381,13 +405,6 @@ bool SetTraceSetting(const TraceParams &traceParams, const std::map<std::string,
     return true;
 }
 
-int GetCpuProcessors()
-{
-    int processors = 0;
-    processors = sysconf(_SC_NPROCESSORS_ONLN);
-    return (processors == 0) ? 1 : processors;
-}
-
 size_t GetFileSize(const std::string &fileName)
 {
     if (fileName.empty()) {
@@ -534,6 +551,23 @@ bool WriteEventsFormat(int outFd)
     return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, filePath, outFd);
 }
 
+bool WriteHeaderPage(int outFd)
+{
+    std::string headerPagePath = g_traceRootPath + "events/header_page";
+    return WriteFile(CONTENT_TYPE_HEADER_PAGE, headerPagePath, outFd);
+}
+
+bool WritePrintkFormats(int outFd)
+{
+    std::string printkFormatPath = g_traceRootPath + "printk_formats";
+    return WriteFile(CONTENT_TYPE_PRINTK_FORMATS, printkFormatPath, outFd);
+}
+
+bool WriteKallsyms(int outFd)
+{
+    return true;
+}
+
 bool WriteCpuRaw(int outFd)
 {
     int cpuNums = GetCpuProcessors();
@@ -574,6 +608,7 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
     MarkClockSync(g_traceRootPath);
     struct TraceFileHeader header;
     GetArchWordSize(header);
+    GetCpuNums(header);
     write(outFd, reinterpret_cast<char*>(&header), sizeof(header));
     WriteEventsFormat(outFd);
     while (g_dumpFlag) {
@@ -585,13 +620,16 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
     }
     WriteCmdlines(outFd);
     WriteTgids(outFd);
+    WriteHeaderPage(outFd);
+    WritePrintkFormats(outFd);
+    WriteKallsyms(outFd);
     close(outFd);
     return true;
 }
 
 std::string GenerateName(bool isSnapshot = true)
 {
-    // eg: /data/log/hitrace/trace_localtime@monotime.sys
+    // eg: /data/log/hitrace/trace_localtime@boottime.sys
     std::string name = DEFAULT_OUTPUT_DIR;
 
     if (isSnapshot) {
@@ -612,11 +650,15 @@ std::string GenerateName(bool isSnapshot = true)
     }
     strftime(timeStr, bufferSize, "%Y%m%d%H%M%S", &timeInfo);
     name += std::string(timeStr);
-    // get monotime
+    // get boottime
+    struct timespec bts = {0, 0};
+    clock_gettime(CLOCK_BOOTTIME, &bts);
+    name += "@" + std::to_string(bts.tv_sec) + "-" + std::to_string(bts.tv_nsec) + ".sys";
+
     struct timespec mts = {0, 0};
     clock_gettime(CLOCK_MONOTONIC, &mts);
-    name += "@" + std::to_string(mts.tv_sec) + "-" + std::to_string(mts.tv_nsec) + ".sys";
-    HiLog::Info(LABEL, "Generate trace name: %{public}s.", name.c_str());
+    HiLog::Info(LABEL, "output trace: %{public}s, boot_time(%{public}lld), mono_time(%{public}lld).",
+                name.c_str(), static_cast<int64_t>(bts.tv_sec), static_cast<int64_t>(mts.tv_sec));
     return name;
 }
 
@@ -685,10 +727,13 @@ bool ReadRawTrace(std::string &outputFileName)
     }
     struct TraceFileHeader header;
     GetArchWordSize(header);
+    GetCpuNums(header);
     write(outFd, reinterpret_cast<char*>(&header), sizeof(header));
 
     if (WriteEventsFormat(outFd) && WriteCpuRaw(outFd) &&
-        WriteCmdlines(outFd) && WriteTgids(outFd)) {
+        WriteCmdlines(outFd) && WriteTgids(outFd) &&
+        WriteHeaderPage(outFd) && WritePrintkFormats(outFd) &&
+        WriteKallsyms(outFd)) {
         close(outFd);
         return true;
     }
@@ -725,6 +770,7 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
     pid_t pid = fork();
     if (pid < 0) {
         HiLog::Error(LABEL, "fork error.");
+        g_dumpEnd = true;
         return TraceErrorCode::WRITE_TRACE_INFO_ERROR;
     }
     bool ret = false;

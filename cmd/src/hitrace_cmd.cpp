@@ -284,7 +284,7 @@ static bool SetRunningState(const RunningState& setValue)
     return true;
 }
 
-static bool CheackOutputFile(const char* path)
+static bool CheckOutputFile(const char* path)
 {
     struct stat buf;
     size_t len = strnlen(path, MAX_OUTPUT_LEN);
@@ -330,7 +330,7 @@ static bool ParseLongOpt(const string& cmd, int optionIndex)
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "list_categories")) {
         isTrue = SetRunningState(SHOW_LIST_CATEGORY);
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "output")) {
-        isTrue = CheackOutputFile(optarg);
+        isTrue = CheckOutputFile(optarg);
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "overwrite")) {
         g_traceArgs.overwrite = false;
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_begin")) {
@@ -398,7 +398,7 @@ static bool ParseOpt(int opt, char** argv, int optIndex)
             break;
         }
         case 'o': {
-            isTrue = CheackOutputFile(optarg);
+            isTrue = CheckOutputFile(optarg);
             break;
         }
         case 'z':
@@ -588,6 +588,10 @@ static bool InitAllSupportTags()
 
 static std::string ReloadTraceArgs()
 {
+    if (g_traceArgs.tags.size() == 0) {
+        ConsoleLog("error: tag is empty, please add.");
+        return "";
+    }
     std::string args = "tags:" + g_traceArgs.tags;
 
     if (g_traceArgs.bufferSize > 0) {
@@ -608,8 +612,7 @@ static std::string ReloadTraceArgs()
         args += "0";
     }
     
-    if (g_runningState != RECORDING_SHORT_TEXT && g_runningState != RECORDING_LONG_DUMP &&
-        g_runningState != RECORDING_LONG_FINISH) {
+    if (g_runningState != RECORDING_SHORT_TEXT) {
         ConsoleLog("args: " + args);
     }
     return args;
@@ -662,8 +665,7 @@ static bool HandleRecordingShortText()
     OHOS::HiviewDFX::Hitrace::MarkClockSync(g_traceRootPath);
     StopTrace();
 
-    if (g_runningState != RECORDING_SHORT_TEXT && g_runningState != RECORDING_LONG_DUMP &&
-        g_runningState != RECORDING_LONG_FINISH) {
+    if (g_traceArgs.output.size() > 0) {
         ConsoleLog("capture done, start to read trace.");
     }
     DumpTrace();
@@ -699,7 +701,7 @@ static bool HandleRecordingLongFinish()
 {
     OHOS::HiviewDFX::Hitrace::MarkClockSync(g_traceRootPath);
     StopTrace();
-    ConsoleLog("start to read trace and end capture trace.");
+    ConsoleLog("start to read trace.");
     DumpTrace();
     g_traceCollector->Recover();
     return true;

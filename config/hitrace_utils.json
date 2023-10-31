@@ -480,10 +480,10 @@
                 "events/i2c/i2c_write/enable",
                 "events/i2c/i2c_result/enable",
                 "events/i2c/i2c_reply/enable",
-                "events/i2c/smbus_read/enable",
-                "events/i2c/smbus_write/enable",
-                "events/i2c/smbus_result/enable",
-                "events/i2c/smbus_reply/enable"
+                "events/smbus/smbus_read/enable",
+                "events/smbus/smbus_write/enable",
+                "events/smbus/smbus_result/enable",
+                "events/smbus/smbus_reply/enable"
             ],
             "type": 1
         },
