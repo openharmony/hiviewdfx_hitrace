@@ -1,5 +1,11 @@
 {
     "tag_category": {
+        "animation": {
+            "description": "Animation",
+            "tag_offset": 9,
+            "sysFiles": [],
+            "type": 0
+        },
         "push": {
             "description": "Push subsystem",
             "tag_offset": 10,
