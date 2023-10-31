@@ -52,7 +52,7 @@ ohos_executable("hitrace") {
     "hilog:libhilog",
   ]
 
-  if (!is_emulator && device_company != "qemu") {
+  if (!is_emulator && device_company != "qemu" && support_executable_file) {
     external_deps += [ "hiview:libucollection_client" ]
   }
 
@@ -84,7 +84,7 @@ ohos_executable("bytrace") {
     "hilog:libhilog",
   ]
 
-  if (!is_emulator && device_company != "qemu") {
+  if (!is_emulator && device_company != "qemu" && support_executable_file) {
     external_deps += [ "hiview:libucollection_client" ]
   }
 
