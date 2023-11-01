@@ -67,6 +67,7 @@ constexpr uint16_t MAGIC_NUMBER = 57161;
 constexpr uint16_t VERSION_NUMBER = 1;
 constexpr uint8_t FILE_RAW_TRACE = 0;
 constexpr int UNIT_TIME = 100000;
+constexpr int ALIGNMENT_COEFFICIENT = 4;
 
 const int DEFAULT_BUFFER_SIZE = 12 * 1024;
 const int SAVED_CMDLINES_SIZE = 2048;
@@ -75,7 +76,7 @@ const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
 const std::string SNAPSHOT_PREFIX = "trace_";
 const std::string RECORDING_PREFIX = "record_trace_";
 
-struct TraceFileHeader {
+struct alignas(ALIGNMENT_COEFFICIENT) TraceFileHeader {
     uint16_t magicNumber {MAGIC_NUMBER};
     uint8_t fileType {FILE_RAW_TRACE};
     uint16_t versionNumber {VERSION_NUMBER};
@@ -93,7 +94,7 @@ enum ContentType : uint8_t {
     CONTENT_TYPE_KALLSYMS = 32
 };
 
-struct TraceFileContentHeader {
+struct alignas(ALIGNMENT_COEFFICIENT) TraceFileContentHeader {
     uint8_t type = CONTENT_TYPE_DEFAULT;
     uint32_t length = 0;
 };
@@ -657,7 +658,7 @@ std::string GenerateName(bool isSnapshot = true)
 
     struct timespec mts = {0, 0};
     clock_gettime(CLOCK_MONOTONIC, &mts);
-    HiLog::Info(LABEL, "output trace: %{public}s, boot_time(%{public}lld), mono_time(%{public}lld).",
+    HiLog::Info(LABEL, "output trace: %{public}s, boot_time(%{public}" PRId64 "), mono_time(%{public}" PRId64 ").",
                 name.c_str(), static_cast<int64_t>(bts.tv_sec), static_cast<int64_t>(mts.tv_sec));
     return name;
 }
