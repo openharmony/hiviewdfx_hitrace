@@ -414,7 +414,10 @@
         "idle": {
             "description": "CPU Idle",
             "tag_offset": 0,
-            "sysFiles": ["events/power/cpu_idle/enable"],
+            "sysFiles": [
+                "events/power/cpu_idle/enable",
+                "events/power_kernel/cpu_idle/enable"
+            ],
             "type": 1
         },
         "load": {
