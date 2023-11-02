@@ -138,6 +138,7 @@ constexpr unsigned int MAX_OUTPUT_LEN = 255;
 const int PAGE_SIZE_KB = 4; // 4 KB
 
 string g_traceRootPath;
+string g_traceHmDir;
 
 std::shared_ptr<OHOS::HiviewDFX::UCollectClient::TraceCollector> g_traceCollector;
 
@@ -188,7 +189,8 @@ static bool IsTraceMounted()
 static bool WriteStrToFile(const string& filename, const std::string& str)
 {
     ofstream out;
-    std::string inSpecPath = OHOS::HiviewDFX::Hitrace::CanonicalizeSpecPath((g_traceRootPath + filename).c_str());
+    std::string inSpecPath =
+        OHOS::HiviewDFX::Hitrace::CanonicalizeSpecPath((g_traceRootPath + g_traceHmDir + filename).c_str());
     out.open(inSpecPath, ios::out);
     if (out.fail()) {
         ConsoleLog("error: open " + inSpecPath + " failed.");
@@ -534,7 +536,7 @@ static void DumpCompressedTrace(int traceFd, int outFd)
 
 static void DumpTrace()
 {
-    std::string tracePath = g_traceRootPath + TRACE_PATH;
+    std::string tracePath = g_traceRootPath + g_traceHmDir + TRACE_PATH;
     string traceSpecPath = OHOS::HiviewDFX::Hitrace::CanonicalizeSpecPath(tracePath.c_str());
     int traceFd = open(traceSpecPath.c_str(), O_RDONLY);
     if (traceFd == -1) {
@@ -821,6 +823,10 @@ int main(int argc, char **argv)
     if (!IsTraceMounted()) {
         ConsoleLog("error: trace isn't mounted, exit.");
         return -1;
+    }
+
+    if (access((g_traceRootPath + "hongmeng/").c_str(), F_OK) != -1) {
+        g_traceHmDir = "hongmeng/";
     }
 
     if (!InitAllSupportTags()) {

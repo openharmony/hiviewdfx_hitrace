@@ -118,10 +118,20 @@ bool g_serviceThreadIsStart = false;
 uint64_t g_sysInitParamTags = 0;
 TraceMode g_traceMode = TraceMode::CLOSE;
 std::string g_traceRootPath;
+std::string g_traceHmDir;
 std::vector<std::pair<std::string, int>> g_traceFilesTable;
 std::vector<std::string> g_outputFilesForCmd;
 
 TraceParams g_currentTraceParams = {};
+
+std::string GetFilePath(const std::string fileName)
+{
+    if (access((g_traceRootPath + "hongmeng/" + fileName).c_str(), F_OK) == 0) {
+        return g_traceRootPath + "hongmeng/" + fileName;
+    } else {
+        return g_traceRootPath + fileName;
+    }
+}
 
 std::vector<std::string> Split(const std::string &str, char delimiter)
 {
@@ -199,10 +209,10 @@ bool CheckTagGroup(const std::vector<std::string> &tagGroups,
     return true;
 }
 
-bool WriteStrToFile(const std::string& filename, const std::string& str)
+bool WriteStrToFileInner(const std::string& filename, const std::string& str)
 {
     std::ofstream out;
-    out.open(g_traceRootPath + filename, std::ios::out);
+    out.open(filename, std::ios::out);
     if (out.fail()) {
         HiLog::Error(LABEL, "WriteStrToFile: %{public}s open failed.", filename.c_str());
         return false;
@@ -218,6 +228,19 @@ bool WriteStrToFile(const std::string& filename, const std::string& str)
     return true;
 }
 
+bool WriteStrToFile(const std::string& filename, const std::string& str)
+{
+    bool ret = false;
+    if (access((g_traceRootPath + "hongmeng/" + filename).c_str(), W_OK) == 0) {
+        ret |= WriteStrToFileInner(g_traceRootPath + "hongmeng/" + filename, str);
+    }
+    if (access((g_traceRootPath + filename).c_str(), W_OK) == 0) {
+        ret |= WriteStrToFileInner(g_traceRootPath + filename, str);
+    }
+
+    return ret;
+}
+
 void SetFtraceEnabled(const std::string &path, bool enabled)
 {
     WriteStrToFile(path, enabled ? "1" : "0");
@@ -225,7 +248,7 @@ void SetFtraceEnabled(const std::string &path, bool enabled)
 
 void TruncateFile()
 {
-    int fd = creat((g_traceRootPath + "trace").c_str(), 0);
+    int fd = creat((g_traceRootPath + g_traceHmDir + "trace").c_str(), 0);
     if (fd == -1) {
         HiLog::Error(LABEL, "TruncateFile: clear old trace failed.");
         return;
@@ -317,9 +340,9 @@ void SetAllTags(const TraceParams &traceParams, const std::map<std::string, TagC
     SetProperty("debug.hitrace.tags.enableflags", std::to_string(enabledUserTags));
 }
 
-std::string ReadFile(const std::string& filename)
+std::string ReadFileInner(const std::string& filename)
 {
-    std::string resolvedPath = CanonicalizeSpecPath((g_traceRootPath + filename).c_str());
+    std::string resolvedPath = CanonicalizeSpecPath(filename.c_str());
     std::ifstream fileIn(resolvedPath.c_str());
     if (!fileIn.is_open()) {
         HiLog::Error(LABEL, "ReadFile: %{public}s open failed.", filename.c_str());
@@ -329,6 +352,12 @@ std::string ReadFile(const std::string& filename)
     std::string str((std::istreambuf_iterator<char>(fileIn)), std::istreambuf_iterator<char>());
     fileIn.close();
     return str;
+}
+
+std::string ReadFile(const std::string& filename)
+{
+    std::string filePath = GetFilePath(filename);
+    return ReadFileInner(filename);
 }
 
 void SetClock(const std::string& clockType)
@@ -544,7 +573,7 @@ bool WriteEventsFormat(int outFd)
         "events/ftrace/print/format",
     };
     for (size_t i = 0; i < priorityTracingCategory.size(); i++) {
-        std::string srcPath = g_traceRootPath + priorityTracingCategory[i];
+        std::string srcPath = GetFilePath(priorityTracingCategory[i]);
         WriteEventFile(srcPath, fd);
     }
     close(fd);
@@ -553,13 +582,13 @@ bool WriteEventsFormat(int outFd)
 
 bool WriteHeaderPage(int outFd)
 {
-    std::string headerPagePath = g_traceRootPath + "events/header_page";
+    std::string headerPagePath = GetFilePath("events/header_page");
     return WriteFile(CONTENT_TYPE_HEADER_PAGE, headerPagePath, outFd);
 }
 
 bool WritePrintkFormats(int outFd)
 {
-    std::string printkFormatPath = g_traceRootPath + "printk_formats";
+    std::string printkFormatPath = GetFilePath("printk_formats");
     return WriteFile(CONTENT_TYPE_PRINTK_FORMATS, printkFormatPath, outFd);
 }
 
@@ -585,13 +614,13 @@ bool WriteCpuRaw(int outFd)
 
 bool WriteCmdlines(int outFd)
 {
-    std::string cmdlinesPath = g_traceRootPath + "saved_cmdlines";
+    std::string cmdlinesPath = GetFilePath("saved_cmdlines");
     return WriteFile(CONTENT_TYPE_CMDLINES, cmdlinesPath, outFd);
 }
 
 bool WriteTgids(int outFd)
 {
-    std::string tgidsPath = g_traceRootPath + "saved_tgids";
+    std::string tgidsPath = GetFilePath("saved_tgids");
     return WriteFile(CONTENT_TYPE_TGIDS, tgidsPath, outFd);
 }
 
@@ -1032,6 +1061,11 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
         HiLog::Error(LABEL, "OpenTrace: TRACE_NOT_SUPPORTED.");
         return TRACE_NOT_SUPPORTED;
     }
+
+    if (access((g_traceRootPath + "hongmeng/").c_str(), F_OK) != -1) {
+        g_traceHmDir = "hongmeng/";
+    }
+
     std::map<std::string, TagCategory> allTags;
     std::map<std::string, std::vector<std::string>> tagGroupTable;
     if (!ParseTagInfo(allTags, tagGroupTable)) {
