@@ -164,14 +164,14 @@ void GetArchWordSize(TraceFileHeader& header)
     } else if (sizeof(void*) == sizeof(uint32_t)) {
         header.reserved |= 1;
     }
-    HiLog::Debug(LABEL, "Kernel bit is %{public}d.", header.reserved);
+    HiLog::Info(LABEL, "reserved with arch word info is %{public}d.", header.reserved);
 }
 
 
 int GetCpuProcessors()
 {
     int processors = 0;
-    processors = sysconf(_SC_NPROCESSORS_ONLN);
+    processors = sysconf(_SC_NPROCESSORS_CONF);
     return (processors == 0) ? 1 : processors;
 }
 
@@ -184,7 +184,7 @@ void GetCpuNums(TraceFileHeader& header)
         return;
     }
     header.reserved |= (cpuNums << 1);
-    HiLog::Debug(LABEL, "reserved info is %{public}d.", header.reserved);
+    HiLog::Info(LABEL, "reserved with cpu number info is %{public}d.", header.reserved);
 }
 
 
