@@ -1,5 +1,11 @@
 {
     "tag_category": {
+        "security": {
+            "description": "Security subsystem",
+            "tag_offset": 7,
+            "sysFiles": [],
+            "type": 0
+        },
         "animation": {
             "description": "Animation",
             "tag_offset": 9,
