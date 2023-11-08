@@ -125,7 +125,7 @@ std::vector<std::string> g_outputFilesForCmd;
 
 TraceParams g_currentTraceParams = {};
 
-std::string GetFilePath(const std::string fileName)
+std::string GetFilePath(const std::string &fileName)
 {
     if (access((g_traceRootPath + "hongmeng/" + fileName).c_str(), F_OK) == 0) {
         return g_traceRootPath + "hongmeng/" + fileName;
@@ -358,7 +358,7 @@ std::string ReadFileInner(const std::string& filename)
 std::string ReadFile(const std::string& filename)
 {
     std::string filePath = GetFilePath(filename);
-    return ReadFileInner(filename);
+    return ReadFileInner(filePath);
 }
 
 void SetClock(const std::string& clockType)
@@ -772,6 +772,26 @@ bool ReadRawTrace(std::string &outputFileName)
     return false;
 }
 
+bool WaitPidTimeout(pid_t pid, const int timeoutUsec)
+{
+    int delayTime = timeoutUsec;
+    while (delayTime > 0) {
+        usleep(UNIT_TIME);
+        delayTime -= UNIT_TIME;
+        int status = 0;
+        int ret = waitpid(pid, &status, WNOHANG);
+        if (ret == pid) {
+            HiLog::Info(LABEL, "wait pid(%{public}d) exit success.", pid);
+            return true;
+        } else if (ret < 0) {
+            HiLog::Error(LABEL, "wait pid(%{public}d) exit failed, status: %{public}d.", pid, status);
+            return false;
+        }
+    }
+    HiLog::Error(LABEL, "wait pid(%{public}d) %{public}d us timeout.", pid, timeoutUsec);
+    return false;
+}
+
 void SetProcessName(std::string& processName)
 {
     if (processName.size() <= 0) {
@@ -814,9 +834,9 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
         HiLog::Info(LABEL, "%{public}s exit.", processName.c_str());
         _exit(EXIT_SUCCESS);
     } else {
-        int exitCode = 0;
-        wait(&exitCode);
-        if (access(reOutPath.c_str(), F_OK) == 0) {
+        const int timeoutUsec = 3000000; // 3s
+        bool isTrue = WaitPidTimeout(pid, timeoutUsec);
+        if (isTrue && access(reOutPath.c_str(), F_OK) == 0) {
             HiLog::Info(LABEL, "Output: %{public}s.", reOutPath.c_str());
             ret = true;
         } else {
