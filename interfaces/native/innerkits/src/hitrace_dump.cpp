@@ -61,6 +61,7 @@ struct TraceParams {
     std::string clockType;
     std::string isOverWrite;
     std::string outputFile;
+    std::string fileSize;
 };
 
 constexpr uint16_t MAGIC_NUMBER = 57161;
@@ -70,7 +71,9 @@ constexpr int UNIT_TIME = 100000;
 constexpr int ALIGNMENT_COEFFICIENT = 4;
 
 const int DEFAULT_BUFFER_SIZE = 12 * 1024;
+const int DEFAULT_FILE_SIZE = 100 * 1024;
 const int SAVED_CMDLINES_SIZE = 2048;
+const int MAX_OUTPUT_FILE_SIZE = 20;
 
 const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
 const std::string SNAPSHOT_PREFIX = "trace_";
@@ -193,7 +196,7 @@ void GetCpuNums(TraceFileHeader& header)
         HiLog::Error(LABEL, "error: cpu_number is %{public}d.", cpuNums);
         return;
     }
-    header.reserved |= (cpuNums << 1);
+    header.reserved |= (static_cast<uint64_t>(cpuNums) << 1);
     HiLog::Info(LABEL, "reserved with cpu number info is %{public}d.", header.reserved);
 }
 
@@ -233,10 +236,16 @@ bool WriteStrToFile(const std::string& filename, const std::string& str)
 {
     bool ret = false;
     if (access((g_traceRootPath + "hongmeng/" + filename).c_str(), W_OK) == 0) {
-        ret |= WriteStrToFileInner(g_traceRootPath + "hongmeng/" + filename, str);
+        if (WriteStrToFileInner(g_traceRootPath + "hongmeng/" + filename, str)) {
+            ret = true;
+        }
     }
     if (access((g_traceRootPath + filename).c_str(), W_OK) == 0) {
-        ret |= WriteStrToFileInner(g_traceRootPath + filename, str);
+        if (ret || WriteStrToFileInner(g_traceRootPath + "hongmeng/" + filename, str)) {
+            ret = true;
+        } else {
+            ret = false;
+        }
     }
 
     return ret;
@@ -628,7 +637,7 @@ bool WriteTgids(int outFd)
 bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
 {
     const int sleepTime = 1;
-    const int fileSizeThreshold = 96 * 1024 * 1024;
+    const int fileSizeThreshold = std::stoi(g_currentTraceParams.fileSize) * 1024;
     std::string outPath = CanonicalizeSpecPath(outputFileName.c_str());
     int outFd = open(outPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
     if (outFd < 0) {
@@ -642,7 +651,7 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
     write(outFd, reinterpret_cast<char*>(&header), sizeof(header));
     WriteEventsFormat(outFd);
     while (g_dumpFlag) {
-        if (isLimited && GetFileSize(outPath) > fileSizeThreshold) {
+        if (isLimited && GetFileSize(outPath) > static_cast<size_t>(fileSizeThreshold)) {
             break;
         }
         sleep(sleepTime);
@@ -713,6 +722,14 @@ void ProcessDumpTask()
     }
     
     while (g_dumpFlag) {
+        if (g_outputFilesForCmd.size() >= MAX_OUTPUT_FILE_SIZE && access(g_outputFilesForCmd[0].c_str(), F_OK) == 0) {
+            if (remove(g_outputFilesForCmd[0].c_str()) == 0) {
+                g_outputFilesForCmd.erase(g_outputFilesForCmd.begin());
+                HiLog::Info(LABEL, "delete first: %{public}s success.", g_outputFilesForCmd[0].c_str());
+            } else {
+                HiLog::Error(LABEL, "delete first: %{public}s failed.", g_outputFilesForCmd[0].c_str());
+            }
+        }
         // Generate file name
         std::string outputFileName = GenerateName(false);
         if (DumpTraceLoop(outputFileName, true)) {
@@ -968,6 +985,7 @@ TraceErrorCode HandleServiceTraceOpen(const std::vector<std::string> &tagGroups,
     serviceTraceParams.bufferSize = std::to_string(DEFAULT_BUFFER_SIZE);
     serviceTraceParams.clockType = "boot";
     serviceTraceParams.isOverWrite = "1";
+    serviceTraceParams.fileSize = std::to_string(DEFAULT_FILE_SIZE);
     return HandleTraceOpen(serviceTraceParams, allTags, tagGroupTable);
 }
 
@@ -1020,6 +1038,8 @@ bool ParseArgs(const std::string &args, TraceParams &cmdTraceParams, const std::
             cmdTraceParams.isOverWrite = item.substr(pos + 1);
         } else if (itemName == "output") {
             cmdTraceParams.outputFile = item.substr(pos + 1);
+        } else if (itemName == "fileSize") {
+            cmdTraceParams.fileSize = item.substr(pos + 1);
         } else {
             HiLog::Error(LABEL, "Extra trace command line options appear when ParseArgs: %{public}s, return false.",
                 itemName.c_str());
