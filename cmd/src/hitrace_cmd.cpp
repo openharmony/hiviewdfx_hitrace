@@ -148,7 +148,7 @@ std::map<std::string, std::vector<std::string>> g_allTagGroups;
 RunningState g_runningState = STATE_NULL;
 }
 
-static void ConsoleLog(const std::string logInfo)
+static void ConsoleLog(const std::string& logInfo)
 {
     // get localtime
     time_t currentTime;
