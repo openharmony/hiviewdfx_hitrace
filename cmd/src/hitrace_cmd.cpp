@@ -148,7 +148,7 @@ std::map<std::string, std::vector<std::string>> g_allTagGroups;
 RunningState g_runningState = STATE_NULL;
 }
 
-static void ConsoleLog(std::string logInfo)
+static void ConsoleLog(const std::string& logInfo)
 {
     // get localtime
     time_t currentTime;
@@ -547,7 +547,7 @@ static void DumpTrace()
     int outFd = STDOUT_FILENO;
     if (g_traceArgs.output.size() > 0) {
         string outSpecPath = OHOS::HiviewDFX::Hitrace::CanonicalizeSpecPath(g_traceArgs.output.c_str());
-        outFd = open(g_traceArgs.output.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+        outFd = open(outSpecPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     }
 
     if (outFd == -1) {
