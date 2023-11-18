@@ -98,11 +98,7 @@ ohos_executable("bytrace") {
 }
 
 ohos_prebuilt_etc("hitrace.cfg") {
-  if (build_variant == "root") {
-    source = "./config/hitrace_userdebug.cfg"
-  } else {
-    source = "./config/hitrace_user.cfg"
-  }
+  source = "./config/hitrace.cfg"
   relative_install_dir = "init"
   subsystem_name = "hiviewdfx"
   part_name = "hitrace"
