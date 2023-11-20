@@ -1129,6 +1129,10 @@ TraceErrorCode OpenTrace(const std::string &args)
         HiLog::Error(LABEL, "Hitrace OpenTrace: TRACE_NOT_SUPPORTED.");
         return TRACE_NOT_SUPPORTED;
     }
+    if (access((g_traceRootPath + "hongmeng/").c_str(), F_OK) != -1) {
+        g_traceHmDir = "hongmeng/";
+    }
+
     std::map<std::string, TagCategory> allTags;
     std::map<std::string, std::vector<std::string>> tagGroupTable;
     if (!ParseTagInfo(allTags, tagGroupTable) || allTags.size() == 0 || tagGroupTable.size() == 0) {
