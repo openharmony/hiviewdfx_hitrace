@@ -185,7 +185,7 @@ static napi_value JSTraceCount(napi_env env, napi_callback_info info)
 EXTERN_C_START
 static napi_value HiTraceMeterInit(napi_env env, napi_value exports)
 {
-    static napi_property_descriptor desc[] = {
+    napi_property_descriptor desc[] = {
         DECLARE_NAPI_FUNCTION("startTrace", JSTraceStart),
         DECLARE_NAPI_FUNCTION("finishTrace", JSTraceFinish),
         DECLARE_NAPI_FUNCTION("traceByValue", JSTraceCount),
