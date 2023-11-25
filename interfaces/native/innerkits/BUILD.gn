@@ -23,7 +23,7 @@ config("libhitrace_pub_config") {
 ohos_shared_library("libhitracechain") {
   public_configs = [ ":libhitrace_pub_config" ]
 
-  deps = [ "${OHOS_HITRACE_DIR}/frameworks/native:hitracechain_source" ]
+  deps = [ "../../../frameworks/native:hitracechain_source" ]
 
   external_deps = [ "hilog:libhilog" ]
 
@@ -56,17 +56,19 @@ config("hitrace_meter_config") {
   visibility = [ ":*" ]
   include_dirs = [
     "include/hitrace_meter",
-    "include",
-    "${OHOS_HITRACE_DIR}/frameworks/include/",
   ]
 }
 
 ohos_static_library("hitrace_inner") {
+  include_dirs = [
+    "include/hitrace_meter",
+    "include",
+    "../../../frameworks/include/",
+  ]
   sources = [
     "src/hitrace_meter.cpp",
     "src/hitrace_meter_wrapper.cpp",
   ]
-  public_configs = [ ":hitrace_meter_config" ]
   external_deps = [
     "hilog:libhilog",
     "init:libbeget_proxy",
@@ -80,7 +82,6 @@ ohos_static_library("hitrace_inner") {
 config("hitrace_dump_config") {
   visibility = [ ":*" ]
   include_dirs = [
-    "include/hitrace_dump",
     "include",
   ]
 }
@@ -88,12 +89,12 @@ config("hitrace_dump_config") {
 ohos_shared_library("hitrace_dump") {
   include_dirs = [
     "./include",
-    "${OHOS_HITRACE_DIR}/frameworks/include/",
+    "../../../frameworks/include/",
   ]
   public_configs = [ ":hitrace_dump_config" ]
   sources = [
-    "${OHOS_HITRACE_DIR}/frameworks/native/common_utils.cpp",
-    "${OHOS_HITRACE_DIR}/frameworks/native/dynamic_buffer.cpp",
+    "../../../frameworks/native/common_utils.cpp",
+    "../../../frameworks/native/dynamic_buffer.cpp",
     "./src/hitrace_dump.cpp",
   ]
 
