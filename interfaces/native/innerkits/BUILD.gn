@@ -77,12 +77,20 @@ ohos_static_library("hitrace_inner") {
   subsystem_name = "hiviewdfx"
 }
 
+config("hitrace_dump_config") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    "include/hitrace_dump",
+    "include",
+  ]
+}
+
 ohos_shared_library("hitrace_dump") {
   include_dirs = [
     "./include",
     "${OHOS_HITRACE_DIR}/frameworks/include/",
   ]
-
+  public_configs = [ ":hitrace_dump_config" ]
   sources = [
     "${OHOS_HITRACE_DIR}/frameworks/native/common_utils.cpp",
     "${OHOS_HITRACE_DIR}/frameworks/native/dynamic_buffer.cpp",

@@ -67,11 +67,13 @@ struct TraceParams {
 constexpr uint16_t MAGIC_NUMBER = 57161;
 constexpr uint16_t VERSION_NUMBER = 1;
 constexpr uint8_t FILE_RAW_TRACE = 0;
+constexpr uint8_t HM_FILE_RAW_TRACE = 1;
 constexpr int UNIT_TIME = 100000;
 constexpr int ALIGNMENT_COEFFICIENT = 4;
 
 const int DEFAULT_BUFFER_SIZE = 12 * 1024;
 const int DEFAULT_FILE_SIZE = 100 * 1024;
+const int HM_DEFAULT_BUFFER_SIZE = 60 * 1024;
 const int SAVED_CMDLINES_SIZE = 2048;
 const int MAX_OUTPUT_FILE_SIZE = 20;
 
@@ -484,7 +486,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
         readLen += readBytes;
 
         // Check raw_trace page size.
-        if (contentType >= CONTENT_TYPE_CPU_RAW) {
+        if (contentType >= CONTENT_TYPE_CPU_RAW && g_traceHmDir == "") {
             pageHeader = reinterpret_cast<PageHeader*>(&buffer);
             if (pageHeader->size < static_cast<uint64_t>(pageThreshold)) {
                 count++;
@@ -581,10 +583,17 @@ bool WriteEventsFormat(int outFd)
         "events/thermal_power_allocator/thermal_power_allocator/format",
         "events/thermal_power_allocator/thermal_power_allocator_pid/format",
         "events/ftrace/print/format",
+        "events/tracing_mark_write/tracing_mark_write/format",
     };
     for (size_t i = 0; i < priorityTracingCategory.size(); i++) {
-        std::string srcPath = GetFilePath(priorityTracingCategory[i]);
-        WriteEventFile(srcPath, fd);
+        std::string srcPath = g_traceRootPath + "hongmeng/" + priorityTracingCategory[i];
+        if (access(srcPath.c_str(), R_OK) != -1) {
+            WriteEventFile(srcPath, fd);
+        }
+        srcPath = g_traceRootPath + priorityTracingCategory[i];
+        if (access(srcPath.c_str(), R_OK) != -1) {
+            WriteEventFile(srcPath, fd);
+        }
     }
     close(fd);
     return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, filePath, outFd);
@@ -592,22 +601,41 @@ bool WriteEventsFormat(int outFd)
 
 bool WriteHeaderPage(int outFd)
 {
+    if (g_traceHmDir != "") {
+        return true;
+    }
     std::string headerPagePath = GetFilePath("events/header_page");
     return WriteFile(CONTENT_TYPE_HEADER_PAGE, headerPagePath, outFd);
 }
 
 bool WritePrintkFormats(int outFd)
 {
+    if (g_traceHmDir != "") {
+        return true;
+    }
     std::string printkFormatPath = GetFilePath("printk_formats");
     return WriteFile(CONTENT_TYPE_PRINTK_FORMATS, printkFormatPath, outFd);
 }
 
 bool WriteKallsyms(int outFd)
 {
+    /* not implement in hongmeng */
+    if (g_traceHmDir != "") {
+        return true;
+    }
+    /* not implement in linux */
     return true;
 }
 
-bool WriteCpuRaw(int outFd)
+bool HmWriteCpuRawInner(int outFd)
+{
+    uint8_t type = CONTENT_TYPE_CPU_RAW;
+    std::string src = g_traceRootPath + "hongmeng/trace_pipe_raw";
+
+    return WriteFile(type, src, outFd);
+}
+
+bool WriteCpuRawInner(int outFd)
 {
     int cpuNums = GetCpuProcessors();
     int ret = true;
@@ -622,14 +650,29 @@ bool WriteCpuRaw(int outFd)
     return ret;
 }
 
+bool WriteCpuRaw(int outFd)
+{
+    if (g_traceHmDir == "") {
+        return WriteCpuRawInner(outFd);
+    } else {
+        return HmWriteCpuRawInner(outFd);
+    }
+}
+
 bool WriteCmdlines(int outFd)
 {
+    if (g_traceHmDir != "") {
+        return true;
+    }
     std::string cmdlinesPath = GetFilePath("saved_cmdlines");
     return WriteFile(CONTENT_TYPE_CMDLINES, cmdlinesPath, outFd);
 }
 
 bool WriteTgids(int outFd)
 {
+    if (g_traceHmDir != "") {
+        return true;
+    }
     std::string tgidsPath = GetFilePath("saved_tgids");
     return WriteFile(CONTENT_TYPE_TGIDS, tgidsPath, outFd);
 }
@@ -648,6 +691,9 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
     struct TraceFileHeader header;
     GetArchWordSize(header);
     GetCpuNums(header);
+    if (g_traceHmDir != "") {
+        header.fileType = HM_FILE_RAW_TRACE;
+    }
     write(outFd, reinterpret_cast<char*>(&header), sizeof(header));
     WriteEventsFormat(outFd);
     while (g_dumpFlag) {
@@ -775,6 +821,9 @@ bool ReadRawTrace(std::string &outputFileName)
     struct TraceFileHeader header;
     GetArchWordSize(header);
     GetCpuNums(header);
+    if (g_traceHmDir != "") {
+        header.fileType = HM_FILE_RAW_TRACE;
+    }
     write(outFd, reinterpret_cast<char*>(&header), sizeof(header));
 
     if (WriteEventsFormat(outFd) && WriteCpuRaw(outFd) &&
@@ -983,6 +1032,9 @@ TraceErrorCode HandleServiceTraceOpen(const std::vector<std::string> &tagGroups,
     TraceParams serviceTraceParams;
     serviceTraceParams.tagGroups = tagGroups;
     serviceTraceParams.bufferSize = std::to_string(DEFAULT_BUFFER_SIZE);
+    if (g_traceHmDir != "") {
+        serviceTraceParams.bufferSize = std::to_string(HM_DEFAULT_BUFFER_SIZE);
+    }
     serviceTraceParams.clockType = "boot";
     serviceTraceParams.isOverWrite = "1";
     serviceTraceParams.fileSize = std::to_string(DEFAULT_FILE_SIZE);
@@ -1149,6 +1201,10 @@ TraceErrorCode OpenTrace(const std::string &args)
         HiLog::Error(LABEL, "Hitrace OpenTrace: TRACE_NOT_SUPPORTED.");
         return TRACE_NOT_SUPPORTED;
     }
+    if (access((g_traceRootPath + "hongmeng/").c_str(), F_OK) != -1) {
+        g_traceHmDir = "hongmeng/";
+    }
+
     std::map<std::string, TagCategory> allTags;
     std::map<std::string, std::vector<std::string>> tagGroupTable;
     if (!ParseTagInfo(allTags, tagGroupTable) || allTags.size() == 0 || tagGroupTable.size() == 0) {
