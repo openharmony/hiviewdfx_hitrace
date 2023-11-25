@@ -54,9 +54,7 @@ ohos_shared_library("libhitracechain") {
 
 config("hitrace_meter_config") {
   visibility = [ ":*" ]
-  include_dirs = [
-    "include/hitrace_meter",
-  ]
+  include_dirs = [ "include/hitrace_meter" ]
 }
 
 ohos_static_library("hitrace_inner") {
@@ -81,9 +79,7 @@ ohos_static_library("hitrace_inner") {
 
 config("hitrace_dump_config") {
   visibility = [ ":*" ]
-  include_dirs = [
-    "include",
-  ]
+  include_dirs = [ "include" ]
 }
 
 ohos_shared_library("hitrace_dump") {
