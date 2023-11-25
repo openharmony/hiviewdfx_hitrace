@@ -51,6 +51,7 @@ struct TraceArgs {
     std::string tagGroups;
     std::string clockType;
     int bufferSize = 0;
+    int fileSize = 0;
     bool overwrite = true;
     std::string output;
 
@@ -118,6 +119,7 @@ constexpr struct option LONG_OPTIONS[] = {
     { "start_bgsrv",       no_argument,       nullptr, 0 },
     { "dump_bgsrv",        no_argument,       nullptr, 0 },
     { "stop_bgsrv",        no_argument,       nullptr, 0 },
+    { "file_size",         required_argument, nullptr, 0 },
     { nullptr,             0,                 nullptr, 0 },
 };
 const unsigned int CHUNK_SIZE = 65536;
@@ -136,6 +138,9 @@ const int MAX_BUFFER_SIZE = 307200; // 300 MB
 const int DEFAULT_BUFFER_SIZE = 18432; // 18 MB
 constexpr unsigned int MAX_OUTPUT_LEN = 255;
 const int PAGE_SIZE_KB = 4; // 4 KB
+const int MIN_FILE_SIZE = 51200; // 50 MB
+const int MAX_FILE_SIZE = 500000; // 500 MB
+const int DEFAULT_FILE_SIZE = 102400; // 100 MB
 
 string g_traceRootPath;
 string g_traceHmDir;
@@ -265,6 +270,8 @@ static void ShowHelp(const string& cmd)
            "  --start_bgsrv      Enable trace_service in snapshot mode.\n"
            "  --dump_bgsrv       Trigger the dump trace task of the trace_service.\n"
            "  --stop_bgsrv       Disable trace_service in snapshot mode.\n"
+           "  --file_size        Sets the size of the raw trace (KB). The default file size is 102400 KB.\n"
+           "                     Only effective in raw trace mode\n"
     );
 }
 
@@ -363,7 +370,18 @@ static bool ParseLongOpt(const string& cmd, int optionIndex)
         isTrue = SetRunningState(RECORDING_SHORT_TEXT);
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "raw")) {
         isTrue = SetRunningState(RECORDING_SHORT_RAW);
+    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "file_size")) {
+        int fileSizeKB = 0;
+        if (!StrToNum(optarg, fileSizeKB)) {
+            ConsoleLog("error: file size is illegal input. eg: \"--file_size 1024\".");
+            isTrue = false;
+        } else if (fileSizeKB < MIN_FILE_SIZE || fileSizeKB > MAX_FILE_SIZE) {
+            ConsoleLog("error: file size must be from 50 MB to 500 MB. eg: \"--file_size 102400\".");
+            isTrue = false;
+        }
+        g_traceArgs.fileSize = fileSizeKB;
     }
+    
     return isTrue;
 }
 
@@ -613,7 +631,18 @@ static std::string ReloadTraceArgs()
         args += " overwrite:";
         args += "0";
     }
-    
+
+    if (g_runningState == RECORDING_SHORT_RAW) {
+        if (g_traceArgs.fileSize > 0) {
+            args += (" fileSize:" + std::to_string(g_traceArgs.fileSize));
+        } else {
+            args += (" fileSize:" + std::to_string(DEFAULT_FILE_SIZE));
+        }
+    } else {
+        ConsoleLog("warnning: The current state does not support specifying the file size, file size: " +
+                   std::to_string(g_traceArgs.fileSize) + " is invalid.");
+    }
+
     if (g_runningState != RECORDING_SHORT_TEXT) {
         ConsoleLog("args: " + args);
     }
