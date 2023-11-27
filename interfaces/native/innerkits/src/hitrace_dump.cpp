@@ -80,6 +80,7 @@ const int MAX_OUTPUT_FILE_SIZE = 20;
 const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
 const std::string SNAPSHOT_PREFIX = "trace_";
 const std::string RECORDING_PREFIX = "record_trace_";
+const std::string SAVED_EVENTS_FORMAT = "saved_events_format";
 
 struct alignas(ALIGNMENT_COEFFICIENT) TraceFileHeader {
     uint16_t magicNumber {MAGIC_NUMBER};
@@ -243,10 +244,8 @@ bool WriteStrToFile(const std::string& filename, const std::string& str)
         }
     }
     if (access((g_traceRootPath + filename).c_str(), W_OK) == 0) {
-        if (ret || WriteStrToFileInner(g_traceRootPath + "hongmeng/" + filename, str)) {
+        if (WriteStrToFileInner(g_traceRootPath + filename, str)) {
             ret = true;
-        } else {
-            ret = false;
         }
     }
 
@@ -527,7 +526,7 @@ void WriteEventFile(std::string &srcPath, int outFd)
 
 bool WriteEventsFormat(int outFd)
 {
-    const std::string savedEventsFormatPath = DEFAULT_OUTPUT_DIR + "saved_events_format";
+    const std::string savedEventsFormatPath = DEFAULT_OUTPUT_DIR + SAVED_EVENTS_FORMAT;
     if (access(savedEventsFormatPath.c_str(), F_OK) != -1) {
         return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, savedEventsFormatPath, outFd);
     }
@@ -1121,7 +1120,8 @@ void ClearRemainingTrace()
     while ((ptr = readdir(dirPtr)) != nullptr) {
         if (ptr->d_type == DT_REG) {
             std::string name = std::string(ptr->d_name);
-            if (name.compare(0, SNAPSHOT_PREFIX.size(), SNAPSHOT_PREFIX) != 0) {
+            if (name.compare(0, SNAPSHOT_PREFIX.size(), SNAPSHOT_PREFIX) != 0 &&
+                name.compare(0, SAVED_EVENTS_FORMAT.size(), SAVED_EVENTS_FORMAT) != 0) {
                 continue;
             }
             std::string subFileName = DEFAULT_OUTPUT_DIR + name;
