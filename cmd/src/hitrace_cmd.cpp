@@ -632,15 +632,17 @@ static std::string ReloadTraceArgs()
         args += "0";
     }
 
-    if (g_runningState == RECORDING_SHORT_RAW) {
+    if (g_runningState == RECORDING_SHORT_RAW || g_runningState == RECORDING_LONG_BEGIN_RECORD) {
         if (g_traceArgs.fileSize > 0) {
             args += (" fileSize:" + std::to_string(g_traceArgs.fileSize));
         } else {
             args += (" fileSize:" + std::to_string(DEFAULT_FILE_SIZE));
         }
     } else {
-        ConsoleLog("warnning: The current state does not support specifying the file size, file size: " +
+        if (g_traceArgs.fileSize > 0) {
+            ConsoleLog("warnning: The current state does not support specifying the file size, file size: " +
                    std::to_string(g_traceArgs.fileSize) + " is invalid.");
+        }
     }
 
     if (g_runningState != RECORDING_SHORT_TEXT) {
