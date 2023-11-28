@@ -679,6 +679,9 @@ bool WriteTgids(int outFd)
 bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
 {
     const int sleepTime = 1;
+    if (g_currentTraceParams.fileSize.empty()) {
+        g_currentTraceParams.fileSize = std::to_string(DEFAULT_FILE_SIZE);
+    }
     const int fileSizeThreshold = std::stoi(g_currentTraceParams.fileSize) * 1024;
     std::string outPath = CanonicalizeSpecPath(outputFileName.c_str());
     int outFd = open(outPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
