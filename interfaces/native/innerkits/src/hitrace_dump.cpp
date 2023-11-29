@@ -203,6 +203,16 @@ void GetCpuNums(TraceFileHeader& header)
     HiLog::Info(LABEL, "reserved with cpu number info is %{public}d.", header.reserved);
 }
 
+bool CheckTags(const std::vector<std::string> &tags, const std::map<std::string, TagCategory> &allTags)
+{
+    for (const auto &tag : tags) {
+        if (allTags.find(tag) == allTags.end()) {
+            HiLog::Error(LABEL, "CheckTags: %{public}s is not provided.", tag.c_str());
+            return false;
+        }
+    }
+    return true;
+}
 
 bool CheckTagGroup(const std::vector<std::string> &tagGroups,
                    const std::map<std::string, std::vector<std::string>> &tagGroupTable)
@@ -1100,7 +1110,7 @@ bool ParseArgs(const std::string &args, TraceParams &cmdTraceParams, const std::
             return false;
         }
     }
-    if (cmdTraceParams.tags.size() > 0 || cmdTraceParams.tagGroups.size() > 0) {
+    if (CheckTags(cmdTraceParams.tags, allTags) && CheckTagGroup(cmdTraceParams.tagGroups, tagGroupTable)) {
         return true;
     }
     return false;
