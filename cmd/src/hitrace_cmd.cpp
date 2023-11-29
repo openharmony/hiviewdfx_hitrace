@@ -521,7 +521,7 @@ static void DumpCompressedTrace(int traceFd, int outFd)
         }
         if (zs.avail_out == 0) {
             bytesWritten = TEMP_FAILURE_RETRY(write(outFd, out.get(), CHUNK_SIZE));
-            if (bytesWritten < CHUNK_SIZE) {
+            if (bytesWritten < static_cast<ssize_t>(CHUNK_SIZE)) {
                 ConsoleLog("error: writing deflated trace, errno " + std::to_string(errno));
                 break;
             }
@@ -661,12 +661,19 @@ static bool HandleRecordingShortRaw()
     auto openRet = g_traceCollector->OpenRecording(args);
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
-        return false;
+        if (openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_IS_OCCUPIED ||
+            openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_CALL_ERROR) {
+            return false;
+        } else {
+            g_traceCollector->Recover();
+            return false;
+        }
     }
 
     auto recOnRet = g_traceCollector->RecordingOn();
     if (recOnRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: RecordingOn failed, errorCode(" + std::to_string(recOnRet.retCode) +")");
+        g_traceCollector->Recover();
         return false;
     }
     ConsoleLog("start capture, please wait " + std::to_string(g_traceArgs.duration) +"s ...");
@@ -675,12 +682,14 @@ static bool HandleRecordingShortRaw()
     auto recOffRet = g_traceCollector->RecordingOff();
     if (recOffRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: RecordingOff failed, errorCode(" + std::to_string(recOffRet.retCode) +")");
+        g_traceCollector->Recover();
         return false;
     }
     ConsoleLog("capture done, output files:");
     for (std::string item : recOffRet.data) {
         std::cout << "    " << item << std::endl;
     }
+    g_traceCollector->Recover();
     return true;
 }
 
@@ -690,7 +699,13 @@ static bool HandleRecordingShortText()
     auto openRet = g_traceCollector->OpenRecording(args);
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
-        return false;
+        if (openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_IS_OCCUPIED ||
+            openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_CALL_ERROR) {
+            return false;
+        } else {
+            g_traceCollector->Recover();
+            return false;
+        }
     }
     ConsoleLog("start capture, please wait " + std::to_string(g_traceArgs.duration) +"s ...");
     sleep(g_traceArgs.duration);
@@ -702,6 +717,7 @@ static bool HandleRecordingShortText()
         ConsoleLog("capture done, start to read trace.");
     }
     DumpTrace();
+    g_traceCollector->Recover();
     return true;
 }
 
@@ -715,8 +731,13 @@ static bool HandleRecordingLongBegin()
     auto openRet = g_traceCollector->OpenRecording(args);
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
-        g_traceCollector->Recover();
-        return false;
+        if (openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_IS_OCCUPIED ||
+            openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_CALL_ERROR) {
+            return false;
+        } else {
+            g_traceCollector->Recover();
+            return false;
+        }
     }
     ConsoleLog("OpenRecording done.");
     return true;
@@ -789,16 +810,20 @@ static bool HandleRecordingLongFinishRecord()
 
 static bool HandleOpenSnapshot()
 {
-    bool isSuccess = true;
     std::vector<std::string> tagGroups = { "scene_performance" };
     auto openRet = g_traceCollector->OpenSnapshot(tagGroups);
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenSnapshot failed, errorCode(" + std::to_string(openRet.retCode) +")");
-        isSuccess = false;
-    } else {
-        ConsoleLog("OpenSnapshot done.");
+        if (openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_IS_OCCUPIED ||
+            openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_CALL_ERROR) {
+            return false;
+        } else {
+            g_traceCollector->Recover();
+            return false;
+        }
     }
-    return isSuccess;
+    ConsoleLog("OpenSnapshot done.");
+    return true;
 }
 
 static bool HandleDumpSnapshot()
@@ -881,11 +906,9 @@ int main(int argc, char **argv)
     switch (g_runningState) {
         case RECORDING_SHORT_RAW:
             isSuccess = HandleRecordingShortRaw();
-            g_traceCollector->Recover();
             break;
         case RECORDING_SHORT_TEXT:
             isSuccess = HandleRecordingShortText();
-            g_traceCollector->Recover();
             break;
         case RECORDING_LONG_BEGIN:
             isSuccess = HandleRecordingLongBegin();
