@@ -14,13 +14,18 @@
 import("//base/hiviewdfx/hitrace/hitrace.gni")
 import("//build/ohos.gni")
 
-ohos_static_library("hitrace_osal_inner") {
+config("hitrace_osal_inner_config") {
+  visibility = [ ":*" ]
   include_dirs = [
     "./include",
     "../interfaces/native/innerkits/include/hitrace_meter",
     "../interfaces/native/innerkits/include/",
   ]
+}
+
+ohos_static_library("hitrace_osal_inner") {
   sources = [ "./src/hitrace_osal.cpp" ]
+  public_configs = [ ":hitrace_osal_inner_config" ]
   external_deps = [ "init:libbegetutil" ]
 
   subsystem_name = "hiviewdfx"
