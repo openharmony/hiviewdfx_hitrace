@@ -18,11 +18,15 @@ ohos_shared_library("hitracechain_c_wrapper") {
     "../../native",
     "../c_wrapper/include",
     "../../native/innerkits/include",
+    "//third_party/bounds_checking_function/include",
   ]
 
   sources = [ "./source/hitracechain_c_wrapper.c" ]
-  deps = [ "../../../interfaces/native/innerkits:libhitracechain" ]
-  external_deps = [ "c_utils:utils" ]
+
+  deps = [
+    "../../../interfaces/native/innerkits:libhitracechain",
+    "//third_party/bounds_checking_function:libsec_static",
+  ]
 
   output_extension = "so"
 

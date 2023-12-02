@@ -16,19 +16,21 @@
       "SystemCapability.HiviewDFX.HiTrace"
     ],
     "adapted_system_type": [
+      "small",
       "standard"
     ],
     "rom": "330KB",
     "ram": "~320KB",
     "deps": {
       "components": [
-        "c_utils",
         "hilog",
+        "hilog_lite",
         "hiview",
         "init",
         "napi"
       ],
       "third_party": [
+        "bounds_checking_function",
         "cJSON",
         "zlib"
       ]
