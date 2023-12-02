@@ -25,7 +25,12 @@ ohos_shared_library("libhitracechain") {
 
   deps = [ "../../../frameworks/native:hitracechain_source" ]
 
-  external_deps = [ "hilog:libhilog" ]
+  external_deps = []
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
 
   output_extension = "so"
 
@@ -54,7 +59,10 @@ ohos_shared_library("libhitracechain") {
 
 config("hitrace_meter_config") {
   visibility = [ ":*" ]
-  include_dirs = [ "include/hitrace_meter" ]
+  include_dirs = [
+    "include/hitrace_meter",
+    "//third_party/bounds_checking_function/include",
+  ]
 }
 
 ohos_static_library("hitrace_inner") {
@@ -67,11 +75,17 @@ ohos_static_library("hitrace_inner") {
     "src/hitrace_meter.cpp",
     "src/hitrace_meter_wrapper.cpp",
   ]
+
   external_deps = [
-    "hilog:libhilog",
     "init:libbeget_proxy",
     "init:libbegetutil",
   ]
+
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
 
   part_name = "hitrace"
   subsystem_name = "hiviewdfx"
@@ -86,6 +100,7 @@ ohos_shared_library("hitrace_dump") {
   include_dirs = [
     "./include",
     "../../../frameworks/include/",
+    "//third_party/bounds_checking_function/include",
   ]
   public_configs = [ ":hitrace_dump_config" ]
   sources = [
@@ -96,14 +111,20 @@ ohos_shared_library("hitrace_dump") {
 
   deps = [
     "../../../config:hitrace_utils",
+    "//third_party/bounds_checking_function:libsec_static",
     "//third_party/cJSON:cjson",
   ]
 
   external_deps = [
-    "c_utils:utils",
-    "hilog:libhilog",
+    "init:libbeget_proxy",
     "init:libbegetutil",
   ]
+
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
 
   part_name = "hitrace"
   subsystem_name = "hiviewdfx"
@@ -115,8 +136,8 @@ ohos_shared_library("hitrace_meter") {
     ":hitrace_etc",
     ":hitrace_inner",
     ":libhitracechain",
+    "//third_party/bounds_checking_function:libsec_static",
   ]
-  external_deps = [ "c_utils:utils" ]
   output_extension = "so"
 
   innerapi_tags = [

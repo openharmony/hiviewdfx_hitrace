@@ -43,16 +43,21 @@ ohos_executable("hitrace") {
   deps = [
     ":hitrace_osal_inner",
     "../config:hitrace_utils",
+    "//third_party/bounds_checking_function:libsec_static",
     "//third_party/cJSON:cjson",
     "//third_party/zlib:libz",
   ]
 
-  external_deps = [
-    "c_utils:utils",
-    "hilog:libhilog",
-  ]
+  external_deps = []
 
-  if (!is_emulator && device_company != "qemu" && support_executable_file) {
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+
+  if (!is_emulator && device_company != "qemu" && support_executable_file &&
+      hiview_enable) {
     external_deps += [ "hiview:libucollection_client" ]
   }
 
@@ -61,6 +66,7 @@ ohos_executable("hitrace") {
     "//third_party/zlib",
     "../frameworks/include/",
     "../interfaces/native/innerkits/include/hitrace_meter",
+    "//third_party/bounds_checking_function/include",
   ]
   subsystem_name = "hiviewdfx"
   part_name = "hitrace"
@@ -76,16 +82,21 @@ ohos_executable("bytrace") {
   deps = [
     ":hitrace_osal_inner",
     "../config:hitrace_utils",
+    "//third_party/bounds_checking_function:libsec_static",
     "//third_party/cJSON:cjson",
     "//third_party/zlib:libz",
   ]
 
-  external_deps = [
-    "c_utils:utils",
-    "hilog:libhilog",
-  ]
+  external_deps = []
 
-  if (!is_emulator && device_company != "qemu" && support_executable_file) {
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+
+  if (!is_emulator && device_company != "qemu" && support_executable_file &&
+      hiview_enable) {
     external_deps += [ "hiview:libucollection_client" ]
   }
 
@@ -94,6 +105,7 @@ ohos_executable("bytrace") {
     "//third_party/zlib",
     "../frameworks/include/",
     "../interfaces/native/innerkits/include/hitrace_meter",
+    "//third_party/bounds_checking_function/include",
   ]
   subsystem_name = "hiviewdfx"
   part_name = "hitrace"
@@ -124,7 +136,8 @@ ohos_rust_executable("hitrace_example_rust") {
 }
 
 group("hitrace_target") {
-  if (!is_emulator && device_company != "qemu" && support_executable_file) {
+  if (!is_emulator && device_company != "qemu" && support_executable_file &&
+      hiview_enable) {
     deps = [
       ":bytrace",
       ":hitrace",
