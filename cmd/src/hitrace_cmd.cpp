@@ -133,8 +133,10 @@ constexpr const char *TRACE_PATH = "trace";
 constexpr const char *TRACE_MARKER_PATH = "trace_marker";
 
 // support customization of some parameters
+const int KB_PER_MB = 1024;
 const int MIN_BUFFER_SIZE = 256;
 const int MAX_BUFFER_SIZE = 307200; // 300 MB
+const int HM_MAX_BUFFER_SIZE = 1024 * KB_PER_MB; // 1024 MB
 const int DEFAULT_BUFFER_SIZE = 18432; // 18 MB
 constexpr unsigned int MAX_OUTPUT_LEN = 255;
 const int PAGE_SIZE_KB = 4; // 4 KB
@@ -310,11 +312,16 @@ static bool ParseLongOpt(const string& cmd, int optionIndex)
     bool isTrue = true;
     if (!strcmp(LONG_OPTIONS[optionIndex].name, "buffer_size")) {
         int bufferSizeKB = 0;
+        int maxBufferSizeKB = MAX_BUFFER_SIZE;
+        if (g_traceHmDir != "") {
+            maxBufferSizeKB = HM_MAX_BUFFER_SIZE;
+        }
         if (!StrToNum(optarg, bufferSizeKB)) {
             ConsoleLog("error: buffer size is illegal input. eg: \"--buffer_size 1024\".");
             isTrue = false;
-        } else if (bufferSizeKB < MIN_BUFFER_SIZE || bufferSizeKB > MAX_BUFFER_SIZE) {
-            ConsoleLog("error: buffer size must be from 256 KB to 300 MB. eg: \"--buffer_size 1024\".");
+        } else if (bufferSizeKB < MIN_BUFFER_SIZE || bufferSizeKB > maxBufferSizeKB) {
+            ConsoleLog("error: buffer size must be from 256 KB to " + std::to_string(maxBufferSizeKB / KB_PER_MB) +
+                " MB. eg: \"--buffer_size 1024\".");
             isTrue = false;
         }
         g_traceArgs.bufferSize = bufferSizeKB / PAGE_SIZE_KB * PAGE_SIZE_KB;
@@ -391,11 +398,16 @@ static bool ParseOpt(int opt, char** argv, int optIndex)
     switch (opt) {
         case 'b': {
             int bufferSizeKB = 0;
+            int maxBufferSizeKB = MAX_BUFFER_SIZE;
+            if (g_traceHmDir != "") {
+                maxBufferSizeKB = HM_MAX_BUFFER_SIZE;
+            }
             if (!StrToNum(optarg, bufferSizeKB)) {
                 ConsoleLog("error: buffer size is illegal input. eg: \"--buffer_size 1024\".");
                 isTrue = false;
-            } else if (bufferSizeKB < MIN_BUFFER_SIZE || bufferSizeKB > MAX_BUFFER_SIZE) {
-                ConsoleLog("error: buffer size must be from 256 KB to 300 MB. eg: \"--buffer_size 1024\".");
+            } else if (bufferSizeKB < MIN_BUFFER_SIZE || bufferSizeKB > maxBufferSizeKB) {
+                ConsoleLog("error: buffer size must be from 256 KB to " + std::to_string(maxBufferSizeKB / KB_PER_MB) +
+                " MB. eg: \"--buffer_size 1024\".");
                 isTrue = false;
             }
             g_traceArgs.bufferSize = bufferSizeKB / PAGE_SIZE_KB * PAGE_SIZE_KB;
