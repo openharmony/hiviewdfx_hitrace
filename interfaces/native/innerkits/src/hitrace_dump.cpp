@@ -865,6 +865,7 @@ bool WaitPidTimeout(pid_t pid, const int timeoutUsec)
             HiLog::Error(LABEL, "wait pid(%{public}d) exit failed, status: %{public}d.", pid, status);
             return false;
         }
+        HiLog::Info(LABEL, "grasping trace, pid(%{public}d).", pid);
     }
     HiLog::Error(LABEL, "wait pid(%{public}d) %{public}d us timeout.", pid, timeoutUsec);
     return false;
@@ -912,7 +913,7 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
         HiLog::Info(LABEL, "%{public}s exit.", processName.c_str());
         _exit(EXIT_SUCCESS);
     } else {
-        const int timeoutUsec = 3000000; // 3s
+        const int timeoutUsec = 10000000; // 10s
         bool isTrue = WaitPidTimeout(pid, timeoutUsec);
         if (isTrue && access(reOutPath.c_str(), F_OK) == 0) {
             HiLog::Info(LABEL, "Output: %{public}s.", reOutPath.c_str());
