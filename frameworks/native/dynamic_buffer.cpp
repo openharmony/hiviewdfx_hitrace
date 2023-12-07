@@ -75,6 +75,10 @@ void DynamicBuffer::UpdateTraceLoad()
             return;
         }
         int duration = floor(traceStats.nowTs - traceStats.oldTs);
+        if (duration == 0) {
+            HiLog::Error(LABEL, "nowTs:%{public}lf, oldTs:%{public}lf", traceStats.nowTs, traceStats.oldTs);
+            return;
+        }
         traceStats.averageTrace = traceStats.bytes / duration;
         totalAverage += traceStats.averageTrace;
         if (maxAverage < traceStats.averageTrace) {
