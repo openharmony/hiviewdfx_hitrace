@@ -205,6 +205,10 @@ void GetCpuNums(TraceFileHeader& header)
 
 bool CheckTags(const std::vector<std::string> &tags, const std::map<std::string, TagCategory> &allTags)
 {
+    if (tags.size() == 0) {
+        HiLog::Error(LABEL, "CheckTags: no tag provided.");
+        return false;
+    }
     for (const auto &tag : tags) {
         if (allTags.find(tag) == allTags.end()) {
             HiLog::Error(LABEL, "CheckTags: %{public}s is not provided.", tag.c_str());
