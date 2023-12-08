@@ -775,6 +775,9 @@ void ProcessDumpTask()
     g_dumpFlag = true;
     g_dumpEnd = false;
     g_outputFilesForCmd = {};
+    const std::string threadName = "TraceDumpTask";
+    prctl(PR_SET_NAME, threadName.c_str());
+    HiLog::Info(LABEL, "ProcessDumpTask: trace dump thread start.");
     if (g_currentTraceParams.outputFile.size() > 0) {
         if (DumpTraceLoop(g_currentTraceParams.outputFile, false)) {
             g_outputFilesForCmd.push_back(g_currentTraceParams.outputFile);
@@ -800,6 +803,7 @@ void ProcessDumpTask()
             break;
         }
     }
+    HiLog::Info(LABEL, "ProcessDumpTask: trace dump thread exit.");
     g_dumpEnd = true;
 }
 
