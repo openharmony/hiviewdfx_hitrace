@@ -72,7 +72,7 @@ inline void UpdateSysParamTags()
     // Get the system parameters of KEY_TRACE_TAG.
     int changed = 0;
     const char *paramValue = CachedParameterGetChanged(g_cachedHandle, &changed);
-    if (UNEXPECTANTLY(changed == 1)) {
+    if (UNEXPECTANTLY(changed == 1) && paramValue != nullptr) {
         uint64_t tags = 0;
         tags = strtoull(paramValue, nullptr, 0);
         g_tagsProperty = (tags | HITRACE_TAG_ALWAYS) & HITRACE_TAG_VALID_MASK;
