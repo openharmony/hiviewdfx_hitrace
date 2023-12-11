@@ -1220,7 +1220,7 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
     g_traceMode = SERVICE_MODE;
 
     ClearRemainingTrace();
-    if (!g_serviceThreadIsStart) {
+    if (g_traceHmDir == "" && !g_serviceThreadIsStart) {
         // open SERVICE_MODE monitor thread
         std::thread auxiliaryTask(MonitorServiceTask);
         auxiliaryTask.detach();
