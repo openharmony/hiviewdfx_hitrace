@@ -493,6 +493,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
     while (true) {
         ssize_t readBytes = TEMP_FAILURE_RETRY(read(srcFd, buffer, PAGE_SIZE));
         if (readBytes <= 0) {
+            HiLog::Error(LABEL, "WriteFile: read %{public}s failed.", src.c_str());
             break;
         }
         write(outFd, buffer, readBytes);
@@ -516,6 +517,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
     write(outFd, reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
     lseek(outFd, pos, SEEK_SET);
     close(srcFd);
+    HiLog::Info(LABEL, "WriteFile end, path: %{public}s, byte: %{public}d.", src.c_str(), readLen);
     return true;
 }
 
@@ -525,17 +527,20 @@ void WriteEventFile(std::string &srcPath, int outFd)
     std::string srcSpecPath = CanonicalizeSpecPath(srcPath.c_str());
     int srcFd = open(srcSpecPath.c_str(), O_RDONLY);
     if (srcFd < 0) {
-        HiLog::Error(LABEL, "WriteEventsFormat: open %{public}s failed.", srcPath.c_str());
+        HiLog::Error(LABEL, "WriteEventFile: open %{public}s failed.", srcPath.c_str());
         return;
     }
+    uint32_t readLen = 0;
     do {
-        int len = read(srcFd, buffer, PAGE_SIZE);
+        ssize_t len = read(srcFd, buffer, PAGE_SIZE);
         if (len <= 0) {
             break;
         }
         write(outFd, buffer, len);
+        readLen += len;
     } while (true);
     close(srcFd);
+    HiLog::Info(LABEL, "WriteEventFile end, path: %{public}s, data size: %{public}d.", srcPath.c_str(), readLen);
 }
 
 bool WriteEventsFormat(int outFd)
@@ -609,6 +614,7 @@ bool WriteEventsFormat(int outFd)
         }
     }
     close(fd);
+    HiLog::Info(LABEL, "WriteEventsFormat end. path: %{public}s.", filePath.c_str());
     return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, filePath, outFd);
 }
 
