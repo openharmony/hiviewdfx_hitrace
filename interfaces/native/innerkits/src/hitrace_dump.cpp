@@ -131,6 +131,7 @@ std::string g_traceHmDir;
 uint8_t g_buffer[BUFFER_SIZE] = {0};
 std::vector<std::pair<std::string, int>> g_traceFilesTable;
 std::vector<std::string> g_outputFilesForCmd;
+int g_outputFileSize = 0;
 
 TraceParams g_currentTraceParams = {};
 
@@ -462,20 +463,6 @@ bool SetTraceSetting(const TraceParams &traceParams, const std::map<std::string,
     return true;
 }
 
-size_t GetFileSize(const std::string &fileName)
-{
-    if (fileName.empty()) {
-        return 0;
-    }
-    if (access(fileName.c_str(), 0) == -1) {
-        return 0;
-    }
-
-    struct stat statbuf;
-    stat(fileName.c_str(), &statbuf);
-    return statbuf.st_size;
-}
-
 bool CheckPage(uint8_t contentType, uint8_t *page)
 {
     const int pageThreshold = PAGE_SIZE / 2;
@@ -541,6 +528,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
     write(outFd, reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
     lseek(outFd, pos, SEEK_SET);
     close(srcFd);
+    g_outputFileSize += contentHeader.length + sizeof(contentHeader);
     HiLog::Info(LABEL, "WriteFile end, path: %{public}s, byte: %{public}d.", src.c_str(), readLen);
     return true;
 }
@@ -726,6 +714,7 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
     if (g_currentTraceParams.fileSize.empty()) {
         g_currentTraceParams.fileSize = std::to_string(DEFAULT_FILE_SIZE);
     }
+    g_outputFileSize = 0;
     const int fileSizeThreshold = std::stoi(g_currentTraceParams.fileSize) * 1024;
     std::string outPath = CanonicalizeSpecPath(outputFileName.c_str());
     int outFd = open(outPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
@@ -743,7 +732,7 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
     write(outFd, reinterpret_cast<char*>(&header), sizeof(header));
     WriteEventsFormat(outFd);
     while (g_dumpFlag) {
-        if (isLimited && GetFileSize(outPath) > static_cast<size_t>(fileSizeThreshold)) {
+        if (isLimited && g_outputFileSize > fileSizeThreshold) {
             break;
         }
         sleep(sleepTime);
