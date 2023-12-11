@@ -117,6 +117,8 @@ struct PageHeader {
 constexpr size_t PAGE_SIZE = 4096;
 #endif
 
+const int BUFFER_SIZE = 256 * PAGE_SIZE; // 1M
+
 std::atomic<bool> g_dumpFlag(false);
 std::atomic<bool> g_dumpEnd(true);
 std::mutex g_traceMutex;
@@ -126,6 +128,7 @@ uint64_t g_sysInitParamTags = 0;
 TraceMode g_traceMode = TraceMode::CLOSE;
 std::string g_traceRootPath;
 std::string g_traceHmDir;
+uint8_t g_buffer[BUFFER_SIZE] = {0};
 std::vector<std::pair<std::string, int>> g_traceFilesTable;
 std::vector<std::string> g_outputFilesForCmd;
 
@@ -473,6 +476,21 @@ size_t GetFileSize(const std::string &fileName)
     return statbuf.st_size;
 }
 
+bool CheckPage(uint8_t contentType, uint8_t *page)
+{
+    const int pageThreshold = PAGE_SIZE / 2;
+
+    // Check raw_trace page size.
+    if (contentType >= CONTENT_TYPE_CPU_RAW && g_traceHmDir == "") {
+        PageHeader *pageHeader = reinterpret_cast<PageHeader*>(&page);
+        if (pageHeader->size < static_cast<uint64_t>(pageThreshold)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
 {
     std::string srcPath = CanonicalizeSpecPath(src.c_str());
@@ -485,29 +503,35 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
     contentHeader.type = contentType;
     write(outFd, reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
     uint32_t readLen = 0;
-    uint8_t buffer[PAGE_SIZE] = {0};
-    const int pageThreshold = PAGE_SIZE / 2;
-    PageHeader *pageHeader = nullptr;
     int count = 0;
     const int maxCount = 2;
-    while (true) {
-        ssize_t readBytes = TEMP_FAILURE_RETRY(read(srcFd, buffer, PAGE_SIZE));
-        if (readBytes <= 0) {
-            HiLog::Error(LABEL, "WriteFile: read %{public}s failed.", src.c_str());
-            break;
-        }
-        write(outFd, buffer, readBytes);
-        readLen += readBytes;
 
-        // Check raw_trace page size.
-        if (contentType >= CONTENT_TYPE_CPU_RAW && g_traceHmDir == "") {
-            pageHeader = reinterpret_cast<PageHeader*>(&buffer);
-            if (pageHeader->size < static_cast<uint64_t>(pageThreshold)) {
-                count++;
-            }
-            if (count >= maxCount) {
+    while (true) {
+        int bytes = 0;
+        bool endFlag = false;
+        /* Write 1M at a time */
+        while (bytes < BUFFER_SIZE) {
+            ssize_t readBytes = TEMP_FAILURE_RETRY(read(srcFd, g_buffer + bytes, PAGE_SIZE));
+            if (readBytes <= 0) {
+                endFlag = true;
+                HiLog::Error(LABEL, "WriteFile: read %{public}s failed.", src.c_str());
                 break;
             }
+
+            if (CheckPage(contentType, g_buffer + bytes) == false) {
+                count++;
+            }
+            bytes += readBytes;
+            if (count >= maxCount) {
+                endFlag = true;
+                break;
+            }
+        }
+
+        write(outFd, g_buffer, bytes);
+        readLen += bytes;
+        if (endFlag == true) {
+            break;
         }
     }
     contentHeader.length = readLen;
