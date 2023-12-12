@@ -117,6 +117,8 @@ struct PageHeader {
 constexpr size_t PAGE_SIZE = 4096;
 #endif
 
+const int BUFFER_SIZE = 256 * PAGE_SIZE; // 1M
+
 std::atomic<bool> g_dumpFlag(false);
 std::atomic<bool> g_dumpEnd(true);
 std::mutex g_traceMutex;
@@ -126,8 +128,10 @@ uint64_t g_sysInitParamTags = 0;
 TraceMode g_traceMode = TraceMode::CLOSE;
 std::string g_traceRootPath;
 std::string g_traceHmDir;
+uint8_t g_buffer[BUFFER_SIZE] = {0};
 std::vector<std::pair<std::string, int>> g_traceFilesTable;
 std::vector<std::string> g_outputFilesForCmd;
+int g_outputFileSize = 0;
 
 TraceParams g_currentTraceParams = {};
 
@@ -459,18 +463,19 @@ bool SetTraceSetting(const TraceParams &traceParams, const std::map<std::string,
     return true;
 }
 
-size_t GetFileSize(const std::string &fileName)
+bool CheckPage(uint8_t contentType, uint8_t *page)
 {
-    if (fileName.empty()) {
-        return 0;
-    }
-    if (access(fileName.c_str(), 0) == -1) {
-        return 0;
+    const int pageThreshold = PAGE_SIZE / 2;
+
+    // Check raw_trace page size.
+    if (contentType >= CONTENT_TYPE_CPU_RAW && g_traceHmDir == "") {
+        PageHeader *pageHeader = reinterpret_cast<PageHeader*>(&page);
+        if (pageHeader->size < static_cast<uint64_t>(pageThreshold)) {
+            return false;
+        }
     }
 
-    struct stat statbuf;
-    stat(fileName.c_str(), &statbuf);
-    return statbuf.st_size;
+    return true;
 }
 
 bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
@@ -485,29 +490,35 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
     contentHeader.type = contentType;
     write(outFd, reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
     uint32_t readLen = 0;
-    uint8_t buffer[PAGE_SIZE] = {0};
-    const int pageThreshold = PAGE_SIZE / 2;
-    PageHeader *pageHeader = nullptr;
     int count = 0;
     const int maxCount = 2;
-    while (true) {
-        ssize_t readBytes = TEMP_FAILURE_RETRY(read(srcFd, buffer, PAGE_SIZE));
-        if (readBytes <= 0) {
-            HiLog::Error(LABEL, "WriteFile: read %{public}s failed.", src.c_str());
-            break;
-        }
-        write(outFd, buffer, readBytes);
-        readLen += readBytes;
 
-        // Check raw_trace page size.
-        if (contentType >= CONTENT_TYPE_CPU_RAW && g_traceHmDir == "") {
-            pageHeader = reinterpret_cast<PageHeader*>(&buffer);
-            if (pageHeader->size < static_cast<uint64_t>(pageThreshold)) {
-                count++;
-            }
-            if (count >= maxCount) {
+    while (true) {
+        int bytes = 0;
+        bool endFlag = false;
+        /* Write 1M at a time */
+        while (bytes < BUFFER_SIZE) {
+            ssize_t readBytes = TEMP_FAILURE_RETRY(read(srcFd, g_buffer + bytes, PAGE_SIZE));
+            if (readBytes <= 0) {
+                endFlag = true;
+                HiLog::Error(LABEL, "WriteFile: read %{public}s failed.", src.c_str());
                 break;
             }
+
+            if (CheckPage(contentType, g_buffer + bytes) == false) {
+                count++;
+            }
+            bytes += readBytes;
+            if (count >= maxCount) {
+                endFlag = true;
+                break;
+            }
+        }
+
+        write(outFd, g_buffer, bytes);
+        readLen += bytes;
+        if (endFlag == true) {
+            break;
         }
     }
     contentHeader.length = readLen;
@@ -517,6 +528,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
     write(outFd, reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
     lseek(outFd, pos, SEEK_SET);
     close(srcFd);
+    g_outputFileSize += contentHeader.length + sizeof(contentHeader);
     HiLog::Info(LABEL, "WriteFile end, path: %{public}s, byte: %{public}d.", src.c_str(), readLen);
     return true;
 }
@@ -702,6 +714,7 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
     if (g_currentTraceParams.fileSize.empty()) {
         g_currentTraceParams.fileSize = std::to_string(DEFAULT_FILE_SIZE);
     }
+    g_outputFileSize = 0;
     const int fileSizeThreshold = std::stoi(g_currentTraceParams.fileSize) * 1024;
     std::string outPath = CanonicalizeSpecPath(outputFileName.c_str());
     int outFd = open(outPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
@@ -719,7 +732,7 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
     write(outFd, reinterpret_cast<char*>(&header), sizeof(header));
     WriteEventsFormat(outFd);
     while (g_dumpFlag) {
-        if (isLimited && GetFileSize(outPath) > static_cast<size_t>(fileSizeThreshold)) {
+        if (isLimited && g_outputFileSize > fileSizeThreshold) {
             break;
         }
         sleep(sleepTime);
@@ -1207,7 +1220,7 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
     g_traceMode = SERVICE_MODE;
 
     ClearRemainingTrace();
-    if (!g_serviceThreadIsStart) {
+    if (g_traceHmDir == "" && !g_serviceThreadIsStart) {
         // open SERVICE_MODE monitor thread
         std::thread auxiliaryTask(MonitorServiceTask);
         auxiliaryTask.detach();
