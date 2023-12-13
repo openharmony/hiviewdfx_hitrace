@@ -142,7 +142,6 @@ constexpr unsigned int MAX_OUTPUT_LEN = 255;
 const int PAGE_SIZE_KB = 4; // 4 KB
 const int MIN_FILE_SIZE = 51200; // 50 MB
 const int MAX_FILE_SIZE = 500000; // 500 MB
-const int DEFAULT_FILE_SIZE = 102400; // 100 MB
 
 string g_traceRootPath;
 string g_traceHmDir;
@@ -644,16 +643,12 @@ static std::string ReloadTraceArgs()
         args += "0";
     }
 
-    if (g_runningState == RECORDING_SHORT_RAW || g_runningState == RECORDING_LONG_BEGIN_RECORD) {
-        if (g_traceArgs.fileSize > 0) {
+    if (g_traceArgs.fileSize > 0) {
+        if (g_runningState == RECORDING_SHORT_RAW || g_runningState == RECORDING_LONG_BEGIN_RECORD) {
             args += (" fileSize:" + std::to_string(g_traceArgs.fileSize));
         } else {
-            args += (" fileSize:" + std::to_string(DEFAULT_FILE_SIZE));
-        }
-    } else {
-        if (g_traceArgs.fileSize > 0) {
             ConsoleLog("warnning: The current state does not support specifying the file size, file size: " +
-                   std::to_string(g_traceArgs.fileSize) + " is invalid.");
+                std::to_string(g_traceArgs.fileSize) + " is invalid.");
         }
     }
 
