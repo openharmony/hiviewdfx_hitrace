@@ -99,7 +99,7 @@ void OpenTraceMarkerFile()
     const char* devValue = "true";
     g_cachedHandle = CachedParameterCreate(KEY_TRACE_TAG.c_str(), devValue);
 
-    std::string pidStr = std::to_string(getpid());
+    std::string pidStr = std::to_string(getprocpid());
     errno_t ret = strcpy_s(g_pid, PID_BUF_SIZE, pidStr.c_str());
     if (ret != 0) {
         strcpy_s(g_pid, PID_BUF_SIZE, pidStr.c_str());
