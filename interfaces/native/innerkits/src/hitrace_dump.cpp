@@ -76,6 +76,7 @@ const int DEFAULT_FILE_SIZE = 100 * 1024;
 const int HM_DEFAULT_BUFFER_SIZE = 60 * 1024;
 const int SAVED_CMDLINES_SIZE = 2048;
 const int MAX_OUTPUT_FILE_SIZE = 20;
+const int KB_PER_MB = 1024;
 
 const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
 const std::string SNAPSHOT_PREFIX = "trace_";
@@ -711,11 +712,11 @@ bool WriteTgids(int outFd)
 bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
 {
     const int sleepTime = 1;
-    if (g_currentTraceParams.fileSize.empty()) {
-        g_currentTraceParams.fileSize = std::to_string(DEFAULT_FILE_SIZE);
+    int fileSizeThreshold = DEFAULT_FILE_SIZE * KB_PER_MB;
+    if (!g_currentTraceParams.fileSize.empty()) {
+        fileSizeThreshold = std::stoi(g_currentTraceParams.fileSize) * KB_PER_MB;
     }
     g_outputFileSize = 0;
-    const int fileSizeThreshold = std::stoi(g_currentTraceParams.fileSize) * 1024;
     std::string outPath = CanonicalizeSpecPath(outputFileName.c_str());
     int outFd = open(outPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
     if (outFd < 0) {
@@ -797,9 +798,10 @@ void ProcessDumpTask()
     const std::string threadName = "TraceDumpTask";
     prctl(PR_SET_NAME, threadName.c_str());
     HiLog::Info(LABEL, "ProcessDumpTask: trace dump thread start.");
-    if (g_currentTraceParams.outputFile.size() > 0) {
-        if (DumpTraceLoop(g_currentTraceParams.outputFile, false)) {
-            g_outputFilesForCmd.push_back(g_currentTraceParams.outputFile);
+    if (g_currentTraceParams.fileSize.empty()) {
+        std::string outputFileName = GenerateName(false);
+        if (DumpTraceLoop(outputFileName, false)) {
+            g_outputFilesForCmd.push_back(outputFileName);
         }
         g_dumpEnd = true;
         return;

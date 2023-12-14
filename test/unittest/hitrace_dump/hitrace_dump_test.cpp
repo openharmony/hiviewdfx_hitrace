@@ -210,7 +210,8 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_002, TestSize.Level0)
     TraceRetInfo ret = DumpTraceOff();
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     
-    ASSERT_TRUE(TraverseFiles(ret.outputFiles, filePathName));
+    ASSERT_FALSE(TraverseFiles(ret.outputFiles, filePathName))
+        << "unspport set outputfile, default generate file in /data/log/hitrace.";
   
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
