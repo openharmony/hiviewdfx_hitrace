@@ -73,7 +73,7 @@ constexpr int ALIGNMENT_COEFFICIENT = 4;
 
 const int DEFAULT_BUFFER_SIZE = 12 * 1024;
 const int DEFAULT_FILE_SIZE = 100 * 1024;
-const int HM_DEFAULT_BUFFER_SIZE = 60 * 1024;
+const int HM_DEFAULT_BUFFER_SIZE = 144 * 1024;
 const int SAVED_CMDLINES_SIZE = 2048;
 const int MAX_OUTPUT_FILE_SIZE = 20;
 
@@ -692,18 +692,12 @@ bool WriteCpuRaw(int outFd)
 
 bool WriteCmdlines(int outFd)
 {
-    if (g_traceHmDir != "") {
-        return true;
-    }
     std::string cmdlinesPath = GetFilePath("saved_cmdlines");
     return WriteFile(CONTENT_TYPE_CMDLINES, cmdlinesPath, outFd);
 }
 
 bool WriteTgids(int outFd)
 {
-    if (g_traceHmDir != "") {
-        return true;
-    }
     std::string tgidsPath = GetFilePath("saved_tgids");
     return WriteFile(CONTENT_TYPE_TGIDS, tgidsPath, outFd);
 }
