@@ -490,7 +490,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
     struct TraceFileContentHeader contentHeader;
     contentHeader.type = contentType;
     write(outFd, reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
-    uint32_t readLen = 0;
+    int readLen = 0;
     int count = 0;
     const int maxCount = 2;
 
@@ -522,14 +522,14 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
             break;
         }
     }
-    contentHeader.length = readLen;
+    contentHeader.length = static_cast<uint32_t>(readLen);
     uint32_t offset = contentHeader.length + sizeof(contentHeader);
     off_t pos = lseek(outFd, 0, SEEK_CUR);
     lseek(outFd, pos - offset, SEEK_SET);
     write(outFd, reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
     lseek(outFd, pos, SEEK_SET);
     close(srcFd);
-    g_outputFileSize += contentHeader.length + sizeof(contentHeader);
+    g_outputFileSize += static_cast<int>(offset);
     HiLog::Info(LABEL, "WriteFile end, path: %{public}s, byte: %{public}d.", src.c_str(), readLen);
     return true;
 }
@@ -543,7 +543,7 @@ void WriteEventFile(std::string &srcPath, int outFd)
         HiLog::Error(LABEL, "WriteEventFile: open %{public}s failed.", srcPath.c_str());
         return;
     }
-    uint32_t readLen = 0;
+    ssize_t readLen = 0;
     do {
         ssize_t len = read(srcFd, buffer, PAGE_SIZE);
         if (len <= 0) {
