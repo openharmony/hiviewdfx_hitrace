@@ -38,8 +38,11 @@ using OHOS::HiviewDFX::HiLog;
 
 namespace {
 
-constexpr uint64_t HITRACE_TAG = 0xD002D33;
-constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, HITRACE_TAG, "HitraceTest"};
+#undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD002D33
+
+#undef LOG_TAG
+#define LOG_TAG "HitraceTest"
 
 const std::string TAG_PROP = "debug.hitrace.tags.enableflags";
 const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
@@ -82,7 +85,7 @@ bool TraverseFiles(std::vector<std::string> files, std::string outputFileName)
     bool isExists = false;
     for (std::vector<std::string>::iterator iter = files.begin(); iter != files.end(); iter++) {
         isExists |= (strcmp(iter->c_str(), outputFileName.c_str()) == 0);
-        HiLog::Info(LABEL, "ret.outputFile%{public}d: %{public}s", i++, iter->c_str());
+        HILOG_INFO(LOG_CORE, "ret.outputFile%{public}d: %{public}s", i++, iter->c_str());
     }
     return isExists;
 }
@@ -109,7 +112,7 @@ void HitraceDumpTest::SetUpTestCase()
     } else if (access((tracefsDir + "trace_marker").c_str(), F_OK) != -1) {
         g_traceRootPath = tracefsDir;
     } else {
-        HiLog::Error(LABEL, "Error: Finding trace folder failed.");
+        HILOG_ERROR(LOG_CORE, "Error: Finding trace folder failed.");
     }
 
     /* Open CMD_MODE */
@@ -339,7 +342,7 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_002, TestSize.Level0)
     std::string outputFileName = DEFAULT_OUTPUT_DIR + "trace_" + std::to_string(nowSec)
         + "_" + std::to_string(nowUsec) + ".sys";
     ASSERT_TRUE(CreateFile(outputFileName)) << "create log file failed.";
-    HiLog::Info(LABEL, "outputFileName: %{public}s", outputFileName.c_str());
+    HILOG_INFO(LOG_CORE, "outputFileName: %{public}s", outputFileName.c_str());
     AddPair2Table(outputFileName, nowSec);
     
     TraceRetInfo ret = DumpTrace();
@@ -369,7 +372,7 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_003, TestSize.Level0)
     std::string outputFileName = DEFAULT_OUTPUT_DIR + "trace_" + std::to_string(nowSec)
         + "_" + std::to_string(nowUsec) + ".sys";
     ASSERT_TRUE(CreateFile(outputFileName)) << "create log file failed.";
-    HiLog::Info(LABEL, "outputFileName: %{public}s", outputFileName.c_str());
+    HILOG_INFO(LOG_CORE, "outputFileName: %{public}s", outputFileName.c_str());
     AddPair2Table(outputFileName, nowSec);
 
     TraceRetInfo ret = DumpTrace();

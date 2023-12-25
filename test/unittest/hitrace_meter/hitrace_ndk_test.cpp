@@ -46,9 +46,12 @@ const string LABEL_HEADER = "|H:";
 const string VERTICAL_LINE = "|";
 
 constexpr uint64_t TRACE_INVALIDATE_TAG = 0x1000000;
-constexpr uint64_t HITRACE_TAG = 0xD002D33;
 constexpr uint32_t SLEEP_ONE_SECOND = 1;
-const constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, HITRACE_TAG, "Hitrace_TEST"};
+#undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD002D33
+
+#undef LOG_TAG
+#define LOG_TAG "Hitrace_TEST"
 const uint64_t TAG = HITRACE_TAG_OHOS;
 constexpr int HITRACEID_LEN = 64;
 static string g_traceRootPath;
@@ -78,7 +81,7 @@ void  HitraceNDKTest::SetUpTestCase()
     } else if (access((tracefsDir + TRACE_MARKER_PATH).c_str(), F_OK) != -1) {
         g_traceRootPath = tracefsDir;
     } else {
-        HiLog::Error(LABEL, "Error: Finding trace folder failed");
+        HILOG_ERROR(LOG_CORE, "Error: Finding trace folder failed");
     }
     CleanFtrace();
 }
@@ -96,7 +99,7 @@ void HitraceNDKTest::SetUp()
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
     string value = to_string(TAG);
     SetProperty(TRACE_PROPERTY, value);
-    HiLog::Info(LABEL, "current tag is %{public}s", GetProperty(TRACE_PROPERTY, "0").c_str());
+    HILOG_INFO(LOG_CORE, "current tag is %{public}s", GetProperty(TRACE_PROPERTY, "0").c_str());
     ASSERT_TRUE(GetProperty(TRACE_PROPERTY, "-123") == value);
     UpdateTraceLabel();
 }
@@ -106,7 +109,7 @@ bool SetProperty(const string& property, const string& value)
     bool result = false;
     result = OHOS::system::SetParameter(property, value);
     if (!result) {
-        HiLog::Error(LABEL, "Error: setting %s failed", property.c_str());
+        HILOG_ERROR(LOG_CORE, "Error: setting %s failed", property.c_str());
         return false;
     }
     return true;
@@ -209,7 +212,7 @@ bool GetTraceResult(const char type, const string& traceName, const HiTraceId* h
 static bool WriteStringToFile(const string& fileName, const string& str)
 {
     if (g_traceRootPath.empty()) {
-        HiLog::Error(LABEL, "Error: trace path not found.");
+        HILOG_ERROR(LOG_CORE, "Error: trace path not found.");
         return false;
     }
     ofstream out;
@@ -222,13 +225,13 @@ static bool WriteStringToFile(const string& fileName, const string& str)
 bool CleanTrace()
 {
     if (g_traceRootPath.empty()) {
-        HiLog::Error(LABEL, "Error: trace path not found.");
+        HILOG_ERROR(LOG_CORE, "Error: trace path not found.");
         return false;
     }
     ofstream ofs;
     ofs.open(g_traceRootPath + TRACE_PATH, ofstream::out);
     if (!ofs.is_open()) {
-        HiLog::Error(LABEL, "Error: opening trace path failed.");
+        HILOG_ERROR(LOG_CORE, "Error: opening trace path failed.");
         return false;
     }
     ofs << "";

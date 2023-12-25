@@ -64,8 +64,11 @@ static const std::string EMPTY_TRACE_NAME;
 static char g_markTypes[5] = {'B', 'E', 'S', 'F', 'C'};
 enum MarkerType { MARKER_BEGIN, MARKER_END, MARKER_ASYNC_BEGIN, MARKER_ASYNC_END, MARKER_INT, MARKER_MAX };
 
-constexpr uint64_t HITRACE_TAG = 0xD002D33;
-constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, HITRACE_TAG, "HitraceMeter"};
+#undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD002D33
+
+#undef LOG_TAG
+#define LOG_TAG "HitraceMeter"
 
 inline void UpdateSysParamTags()
 {
@@ -86,10 +89,10 @@ void OpenTraceMarkerFile()
     const std::string traceFile = "/sys/kernel/tracing/trace_marker";
     g_markerFd = open(debugFile.c_str(), O_WRONLY | O_CLOEXEC);
     if (g_markerFd == -1) {
-        HiLog::Error(LABEL, "open trace file %{public}s failed: %{public}d", debugFile.c_str(), errno);
+        HILOG_ERROR(LOG_CORE, "open trace file %{public}s failed: %{public}d", debugFile.c_str(), errno);
         g_markerFd = open(traceFile.c_str(), O_WRONLY | O_CLOEXEC);
         if (g_markerFd == -1) {
-            HiLog::Error(LABEL, "open trace file %{public}s failed: %{public}d", traceFile.c_str(), errno);
+            HILOG_ERROR(LOG_CORE, "open trace file %{public}s failed: %{public}d", traceFile.c_str(), errno);
             g_tagsProperty = 0;
             return;
         }
@@ -104,7 +107,7 @@ void OpenTraceMarkerFile()
     if (ret != 0) {
         strcpy_s(g_pid, PID_BUF_SIZE, pidStr.c_str());
     }
-    HiLog::Error(LABEL, "pid[%{public}s] first get g_tagsProperty: %{public}s", pidStr.c_str(),
+    HILOG_ERROR(LOG_CORE, "pid[%{public}s] first get g_tagsProperty: %{public}s", pidStr.c_str(),
         to_string(g_tagsProperty.load()).c_str());
 
     g_isHitraceMeterInit = true;
@@ -112,7 +115,7 @@ void OpenTraceMarkerFile()
 
 void WriteFailedLog()
 {
-    HiLog::Error(LABEL, "write trace_marker failed, %{public}d", errno);
+    HILOG_ERROR(LOG_CORE, "write trace_marker failed, %{public}d", errno);
 }
 
 void WriteToTraceMarker(const char* buf, const int count)
@@ -237,7 +240,7 @@ void StartTraceArgs(uint64_t label, const char *fmt, ...)
     int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
     if (res < 0) {
-        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
+        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
     AddHitraceMeterMarker(MARKER_BEGIN, label, name, 0);
@@ -255,7 +258,7 @@ void StartTraceArgsDebug(bool isDebug, uint64_t label, const char *fmt, ...)
     int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
     if (res < 0) {
-        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
+        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
     AddHitraceMeterMarker(MARKER_BEGIN, label, name, 0);
@@ -302,7 +305,7 @@ void StartAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...)
     int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
     if (res < 0) {
-        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
+        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
     AddHitraceMeterMarker(MARKER_ASYNC_BEGIN, label, name, taskId);
@@ -320,7 +323,7 @@ void StartAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, cons
     int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
     if (res < 0) {
-        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
+        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
     AddHitraceMeterMarker(MARKER_ASYNC_BEGIN, label, name, taskId);
@@ -354,7 +357,7 @@ void FinishAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...)
     int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
     if (res < 0) {
-        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
+        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
     AddHitraceMeterMarker(MARKER_ASYNC_END, label, name, taskId);
@@ -372,7 +375,7 @@ void FinishAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, con
     int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
     if (res < 0) {
-        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
+        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
     AddHitraceMeterMarker(MARKER_ASYNC_END, label, name, taskId);
@@ -422,7 +425,7 @@ HitraceMeterFmtScoped::HitraceMeterFmtScoped(uint64_t label, const char *fmt, ..
     int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
     if (res < 0) {
-        HiLog::Error(LABEL, "vsnprintf_s failed: %{public}d", errno);
+        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d", errno);
         return;
     }
     AddHitraceMeterMarker(MARKER_BEGIN, label, name, 0);

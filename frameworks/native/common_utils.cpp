@@ -30,25 +30,25 @@ namespace Hitrace {
 std::string CanonicalizeSpecPath(const char* src)
 {
     if (src == nullptr || strlen(src) >= PATH_MAX) {
-        HiLog::Error(LABEL, "CanonicalizeSpecPath: %{pubilc}s failed.", src);
+        HILOG_ERROR(LOG_CORE, "CanonicalizeSpecPath: %{pubilc}s failed.", src);
         return "";
     }
     char resolvedPath[PATH_MAX] = { 0 };
 
     if (access(src, F_OK) == 0) {
         if (realpath(src, resolvedPath) == nullptr) {
-            HiLog::Error(LABEL, "CanonicalizeSpecPath: realpath %{pubilc}s failed.", src);
+            HILOG_ERROR(LOG_CORE, "CanonicalizeSpecPath: realpath %{pubilc}s failed.", src);
             return "";
         }
     } else {
         std::string fileName(src);
         if (fileName.find("..") == std::string::npos) {
             if (sprintf_s(resolvedPath, PATH_MAX, "%s", src) == -1) {
-                HiLog::Error(LABEL, "CanonicalizeSpecPath: sprintf_s %{pubilc}s failed.", src);
+                HILOG_ERROR(LOG_CORE, "CanonicalizeSpecPath: sprintf_s %{pubilc}s failed.", src);
                 return "";
             }
         } else {
-            HiLog::Error(LABEL, "CanonicalizeSpecPath: find .. src failed.");
+            HILOG_ERROR(LOG_CORE, "CanonicalizeSpecPath: find .. src failed.");
             return "";
         }
     }
@@ -65,14 +65,14 @@ bool MarkClockSync(const std::string& traceRootPath)
     std::string resolvedPath = CanonicalizeSpecPath((traceRootPath + traceMarker).c_str());
     int fd = open(resolvedPath.c_str(), O_WRONLY);
     if (fd == -1) {
-        HiLog::Error(LABEL, "MarkClockSync: oepn %{public}s fail, errno(%{public}d)", resolvedPath.c_str(), errno);
+        HILOG_ERROR(LOG_CORE, "MarkClockSync: oepn %{public}s fail, errno(%{public}d)", resolvedPath.c_str(), errno);
         return false;
     }
 
     // write realtime_ts
     struct timespec rts = {0, 0};
     if (clock_gettime(CLOCK_REALTIME, &rts) == -1) {
-        HiLog::Error(LABEL, "MarkClockSync: get realtime error, errno(%{public}d)", errno);
+        HILOG_ERROR(LOG_CORE, "MarkClockSync: get realtime error, errno(%{public}d)", errno);
         close(fd);
         return false;
     }
@@ -82,19 +82,19 @@ bool MarkClockSync(const std::string& traceRootPath)
         "trace_event_clock_sync: realtime_ts=%" PRId64 "\n",
         static_cast<int64_t>((rts.tv_sec * nanoSeconds + rts.tv_nsec) / nanoToMill));
     if (len < 0) {
-        HiLog::Error(LABEL, "MarkClockSync: entering realtime_ts into buffer error, errno(%{public}d)", errno);
+        HILOG_ERROR(LOG_CORE, "MarkClockSync: entering realtime_ts into buffer error, errno(%{public}d)", errno);
         close(fd);
         return false;
     }
 
     if (write(fd, buffer, len) < 0) {
-        HiLog::Error(LABEL, "MarkClockSync: writing realtime error, errno(%{public}d)", errno);
+        HILOG_ERROR(LOG_CORE, "MarkClockSync: writing realtime error, errno(%{public}d)", errno);
     }
 
     // write parent_ts
     struct timespec mts = {0, 0};
     if (clock_gettime(CLOCK_MONOTONIC, &mts) == -1) {
-        HiLog::Error(LABEL, "MarkClockSync: get parent_ts error, errno(%{public}d)", errno);
+        HILOG_ERROR(LOG_CORE, "MarkClockSync: get parent_ts error, errno(%{public}d)", errno);
         close(fd);
         return false;
     }
@@ -102,12 +102,12 @@ bool MarkClockSync(const std::string& traceRootPath)
     len = snprintf_s(buffer, sizeof(buffer), sizeof(buffer) - 1, "trace_event_clock_sync: parent_ts=%f\n",
         static_cast<float>(((static_cast<float>(mts.tv_sec)) * nanoSeconds + mts.tv_nsec) / nanoToSecond));
     if (len < 0) {
-        HiLog::Error(LABEL, "MarkClockSync: entering parent_ts into buffer error, errno(%{public}d)", errno);
+        HILOG_ERROR(LOG_CORE, "MarkClockSync: entering parent_ts into buffer error, errno(%{public}d)", errno);
         close(fd);
         return false;
     }
     if (write(fd, buffer, len) < 0) {
-        HiLog::Error(LABEL, "MarkClockSync: writing parent_ts error, errno(%{public}d)", errno);
+        HILOG_ERROR(LOG_CORE, "MarkClockSync: writing parent_ts error, errno(%{public}d)", errno);
     }
     close(fd);
     return true;
@@ -117,13 +117,13 @@ static cJSON* ParseJsonFromFile(const std::string& filePath)
 {
     std::ifstream inFile(filePath, std::ios::in);
     if (!inFile.is_open()) {
-        HiLog::Error(LABEL, "ParseJsonFromFile: %{public}s is not existed.", filePath.c_str());
+        HILOG_ERROR(LOG_CORE, "ParseJsonFromFile: %{public}s is not existed.", filePath.c_str());
         return nullptr;
     }
     std::string fileContent((std::istreambuf_iterator<char>(inFile)), std::istreambuf_iterator<char>());
     cJSON* root = cJSON_Parse(fileContent.c_str());
     if (root == nullptr) {
-        HiLog::Error(LABEL, "ParseJsonFromFile: %{public}s is not in JSON format.", filePath.c_str());
+        HILOG_ERROR(LOG_CORE, "ParseJsonFromFile: %{public}s is not in JSON format.", filePath.c_str());
     }
     inFile.close();
     return root;
@@ -198,7 +198,7 @@ bool ParseTagInfo(std::map<std::string, TagCategory> &allTags,
     }
     cJSON* tagCategory = cJSON_GetObjectItem(root, "tag_category");
     if (tagCategory == nullptr) {
-        HiLog::Error(LABEL, "ParseTagInfo: %{public}s is not contain tag_category node.", traceUtilsPath.c_str());
+        HILOG_ERROR(LOG_CORE, "ParseTagInfo: %{public}s is not contain tag_category node.", traceUtilsPath.c_str());
         cJSON_Delete(root);
         return false;
     }
@@ -208,7 +208,7 @@ bool ParseTagInfo(std::map<std::string, TagCategory> &allTags,
     }
     cJSON* tagGroups = cJSON_GetObjectItem(root, "tag_groups");
     if (tagGroups == nullptr) {
-        HiLog::Error(LABEL, "ParseTagInfo: %{public}s is not contain tag_groups node.", traceUtilsPath.c_str());
+        HILOG_ERROR(LOG_CORE, "ParseTagInfo: %{public}s is not contain tag_groups node.", traceUtilsPath.c_str());
         cJSON_Delete(root);
         return false;
     }
@@ -217,7 +217,7 @@ bool ParseTagInfo(std::map<std::string, TagCategory> &allTags,
         return false;
     }
     cJSON_Delete(root);
-    HiLog::Info(LABEL, "ParseTagInfo: parse done.");
+    HILOG_INFO(LOG_CORE, "ParseTagInfo: parse done.");
     return true;
 }
 

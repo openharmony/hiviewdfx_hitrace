@@ -20,7 +20,11 @@
 namespace OHOS {
 namespace HiviewDFX {
 namespace {
-constexpr HiLogLabel LABEL = { LOG_CORE, 0xD002D03, "HITRACE_UTIL_NAPI" };
+#undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD002D03
+#undef LOG_TAG
+#define LOG_TAG "HITRACE_UTIL_NAPI"
+
 constexpr uint32_t UINT32_T_PRO_DEFAULT_VALUE = 0;
 constexpr uint64_t UINT64_T_PRO_DEFAULT_VALUE = 0;
 constexpr uint64_t INVALID_CHAIN_ID = 0;
@@ -55,7 +59,7 @@ napi_status SetNamedProperty(const napi_env env, napi_value& object,
 {
     napi_status status = napi_set_named_property(env, object, propertyName.c_str(), propertyValue);
     if (status != napi_ok) {
-        HiLog::Error(LABEL, "set property %{public}s failed.", propertyName.c_str());
+        HILOG_ERROR(LOG_CORE, "set property %{public}s failed.", propertyName.c_str());
     }
     return status;
 }
@@ -75,11 +79,11 @@ bool NapiHitraceUtil::CheckValueTypeValidity(const napi_env env, const napi_valu
     napi_valuetype valueType = napi_undefined;
     napi_status ret = napi_typeof(env, jsObj, &valueType);
     if (ret != napi_ok) {
-        HiLog::Error(LABEL, "failed to parse the type of napi value.");
+        HILOG_ERROR(LOG_CORE, "failed to parse the type of napi value.");
         return false;
     }
     if (valueType != typeName) {
-        HiLog::Error(LABEL, "you have called a function with parameters of wrong type.");
+        HILOG_ERROR(LOG_CORE, "you have called a function with parameters of wrong type.");
         return false;
     }
     return true;
@@ -91,41 +95,41 @@ void NapiHitraceUtil::CreateHiTraceIdJsObject(const napi_env env, HiTraceId& tra
     napi_create_object(env, &valueObject);
     NapiHitraceUtil::SetPropertyBigInt64(env, valueObject, CHAIN_ID_ATTR,
         traceId.GetChainId());
-    HiLog::Debug(LABEL, "Native2Js: chainId is %{public}llx.",
+    HILOG_DEBUG(LOG_CORE, "Native2Js: chainId is %{public}llx.",
         static_cast<unsigned long long>(traceId.GetChainId()));
     NapiHitraceUtil::SetPropertyInt64(env, valueObject, SPAN_ID_ATTR, traceId.GetSpanId());
-    HiLog::Debug(LABEL, "Native2Js: spanId is %{public}llx.",
+    HILOG_DEBUG(LOG_CORE, "Native2Js: spanId is %{public}llx.",
         static_cast<unsigned long long>(traceId.GetSpanId()));
     NapiHitraceUtil::SetPropertyInt64(env, valueObject, PARENT_SPAN_ID_ATTR,
         traceId.GetParentSpanId());
-    HiLog::Debug(LABEL, "Native2Js: parentSpanId is %{public}llx.",
+    HILOG_DEBUG(LOG_CORE, "Native2Js: parentSpanId is %{public}llx.",
         static_cast<unsigned long long>(traceId.GetParentSpanId()));
     NapiHitraceUtil::SetPropertyInt32(env, valueObject, FLAGS_ATTR,
         traceId.GetFlags());
-    HiLog::Debug(LABEL, "Native2Js: flags is %{public}d.", traceId.GetFlags());
+    HILOG_DEBUG(LOG_CORE, "Native2Js: flags is %{public}d.", traceId.GetFlags());
 }
 
 void NapiHitraceUtil::TransHiTraceIdJsObjectToNative(const napi_env env, HiTraceId& traceId,
     const napi_value& valueObject)
 {
     uint64_t chainId = NapiHitraceUtil::GetPropertyBigInt64(env, valueObject, CHAIN_ID_ATTR);
-    HiLog::Debug(LABEL, "Js2Native: chainId is %{public}llx.",
+    HILOG_DEBUG(LOG_CORE, "Js2Native: chainId is %{public}llx.",
         static_cast<unsigned long long>(chainId));
     if (chainId == INVALID_CHAIN_ID) {
         return;
     }
     traceId.SetChainId(chainId);
     uint64_t spanId = NapiHitraceUtil::GetPropertyInt64(env, valueObject, SPAN_ID_ATTR);
-    HiLog::Debug(LABEL, "Js2Native: spanId is %{public}llx.",
+    HILOG_DEBUG(LOG_CORE, "Js2Native: spanId is %{public}llx.",
         static_cast<unsigned long long>(spanId));
     traceId.SetSpanId(spanId);
     uint64_t parentSpanId = NapiHitraceUtil::GetPropertyInt64(env, valueObject,
         PARENT_SPAN_ID_ATTR);
-    HiLog::Debug(LABEL, "Js2Native: parentSpanId is %{public}llx.",
+    HILOG_DEBUG(LOG_CORE, "Js2Native: parentSpanId is %{public}llx.",
         static_cast<unsigned long long>(parentSpanId));
     traceId.SetParentSpanId(parentSpanId);
     uint32_t flags = NapiHitraceUtil::GetPropertyInt32(env, valueObject, FLAGS_ATTR);
-    HiLog::Debug(LABEL, "Js2Native: flags is %{public}d.", flags);
+    HILOG_DEBUG(LOG_CORE, "Js2Native: flags is %{public}d.", flags);
     traceId.SetFlags(flags);
 }
 
@@ -163,12 +167,12 @@ uint32_t NapiHitraceUtil::GetPropertyInt32(const napi_env env, const napi_value&
     napi_valuetype type;
     napi_status status = napi_typeof(env, propertyValue, &type);
     if (status != napi_ok) {
-        HiLog::Error(LABEL, "failed to get %{public}s from HiTraceId Js Object.",
+        HILOG_ERROR(LOG_CORE, "failed to get %{public}s from HiTraceId Js Object.",
             propertyName.c_str());
         return UINT32_T_PRO_DEFAULT_VALUE;
     }
     if (type != napi_valuetype::napi_number) {
-        HiLog::Error(LABEL, "type is not napi_number property.");
+        HILOG_ERROR(LOG_CORE, "type is not napi_number property.");
         return UINT32_T_PRO_DEFAULT_VALUE;
     }
     int32_t numberValue = 0;
@@ -176,7 +180,7 @@ uint32_t NapiHitraceUtil::GetPropertyInt32(const napi_env env, const napi_value&
     if (status == napi_ok) {
         return numberValue;
     }
-    HiLog::Error(LABEL, "failed to get napi_number property from HiTraceId Js Object.");
+    HILOG_ERROR(LOG_CORE, "failed to get napi_number property from HiTraceId Js Object.");
     return UINT32_T_PRO_DEFAULT_VALUE;
 }
 
@@ -187,12 +191,12 @@ uint64_t NapiHitraceUtil::GetPropertyInt64(const napi_env env, const napi_value&
     napi_valuetype type;
     napi_status status = napi_typeof(env, propertyValue, &type);
     if (status != napi_ok) {
-        HiLog::Error(LABEL, "failed to get %{public}s from HiTraceId Js Object.",
+        HILOG_ERROR(LOG_CORE, "failed to get %{public}s from HiTraceId Js Object.",
             propertyName.c_str());
         return UINT64_T_PRO_DEFAULT_VALUE;
     }
     if (type != napi_valuetype::napi_number) {
-        HiLog::Error(LABEL, "type is not napi_number property.");
+        HILOG_ERROR(LOG_CORE, "type is not napi_number property.");
         return UINT64_T_PRO_DEFAULT_VALUE;
     }
     int64_t numberValue = 0;
@@ -200,7 +204,7 @@ uint64_t NapiHitraceUtil::GetPropertyInt64(const napi_env env, const napi_value&
     if (status == napi_ok) {
         return numberValue;
     }
-    HiLog::Error(LABEL, "failed to get napi_number property from HiTraceId Js Object.");
+    HILOG_ERROR(LOG_CORE, "failed to get napi_number property from HiTraceId Js Object.");
     return UINT64_T_PRO_DEFAULT_VALUE;
 }
 
@@ -211,7 +215,7 @@ uint64_t NapiHitraceUtil::GetPropertyBigInt64(const napi_env env, const napi_val
     napi_valuetype type;
     napi_status status = napi_typeof(env, propertyValue, &type);
     if (status != napi_ok) {
-        HiLog::Error(LABEL, "failed to get %{public}s from HiTraceId Js Object.",
+        HILOG_ERROR(LOG_CORE, "failed to get %{public}s from HiTraceId Js Object.",
             propertyName.c_str());
         return UINT64_T_PRO_DEFAULT_VALUE;
     }

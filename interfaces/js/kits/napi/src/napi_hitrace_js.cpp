@@ -22,7 +22,11 @@
 using namespace OHOS::HiviewDFX;
 
 namespace {
-constexpr HiLogLabel LABEL = { LOG_CORE, 0xD002D03, "HITRACE_JS_NAPI" };
+#undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD002D03
+
+#undef LOG_TAG
+#define LOG_TAG "HITRACE_JS_NAPI"
 constexpr uint32_t BUF_SIZE_64 = 64;
 
 bool ParseInt32Param(const napi_env& env, const napi_value& origin, int& dest)
@@ -73,20 +77,20 @@ static napi_value Begin(napi_env env, napi_callback_info info)
     napi_value val = nullptr;
     NapiHitraceUtil::CreateHiTraceIdJsObject(env, traceId, val);
     if (paramNum != ParamNum::TOTAL_ONE && paramNum != ParamNum::TOTAL_TWO) {
-        HiLog::Error(LABEL,
+        HILOG_ERROR(LOG_CORE,
             "failed to begin a new trace, count of parameters is not equal to 1 or 2");
         return val;
     }
     std::string name;
     if (!ParseStringParam(env, params[ParamIndex::PARAM_FIRST], name)) {
-        HiLog::Error(LABEL, "name type must be string.");
+        HILOG_ERROR(LOG_CORE, "name type must be string.");
         return val;
     }
     int flag = HiTraceFlag::HITRACE_FLAG_DEFAULT;
     if (paramNum == ParamNum::TOTAL_TWO &&
         !ParseInt32Param(env, params[ParamIndex::PARAM_SECOND], flag) &&
         !IsNullOrUndefinedType(env, params[ParamIndex::PARAM_SECOND])) {
-        HiLog::Error(LABEL, "flag type must be number, null or undefined.");
+        HILOG_ERROR(LOG_CORE, "flag type must be number, null or undefined.");
         return val;
     }
     traceId = HiTraceChain::Begin(name, flag);
@@ -102,13 +106,13 @@ static napi_value End(napi_env env, napi_callback_info info)
     void* data = nullptr;
     NAPI_CALL(env, napi_get_cb_info(env, info, &paramNum, params, &thisArg, &data));
     if (paramNum != ParamNum::TOTAL_ONE) {
-        HiLog::Error(LABEL,
+        HILOG_ERROR(LOG_CORE,
             "failed to end trace by trace id, count of parameters is not equal to 1.");
         return nullptr;
     }
     HiTraceId traceId;
     if (!ParseTraceIdObject(env, params[ParamIndex::PARAM_FIRST], traceId)) {
-        HiLog::Error(LABEL, "hitarce id type must be object.");
+        HILOG_ERROR(LOG_CORE, "hitarce id type must be object.");
         return nullptr;
     }
     HiTraceChain::End(traceId);
@@ -131,13 +135,13 @@ static napi_value SetId(napi_env env, napi_callback_info info)
     void* data = nullptr;
     NAPI_CALL(env, napi_get_cb_info(env, info, &paramNum, params, &thisArg, &data));
     if (paramNum != ParamNum::TOTAL_ONE) {
-        HiLog::Error(LABEL,
+        HILOG_ERROR(LOG_CORE,
             "failed to set a new id for a trace, count of parameters is not equal to 1.");
         return nullptr;
     }
     HiTraceId traceId;
     if (!ParseTraceIdObject(env, params[ParamIndex::PARAM_FIRST], traceId)) {
-        HiLog::Error(LABEL, "hitarce id type must be object.");
+        HILOG_ERROR(LOG_CORE, "hitarce id type must be object.");
         return nullptr;
     }
     HiTraceChain::SetId(traceId);
@@ -166,32 +170,32 @@ static napi_value Tracepoint(napi_env env, napi_callback_info info)
     void* data = nullptr;
     NAPI_CALL(env, napi_get_cb_info(env, info, &paramNum, params, &thisArg, &data));
     if (paramNum != ParamNum::TOTAL_THREE && paramNum != ParamNum::TOTAL_FOUR) {
-        HiLog::Error(LABEL,
+        HILOG_ERROR(LOG_CORE,
             "failed to trace point, count of parameters is not equal to 3 or 4.");
         return nullptr;
     }
     int communicationModeInt = 0;
     if (!ParseInt32Param(env, params[ParamIndex::PARAM_FIRST], communicationModeInt)) {
-        HiLog::Error(LABEL, "HiTraceCommunicationMode type must be number.");
+        HILOG_ERROR(LOG_CORE, "HiTraceCommunicationMode type must be number.");
         return nullptr;
     }
     HiTraceCommunicationMode communicationMode = HiTraceCommunicationMode(communicationModeInt);
     int tracePointTypeInt = 0;
     if (!ParseInt32Param(env, params[ParamIndex::PARAM_SECOND], tracePointTypeInt)) {
-        HiLog::Error(LABEL, "HiTraceTracePointType type must be number.");
+        HILOG_ERROR(LOG_CORE, "HiTraceTracePointType type must be number.");
         return nullptr;
     }
     HiTraceTracepointType tracePointType = HiTraceTracepointType(tracePointTypeInt);
     HiTraceId traceId;
     if (!ParseTraceIdObject(env, params[ParamIndex::PARAM_THIRD], traceId)) {
-        HiLog::Error(LABEL, "hitarce id type must be object.");
+        HILOG_ERROR(LOG_CORE, "hitarce id type must be object.");
         return nullptr;
     }
     std::string description;
     if (paramNum == ParamNum::TOTAL_FOUR &&
         !ParseStringParam(env, params[ParamIndex::PARAM_FORTH], description) &&
         !IsNullOrUndefinedType(env, params[ParamIndex::PARAM_FORTH])) {
-        HiLog::Error(LABEL, "description type must be string, null or undefined.");
+        HILOG_ERROR(LOG_CORE, "description type must be string, null or undefined.");
         return nullptr;
     }
     HiTraceChain::Tracepoint(communicationMode, tracePointType, traceId, "%s", description.c_str());
@@ -209,13 +213,13 @@ static napi_value IsValid(napi_env env, napi_callback_info info)
     napi_value val = nullptr;
     napi_get_boolean(env, isValid, &val);
     if (paramNum != ParamNum::TOTAL_ONE) {
-        HiLog::Error(LABEL,
+        HILOG_ERROR(LOG_CORE,
             "failed to check whether a id is valid or not, count of parameters is not equal to 1.");
         return val;
     }
     HiTraceId traceId;
     if (!ParseTraceIdObject(env, params[ParamIndex::PARAM_FIRST], traceId)) {
-        HiLog::Error(LABEL, "hitarce id type must be object.");
+        HILOG_ERROR(LOG_CORE, "hitarce id type must be object.");
         return val;
     }
     isValid = traceId.IsValid();
@@ -234,18 +238,18 @@ static napi_value IsFlagEnabled(napi_env env, napi_callback_info info)
     napi_value val = nullptr;
     napi_get_boolean(env, isFalgEnabled, &val);
     if (paramNum != ParamNum::TOTAL_TWO) {
-        HiLog::Error(LABEL,
+        HILOG_ERROR(LOG_CORE,
             "failed to check whether a flag is enabled in a trace id, count of parameters is not equal to 2.");
         return val;
     }
     HiTraceId traceId;
     if (!ParseTraceIdObject(env, params[ParamIndex::PARAM_FIRST], traceId)) {
-        HiLog::Error(LABEL, "hitarce id type must be object.");
+        HILOG_ERROR(LOG_CORE, "hitarce id type must be object.");
         return val;
     }
     int traceFlagInt = 0;
     if (!ParseInt32Param(env, params[ParamIndex::PARAM_SECOND], traceFlagInt)) {
-        HiLog::Error(LABEL, "HiTraceFlag type must be number.");
+        HILOG_ERROR(LOG_CORE, "HiTraceFlag type must be number.");
         return val;
     }
     HiTraceFlag traceFlag = HiTraceFlag(traceFlagInt);
@@ -262,18 +266,18 @@ static napi_value EnableFlag(napi_env env, napi_callback_info info)
     void* data = nullptr;
     NAPI_CALL(env, napi_get_cb_info(env, info, &paramNum, params, &thisArg, &data));
     if (paramNum != ParamNum::TOTAL_TWO) {
-        HiLog::Error(LABEL,
+        HILOG_ERROR(LOG_CORE,
             "failed to enable a flag for a trace id, count of parameters is not equal to 2.");
         return nullptr;
     }
     HiTraceId traceId;
     if (!ParseTraceIdObject(env, params[ParamIndex::PARAM_FIRST], traceId)) {
-        HiLog::Error(LABEL, "hitarce id type must be object.");
+        HILOG_ERROR(LOG_CORE, "hitarce id type must be object.");
         return nullptr;
     }
     int traceFlagInt = 0;
     if (!ParseInt32Param(env, params[ParamIndex::PARAM_SECOND], traceFlagInt)) {
-        HiLog::Error(LABEL, "HiTraceFlag type must be number.");
+        HILOG_ERROR(LOG_CORE, "HiTraceFlag type must be number.");
         return nullptr;
     }
     HiTraceFlag traceFlag = HiTraceFlag(traceFlagInt);
