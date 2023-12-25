@@ -404,6 +404,9 @@ void SetClock(const std::string& clockType)
         return;
     }
 
+    allClocks.erase(allClocks.find_last_not_of(" \n") + 1);
+    allClocks.push_back(' ');
+
     std::set<std::string> allClockTypes;
     size_t curPos = 0;
     for (size_t i = 0; i < allClocks.size(); i++) {
@@ -412,6 +415,7 @@ void SetClock(const std::string& clockType)
             curPos = i + 1;
         }
     }
+
     std::string currentClockType;
     for (auto i : allClockTypes) {
         if (clockType.compare(i) == 0) {
@@ -423,10 +427,7 @@ void SetClock(const std::string& clockType)
             currentClockType = i;
         }
     }
-    if (currentClockType.size() == 0) {
-        HILOG_INFO(LOG_CORE, "SetClock: clockType is boot now.");
-        return;
-    }
+
     const int marks = 2;
     if (clockType.compare(currentClockType.substr(1, currentClockType.size() - marks)) == 0) {
         HILOG_INFO(LOG_CORE, "SetClock: set clock %{public}s success.", clockType.c_str());
