@@ -71,12 +71,12 @@ void DynamicBuffer::UpdateTraceLoad()
     for (int i = 0; i < cpuNums; i++) {
         TraceStatsInfo traceStats = {};
         if (!GetPerCpuStatsInfo(i, traceStats)) {
-            HiLog::Error(LABEL, "GetPerCpuStatsInfo failed.");
+            HILOG_ERROR(LOG_CORE, "GetPerCpuStatsInfo failed.");
             return;
         }
         int duration = floor(traceStats.nowTs - traceStats.oldTs);
         if (duration == 0) {
-            HiLog::Error(LABEL, "nowTs:%{public}lf, oldTs:%{public}lf", traceStats.nowTs, traceStats.oldTs);
+            HILOG_ERROR(LOG_CORE, "nowTs:%{public}lf, oldTs:%{public}lf", traceStats.nowTs, traceStats.oldTs);
             return;
         }
         traceStats.averageTrace = traceStats.bytes / duration;
@@ -96,7 +96,7 @@ void DynamicBuffer::CalculateBufferSize(std::vector<int>& result)
     if (static_cast<int>(allTraceStats.size()) != cpuNums) {
         return;
     }
-    HiLog::Debug(LABEL, "hitrace: average = %{public}d.", totalAverage / cpuNums);
+    HILOG_DEBUG(LOG_CORE, "hitrace: average = %{public}d.", totalAverage / cpuNums);
 
     int totalBonus = 0;
     if (maxAverage > LOW_THRESHOLD) {

@@ -26,8 +26,12 @@ constexpr int FIRST_ARG_INDEX = 0;
 constexpr int SECOND_ARG_INDEX = 1;
 constexpr int ARGC_NUMBER_TWO = 2;
 constexpr int ARGC_NUMBER_THREE = 3;
-constexpr uint64_t HITRACE_METER_TAG = 0xD002D33;
-constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, HITRACE_METER_TAG, "HITRACE_METER_JS"};
+#undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD002D33
+
+#undef LOG_TAG
+#define LOG_TAG "HITRACE_METER_JS"
+
 using STR_NUM_PARAM_FUNC = std::function<bool(std::string, napi_value&)>;
 
 napi_value ParseParams(napi_env& env, napi_callback_info& info, size_t& argc, napi_value* argv)
@@ -42,11 +46,11 @@ bool TypeCheck(const napi_env& env, const napi_value& value, const napi_valuetyp
     napi_valuetype valueType;
     napi_status status = napi_typeof(env, value, &valueType);
     if (status != napi_ok) {
-        HiLog::Error(LABEL, "Failed to get the type of the argument.");
+        HILOG_ERROR(LOG_CORE, "Failed to get the type of the argument.");
         return false;
     }
     if (valueType != expectType) {
-        HiLog::Error(LABEL, "Type of the parameter is invalid.");
+        HILOG_ERROR(LOG_CORE, "Type of the parameter is invalid.");
         return false;
     }
     return true;
@@ -108,7 +112,7 @@ bool JsStrNumParamsFunc(napi_env& env, napi_callback_info& info, STR_NUM_PARAM_F
     napi_value argv[ARGC_NUMBER_TWO];
     ParseParams(env, info, argc, argv);
     if (argc != ARGC_NUMBER_TWO) {
-        HiLog::Error(LABEL, "Wrong number of parameters.");
+        HILOG_ERROR(LOG_CORE, "Wrong number of parameters.");
         return false;
     }
     std::string name;
@@ -129,7 +133,7 @@ static napi_value JSTraceStart(napi_env env, napi_callback_info info)
     ParseParams(env, info, argc, argv);
     NAPI_ASSERT(env, argc >= ARGC_NUMBER_TWO, "Wrong number of arguments");
     if (argc < ARGC_NUMBER_TWO) {
-        HiLog::Error(LABEL, "Wrong number of parameters.");
+        HILOG_ERROR(LOG_CORE, "Wrong number of parameters.");
     }
     std::string name;
     if (!ParseStringParam(env, argv[FIRST_ARG_INDEX], name)) {

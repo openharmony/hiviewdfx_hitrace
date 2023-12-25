@@ -34,9 +34,11 @@ struct TagCategory {
     std::vector<std::string> sysFiles;
 };
 
+#undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD002D33
 
-constexpr uint64_t HITRACE_TAG = 0xD002D33;
-constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, HITRACE_TAG, "HitraceInfo"};
+#undef LOG_TAG
+#define LOG_TAG "HitraceInfo"
 
 /**
  * Canonicalization and verification of file paths.
