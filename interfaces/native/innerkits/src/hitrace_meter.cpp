@@ -70,10 +70,21 @@ enum MarkerType { MARKER_BEGIN, MARKER_END, MARKER_ASYNC_BEGIN, MARKER_ASYNC_END
 #undef LOG_TAG
 #define LOG_TAG "HitraceMeter"
 
+inline void CreateCacheHandle()
+{
+    const char* devValue = "true";
+    g_cachedHandle = CachedParameterCreate(KEY_TRACE_TAG.c_str(), devValue);
+}
+
 inline void UpdateSysParamTags()
 {
     // Get the system parameters of KEY_TRACE_TAG.
     int changed = 0;
+    if (UNEXPECTANTLY(g_cachedHandle == nullptr)) {
+        CreateCacheHandle();
+        HILOG_ERROR(LOG_CORE, "g_cachedHandle is null.");
+        return;
+    }
     const char *paramValue = CachedParameterGetChanged(g_cachedHandle, &changed);
     if (UNEXPECTANTLY(changed == 1) && paramValue != nullptr) {
         uint64_t tags = 0;
@@ -99,8 +110,7 @@ void OpenTraceMarkerFile()
     }
     // get tags and pid
     g_tagsProperty = OHOS::system::GetUintParameter<uint64_t>(KEY_TRACE_TAG, 0);
-    const char* devValue = "true";
-    g_cachedHandle = CachedParameterCreate(KEY_TRACE_TAG.c_str(), devValue);
+    CreateCacheHandle();
 
     std::string pidStr = std::to_string(getprocpid());
     errno_t ret = strcpy_s(g_pid, PID_BUF_SIZE, pidStr.c_str());
