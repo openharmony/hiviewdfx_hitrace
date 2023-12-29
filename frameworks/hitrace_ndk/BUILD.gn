@@ -22,6 +22,7 @@ ohos_shared_library("hitrace_ndk") {
   sources = [ "hitrace_meter_ndk.c" ]
 
   deps = [ "../../interfaces/native/innerkits:hitrace_meter" ]
+  external_deps = [ "hilog:libhilog" ]
 
   innerapi_tags = [ "ndk" ]
   part_name = "hitrace"
