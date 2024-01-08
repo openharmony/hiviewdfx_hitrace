@@ -55,6 +55,7 @@ constexpr uint32_t SLEEP_ONE_SECOND = 1;
 const uint64_t TAG = HITRACE_TAG_OHOS;
 constexpr int HITRACEID_LEN = 64;
 static string g_traceRootPath;
+static string g_traceHmDir;
 static int g_pid;
 
 bool SetProperty(const string& property, const string& value);
@@ -82,6 +83,9 @@ void  HitraceNDKTest::SetUpTestCase()
         g_traceRootPath = tracefsDir;
     } else {
         HILOG_ERROR(LOG_CORE, "Error: Finding trace folder failed");
+    }
+    if (access((g_traceRootPath + "hongmeng/").c_str(), F_OK) != -1) {
+        g_traceHmDir = "hongmeng/";
     }
     CleanFtrace();
 }
@@ -209,17 +213,34 @@ bool GetTraceResult(const char type, const string& traceName, const HiTraceId* h
     return FindResult(str, list);
 }
 
-static bool WriteStringToFile(const string& fileName, const string& str)
+static bool WriteStrToFileInner(const string& fileName, const string& str)
 {
-    if (g_traceRootPath.empty()) {
+    if (g_traceRootPath == "") {
         HILOG_ERROR(LOG_CORE, "Error: trace path not found.");
         return false;
     }
     ofstream out;
-    out.open(g_traceRootPath + fileName, ios::out);
+    out.open(fileName, ios::out);
     out << str;
     out.close();
     return true;
+}
+
+static bool WriteStringToFile(const std::string& filename, const std::string& str)
+{
+    bool ret = false;
+    if (access((g_traceRootPath + "hongmeng/" + filename).c_str(), W_OK) == 0) {
+        if (WriteStrToFileInner(g_traceRootPath + "hongmeng/" + filename, str)) {
+            ret = true;
+        }
+    }
+    if (access((g_traceRootPath + filename).c_str(), W_OK) == 0) {
+        if (WriteStrToFileInner(g_traceRootPath + filename, str)) {
+            ret = true;
+        }
+    }
+
+    return ret;
 }
 
 bool CleanTrace()
@@ -229,7 +250,7 @@ bool CleanTrace()
         return false;
     }
     ofstream ofs;
-    ofs.open(g_traceRootPath + TRACE_PATH, ofstream::out);
+    ofs.open(g_traceRootPath + g_traceHmDir + TRACE_PATH, ofstream::out);
     if (!ofs.is_open()) {
         HILOG_ERROR(LOG_CORE, "Error: opening trace path failed.");
         return false;
@@ -269,7 +290,7 @@ bool SetFtrace(const string& filename, bool enabled)
 
 bool CleanFtrace()
 {
-    return WriteStringToFile("set_event", "");
+    return WriteStringToFile("events/enable", "0");
 }
 
 vector<string> ReadFile2string(const string& filename)
@@ -355,7 +376,6 @@ HWTEST_F(HitraceNDKTest, StartHiTraceIdTest_002, TestSize.Level0)
     longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
     longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
     longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
-    longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
     longTraceName += "StartHiTraceIdTest002";
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
@@ -403,7 +423,6 @@ HWTEST_F(HitraceNDKTest, StartAsyncHiTraceIdTest_001, TestSize.Level0)
 HWTEST_F(HitraceNDKTest, StartTrace_002, TestSize.Level0)
 {
     std::string longTraceName = "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
-    longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
     longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
     longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
     longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
