@@ -308,7 +308,7 @@ vector<string> ReadFile2string(const string& filename)
 
 vector<string> ReadTrace()
 {
-    return ReadFile2string(g_traceRootPath + TRACE_PATH);
+    return ReadFile2string(g_traceRootPath + g_traceHmDir + TRACE_PATH);
 }
 
 bool RunCmd(const string& cmdstr)
