@@ -227,7 +227,8 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_002, TestSize.Level0)
 HWTEST_F(HitraceDumpTest, DumpForCmdMode_003, TestSize.Level0)
 {
     std::string args = "clockType:boot bufferSize:1024 overwrite:1 ";
-    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::TAG_ERROR);
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     args = "tags:hdc clockType:boot bufferSize:1024 overwrite:1 descriptions:123";
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::TAG_ERROR);
