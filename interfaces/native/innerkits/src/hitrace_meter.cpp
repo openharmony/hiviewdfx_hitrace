@@ -45,6 +45,9 @@ CachedHandle g_cachedHandle;
 
 std::atomic<bool> g_isHitraceMeterDisabled(false);
 std::atomic<bool> g_isHitraceMeterInit(false);
+std::atomic<bool> g_needReloadPid(false);
+std::atomic<bool> g_pidHasReload(false);
+
 std::atomic<uint64_t> g_tagsProperty(HITRACE_TAG_NOT_READY);
 
 const std::string KEY_TRACE_TAG = "debug.hitrace.tags.enableflags";
@@ -93,6 +96,39 @@ inline void UpdateSysParamTags()
     }
 }
 
+bool IsAppspawnProcess()
+{
+    string procName;
+    ifstream cmdline("/proc/self/cmdline");
+    if (cmdline.is_open()) {
+        getline(cmdline, procName, '\0');
+        cmdline.close();
+    }
+    return procName == "appspawn";
+}
+
+void InitPid()
+{
+    std::string pidStr = std::to_string(getprocpid());
+    (void)strcpy_s(g_pid, PID_BUF_SIZE, pidStr.c_str());
+    if (!g_needReloadPid && IsAppspawnProcess()) {
+        // appspawn restarted, all app need init pid again.
+        g_needReloadPid = true;
+    }
+    HILOG_ERROR(LOG_CORE, "pid[%{public}s] first get g_tagsProperty: %{public}s", pidStr.c_str(),
+        to_string(g_tagsProperty.load()).c_str());
+}
+
+void ReloadPid()
+{
+    std::string pidStr = std::to_string(getprocpid());
+    (void)strcpy_s(g_pid, PID_BUF_SIZE, pidStr.c_str());
+    if (!IsAppspawnProcess()) {
+        // appspawn restarted, all app need reload pid again.
+        g_pidHasReload = true;
+    }
+}
+
 // open file "trace_marker".
 void OpenTraceMarkerFile()
 {
@@ -111,14 +147,7 @@ void OpenTraceMarkerFile()
     // get tags and pid
     g_tagsProperty = OHOS::system::GetUintParameter<uint64_t>(KEY_TRACE_TAG, 0);
     CreateCacheHandle();
-
-    std::string pidStr = std::to_string(getprocpid());
-    errno_t ret = strcpy_s(g_pid, PID_BUF_SIZE, pidStr.c_str());
-    if (ret != 0) {
-        strcpy_s(g_pid, PID_BUF_SIZE, pidStr.c_str());
-    }
-    HILOG_ERROR(LOG_CORE, "pid[%{public}s] first get g_tagsProperty: %{public}s", pidStr.c_str(),
-        to_string(g_tagsProperty.load()).c_str());
+    InitPid();
 
     g_isHitraceMeterInit = true;
 }
@@ -169,6 +198,9 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
 {
     if (UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
         return;
+    }
+    if (UNEXPECTANTLY(g_needReloadPid && !g_pidHasReload)) {
+        ReloadPid();
     }
     if (UNEXPECTANTLY(!g_isHitraceMeterInit)) {
         struct timespec ts = { 0, 0 };
