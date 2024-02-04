@@ -135,7 +135,7 @@ ohos_rust_executable("hitrace_example_rust") {
 }
 
 group("hitrace_target") {
-  if (support_executable_fil) {
+  if (support_executable_file) {
     deps = [
       ":bytrace",
       ":hitrace",
