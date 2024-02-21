@@ -126,6 +126,7 @@ ohos_shared_library("hitrace_dump") {
     external_deps += [ "hilog:libhilog" ]
   }
 
+  innerapi_tags = [ "platformsdk" ]
   part_name = "hitrace"
   subsystem_name = "hiviewdfx"
 }
