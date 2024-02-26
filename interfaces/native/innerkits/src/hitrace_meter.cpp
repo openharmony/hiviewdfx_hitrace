@@ -276,6 +276,9 @@ void StartTraceDebug(bool isDebug, uint64_t label, const string& value, float li
 
 void StartTraceArgs(uint64_t label, const char *fmt, ...)
 {
+    if (!IsTagEnabled(label) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+        return;
+    }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
     va_list args;
     va_start(args, fmt);
@@ -290,7 +293,7 @@ void StartTraceArgs(uint64_t label, const char *fmt, ...)
 
 void StartTraceArgsDebug(bool isDebug, uint64_t label, const char *fmt, ...)
 {
-    if (!isDebug) {
+    if (!isDebug || !IsTagEnabled(label) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
         return;
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
@@ -340,6 +343,9 @@ void StartAsyncTraceDebug(bool isDebug, uint64_t label, const string& value, int
 
 void StartAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...)
 {
+    if (!IsTagEnabled(label) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+        return;
+    }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
     va_list args;
 
@@ -355,7 +361,7 @@ void StartAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...)
 
 void StartAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, const char *fmt, ...)
 {
-    if (!isDebug) {
+    if (!isDebug || !IsTagEnabled(label) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
         return;
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
@@ -392,6 +398,9 @@ void FinishAsyncTraceDebug(bool isDebug, uint64_t label, const string& value, in
 
 void FinishAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...)
 {
+    if (!IsTagEnabled(label) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+        return;
+    }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
     va_list args;
 
@@ -407,7 +416,7 @@ void FinishAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...)
 
 void FinishAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, const char *fmt, ...)
 {
-    if (!isDebug) {
+    if (!isDebug || !IsTagEnabled(label) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
         return;
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
@@ -460,6 +469,9 @@ void CountTraceWrapper(uint64_t label, const char *name, int64_t count)
 
 HitraceMeterFmtScoped::HitraceMeterFmtScoped(uint64_t label, const char *fmt, ...) : mTag(label)
 {
+    if (!IsTagEnabled(label) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+        return;
+    }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
     va_list args;
 
