@@ -900,6 +900,18 @@ HWTEST_F(HitraceNDKTest, StartTrace_024, TestSize.Level1)
     ASSERT_TRUE(RunCmd("hitrace -t 1 --trace_clock perf ohos > /data/local/tmp/trace07"));
     ASSERT_TRUE(RunCmd("hitrace -b 2048 -t 10 -o /data/local/tmp/test20.txt sched"));
     ASSERT_TRUE(RunCmd("hitrace -b 2048 -t 10 -o /data/local/tmp/test21 load"));
+    ASSERT_TRUE(RunCmd("hitrace --trace_begin --record app > /data/local/tmp/test22.txt"));
+    ASSERT_TRUE(RunCmd("hitrace --trace_finish --record > /data/local/tmp/test23.txt"));
+    ASSERT_TRUE(RunCmd("hitrace --trace_begin --record app --file_size 10240 > /data/local/tmp/test24.txt"));
+    ASSERT_TRUE(RunCmd("hitrace --trace_begin --record app --file_size 102400 > /data/local/tmp/test25.txt"));
+    ASSERT_TRUE(RunCmd("hitrace --trace_finish --record > /data/local/tmp/test26.txt"));
+    ASSERT_TRUE(RunCmd("hitrace --start_bgsrv > /data/local/tmp/test27.txt"));
+    ASSERT_TRUE(RunCmd("hitrace --dump_bgsrv > /data/local/tmp/test28.txt"));
+    ASSERT_TRUE(RunCmd("hitrace --stop_bgsrv > /data/local/tmp/test29.txt"));
+    ASSERT_TRUE(RunCmd("hitrace -t 3 -b 10240 --text app --output /data/local/tmp/trace.txt"));
+    ASSERT_TRUE(RunCmd("hitrace -t 3 -b 10240 --raw app > /data/local/tmp/test30.txt"));
+    ASSERT_TRUE(RunCmd("hitrace -t 3 -b 10240 --raw app --file_size 102400 > /data/local/tmp/test31.txt"));
+    ASSERT_TRUE(RunCmd("hitrace --trace_finish_nodump > /data/local/tmp/test3.txt"));
 }
 
 /**
@@ -936,6 +948,18 @@ HWTEST_F(HitraceNDKTest, StartTrace_025, TestSize.Level1)
     ASSERT_TRUE(RunCmd("bytrace -t 1 --trace_clock perf ohos > /data/local/tmp/trace07"));
     ASSERT_TRUE(RunCmd("bytrace -b 2048 -t 10 -o /data/local/tmp/test20.txt sched"));
     ASSERT_TRUE(RunCmd("bytrace -b 2048 -t 10 -o /data/local/tmp/test21 load"));
+    ASSERT_TRUE(RunCmd("bytrace --trace_begin --record app > /data/local/tmp/test22.txt"));
+    ASSERT_TRUE(RunCmd("bytrace --trace_finish --record > /data/local/tmp/test23.txt"));
+    ASSERT_TRUE(RunCmd("bytrace --trace_begin --record app --file_size 10240 > /data/local/tmp/test24.txt"));
+    ASSERT_TRUE(RunCmd("bytrace --trace_begin --record app --file_size 102400 > /data/local/tmp/test25.txt"));
+    ASSERT_TRUE(RunCmd("bytrace --trace_finish --record > /data/local/tmp/test26.txt"));
+    ASSERT_TRUE(RunCmd("bytrace --start_bgsrv > /data/local/tmp/test27.txt"));
+    ASSERT_TRUE(RunCmd("bytrace --dump_bgsrv > /data/local/tmp/test28.txt"));
+    ASSERT_TRUE(RunCmd("bytrace --stop_bgsrv > /data/local/tmp/test29.txt"));
+    ASSERT_TRUE(RunCmd("bytrace -t 3 -b 10240 --text app --output /data/local/tmp/trace.txt"));
+    ASSERT_TRUE(RunCmd("bytrace -t 3 -b 10240 --raw app > /data/local/tmp/test30.txt"));
+    ASSERT_TRUE(RunCmd("bytrace -t 3 -b 10240 --raw app --file_size 102400 > /data/local/tmp/test31.txt"));
+    ASSERT_TRUE(RunCmd("bytrace --trace_finish_nodump > /data/local/tmp/test3.txt"));
 }
 
 /**
