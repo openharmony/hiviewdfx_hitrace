@@ -47,6 +47,7 @@ ohos_shared_library("hitracemeter_napi") {
   external_deps = [
     "hilog:libhilog",
     "napi:ace_napi",
+    "storage_service:storage_manager_acl",
   ]
 
   relative_install_dir = "module"

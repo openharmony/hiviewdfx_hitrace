@@ -27,7 +27,8 @@
         "hilog_lite",
         "hiview",
         "init",
-        "napi"
+        "napi",
+        "storage_service"
       ],
       "third_party": [
         "bounds_checking_function",

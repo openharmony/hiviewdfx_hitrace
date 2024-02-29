@@ -156,6 +156,20 @@ void CountTraceDebug(bool isDebug, uint64_t label, const std::string& name, int6
 void CountTraceWrapper(uint64_t label, const char *name, int64_t count);
 bool IsTagEnabled(uint64_t tag);
 
+enum RetType {
+    RET_FAIL = -1,
+    RET_SUCC = 0,
+    RET_REPEAT = 1,
+};
+
+enum TraceFlag {
+    FLAG_MAIN_THREAD = 1,
+    FLAG_ALL_THREAD = 2
+};
+
+int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std::string& fileName);
+int StopCaptureAppTrace(void);
+
 class HitraceScoped {
 public:
     inline HitraceScoped(uint64_t tag, const std::string &value) : mTag(tag)
