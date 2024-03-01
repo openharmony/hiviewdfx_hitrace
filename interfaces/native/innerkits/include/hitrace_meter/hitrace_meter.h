@@ -159,7 +159,7 @@ bool IsTagEnabled(uint64_t tag);
 enum RetType {
     RET_FAIL = -1,
     RET_SUCC = 0,
-    RET_REPEAT = 1,
+    RET_STOPPED = 1,
 };
 
 enum TraceFlag {
