@@ -75,7 +75,7 @@ constexpr const int PID_STR_MAX = 7;
 constexpr const int PREFIX_MAX_SIZE = 128; // comm-pid (tgid) [cpu] .... ts.tns: tracing_mark_write:
 constexpr const int TRACE_TXT_HEADER_MAX = 1024;
 constexpr const int CPU_CORE_NUM = 16;
-constexpr const int DEFAULT_CACHE_SIZE = 4 * 1024 * 1024;
+constexpr const int DEFAULT_CACHE_SIZE = 32 * 1024;
 constexpr const int NS_TO_MS = 1000;
 int g_tgid = -1;
 uint64_t g_traceEventNum = 0;
@@ -93,13 +93,13 @@ std::string TRACE_TXT_HEADER_FORMAT = R"(# tracer: nop
 #
 # entries-in-buffer/entries-written: %-21s   #P:%-3s
 #
-#                                            _-----=> irqs-off
-#                                           / _----=> need-resched
-#                                          | / _---=> hardirq/softirq
-#                                          || / _--=> preempt-depth
-#                                          ||| /     delay
-#             TASK-PID        TGID   CPU#  ||||    TIMESTAMP  FUNCTION
-#                |  |           |      |   ||||       |         |
+#                                          _-----=> irqs-off
+#                                         / _----=> need-resched
+#                                        | / _---=> hardirq/softirq
+#                                        || / _--=> preempt-depth
+#                                        ||| /     delay
+#           TASK-PID       TGID    CPU#  ||||   TIMESTAMP  FUNCTION
+#              | |           |       |   ||||      |         |
 )";
 
 #undef LOG_DOMAIN
@@ -391,16 +391,16 @@ int SetAppTraceBuffer(char* buf, const int len, MarkerType type, const std::stri
 
     int bytes = 0;
     if (type == MARKER_BEGIN) {
-        bytes = snprintf_s(buf, len, len - 1, "    %s [%03d] .... %lu.%06lu: tracing_mark_write: B|%s|H:%s \n",
-                g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, g_pid, name.c_str());
+        bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: B|%s|H:%s \n",
+            g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, g_pid, name.c_str());
     } else if (type == MARKER_END) {
-        bytes = snprintf_s(buf, len, len - 1, "    %s [%03d] .... %lu.%06lu: tracing_mark_write: E|%s|\n",
-                g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, g_pid);
+        bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: E|%s|\n",
+            g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, g_pid);
     } else {
         char marktypestr = g_markTypes[type];
-        bytes = snprintf_s(buf, len, len - 1, "    %s [%03d] .... %lu.%06lu: tracing_mark_write: %c|%s|H:%s %lld\n",
-                g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, marktypestr,
-                g_pid, name.c_str(), value);
+        bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: %c|%s|H:%s %lld\n",
+            g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, marktypestr,
+            g_pid, name.c_str(), value);
     }
 
     return bytes;
@@ -792,8 +792,9 @@ bool IsTagEnabled(uint64_t tag)
     return ((tag & g_tagsProperty) == tag);
 }
 
-// For native app, the caller is responsible for passing in the fileName of the full path.
-// For app, fileName as the spread parameter(/data/storage/el2/log/trace/appname_date_time.trace)
+// For native process, the caller is responsible passing the full path of the fileName.
+// For hap application, StartCaputreAppTrace() fill fileName
+// as /data/storage/el2/log/trace/$(processname)_$(date)_&(time).trace and return to caller.
 int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std::string& fileName)
 {
     g_traceBuffer = std::make_unique<char[]>(DEFAULT_CACHE_SIZE);
