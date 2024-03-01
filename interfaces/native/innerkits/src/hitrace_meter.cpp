@@ -31,6 +31,7 @@
 #include "parameters.h"
 #include "hitrace_meter.h"
 #include "hitrace/tracechain.h"
+#include "storage_acl.h"
 
 using namespace std;
 using namespace OHOS::HiviewDFX;
@@ -73,10 +74,10 @@ constexpr const int COMM_STR_MAX = 14;
 constexpr const int PID_STR_MAX = 7;
 constexpr const int PREFIX_MAX_SIZE = 128; // comm-pid (tgid) [cpu] .... ts.tns: tracing_mark_write:
 constexpr const int TRACE_TXT_HEADER_MAX = 1024;
+constexpr const int CPU_CORE_NUM = 16;
 constexpr const int DEFAULT_CACHE_SIZE = 4 * 1024 * 1024;
 constexpr const int NS_TO_MS = 1000;
 int g_tgid = -1;
-int g_cpuCoreNum = 0;
 uint64_t g_traceEventNum = 0;
 int g_writeOffset = 0;
 int g_fileSize = 0;
@@ -248,10 +249,19 @@ bool GetProcData(const char* file, char* buffer, const size_t bufferSize)
 
 bool SetAppFileName(std::string& fileName)
 {
-    fileName += "trace/";
+    if (!fileName.empty()) {
+        return true;
+    }
+
+    fileName = "/data/storage/el2/log/trace/";
     mode_t permissions = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH; // 0755权限
     if (access(fileName.c_str(), F_OK) != 0 && mkdir(fileName.c_str(), permissions) == -1) {
         HILOG_ERROR(LOG_CORE, "failed to create dir=%{public}s:%{public}d", fileName.c_str(), errno);
+        return false;
+    }
+
+    if (OHOS::StorageDaemon::AclSetAccess(fileName, "g:1201:rwx") != 0) {
+        HILOG_ERROR(LOG_CORE, "failed to set acl access dir(%{public}s): %{public}d", fileName.c_str(), errno);
         return false;
     }
 
@@ -270,7 +280,7 @@ bool SetAppFileName(std::string& fileName)
     (void)sprintf_s(timeBuffer, timeBufferSize, "%04d%02d%02d_%02d%02d%02d", tmTime.tm_year + yearCount,
         tmTime.tm_mon + 1, tmTime.tm_mday, tmTime.tm_hour, tmTime.tm_min, tmTime.tm_sec);
 
-    fileName += std::string(g_appName) + "_" + std::string(timeBuffer) + ".sys";
+    fileName += std::string(g_appName) + "_" + std::string(timeBuffer) + ".trace";
     return true;
 }
 
@@ -331,6 +341,12 @@ void SetCommStr()
 
 void SetMainThreadInfo()
 {
+    if (strlen(g_appName) == 0) {
+        if (!GetProcData("/proc/self/cmdline", g_appName, NAME_NORMAL_LEN)) {
+            HILOG_ERROR(LOG_CORE, "get app name failed, %{public}d", errno);
+        }
+    }
+
     g_appTracePrefix = std::string(g_appName);
     SetCommStr();
     std::string pidStr = std::string(g_pid);
@@ -376,15 +392,15 @@ int SetAppTraceBuffer(char* buf, const int len, MarkerType type, const std::stri
     int bytes = 0;
     if (type == MARKER_BEGIN) {
         bytes = snprintf_s(buf, len, len - 1, "    %s [%03d] .... %lu.%06lu: tracing_mark_write: B|%s|H:%s \n",
-            g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, g_pid, name.c_str());
+                g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, g_pid, name.c_str());
     } else if (type == MARKER_END) {
         bytes = snprintf_s(buf, len, len - 1, "    %s [%03d] .... %lu.%06lu: tracing_mark_write: E|%s|\n",
-            g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, g_pid);
+                g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, g_pid);
     } else {
         char marktypestr = g_markTypes[type];
         bytes = snprintf_s(buf, len, len - 1, "    %s [%03d] .... %lu.%06lu: tracing_mark_write: %c|%s|H:%s %lld\n",
-            g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, marktypestr,
-            g_pid, name.c_str(), value);
+                g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, marktypestr,
+                g_pid, name.c_str(), value);
     }
 
     return bytes;
@@ -776,6 +792,8 @@ bool IsTagEnabled(uint64_t tag)
     return ((tag & g_tagsProperty) == tag);
 }
 
+// For native app, the caller is responsible for passing in the fileName of the full path.
+// For app, fileName as the spread parameter(/data/storage/el2/log/trace/appname_date_time.trace)
 int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std::string& fileName)
 {
     g_traceBuffer = std::make_unique<char[]>(DEFAULT_CACHE_SIZE);
@@ -787,7 +805,6 @@ int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std:
     g_appFlag = flag;
     g_appTag = tags;
     g_fileLimitSize = limitSize;
-    g_cpuCoreNum = sysconf(_SC_NPROCESSORS_ONLN);
 
     if (!SetAppFileName(fileName)) {
         HILOG_ERROR(LOG_CORE, "set appFileName failed: %{public}d(%{public}s)", errno, strerror(errno));
@@ -827,7 +844,7 @@ int StopCaptureAppTrace()
     std::unique_lock<std::recursive_mutex> lock(g_appTraceMutex);
     if (g_appFd == -1) {
         HILOG_INFO(LOG_CORE, "CaptureAppTrace stopped, return");
-        return RET_REPEAT;
+        return RET_STOPPED;
     }
 
     // Write cache data
@@ -836,7 +853,7 @@ int StopCaptureAppTrace()
     std::string eventNumStr = std::to_string(g_traceEventNum) + "/" + std::to_string(g_traceEventNum);
     std::vector<char> buffer(TRACE_TXT_HEADER_MAX, '\0');
     int used = snprintf_s(buffer.data(), buffer.size(), buffer.size() - 1, TRACE_TXT_HEADER_FORMAT.c_str(),
-                          eventNumStr.c_str(), std::to_string(g_cpuCoreNum).c_str());
+                          eventNumStr.c_str(), std::to_string(CPU_CORE_NUM).c_str());
     if (used <= 0) {
         HILOG_ERROR(LOG_CORE, "format trace header failed: %{public}d(%{public}s)", errno, strerror(errno));
         return RET_FAIL;

@@ -21,7 +21,6 @@
 #include <hilog/log.h>
 #include "hitrace_meter.h"
 #include "napi_hitrace_meter.h"
-#include "storage_acl.h"
 
 using namespace OHOS::HiviewDFX;
 namespace {
@@ -273,11 +272,7 @@ static napi_value JSStartCaptureAppTrace(napi_env env, napi_callback_info info)
         return nullptr;
     }
 
-    std::string file = "/data/storage/el2/log/";
-    if (OHOS::StorageDaemon::AclSetAccess(file, "g:1201:rwx") != 0) {
-        HILOG_ERROR(LOG_CORE, "failed to set acl access dir(%{public}s): %{public}d", file.c_str(), errno);
-        return nullptr;
-    }
+    std::string file = "";
     StartCaptureAppTrace((TraceFlag)flag, tags, limitSize, file);
 
     napi_value napiFile;
