@@ -17,7 +17,7 @@
 #include <functional>
 #include <map>
 #include <string>
-#include <inttypes.h>
+#include <cinttypes>
 #include <hilog/log.h>
 #include "hitrace_meter.h"
 #include "napi_hitrace_meter.h"
