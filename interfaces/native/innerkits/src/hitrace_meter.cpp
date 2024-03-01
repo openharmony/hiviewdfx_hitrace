@@ -383,7 +383,7 @@ int SetAppTraceBuffer(char* buf, const int len, MarkerType type, const std::stri
     } else {
         char marktypestr = g_markTypes[type];
         bytes = snprintf_s(buf, len, len - 1, "    %s [%03d] .... %lu.%06lu: tracing_mark_write: %c|%s|H:%s %lld\n",
-            g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, marktypestr, 
+            g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, marktypestr,
             g_pid, name.c_str(), value);
     }
 
