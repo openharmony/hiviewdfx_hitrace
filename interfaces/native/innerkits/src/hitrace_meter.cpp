@@ -59,6 +59,8 @@ const std::string KEY_TRACE_TAG = "debug.hitrace.tags.enableflags";
 const std::string KEY_APP_NUMBER = "debug.hitrace.app_number";
 const std::string KEY_RO_DEBUGGABLE = "ro.debuggable";
 const std::string KEY_PREFIX = "debug.hitrace.app_";
+const std::string SANDBOX_PATH = "/data/storage/el2/log/";
+const std::string PHYSICAL_PATH = "/data/app/el2/100/log/";
 
 constexpr int VAR_NAME_MAX_SIZE = 400;
 constexpr int NAME_NORMAL_LEN = 512;
@@ -229,61 +231,6 @@ void AddTraceMarkerLarge(const std::string& name, MarkerType type, const int64_t
     WriteToTraceMarker(record.c_str(), record.size());
 }
 
-bool GetProcData(const char* file, char* buffer, const size_t bufferSize)
-{
-    FILE* fp = fopen(file, "r");
-    if (fp == nullptr) {
-        HILOG_ERROR(LOG_CORE, "%s: open %{public}s falied(%{public}s)!", __func__, file, strerror(errno));
-        return false;
-    }
-
-    if (fgets(buffer, bufferSize, fp) == nullptr) {
-        fclose(fp);
-        HILOG_ERROR(LOG_CORE, "%s: fgets %{public}s falied(%{public}s)!", __func__, file, strerror(errno));
-        return false;
-    }
-
-    fclose(fp);
-    return true;
-}
-
-bool SetAppFileName(std::string& fileName)
-{
-    if (!fileName.empty()) {
-        return true;
-    }
-
-    fileName = "/data/storage/el2/log/trace/";
-    mode_t permissions = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH; // 0755权限
-    if (access(fileName.c_str(), F_OK) != 0 && mkdir(fileName.c_str(), permissions) == -1) {
-        HILOG_ERROR(LOG_CORE, "failed to create dir=%{public}s:%{public}d", fileName.c_str(), errno);
-        return false;
-    }
-
-    if (OHOS::StorageDaemon::AclSetAccess(fileName, "g:1201:rwx") != 0) {
-        HILOG_ERROR(LOG_CORE, "failed to set acl access dir(%{public}s): %{public}d", fileName.c_str(), errno);
-        return false;
-    }
-
-    if (!GetProcData("/proc/self/cmdline", g_appName, NAME_NORMAL_LEN)) {
-        HILOG_ERROR(LOG_CORE, "get app name failed, %{public}d", errno);
-        return false;
-    }
-
-    time_t now = time(nullptr);
-    struct tm tmTime;
-    localtime_r(&now, &tmTime);
-
-    const int yearCount = 1900;
-    const int timeBufferSize = 16;
-    char timeBuffer[timeBufferSize] = {0};
-    (void)sprintf_s(timeBuffer, timeBufferSize, "%04d%02d%02d_%02d%02d%02d", tmTime.tm_year + yearCount,
-        tmTime.tm_mon + 1, tmTime.tm_mday, tmTime.tm_hour, tmTime.tm_min, tmTime.tm_sec);
-
-    fileName += std::string(g_appName) + "_" + std::string(timeBuffer) + ".trace";
-    return true;
-}
-
 void WriteOnceLog(LogLevel loglevel, const std::string& logStr, bool& isWrite)
 {
     if (!isWrite) {
@@ -302,6 +249,99 @@ void WriteOnceLog(LogLevel loglevel, const std::string& logStr, bool& isWrite)
         }
         isWrite = true;
     }
+}
+
+bool GetProcData(const char* file, char* buffer, const size_t bufferSize)
+{
+    FILE* fp = fopen(file, "r");
+    if (fp == nullptr) {
+        static bool isWriteLog = false;
+        std::string errLogStr = std::string(__func__) + ": open " + std::string(file) + " falied";
+        WriteOnceLog(LOG_ERROR, errLogStr, isWriteLog);
+        return false;
+    }
+
+    if (fgets(buffer, bufferSize, fp) == nullptr) {
+        (void)fclose(fp);
+        static bool isWriteLog = false;
+        std::string errLogStr = std::string(__func__) + ": fgets " + std::string(file) + " falied";
+        WriteOnceLog(LOG_ERROR, errLogStr, isWriteLog);
+        return false;
+    }
+
+    if (fclose(fp) != 0) {
+        static bool isWriteLog = false;
+        std::string errLogStr = std::string(__func__) + ": fclose " + std::string(file) + " falied";
+        WriteOnceLog(LOG_ERROR, errLogStr, isWriteLog);
+        return false;
+    }
+
+    return true;
+}
+
+int SetAppFileName(std::string& destFileName, std::string& fileName)
+{
+    destFileName = SANDBOX_PATH + "trace/";
+    mode_t permissions = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH; // 0755权限
+    if (access(destFileName.c_str(), F_OK) != 0 && mkdir(destFileName.c_str(), permissions) == -1) {
+        HILOG_ERROR(LOG_CORE, "failed to create dir(%{public}s):%{public}d(%{public}s)", destFileName.c_str(),
+            errno, strerror(errno));
+        return RET_FAIL_MKDIR;
+    }
+
+    if (OHOS::StorageDaemon::AclSetAccess(destFileName, "g:1201:rwx") != 0) {
+        HILOG_ERROR(LOG_CORE, "failed to set acl access dir(%{public}s): %{public}d", destFileName.c_str(), errno);
+        return RET_FAIL_SETACL;
+    }
+
+    if (!GetProcData("/proc/self/cmdline", g_appName, NAME_NORMAL_LEN)) {
+        HILOG_ERROR(LOG_CORE, "get app name failed, %{public}d", errno);
+        return RET_FAIL;
+    }
+
+    time_t now = time(nullptr);
+    if (now == (time_t)-1) {
+        HILOG_ERROR(LOG_CORE, "get time failed, %{public}d", errno);
+        return RET_FAIL;
+    }
+
+    struct tm tmTime;
+    if (localtime_r(&now, &tmTime) == nullptr) {
+        HILOG_ERROR(LOG_CORE, "localtime_r failed, %{public}d", errno);
+        return RET_FAIL;
+    }
+
+    const int yearCount = 1900;
+    const int size = sizeof(g_appName) + 32;
+    char file[size] = {0};
+    (void)sprintf_s(file, sizeof(file), "%s_%04d%02d%02d_%02d%02d%02d.trace", g_appName, tmTime.tm_year + yearCount,
+        tmTime.tm_mon + 1, tmTime.tm_mday, tmTime.tm_hour, tmTime.tm_min, tmTime.tm_sec);
+
+    destFileName += std::string(file);
+    fileName = PHYSICAL_PATH + std::string(g_appName) + "/trace/" + std::string(file);
+    return RET_SUCC;
+}
+
+int InitTraceHead()
+{
+    // write reserved trace header
+    std::vector<char> buffer(TRACE_TXT_HEADER_MAX, '\0');
+    int used = snprintf_s(buffer.data(), buffer.size(), buffer.size() - 1, TRACE_TXT_HEADER_FORMAT.c_str(), "", "");
+    if (used <= 0) {
+        HILOG_ERROR(LOG_CORE, "format reserved trace header failed: %{public}d(%{public}s)", errno, strerror(errno));
+        return RET_FAIL;
+    }
+    if (write(g_appFd, buffer.data(), used) != used) {
+        HILOG_ERROR(LOG_CORE, "write reserved trace header failed: %{public}d(%{public}s)", errno, strerror(errno));
+        return RET_FAIL;
+    }
+
+    g_writeOffset = 0;
+    g_fileSize = used;
+    g_traceEventNum = 0;
+
+    lseek(g_appFd, used, SEEK_SET); // Reserve space to write the file header.
+    return RET_SUCC;
 }
 
 bool WriteTraceToFile(char* buf, const int len)
@@ -794,9 +834,15 @@ bool IsTagEnabled(uint64_t tag)
 
 // For native process, the caller is responsible passing the full path of the fileName.
 // For hap application, StartCaputreAppTrace() fill fileName
-// as /data/storage/el2/log/trace/$(processname)_$(date)_&(time).trace and return to caller.
+// as /data/app/el2/100/log/$(processname)/trace/$(processname)_$(date)_&(time).trace and return to caller.
 int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std::string& fileName)
 {
+    std::unique_lock<std::recursive_mutex> lock(g_appTraceMutex);
+    if (g_appFd != -1) {
+        HILOG_INFO(LOG_CORE, "CaptureAppTrace started, fileName: %s", fileName.c_str());
+        return RET_STARTED;
+    }
+
     g_traceBuffer = std::make_unique<char[]>(DEFAULT_CACHE_SIZE);
     if (g_traceBuffer == nullptr) {
         HILOG_ERROR(LOG_CORE, "memory allocation failed: %{public}d(%{public}s)", errno, strerror(errno));
@@ -806,38 +852,32 @@ int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std:
     g_appFlag = flag;
     g_appTag = tags;
     g_fileLimitSize = limitSize;
-
-    if (!SetAppFileName(fileName)) {
-        HILOG_ERROR(LOG_CORE, "set appFileName failed: %{public}d(%{public}s)", errno, strerror(errno));
-        return RET_FAIL;
-    }
-
-    g_appFd = open(fileName.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC);
-    if (g_appFd == -1) {
-        HILOG_ERROR(LOG_CORE, "open %{public}s failed: %{public}d", fileName.c_str(), errno);
-        return RET_FAIL;
-    }
-
-    // write reserved trace header
-    std::vector<char> buffer(TRACE_TXT_HEADER_MAX, '\0');
-    int used = snprintf_s(buffer.data(), buffer.size(), buffer.size() - 1, TRACE_TXT_HEADER_FORMAT.c_str(), "", "");
-    if (used <= 0) {
-        HILOG_ERROR(LOG_CORE, "format reserved trace header failed: %{public}d(%{public}s)", errno, strerror(errno));
-        return RET_FAIL;
-    }
-    if (write(g_appFd, buffer.data(), used) != used) {
-        HILOG_ERROR(LOG_CORE, "write reserved trace header failed: %{public}d(%{public}s)", errno, strerror(errno));
-        return RET_FAIL;
-    }
-
     g_tgid = getprocpid();
-    g_writeOffset = 0;
-    g_fileSize = used;
-    g_traceEventNum = 0;
     g_appTracePrefix = "";
-    lseek(g_appFd, used, SEEK_SET); // Reserve space to write the file header.
 
-    return RET_SUCC;
+    std::string destFileName = fileName;
+    if (destFileName.empty()) {
+        auto ret = SetAppFileName(destFileName, fileName);
+        if (ret != RET_SUCC) {
+            HILOG_ERROR(LOG_CORE, "set appFileName failed: %{public}d(%{public}s)", errno, strerror(errno));
+            return ret;
+        }
+    }
+
+    g_appFd = open(destFileName.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC);
+    if (g_appFd == -1) {
+        HILOG_ERROR(LOG_CORE, "open %{public}s failed: %{public}d(%{public}s)", destFileName.c_str(),
+            errno, strerror(errno));
+        if (errno == ENOENT) {
+            return RET_FAIL_ENOENT;
+        } else if (errno == EACCES) {
+            return RET_FAIL_EACCES;
+        } else {
+            return RET_FAIL;
+        }
+    }
+
+    return InitTraceHead();
 }
 
 int StopCaptureAppTrace()
@@ -854,7 +894,7 @@ int StopCaptureAppTrace()
     std::string eventNumStr = std::to_string(g_traceEventNum) + "/" + std::to_string(g_traceEventNum);
     std::vector<char> buffer(TRACE_TXT_HEADER_MAX, '\0');
     int used = snprintf_s(buffer.data(), buffer.size(), buffer.size() - 1, TRACE_TXT_HEADER_FORMAT.c_str(),
-                          eventNumStr.c_str(), std::to_string(CPU_CORE_NUM).c_str());
+            eventNumStr.c_str(), std::to_string(CPU_CORE_NUM).c_str());
     if (used <= 0) {
         HILOG_ERROR(LOG_CORE, "format trace header failed: %{public}d(%{public}s)", errno, strerror(errno));
         return RET_FAIL;

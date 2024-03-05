@@ -14,10 +14,10 @@
  */
 
 #include <cstdio>
+#include <cinttypes>
 #include <functional>
 #include <map>
 #include <string>
-#include <cinttypes>
 #include <hilog/log.h>
 #include "hitrace_meter.h"
 #include "napi_hitrace_meter.h"
@@ -135,14 +135,20 @@ void SetTagsParam(const napi_env& env, const napi_value& value, uint64_t& tags)
     for (uint32_t i = 0; i < arrayLength; i++) {
         napi_value tag;
         status = napi_get_element(env, value, i, &tag);
-        if (status == napi_ok) {
-            if (TypeCheck(env, tag, napi_string)) {
-                std::string tagStr = "";
-                GetStringParam(env, tag, tagStr);
-                if (g_tagsMap.count(tagStr) > 0) {
-                    tags |= g_tagsMap[tagStr];
-                }
-            }
+        if (status != napi_ok) {
+            HILOG_ERROR(LOG_CORE, "Failed to get element.");
+            return;
+        }
+
+        if (!TypeCheck(env, tag, napi_string)) {
+            HILOG_ERROR(LOG_CORE, "tag is invalid, not a napi_string");
+            return;
+        }
+
+        std::string tagStr = "";
+        GetStringParam(env, tag, tagStr);
+        if (g_tagsMap.count(tagStr) > 0) {
+            tags |= g_tagsMap[tagStr];
         }
     }
 }
@@ -273,7 +279,10 @@ static napi_value JSStartCaptureAppTrace(napi_env env, napi_callback_info info)
     }
 
     std::string file = "";
-    StartCaptureAppTrace((TraceFlag)flag, tags, limitSize, file);
+    if (StartCaptureAppTrace((TraceFlag)flag, tags, limitSize, file) != RET_SUCC) {
+        HILOG_ERROR(LOG_CORE, "StartCaptureAppTrace failed");
+        return nullptr;
+    }
 
     napi_value napiFile;
     napi_status status = napi_create_string_utf8(env, file.c_str(), file.length(), &napiFile);
