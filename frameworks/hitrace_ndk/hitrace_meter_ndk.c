@@ -15,27 +15,33 @@
 
 #include "hitrace_meter_wrapper.h"
 
+#ifndef HITRACE_TAG_APP
+
+#define HITRACE_TAG_APP (1ULL << 62)
+
+#endif
+
 void OH_HiTrace_StartTrace(const char *name)
 {
-    StartTraceCwrapper(name);
+    StartTraceCwrapper(HITRACE_TAG_APP, name);
 }
 
 void OH_HiTrace_FinishTrace(void)
 {
-    FinishTraceCwrapper();
+    FinishTraceCwrapper(HITRACE_TAG_APP);
 }
 
 void OH_HiTrace_StartAsyncTrace(const char *name, int32_t taskId)
 {
-    StartAsyncTraceCwrapper(name, taskId);
+    StartAsyncTraceCwrapper(HITRACE_TAG_APP, name, taskId);
 }
 
 void OH_HiTrace_FinishAsyncTrace(const char *name, int32_t taskId)
 {
-    FinishAsyncTraceCwrapper(name, taskId);
+    FinishAsyncTraceCwrapper(HITRACE_TAG_APP, name, taskId);
 }
 
 void OH_HiTrace_CountTrace(const char *name, int64_t count)
 {
-    CountTraceCwrapper(name, count);
+    CountTraceCwrapper(HITRACE_TAG_APP, name, count);
 }

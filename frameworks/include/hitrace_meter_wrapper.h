@@ -24,15 +24,15 @@
 extern "C" {
 #endif
 
-void StartTraceCwrapper(const char *value);
+void StartTraceCwrapper(uint64_t tag, const char *value);
 
-void FinishTraceCwrapper(void);
+void FinishTraceCwrapper(uint64_t tag);
 
-void StartAsyncTraceCwrapper(const char *value, int32_t taskId);
+void StartAsyncTraceCwrapper(uint64_t tag, const char *value, int32_t taskId);
 
-void FinishAsyncTraceCwrapper(const char *value, int32_t taskId);
+void FinishAsyncTraceCwrapper(uint64_t tag, const char *value, int32_t taskId);
 
-void CountTraceCwrapper(const char *value, int64_t count);
+void CountTraceCwrapper(uint64_t tag, const char *value, int64_t count);
 
 #ifdef __cplusplus
 }

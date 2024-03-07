@@ -54,7 +54,8 @@
           "header": {
             "header_base": "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/hitrace_meter/",
             "header_files": [
-              "hitrace_meter.h"
+              "hitrace_meter.h",
+              "hitrace_meter_c.h"
             ]
           }
         },
