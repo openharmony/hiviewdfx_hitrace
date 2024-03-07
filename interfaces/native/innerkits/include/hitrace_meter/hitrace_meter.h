@@ -157,14 +157,15 @@ void CountTraceWrapper(uint64_t label, const char *name, int64_t count);
 bool IsTagEnabled(uint64_t tag);
 
 enum RetType {
-    RET_FAIL_MKDIR = -5, // Failed to create dir
-    RET_FAIL_SETACL = -4, // Failed to set the acl permission
-    RET_FAIL_ENOENT = -3, // The file does not exist
-    RET_FAIL_EACCES = -2, // No permission to open file
-    RET_FAIL = -1, // Other failures
     RET_SUCC = 0, // Successful
     RET_STARTED = 1, // The capture process has already started
     RET_STOPPED = 2, // The capture process has stopped
+    RET_FAIL = 1000, // Other failures
+    RET_FAIL_INVALID_ARGS = 1001, // Invalid parameter
+    RET_FAIL_MKDIR = 1002, // Failed to create dir
+    RET_FAIL_SETACL = 1003, // Failed to set the acl permission
+    RET_FAIL_ENOENT = 1004, // The file does not exist
+    RET_FAIL_EACCES = 1005, // No permission to open file
 };
 
 enum TraceFlag {

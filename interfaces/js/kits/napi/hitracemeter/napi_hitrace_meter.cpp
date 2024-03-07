@@ -14,7 +14,6 @@
  */
 
 #include <cstdio>
-#include <cinttypes>
 #include <functional>
 #include <map>
 #include <string>
@@ -264,17 +263,9 @@ static napi_value JSStartCaptureAppTrace(napi_env env, napi_callback_info info)
     if (!ParseInt64Param(env, argv[SECOND_ARG_INDEX], flag)) {
         return nullptr;
     }
-    if (flag <= 0 || flag > FLAG_ALL_THREAD) {
-        HILOG_ERROR(LOG_CORE, "flag(%{public}" PRId64 ") is invalid", flag);
-        return nullptr;
-    }
 
     int64_t limitSize = 0;
     if (!ParseInt64Param(env, argv[ARGC_NUMBER_TWO], limitSize)) {
-        return nullptr;
-    }
-    if (limitSize <= 0) {
-        HILOG_ERROR(LOG_CORE, "file limitSize(%{public}" PRId64 ") is invalid", limitSize);
         return nullptr;
     }
 

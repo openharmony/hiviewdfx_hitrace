@@ -91,6 +91,15 @@ std::recursive_mutex g_appTraceMutex;
 static char g_markTypes[5] = {'B', 'E', 'S', 'F', 'C'};
 enum MarkerType { MARKER_BEGIN, MARKER_END, MARKER_ASYNC_BEGIN, MARKER_ASYNC_END, MARKER_INT, MARKER_MAX };
 
+const uint64_t VALID_TAGS = HITRACE_TAG_FFRT | HITRACE_TAG_COMMONLIBRARY | HITRACE_TAG_HDF | HITRACE_TAG_NET
+    | HITRACE_TAG_NWEB | HITRACE_TAG_DISTRIBUTED_AUDIO | HITRACE_TAG_FILEMANAGEMENT | HITRACE_TAG_OHOS
+    | HITRACE_TAG_ABILITY_MANAGER | HITRACE_TAG_ZCAMERA | HITRACE_TAG_ZMEDIA | HITRACE_TAG_ZIMAGE | HITRACE_TAG_ZAUDIO
+    | HITRACE_TAG_DISTRIBUTEDDATA | HITRACE_TAG_GRAPHIC_AGP | HITRACE_TAG_ACE | HITRACE_TAG_NOTIFICATION
+    | HITRACE_TAG_MISC | HITRACE_TAG_MULTIMODALINPUT | HITRACE_TAG_RPC | HITRACE_TAG_ARK | HITRACE_TAG_WINDOW_MANAGER
+    | HITRACE_TAG_DISTRIBUTED_SCREEN | HITRACE_TAG_DISTRIBUTED_CAMERA | HITRACE_TAG_DISTRIBUTED_HARDWARE_FWK
+    | HITRACE_TAG_GLOBAL_RESMGR | HITRACE_TAG_DEVICE_MANAGER | HITRACE_TAG_SAMGR | HITRACE_TAG_POWER
+    | HITRACE_TAG_DISTRIBUTED_SCHEDULE | HITRACE_TAG_DISTRIBUTED_INPUT | HITRACE_TAG_BLUETOOTH | HITRACE_TAG_APP;
+
 std::string TRACE_TXT_HEADER_FORMAT = R"(# tracer: nop
 #
 # entries-in-buffer/entries-written: %-21s   #P:%-3s
@@ -279,10 +288,30 @@ bool GetProcData(const char* file, char* buffer, const size_t bufferSize)
     return true;
 }
 
+int CheckAppTraceArgs(TraceFlag flag, uint64_t tags, uint64_t limitSize)
+{
+    if (flag != FLAG_MAIN_THREAD && flag != FLAG_ALL_THREAD) {
+        HILOG_ERROR(LOG_CORE, "flag(%{public}" PRId32 ") is invalid", flag);
+        return RET_FAIL_INVALID_ARGS;
+    }
+
+    if (static_cast<int64_t>(tags) < 0 || !UNEXPECTANTLY(tags & VALID_TAGS)) {
+        HILOG_ERROR(LOG_CORE, "tags(%{public}" PRId64 ") is invalid", tags);
+        return RET_FAIL_INVALID_ARGS;
+    }
+
+    if (static_cast<int64_t>(limitSize) <= 0) {
+        HILOG_ERROR(LOG_CORE, "limitSize(%{public}" PRId64 ") is invalid", limitSize);
+        return RET_FAIL_INVALID_ARGS;
+    }
+
+    return RET_SUCC;
+}
+
 int SetAppFileName(std::string& destFileName, std::string& fileName)
 {
     destFileName = SANDBOX_PATH + "trace/";
-    mode_t permissions = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH; // 0755权限
+    mode_t permissions = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH; // 0755
     if (access(destFileName.c_str(), F_OK) != 0 && mkdir(destFileName.c_str(), permissions) == -1) {
         HILOG_ERROR(LOG_CORE, "failed to create dir(%{public}s):%{public}d(%{public}s)", destFileName.c_str(),
             errno, strerror(errno));
@@ -300,7 +329,7 @@ int SetAppFileName(std::string& destFileName, std::string& fileName)
     }
 
     time_t now = time(nullptr);
-    if (now == (time_t)-1) {
+    if (now == static_cast<time_t>(-1)) {
         HILOG_ERROR(LOG_CORE, "get time failed, %{public}d", errno);
         return RET_FAIL;
     }
@@ -314,8 +343,12 @@ int SetAppFileName(std::string& destFileName, std::string& fileName)
     const int yearCount = 1900;
     const int size = sizeof(g_appName) + 32;
     char file[size] = {0};
-    (void)sprintf_s(file, sizeof(file), "%s_%04d%02d%02d_%02d%02d%02d.trace", g_appName, tmTime.tm_year + yearCount,
-        tmTime.tm_mon + 1, tmTime.tm_mday, tmTime.tm_hour, tmTime.tm_min, tmTime.tm_sec);
+    auto ret = snprintf_s(file, size, size - 1, "%s_%04d%02d%02d_%02d%02d%02d.trace", g_appName,
+        tmTime.tm_year + yearCount, tmTime.tm_mon + 1, tmTime.tm_mday, tmTime.tm_hour, tmTime.tm_min, tmTime.tm_sec);
+    if (ret <= 0) {
+        HILOG_ERROR(LOG_CORE, "Format file failed, %{public}d", errno);
+        return RET_FAIL;
+    }
 
     destFileName += std::string(file);
     fileName = PHYSICAL_PATH + std::string(g_appName) + "/trace/" + std::string(file);
@@ -837,9 +870,14 @@ bool IsTagEnabled(uint64_t tag)
 // as /data/app/el2/100/log/$(processname)/trace/$(processname)_$(date)_&(time).trace and return to caller.
 int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std::string& fileName)
 {
+    auto ret = CheckAppTraceArgs(flag, tags, limitSize);
+    if (ret != RET_SUCC) {
+        return ret;
+    }
+
     std::unique_lock<std::recursive_mutex> lock(g_appTraceMutex);
     if (g_appFd != -1) {
-        HILOG_INFO(LOG_CORE, "CaptureAppTrace started, fileName: %s", fileName.c_str());
+        HILOG_INFO(LOG_CORE, "CaptureAppTrace started, return");
         return RET_STARTED;
     }
 
@@ -864,7 +902,8 @@ int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std:
         }
     }
 
-    g_appFd = open(destFileName.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC);
+    mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH; // 0644
+    g_appFd = open(destFileName.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC, mode);
     if (g_appFd == -1) {
         HILOG_ERROR(LOG_CORE, "open %{public}s failed: %{public}d(%{public}s)", destFileName.c_str(),
             errno, strerror(errno));
@@ -894,7 +933,7 @@ int StopCaptureAppTrace()
     std::string eventNumStr = std::to_string(g_traceEventNum) + "/" + std::to_string(g_traceEventNum);
     std::vector<char> buffer(TRACE_TXT_HEADER_MAX, '\0');
     int used = snprintf_s(buffer.data(), buffer.size(), buffer.size() - 1, TRACE_TXT_HEADER_FORMAT.c_str(),
-            eventNumStr.c_str(), std::to_string(CPU_CORE_NUM).c_str());
+        eventNumStr.c_str(), std::to_string(CPU_CORE_NUM).c_str());
     if (used <= 0) {
         HILOG_ERROR(LOG_CORE, "format trace header failed: %{public}d(%{public}s)", errno, strerror(errno));
         return RET_FAIL;
