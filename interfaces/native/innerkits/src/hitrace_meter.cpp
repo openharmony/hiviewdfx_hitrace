@@ -20,8 +20,6 @@
 #include <fcntl.h>
 #include <fstream>
 #include <mutex>
-#include <sched.h>
-#include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
 #include "securec.h"
@@ -31,7 +29,6 @@
 #include "parameters.h"
 #include "hitrace_meter.h"
 #include "hitrace/tracechain.h"
-#include "storage_acl.h"
 
 using namespace std;
 using namespace OHOS::HiviewDFX;
@@ -42,7 +39,6 @@ using namespace OHOS::HiviewDFX;
 
 namespace {
 int g_markerFd = -1;
-int g_appFd = -1;
 std::once_flag g_onceFlag;
 std::once_flag g_onceWriteMarkerFailedFlag;
 CachedHandle g_cachedHandle;
@@ -53,14 +49,11 @@ std::atomic<bool> g_needReloadPid(false);
 std::atomic<bool> g_pidHasReload(false);
 
 std::atomic<uint64_t> g_tagsProperty(HITRACE_TAG_NOT_READY);
-std::atomic<uint64_t> g_appTag(HITRACE_TAG_NOT_READY);
 
 const std::string KEY_TRACE_TAG = "debug.hitrace.tags.enableflags";
 const std::string KEY_APP_NUMBER = "debug.hitrace.app_number";
 const std::string KEY_RO_DEBUGGABLE = "ro.debuggable";
 const std::string KEY_PREFIX = "debug.hitrace.app_";
-const std::string SANDBOX_PATH = "/data/storage/el2/log/";
-const std::string PHYSICAL_PATH = "/data/app/el2/100/log/";
 
 constexpr int VAR_NAME_MAX_SIZE = 400;
 constexpr int NAME_NORMAL_LEN = 512;
@@ -70,49 +63,9 @@ constexpr int HITRACEID_LEN = 64;
 static const int PID_BUF_SIZE = 6;
 static char g_pid[PID_BUF_SIZE];
 static const std::string EMPTY_TRACE_NAME;
-static char g_appName[NAME_NORMAL_LEN + 1] = {0};
-static std::string g_appTracePrefix = "";
-constexpr const int COMM_STR_MAX = 14;
-constexpr const int PID_STR_MAX = 7;
-constexpr const int PREFIX_MAX_SIZE = 128; // comm-pid (tgid) [cpu] .... ts.tns: tracing_mark_write:
-constexpr const int TRACE_TXT_HEADER_MAX = 1024;
-constexpr const int CPU_CORE_NUM = 16;
-constexpr const int DEFAULT_CACHE_SIZE = 32 * 1024;
-constexpr const int MAX_FILE_SIZE = 500 * 1024 * 1024;
-constexpr const int NS_TO_MS = 1000;
-int g_tgid = -1;
-uint64_t g_traceEventNum = 0;
-int g_writeOffset = 0;
-int g_fileSize = 0;
-TraceFlag g_appFlag(FLAG_MAIN_THREAD);
-std::atomic<uint64_t> g_fileLimitSize(0);
-std::unique_ptr<char[]> g_traceBuffer;
-std::recursive_mutex g_appTraceMutex;
 
 static char g_markTypes[5] = {'B', 'E', 'S', 'F', 'C'};
 enum MarkerType { MARKER_BEGIN, MARKER_END, MARKER_ASYNC_BEGIN, MARKER_ASYNC_END, MARKER_INT, MARKER_MAX };
-
-const uint64_t VALID_TAGS = HITRACE_TAG_FFRT | HITRACE_TAG_COMMONLIBRARY | HITRACE_TAG_HDF | HITRACE_TAG_NET
-    | HITRACE_TAG_NWEB | HITRACE_TAG_DISTRIBUTED_AUDIO | HITRACE_TAG_FILEMANAGEMENT | HITRACE_TAG_OHOS
-    | HITRACE_TAG_ABILITY_MANAGER | HITRACE_TAG_ZCAMERA | HITRACE_TAG_ZMEDIA | HITRACE_TAG_ZIMAGE | HITRACE_TAG_ZAUDIO
-    | HITRACE_TAG_DISTRIBUTEDDATA | HITRACE_TAG_GRAPHIC_AGP | HITRACE_TAG_ACE | HITRACE_TAG_NOTIFICATION
-    | HITRACE_TAG_MISC | HITRACE_TAG_MULTIMODALINPUT | HITRACE_TAG_RPC | HITRACE_TAG_ARK | HITRACE_TAG_WINDOW_MANAGER
-    | HITRACE_TAG_DISTRIBUTED_SCREEN | HITRACE_TAG_DISTRIBUTED_CAMERA | HITRACE_TAG_DISTRIBUTED_HARDWARE_FWK
-    | HITRACE_TAG_GLOBAL_RESMGR | HITRACE_TAG_DEVICE_MANAGER | HITRACE_TAG_SAMGR | HITRACE_TAG_POWER
-    | HITRACE_TAG_DISTRIBUTED_SCHEDULE | HITRACE_TAG_DISTRIBUTED_INPUT | HITRACE_TAG_BLUETOOTH | HITRACE_TAG_APP;
-
-std::string TRACE_TXT_HEADER_FORMAT = R"(# tracer: nop
-#
-# entries-in-buffer/entries-written: %-21s   #P:%-3s
-#
-#                                          _-----=> irqs-off
-#                                         / _----=> need-resched
-#                                        | / _---=> hardirq/softirq
-#                                        || / _--=> preempt-depth
-#                                        ||| /     delay
-#           TASK-PID       TGID    CPU#  ||||   TIMESTAMP  FUNCTION
-#              | |           |       |   ||||      |         |
-)";
 
 #undef LOG_DOMAIN
 #define LOG_DOMAIN 0xD002D33
@@ -241,330 +194,6 @@ void AddTraceMarkerLarge(const std::string& name, MarkerType type, const int64_t
     WriteToTraceMarker(record.c_str(), record.size());
 }
 
-void WriteOnceLog(LogLevel loglevel, const std::string& logStr, bool& isWrite)
-{
-    if (!isWrite) {
-        switch (loglevel) {
-            case LOG_ERROR: {
-                HILOG_ERROR(LOG_CORE, "%{public}s: %{public}d(%{public}s)", logStr.c_str(), errno, strerror(errno));
-                break;
-            }
-            case LOG_INFO: {
-                HILOG_INFO(LOG_CORE, "%{public}s", logStr.c_str());
-                break;
-            }
-            default: {
-                break;
-            }
-        }
-        isWrite = true;
-    }
-}
-
-bool GetProcData(const char* file, char* buffer, const size_t bufferSize)
-{
-    FILE* fp = fopen(file, "r");
-    if (fp == nullptr) {
-        static bool isWriteLog = false;
-        std::string errLogStr = std::string(__func__) + ": open " + std::string(file) + " falied";
-        WriteOnceLog(LOG_ERROR, errLogStr, isWriteLog);
-        return false;
-    }
-
-    if (fgets(buffer, bufferSize, fp) == nullptr) {
-        (void)fclose(fp);
-        static bool isWriteLog = false;
-        std::string errLogStr = std::string(__func__) + ": fgets " + std::string(file) + " falied";
-        WriteOnceLog(LOG_ERROR, errLogStr, isWriteLog);
-        return false;
-    }
-
-    if (fclose(fp) != 0) {
-        static bool isWriteLog = false;
-        std::string errLogStr = std::string(__func__) + ": fclose " + std::string(file) + " falied";
-        WriteOnceLog(LOG_ERROR, errLogStr, isWriteLog);
-        return false;
-    }
-
-    return true;
-}
-
-int CheckAppTraceArgs(TraceFlag flag, uint64_t tags, uint64_t limitSize)
-{
-    if (flag != FLAG_MAIN_THREAD && flag != FLAG_ALL_THREAD) {
-        HILOG_ERROR(LOG_CORE, "flag(%{public}" PRId32 ") is invalid", flag);
-        return RET_FAIL_INVALID_ARGS;
-    }
-
-    if (static_cast<int64_t>(tags) < 0 || !UNEXPECTANTLY(tags & VALID_TAGS)) {
-        HILOG_ERROR(LOG_CORE, "tags(%{public}" PRId64 ") is invalid", tags);
-        return RET_FAIL_INVALID_ARGS;
-    }
-
-    if (static_cast<int64_t>(limitSize) <= 0) {
-        HILOG_ERROR(LOG_CORE, "limitSize(%{public}" PRId64 ") is invalid", limitSize);
-        return RET_FAIL_INVALID_ARGS;
-    }
-
-    return RET_SUCC;
-}
-
-int SetAppFileName(std::string& destFileName, std::string& fileName)
-{
-    destFileName = SANDBOX_PATH + "trace/";
-    mode_t permissions = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH; // 0755
-    if (access(destFileName.c_str(), F_OK) != 0 && mkdir(destFileName.c_str(), permissions) == -1) {
-        HILOG_ERROR(LOG_CORE, "failed to create dir(%{public}s):%{public}d(%{public}s)", destFileName.c_str(),
-            errno, strerror(errno));
-        return RET_FAIL_MKDIR;
-    }
-
-    if (OHOS::StorageDaemon::AclSetAccess(destFileName, "g:1201:rwx") != 0) {
-        HILOG_ERROR(LOG_CORE, "failed to set acl access dir(%{public}s): %{public}d", destFileName.c_str(), errno);
-        return RET_FAIL_SETACL;
-    }
-
-    if (!GetProcData("/proc/self/cmdline", g_appName, NAME_NORMAL_LEN)) {
-        HILOG_ERROR(LOG_CORE, "get app name failed, %{public}d", errno);
-        return RET_FAIL;
-    }
-
-    time_t now = time(nullptr);
-    if (now == static_cast<time_t>(-1)) {
-        HILOG_ERROR(LOG_CORE, "get time failed, %{public}d", errno);
-        return RET_FAIL;
-    }
-
-    struct tm tmTime;
-    if (localtime_r(&now, &tmTime) == nullptr) {
-        HILOG_ERROR(LOG_CORE, "localtime_r failed, %{public}d", errno);
-        return RET_FAIL;
-    }
-
-    const int yearCount = 1900;
-    const int size = sizeof(g_appName) + 32;
-    char file[size] = {0};
-    auto ret = snprintf_s(file, sizeof(file), sizeof(file) - 1, "%s_%04d%02d%02d_%02d%02d%02d.trace", g_appName,
-        tmTime.tm_year + yearCount, tmTime.tm_mon + 1, tmTime.tm_mday, tmTime.tm_hour, tmTime.tm_min, tmTime.tm_sec);
-    if (ret <= 0) {
-        HILOG_ERROR(LOG_CORE, "Format file failed, %{public}d", errno);
-        return RET_FAIL;
-    }
-
-    destFileName += std::string(file);
-    fileName = PHYSICAL_PATH + std::string(g_appName) + "/trace/" + std::string(file);
-    return RET_SUCC;
-}
-
-int InitTraceHead()
-{
-    // write reserved trace header
-    std::vector<char> buffer(TRACE_TXT_HEADER_MAX, '\0');
-    int used = snprintf_s(buffer.data(), buffer.size(), buffer.size() - 1, TRACE_TXT_HEADER_FORMAT.c_str(), "", "");
-    if (used <= 0) {
-        HILOG_ERROR(LOG_CORE, "format reserved trace header failed: %{public}d(%{public}s)", errno, strerror(errno));
-        return RET_FAIL;
-    }
-    if (write(g_appFd, buffer.data(), used) != used) {
-        HILOG_ERROR(LOG_CORE, "write reserved trace header failed: %{public}d(%{public}s)", errno, strerror(errno));
-        return RET_FAIL;
-    }
-
-    g_writeOffset = 0;
-    g_fileSize = used;
-    g_traceEventNum = 0;
-
-    lseek(g_appFd, used, SEEK_SET); // Reserve space to write the file header.
-    return RET_SUCC;
-}
-
-bool WriteTraceToFile(char* buf, const int len)
-{
-    if (write(g_appFd, buf, len) != len) {
-        static bool isWriteLog = false;
-        WriteOnceLog(LOG_ERROR, "write app trace data failed", isWriteLog);
-        return false;
-    }
-
-    g_fileSize += len;
-    g_writeOffset = 0;
-    return true;
-}
-
-char* GetTraceBuffer(int size)
-{
-    if (g_writeOffset + size > DEFAULT_CACHE_SIZE) {
-        // The remaining space is insufficient to cache the data. Write the data to the file.
-        if (!WriteTraceToFile(g_traceBuffer.get(), g_writeOffset)) {
-            return nullptr;
-        }
-    }
-
-    return g_traceBuffer.get() + g_writeOffset;
-}
-
-void SetCommStr()
-{
-    int size = g_appTracePrefix.size();
-    if (size >= COMM_STR_MAX) {
-        g_appTracePrefix = g_appTracePrefix.substr(size - COMM_STR_MAX, size);
-    } else {
-        g_appTracePrefix = std::string(COMM_STR_MAX - size, ' ') + g_appTracePrefix;
-    }
-}
-
-void SetMainThreadInfo()
-{
-    if (strlen(g_appName) == 0) {
-        if (!GetProcData("/proc/self/cmdline", g_appName, NAME_NORMAL_LEN)) {
-            HILOG_ERROR(LOG_CORE, "get app name failed, %{public}d", errno);
-        }
-    }
-
-    g_appTracePrefix = std::string(g_appName);
-    SetCommStr();
-    std::string pidStr = std::string(g_pid);
-    std::string pidFixStr = std::string(PID_STR_MAX - pidStr.length(), ' ');
-    g_appTracePrefix +=  "-" + pidStr + pidFixStr + " (" + pidFixStr + pidStr + ")";
-}
-
-bool SetAllThreadInfo(int& tid)
-{
-    std::string tidStr = std::to_string(tid);
-    std::string file = "/proc/self/task/" + tidStr + "/comm";
-    char comm[NAME_NORMAL_LEN + 1] = {0};
-    if (!GetProcData(file.c_str(), comm, NAME_NORMAL_LEN)) {
-        static bool isWriteLog = false;
-        WriteOnceLog(LOG_ERROR, "get comm failed", isWriteLog);
-        return false;
-    }
-    if (comm[strlen(comm) - 1] == '\n') {
-        comm[strlen(comm) - 1] = '\0';
-    }
-    g_appTracePrefix = std::string(comm);
-    SetCommStr();
-
-    std::string pidStr = std::string(g_pid);
-    std::string tidFixStr = std::string(PID_STR_MAX - tidStr.length(), ' ');
-    std::string pidFixStr = std::string(PID_STR_MAX - pidStr.length(), ' ');
-    g_appTracePrefix += "-" + tidStr + tidFixStr + " (" + pidFixStr + pidStr + ")";
-
-    return true;
-}
-
-int SetAppTraceBuffer(char* buf, const int len, MarkerType type, const std::string& name, const int64_t value)
-{
-    struct timespec ts = { 0, 0 };
-    clock_gettime(CLOCK_BOOTTIME, &ts);
-    int cpu = sched_getcpu();
-    if (cpu == -1) {
-        static bool isWriteLog = false;
-        WriteOnceLog(LOG_ERROR, "get cpu failed", isWriteLog);
-        return -1;
-    }
-
-    int bytes = 0;
-    if (type == MARKER_BEGIN) {
-        bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: B|%s|H:%s \n",
-            g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, g_pid, name.c_str());
-    } else if (type == MARKER_END) {
-        bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: E|%s|\n",
-            g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, g_pid);
-    } else {
-        char marktypestr = g_markTypes[type];
-        bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: %c|%s|H:%s %lld\n",
-            g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, marktypestr,
-            g_pid, name.c_str(), value);
-    }
-
-    return bytes;
-}
-
-void SetAppTrace(const int len, MarkerType type, const std::string& name, const int64_t value)
-{
-    // get buffer
-    char* buf = GetTraceBuffer(len);
-    if (buf == nullptr) {
-        return;
-    }
-
-    int bytes = SetAppTraceBuffer(buf, len, type, name, value);
-    if (bytes > 0) {
-        g_traceEventNum += 1;
-        g_writeOffset += bytes;
-    }
-}
-
-void WriteAppTraceLong(const int len, MarkerType type, const std::string& name, const int64_t value)
-{
-    // 1 write cache data.
-    if (!WriteTraceToFile(g_traceBuffer.get(), g_writeOffset)) {
-        return;
-    }
-
-    // 2 apply new memory and directly write file.
-    auto buffer = std::make_unique<char[]>(len);
-    if (buffer == nullptr) {
-        static bool isWriteLog = false;
-        WriteOnceLog(LOG_ERROR, "memory allocation failed", isWriteLog);
-        return;
-    }
-
-    int bytes = SetAppTraceBuffer(buffer.get(), len, type, name, value);
-    if (bytes > 0) {
-        if (!WriteTraceToFile(buffer.get(), bytes)) {
-            return;
-        }
-        g_traceEventNum += 1;
-    }
-}
-
-bool CheckFileSize(int len)
-{
-    if (g_fileSize + g_writeOffset + len > g_fileLimitSize.load()) {
-        static bool isWriteLog = false;
-        WriteOnceLog(LOG_INFO, "File size limit exceeded, stop capture trace.", isWriteLog);
-        StopCaptureAppTrace();
-        return false;
-    }
-
-    return true;
-}
-
-void WriteAppTrace(MarkerType type, const std::string& name, const int64_t value)
-{
-    int tid = getproctid();
-    int len = PREFIX_MAX_SIZE + name.length();
-    if (g_appFlag == FLAG_MAIN_THREAD && g_tgid == tid) {
-        if (!CheckFileSize(len)) {
-            return;
-        }
-
-        if (g_appTracePrefix.empty()) {
-            SetMainThreadInfo();
-        }
-
-        if (len <= DEFAULT_CACHE_SIZE) {
-            SetAppTrace(len, type, name, value);
-        } else {
-            WriteAppTraceLong(len, type, name, value);
-        }
-    } else if (g_appFlag == FLAG_ALL_THREAD) {
-        std::unique_lock<std::recursive_mutex> lock(g_appTraceMutex);
-        if (!CheckFileSize(len)) {
-            return;
-        }
-
-        SetAllThreadInfo(tid);
-
-        if (len <= DEFAULT_CACHE_SIZE) {
-            SetAppTrace(len, type, name, value);
-        } else {
-            WriteAppTraceLong(len, type, name, value);
-        }
-    }
-}
-
 void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& name, const int64_t value)
 {
     if (UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
@@ -609,10 +238,6 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
         } else {
             AddTraceMarkerLarge(name, type, value);
         }
-    }
-
-    if (UNEXPECTANTLY(g_appTag.load() != HITRACE_TAG_NOT_READY) && g_appFd != -1) {
-        WriteAppTrace(type, name, value);
     }
 }
 }; // namespace
@@ -864,98 +489,4 @@ bool IsTagEnabled(uint64_t tag)
 {
     UpdateSysParamTags();
     return ((tag & g_tagsProperty) == tag);
-}
-
-// For native process, the caller is responsible passing the full path of the fileName.
-// For hap application, StartCaputreAppTrace() fill fileName
-// as /data/app/el2/100/log/$(processname)/trace/$(processname)_$(date)_&(time).trace and return to caller.
-int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std::string& fileName)
-{
-    auto ret = CheckAppTraceArgs(flag, tags, limitSize);
-    if (ret != RET_SUCC) {
-        return ret;
-    }
-
-    std::unique_lock<std::recursive_mutex> lock(g_appTraceMutex);
-    if (g_appFd != -1) {
-        HILOG_INFO(LOG_CORE, "CaptureAppTrace started, return");
-        return RET_STARTED;
-    }
-
-    g_traceBuffer = std::make_unique<char[]>(DEFAULT_CACHE_SIZE);
-    if (g_traceBuffer == nullptr) {
-        HILOG_ERROR(LOG_CORE, "memory allocation failed: %{public}d(%{public}s)", errno, strerror(errno));
-        return RET_FAIL;
-    }
-
-    g_appFlag = flag;
-    g_appTag = tags;
-    g_fileLimitSize = (limitSize > MAX_FILE_SIZE) ? MAX_FILE_SIZE : limitSize;
-    g_tgid = getprocpid();
-    g_appTracePrefix = "";
-
-    std::string destFileName = fileName;
-    if (destFileName.empty()) {
-        auto ret = SetAppFileName(destFileName, fileName);
-        if (ret != RET_SUCC) {
-            HILOG_ERROR(LOG_CORE, "set appFileName failed: %{public}d(%{public}s)", errno, strerror(errno));
-            return ret;
-        }
-    }
-
-    mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH; // 0644
-    g_appFd = open(destFileName.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC, mode);
-    if (g_appFd == -1) {
-        HILOG_ERROR(LOG_CORE, "open %{public}s failed: %{public}d(%{public}s)", destFileName.c_str(),
-            errno, strerror(errno));
-        if (errno == ENOENT) {
-            return RET_FAIL_ENOENT;
-        } else if (errno == EACCES) {
-            return RET_FAIL_EACCES;
-        } else {
-            return RET_FAIL;
-        }
-    }
-
-    return InitTraceHead();
-}
-
-int StopCaptureAppTrace()
-{
-    std::unique_lock<std::recursive_mutex> lock(g_appTraceMutex);
-    if (g_appFd == -1) {
-        HILOG_INFO(LOG_CORE, "CaptureAppTrace stopped, return");
-        return RET_STOPPED;
-    }
-
-    // Write cache data
-    WriteTraceToFile(g_traceBuffer.get(), g_writeOffset);
-
-    std::string eventNumStr = std::to_string(g_traceEventNum) + "/" + std::to_string(g_traceEventNum);
-    std::vector<char> buffer(TRACE_TXT_HEADER_MAX, '\0');
-    int used = snprintf_s(buffer.data(), buffer.size(), buffer.size() - 1, TRACE_TXT_HEADER_FORMAT.c_str(),
-        eventNumStr.c_str(), std::to_string(CPU_CORE_NUM).c_str());
-    if (used <= 0) {
-        HILOG_ERROR(LOG_CORE, "format trace header failed: %{public}d(%{public}s)", errno, strerror(errno));
-        return RET_FAIL;
-    }
-
-    lseek(g_appFd, 0, SEEK_SET); // Move the write pointer to populate the file header.
-    if (write(g_appFd, buffer.data(), used) != used) {
-        HILOG_ERROR(LOG_CORE, "write trace header failed: %{public}d(%{public}s)", errno, strerror(errno));
-        return RET_FAIL;
-    }
-
-    g_fileSize = 0;
-    g_writeOffset = 0;
-    g_traceEventNum = 0;
-    g_appTracePrefix = "";
-    g_appTag = HITRACE_TAG_NOT_READY;
-
-    close(g_appFd);
-    g_appFd = -1;
-    g_traceBuffer.reset();
-    g_traceBuffer = nullptr;
-
-    return RET_SUCC;
 }
