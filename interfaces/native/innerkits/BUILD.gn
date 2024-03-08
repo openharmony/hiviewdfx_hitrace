@@ -80,6 +80,7 @@ ohos_static_library("hitrace_inner") {
   external_deps = [
     "init:libbeget_proxy",
     "init:libbegetutil",
+    "storage_service:storage_manager_acl",
   ]
 
   if (defined(ohos_lite)) {
