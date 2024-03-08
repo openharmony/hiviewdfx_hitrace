@@ -203,6 +203,9 @@ static napi_value JSTraceStart(napi_env env, napi_callback_info info)
     if (!ParseStringParam(env, argv[FIRST_ARG_INDEX], name)) {
         return nullptr;
     }
+    if (name == "null" || name == "undefined") {
+        return nullptr;
+    }
     int taskId = 0;
     if (!ParseInt32Param(env, argv[SECOND_ARG_INDEX], taskId)) {
         return nullptr;
@@ -219,6 +222,9 @@ static napi_value JSTraceFinish(napi_env env, napi_callback_info info)
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, NULL));
     NAPI_ASSERT(env, argc == ARGC_NUMBER_TWO, "Wrong number of arguments");
     (void)JsStrNumParamsFunc(env, info, [&env] (std::string name, napi_value& nValue) -> bool {
+        if (name == "null" || name == "undefined") {
+            return false;
+        }
         int taskId = 0;
         if (!ParseInt32Param(env, nValue, taskId)) {
             return false;
@@ -237,6 +243,9 @@ static napi_value JSTraceCount(napi_env env, napi_callback_info info)
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, NULL));
     NAPI_ASSERT(env, argc == ARGC_NUMBER_TWO, "Wrong number of arguments");
     (void)JsStrNumParamsFunc(env, info, [&env] (std::string name, napi_value& nValue) -> bool {
+        if (name == "null" || name == "undefined") {
+            return false;
+        }
         int64_t count = 0;
         if (!ParseInt64Param(env, nValue, count)) {
             return false;
