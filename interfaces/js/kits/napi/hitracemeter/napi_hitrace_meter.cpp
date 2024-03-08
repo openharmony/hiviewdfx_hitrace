@@ -15,6 +15,7 @@
 
 #include <cstdio>
 #include <functional>
+#include <map>
 #include <string>
 #include <hilog/log.h>
 #include "hitrace_meter.h"
@@ -33,6 +34,21 @@ constexpr int ARGC_NUMBER_THREE = 3;
 #define LOG_TAG "HITRACE_METER_JS"
 
 using STR_NUM_PARAM_FUNC = std::function<bool(std::string, napi_value&)>;
+std::map<std::string, uint64_t> g_tagsMap = {
+    {"ohos", HITRACE_TAG_OHOS}, {"ability", HITRACE_TAG_ABILITY_MANAGER}, {"camera", HITRACE_TAG_ZCAMERA},
+    {"media", HITRACE_TAG_ZMEDIA}, {"image", HITRACE_TAG_ZIMAGE}, {"audio", HITRACE_TAG_ZAUDIO},
+    {"distributeddatamgr", HITRACE_TAG_DISTRIBUTEDDATA}, {"graphic", HITRACE_TAG_GRAPHIC_AGP},
+    {"ace", HITRACE_TAG_ACE}, {"notification", HITRACE_TAG_NOTIFICATION}, {"misc", HITRACE_TAG_MISC},
+    {"multimodalinput", HITRACE_TAG_MULTIMODALINPUT}, {"rpc", HITRACE_TAG_RPC}, {"ark", HITRACE_TAG_ARK},
+    {"window", HITRACE_TAG_WINDOW_MANAGER}, {"dscreen", HITRACE_TAG_DISTRIBUTED_SCREEN},
+    {"dcamera", HITRACE_TAG_DISTRIBUTED_CAMERA}, {"dhfwk", HITRACE_TAG_DISTRIBUTED_HARDWARE_FWK},
+    {"gresource", HITRACE_TAG_GLOBAL_RESMGR}, {"devicemanager", HITRACE_TAG_DEVICE_MANAGER},
+    {"samgr", HITRACE_TAG_SAMGR}, {"power", HITRACE_TAG_POWER}, {"dsched", HITRACE_TAG_DISTRIBUTED_SCHEDULE},
+    {"dinput", HITRACE_TAG_DISTRIBUTED_INPUT}, {"bluetooth", HITRACE_TAG_BLUETOOTH}, {"ffrt", HITRACE_TAG_FFRT},
+    {"commonlibrary", HITRACE_TAG_COMMONLIBRARY}, {"hdf", HITRACE_TAG_HDF}, {"net", HITRACE_TAG_NET},
+    {"nweb", HITRACE_TAG_NWEB}, {"daudio", HITRACE_TAG_DISTRIBUTED_AUDIO},
+    {"filemanagement", HITRACE_TAG_FILEMANAGEMENT}, {"app", HITRACE_TAG_APP}
+};
 
 napi_value ParseParams(napi_env& env, napi_callback_info& info, size_t& argc, napi_value* argv)
 {
@@ -104,6 +120,54 @@ bool ParseInt64Param(const napi_env& env, const napi_value& value, int64_t& dest
     }
     napi_get_value_int64(env, value, &dest);
     return true;
+}
+
+void SetTagsParam(const napi_env& env, const napi_value& value, uint64_t& tags)
+{
+    uint32_t arrayLength;
+    napi_status status = napi_get_array_length(env, value, &arrayLength);
+    if (status != napi_ok) {
+        HILOG_ERROR(LOG_CORE, "Failed to get the length of the array.");
+        return;
+    }
+
+    for (uint32_t i = 0; i < arrayLength; i++) {
+        napi_value tag;
+        status = napi_get_element(env, value, i, &tag);
+        if (status != napi_ok) {
+            HILOG_ERROR(LOG_CORE, "Failed to get element.");
+            return;
+        }
+
+        if (!TypeCheck(env, tag, napi_string)) {
+            HILOG_ERROR(LOG_CORE, "tag is invalid, not a napi_string");
+            return;
+        }
+
+        std::string tagStr = "";
+        GetStringParam(env, tag, tagStr);
+        if (g_tagsMap.count(tagStr) > 0) {
+            tags |= g_tagsMap[tagStr];
+        }
+    }
+}
+
+bool ParseTagsParam(const napi_env& env, const napi_value& value, uint64_t& tags)
+{
+    bool isArray = false;
+    napi_status status = napi_is_array(env, value, &isArray);
+    if (status != napi_ok) {
+        HILOG_ERROR(LOG_CORE, "Failed to get array type.");
+        return false;
+    }
+
+    if (isArray) {
+        SetTagsParam(env, value, tags);
+        return true;
+    } else {
+        HILOG_ERROR(LOG_CORE, "The argument isn't an array type.");
+        return false;
+    }
 }
 
 bool JsStrNumParamsFunc(napi_env& env, napi_callback_info& info, STR_NUM_PARAM_FUNC nativeCall)
@@ -192,6 +256,50 @@ static napi_value JSTraceCount(napi_env env, napi_callback_info info)
     return nullptr;
 }
 
+static napi_value JSStartCaptureAppTrace(napi_env env, napi_callback_info info)
+{
+    size_t argc = ARGC_NUMBER_THREE;
+    napi_value argv[ARGC_NUMBER_THREE];
+    ParseParams(env, info, argc, argv);
+    NAPI_ASSERT(env, argc >= ARGC_NUMBER_THREE, "Wrong number of arguments");
+
+    uint64_t tags = HITRACE_TAG_APP;
+    if (!ParseTagsParam(env, argv[FIRST_ARG_INDEX], tags)) {
+        return nullptr;
+    }
+
+    int64_t flag = 0;
+    if (!ParseInt64Param(env, argv[SECOND_ARG_INDEX], flag)) {
+        return nullptr;
+    }
+
+    int64_t limitSize = 0;
+    if (!ParseInt64Param(env, argv[ARGC_NUMBER_TWO], limitSize)) {
+        return nullptr;
+    }
+
+    std::string file = "";
+    if (StartCaptureAppTrace((TraceFlag)flag, tags, limitSize, file) != RET_SUCC) {
+        HILOG_ERROR(LOG_CORE, "StartCaptureAppTrace failed");
+        return nullptr;
+    }
+
+    napi_value napiFile;
+    napi_status status = napi_create_string_utf8(env, file.c_str(), file.length(), &napiFile);
+    if (status != napi_ok) {
+        HILOG_ERROR(LOG_CORE, "create napi string failed: %{public}d(%{public}s)", errno, strerror(errno));
+        return nullptr;
+    }
+
+    return napiFile;
+}
+
+static napi_value JSStopCaptureAppTrace(napi_env env, napi_callback_info info)
+{
+    StopCaptureAppTrace();
+    return nullptr;
+}
+
 /*
  * function for module exports
  */
@@ -202,6 +310,8 @@ static napi_value HiTraceMeterInit(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("startTrace", JSTraceStart),
         DECLARE_NAPI_FUNCTION("finishTrace", JSTraceFinish),
         DECLARE_NAPI_FUNCTION("traceByValue", JSTraceCount),
+        DECLARE_NAPI_FUNCTION("startCaptureAppTrace", JSStartCaptureAppTrace),
+        DECLARE_NAPI_FUNCTION("stopCaptureAppTrace", JSStopCaptureAppTrace),
     };
     NAPI_CALL(env, napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc));
     return exports;
