@@ -421,7 +421,7 @@ void SetMainThreadInfo()
         }
     }
 
-    g_appTracePrefix = std::string(g_appName);;
+    g_appTracePrefix = std::string(g_appName);
     SetCommStr();
     std::string pidStr = std::string(g_pid);
     std::string pidFixStr = std::string(PID_STR_MAX - pidStr.length(), ' ');
@@ -466,15 +466,15 @@ int SetAppTraceBuffer(char* buf, const int len, MarkerType type, const std::stri
     int bytes = 0;
     if (type == MARKER_BEGIN) {
         bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: B|%s|H:%s \n",
-                    g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, g_pid, name.c_str());
+            g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, g_pid, name.c_str());
     } else if (type == MARKER_END) {
         bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: E|%s|\n",
-                    g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, g_pid);
+            g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, g_pid);
     } else {
         char marktypestr = g_markTypes[type];
         bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: %c|%s|H:%s %lld\n",
-                    g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, marktypestr,
-                    g_pid, name.c_str(), value);
+            g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, marktypestr,
+            g_pid, name.c_str(), value);
     }
 
     return bytes;
