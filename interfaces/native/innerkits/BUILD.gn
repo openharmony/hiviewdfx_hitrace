@@ -73,6 +73,7 @@ ohos_static_library("hitrace_inner") {
   ]
   sources = [
     "src/hitrace_meter.cpp",
+    "src/hitrace_meter_c.c",
     "src/hitrace_meter_wrapper.cpp",
   ]
 

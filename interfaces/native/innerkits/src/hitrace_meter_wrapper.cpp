@@ -20,29 +20,29 @@
 extern "C" {
 #endif
 
-void StartTraceCwrapper(const char *value)
+void StartTraceCwrapper(uint64_t tag, const char *value)
 {
-    StartTrace(HITRACE_TAG_APP, value);
+    StartTrace(tag, value);
 }
 
-void FinishTraceCwrapper(void)
+void FinishTraceCwrapper(uint64_t tag)
 {
-    FinishTrace(HITRACE_TAG_APP);
+    FinishTrace(tag);
 }
 
-void StartAsyncTraceCwrapper(const char *value, int32_t taskId)
+void StartAsyncTraceCwrapper(uint64_t tag, const char *value, int32_t taskId)
 {
-    StartAsyncTrace(HITRACE_TAG_APP, value, taskId);
+    StartAsyncTrace(tag, value, taskId);
 }
 
-void FinishAsyncTraceCwrapper(const char *value, int32_t taskId)
+void FinishAsyncTraceCwrapper(uint64_t tag, const char *value, int32_t taskId)
 {
-    FinishAsyncTrace(HITRACE_TAG_APP, value, taskId);
+    FinishAsyncTrace(tag, value, taskId);
 }
 
-void CountTraceCwrapper(const char *value, int64_t count)
+void CountTraceCwrapper(uint64_t tag, const char *value, int64_t count)
 {
-    CountTrace(HITRACE_TAG_APP, value, count);
+    CountTrace(tag, value, count);
 }
 
 #ifdef __cplusplus
