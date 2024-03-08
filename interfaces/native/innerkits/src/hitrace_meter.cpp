@@ -78,6 +78,7 @@ constexpr const int PREFIX_MAX_SIZE = 128; // comm-pid (tgid) [cpu] .... ts.tns:
 constexpr const int TRACE_TXT_HEADER_MAX = 1024;
 constexpr const int CPU_CORE_NUM = 16;
 constexpr const int DEFAULT_CACHE_SIZE = 32 * 1024;
+constexpr const int MAX_FILE_SIZE = 500 * 1024 * 1024;
 constexpr const int NS_TO_MS = 1000;
 int g_tgid = -1;
 uint64_t g_traceEventNum = 0;
@@ -343,7 +344,7 @@ int SetAppFileName(std::string& destFileName, std::string& fileName)
     const int yearCount = 1900;
     const int size = sizeof(g_appName) + 32;
     char file[size] = {0};
-    auto ret = snprintf_s(file, size, size - 1, "%s_%04d%02d%02d_%02d%02d%02d.trace", g_appName,
+    auto ret = snprintf_s(file, sizeof(file), sizeof(file) - 1, "%s_%04d%02d%02d_%02d%02d%02d.trace", g_appName,
         tmTime.tm_year + yearCount, tmTime.tm_mon + 1, tmTime.tm_mday, tmTime.tm_hour, tmTime.tm_min, tmTime.tm_sec);
     if (ret <= 0) {
         HILOG_ERROR(LOG_CORE, "Format file failed, %{public}d", errno);
@@ -420,7 +421,7 @@ void SetMainThreadInfo()
         }
     }
 
-    g_appTracePrefix = std::string(g_appName);
+    g_appTracePrefix = std::string(g_appName);;
     SetCommStr();
     std::string pidStr = std::string(g_pid);
     std::string pidFixStr = std::string(PID_STR_MAX - pidStr.length(), ' ');
@@ -465,15 +466,15 @@ int SetAppTraceBuffer(char* buf, const int len, MarkerType type, const std::stri
     int bytes = 0;
     if (type == MARKER_BEGIN) {
         bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: B|%s|H:%s \n",
-            g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, g_pid, name.c_str());
+                    g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, g_pid, name.c_str());
     } else if (type == MARKER_END) {
         bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: E|%s|\n",
-            g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, g_pid);
+                    g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, g_pid);
     } else {
         char marktypestr = g_markTypes[type];
         bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: %c|%s|H:%s %lld\n",
-            g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, marktypestr,
-            g_pid, name.c_str(), value);
+                    g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, marktypestr,
+                    g_pid, name.c_str(), value);
     }
 
     return bytes;
@@ -889,7 +890,7 @@ int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std:
 
     g_appFlag = flag;
     g_appTag = tags;
-    g_fileLimitSize = limitSize;
+    g_fileLimitSize = (limitSize > MAX_FILE_SIZE) ? MAX_FILE_SIZE : limitSize;
     g_tgid = getprocpid();
     g_appTracePrefix = "";
 
