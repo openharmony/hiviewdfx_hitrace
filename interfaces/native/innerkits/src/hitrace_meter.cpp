@@ -31,7 +31,6 @@
 #include "parameters.h"
 #include "hitrace_meter.h"
 #include "hitrace/tracechain.h"
-#include "storage_acl.h"
 
 using namespace std;
 using namespace OHOS::HiviewDFX;
@@ -317,11 +316,6 @@ int SetAppFileName(std::string& destFileName, std::string& fileName)
         HILOG_ERROR(LOG_CORE, "failed to create dir(%{public}s):%{public}d(%{public}s)", destFileName.c_str(),
             errno, strerror(errno));
         return RET_FAIL_MKDIR;
-    }
-
-    if (OHOS::StorageDaemon::AclSetAccess(destFileName, "g:1201:rwx") != 0) {
-        HILOG_ERROR(LOG_CORE, "failed to set acl access dir(%{public}s): %{public}d", destFileName.c_str(), errno);
-        return RET_FAIL_SETACL;
     }
 
     if (!GetProcData("/proc/self/cmdline", g_appName, NAME_NORMAL_LEN)) {
