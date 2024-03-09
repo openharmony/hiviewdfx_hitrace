@@ -156,6 +156,26 @@ void CountTraceDebug(bool isDebug, uint64_t label, const std::string& name, int6
 void CountTraceWrapper(uint64_t label, const char *name, int64_t count);
 bool IsTagEnabled(uint64_t tag);
 
+enum RetType {
+    RET_SUCC = 0, // Successful
+    RET_STARTED = 1, // The capture process has already started
+    RET_STOPPED = 2, // The capture process has stopped
+    RET_FAIL = 1000, // Other failures
+    RET_FAIL_INVALID_ARGS = 1001, // Invalid parameter
+    RET_FAIL_MKDIR = 1002, // Failed to create dir
+    RET_FAIL_SETACL = 1003, // Failed to set the acl permission
+    RET_FAIL_ENOENT = 1004, // The file does not exist
+    RET_FAIL_EACCES = 1005, // No permission to open file
+};
+
+enum TraceFlag {
+    FLAG_MAIN_THREAD = 1,
+    FLAG_ALL_THREAD = 2
+};
+
+int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std::string& fileName);
+int StopCaptureAppTrace(void);
+
 class HitraceScoped {
 public:
     inline HitraceScoped(uint64_t tag, const std::string &value) : mTag(tag)
