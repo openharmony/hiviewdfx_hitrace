@@ -160,7 +160,7 @@ enum RetType {
     RET_SUCC = 0, // Successful
     RET_STARTED = 1, // The capture process has already started
     RET_STOPPED = 2, // The capture process has stopped
-    RET_FAIL = 1000, // Other failures
+    RET_FAILD = 1000, // Other failures
     RET_FAIL_INVALID_ARGS = 1001, // Invalid parameter
     RET_FAIL_MKDIR = 1002, // Failed to create dir
     RET_FAIL_SETACL = 1003, // Failed to set the acl permission
