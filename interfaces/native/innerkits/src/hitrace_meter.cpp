@@ -100,7 +100,7 @@ const uint64_t VALID_TAGS = HITRACE_TAG_FFRT | HITRACE_TAG_COMMONLIBRARY | HITRA
     | HITRACE_TAG_GLOBAL_RESMGR | HITRACE_TAG_DEVICE_MANAGER | HITRACE_TAG_SAMGR | HITRACE_TAG_POWER
     | HITRACE_TAG_DISTRIBUTED_SCHEDULE | HITRACE_TAG_DISTRIBUTED_INPUT | HITRACE_TAG_BLUETOOTH | HITRACE_TAG_APP;
 
-std::string TRACE_TXT_HEADER_FORMAT = R"(# tracer: nop
+const std::string TRACE_TXT_HEADER_FORMAT = R"(# tracer: nop
 #
 # entries-in-buffer/entries-written: %-21s   #P:%-3s
 #
@@ -320,19 +320,19 @@ int SetAppFileName(std::string& destFileName, std::string& fileName)
 
     if (!GetProcData("/proc/self/cmdline", g_appName, NAME_NORMAL_LEN)) {
         HILOG_ERROR(LOG_CORE, "get app name failed, %{public}d", errno);
-        return RET_FAIL;
+        return RET_FAILD;
     }
 
     time_t now = time(nullptr);
     if (now == static_cast<time_t>(-1)) {
         HILOG_ERROR(LOG_CORE, "get time failed, %{public}d", errno);
-        return RET_FAIL;
+        return RET_FAILD;
     }
 
     struct tm tmTime;
     if (localtime_r(&now, &tmTime) == nullptr) {
         HILOG_ERROR(LOG_CORE, "localtime_r failed, %{public}d", errno);
-        return RET_FAIL;
+        return RET_FAILD;
     }
 
     const int yearCount = 1900;
@@ -342,7 +342,7 @@ int SetAppFileName(std::string& destFileName, std::string& fileName)
         tmTime.tm_year + yearCount, tmTime.tm_mon + 1, tmTime.tm_mday, tmTime.tm_hour, tmTime.tm_min, tmTime.tm_sec);
     if (ret <= 0) {
         HILOG_ERROR(LOG_CORE, "Format file failed, %{public}d", errno);
-        return RET_FAIL;
+        return RET_FAILD;
     }
 
     destFileName += std::string(file);
@@ -357,11 +357,11 @@ int InitTraceHead()
     int used = snprintf_s(buffer.data(), buffer.size(), buffer.size() - 1, TRACE_TXT_HEADER_FORMAT.c_str(), "", "");
     if (used <= 0) {
         HILOG_ERROR(LOG_CORE, "format reserved trace header failed: %{public}d(%{public}s)", errno, strerror(errno));
-        return RET_FAIL;
+        return RET_FAILD;
     }
     if (write(g_appFd, buffer.data(), used) != used) {
         HILOG_ERROR(LOG_CORE, "write reserved trace header failed: %{public}d(%{public}s)", errno, strerror(errno));
-        return RET_FAIL;
+        return RET_FAILD;
     }
 
     g_writeOffset = 0;
@@ -460,15 +460,17 @@ int SetAppTraceBuffer(char* buf, const int len, MarkerType type, const std::stri
     int bytes = 0;
     if (type == MARKER_BEGIN) {
         bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: B|%s|H:%s \n",
-            g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, g_pid, name.c_str());
+            g_appTracePrefix.c_str(), cpu, static_cast<long>(ts.tv_sec),
+            static_cast<long>(ts.tv_nsec / NS_TO_MS), g_pid, name.c_str());
     } else if (type == MARKER_END) {
         bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: E|%s|\n",
-            g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, g_pid);
+            g_appTracePrefix.c_str(), cpu, static_cast<long>(ts.tv_sec),
+            static_cast<long>(ts.tv_nsec / NS_TO_MS), g_pid);
     } else {
         char marktypestr = g_markTypes[type];
         bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: %c|%s|H:%s %lld\n",
-            g_appTracePrefix.c_str(), cpu, (long)ts.tv_sec, (long)ts.tv_nsec / NS_TO_MS, marktypestr,
-            g_pid, name.c_str(), value);
+            g_appTracePrefix.c_str(), cpu, static_cast<long>(ts.tv_sec),
+            static_cast<long>(ts.tv_nsec / NS_TO_MS), marktypestr, g_pid, name.c_str(), value);
     }
 
     return bytes;
@@ -879,7 +881,7 @@ int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std:
     g_traceBuffer = std::make_unique<char[]>(DEFAULT_CACHE_SIZE);
     if (g_traceBuffer == nullptr) {
         HILOG_ERROR(LOG_CORE, "memory allocation failed: %{public}d(%{public}s)", errno, strerror(errno));
-        return RET_FAIL;
+        return RET_FAILD;
     }
 
     g_appFlag = flag;
@@ -907,7 +909,7 @@ int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std:
         } else if (errno == EACCES) {
             return RET_FAIL_EACCES;
         } else {
-            return RET_FAIL;
+            return RET_FAILD;
         }
     }
 
@@ -931,13 +933,13 @@ int StopCaptureAppTrace()
         eventNumStr.c_str(), std::to_string(CPU_CORE_NUM).c_str());
     if (used <= 0) {
         HILOG_ERROR(LOG_CORE, "format trace header failed: %{public}d(%{public}s)", errno, strerror(errno));
-        return RET_FAIL;
+        return RET_FAILD;
     }
 
     lseek(g_appFd, 0, SEEK_SET); // Move the write pointer to populate the file header.
     if (write(g_appFd, buffer.data(), used) != used) {
         HILOG_ERROR(LOG_CORE, "write trace header failed: %{public}d(%{public}s)", errno, strerror(errno));
-        return RET_FAIL;
+        return RET_FAILD;
     }
 
     g_fileSize = 0;
