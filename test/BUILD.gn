@@ -17,10 +17,7 @@ module_output_path = "hiviewdfx/hitrace"
 
 config("module_private_config") {
   visibility = [ ":*" ]
-  include_dirs = [
-    "../interfaces/native/innerkits/include",
-    "//third_party/bounds_checking_function/include",
-  ]
+  include_dirs = [ "../interfaces/native/innerkits/include" ]
 }
 
 ohos_unittest("HitraceCTest") {
@@ -33,10 +30,7 @@ ohos_unittest("HitraceCTest") {
 
   configs = [ ":module_private_config" ]
 
-  deps = [
-    "//third_party/bounds_checking_function:libsec_static",
-    "//third_party/googletest:gtest_main",
-  ]
+  deps = [ "//third_party/googletest:gtest_main" ]
 
   external_deps = []
   if (defined(ohos_lite)) {
@@ -44,6 +38,7 @@ ohos_unittest("HitraceCTest") {
   } else {
     external_deps += [ "hilog:libhilog" ]
   }
+  external_deps += [ "bounds_checking_function:libsec_static" ]
 }
 
 ohos_unittest("HitraceCppTest") {
@@ -58,10 +53,7 @@ ohos_unittest("HitraceCppTest") {
 
   configs = [ ":module_private_config" ]
 
-  deps = [
-    "//third_party/bounds_checking_function:libsec_static",
-    "//third_party/googletest:gtest_main",
-  ]
+  deps = [ "//third_party/googletest:gtest_main" ]
 
   external_deps = []
   if (defined(ohos_lite)) {
@@ -69,6 +61,7 @@ ohos_unittest("HitraceCppTest") {
   } else {
     external_deps += [ "hilog:libhilog" ]
   }
+  external_deps += [ "bounds_checking_function:libsec_static" ]
 }
 
 config("HitraceNDKTest_config") {
@@ -77,7 +70,6 @@ config("HitraceNDKTest_config") {
   include_dirs = [
     "../cmd/include",
     "../interfaces/native/innerkits/include/hitrace_meter",
-    "//third_party/bounds_checking_function/include",
   ]
 }
 
@@ -92,7 +84,6 @@ ohos_unittest("HitraceNDKTest") {
     "../cmd:hitrace_osal_inner",
     "../interfaces/native/innerkits:hitrace_meter",
     "../interfaces/native/innerkits:libhitracechain",
-    "//third_party/bounds_checking_function:libsec_static",
     "//third_party/googletest:gtest_main",
   ]
 
@@ -102,6 +93,7 @@ ohos_unittest("HitraceNDKTest") {
   } else {
     external_deps += [ "hilog:libhilog" ]
   }
+  external_deps += [ "bounds_checking_function:libsec_static" ]
 }
 
 ohos_unittest("HitraceDumpTest") {
@@ -116,12 +108,13 @@ ohos_unittest("HitraceDumpTest") {
 
   deps = [
     "../interfaces/native/innerkits:hitrace_dump",
-    "//third_party/bounds_checking_function:libsec_static",
     "//third_party/googletest:gtest_main",
   ]
 
-  external_deps = [ "init:libbegetutil" ]
-
+  external_deps = [
+    "bounds_checking_function:libsec_static",
+    "init:libbegetutil",
+  ]
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]
   } else {

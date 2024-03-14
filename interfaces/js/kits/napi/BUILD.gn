@@ -29,10 +29,13 @@ ohos_shared_library("hitracechain_napi") {
 
   deps = [ "../../../native/innerkits:libhitracechain" ]
 
-  external_deps = [
-    "hilog:libhilog",
-    "napi:ace_napi",
-  ]
+  external_deps = []
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+  external_deps += [ "napi:ace_napi" ]
 
   relative_install_dir = "module"
 
@@ -44,10 +47,13 @@ ohos_shared_library("hitracechain_napi") {
 ohos_shared_library("hitracemeter_napi") {
   sources = [ "./hitracemeter/napi_hitrace_meter.cpp" ]
   deps = [ "../../../native/innerkits:hitrace_meter" ]
-  external_deps = [
-    "hilog:libhilog",
-    "napi:ace_napi",
-  ]
+  external_deps = []
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+  external_deps += [ "napi:ace_napi" ]
 
   relative_install_dir = "module"
 

@@ -499,7 +499,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
             ssize_t readBytes = TEMP_FAILURE_RETRY(read(srcFd, g_buffer + bytes, PAGE_SIZE));
             if (readBytes <= 0) {
                 endFlag = true;
-                HILOG_ERROR(LOG_CORE, "WriteFile: read %{public}s failed.", src.c_str());
+                HILOG_INFO(LOG_CORE, "WriteFile: read %{public}s end or failed.", src.c_str());
                 break;
             }
 

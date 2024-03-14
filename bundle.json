@@ -23,16 +23,16 @@
     "ram": "~320KB",
     "deps": {
       "components": [
+        "bounds_checking_function",
         "hilog",
         "hilog_lite",
         "hiview",
         "init",
-        "napi"
+        "napi",
+        "zlib"
       ],
       "third_party": [
-        "bounds_checking_function",
-        "cJSON",
-        "zlib"
+        "cJSON"
       ]
     },
     "build": {

@@ -59,10 +59,7 @@ ohos_shared_library("libhitracechain") {
 
 config("hitrace_meter_config") {
   visibility = [ ":*" ]
-  include_dirs = [
-    "include/hitrace_meter",
-    "//third_party/bounds_checking_function/include",
-  ]
+  include_dirs = [ "include/hitrace_meter" ]
 }
 
 ohos_static_library("hitrace_inner") {
@@ -101,7 +98,6 @@ ohos_shared_library("hitrace_dump") {
   include_dirs = [
     "./include",
     "../../../frameworks/include/",
-    "//third_party/bounds_checking_function/include",
   ]
   public_configs = [ ":hitrace_dump_config" ]
   sources = [
@@ -112,11 +108,11 @@ ohos_shared_library("hitrace_dump") {
 
   deps = [
     "../../../config:hitrace_utils",
-    "//third_party/bounds_checking_function:libsec_static",
     "//third_party/cJSON:cjson",
   ]
 
   external_deps = [
+    "bounds_checking_function:libsec_static",
     "init:libbeget_proxy",
     "init:libbegetutil",
   ]
@@ -138,9 +134,15 @@ ohos_shared_library("hitrace_meter") {
     ":hitrace_etc",
     ":hitrace_inner",
     ":libhitracechain",
-    "//third_party/bounds_checking_function:libsec_static",
   ]
-  external_deps = [ "hilog:libhilog" ]
+
+  external_deps = [ "bounds_checking_function:libsec_static" ]
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+
   output_extension = "so"
 
   innerapi_tags = [

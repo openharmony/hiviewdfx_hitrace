@@ -43,9 +43,7 @@ ohos_executable("hitrace") {
   deps = [
     ":hitrace_osal_inner",
     "../config:hitrace_utils",
-    "//third_party/bounds_checking_function:libsec_static",
     "//third_party/cJSON:cjson",
-    "//third_party/zlib:libz",
   ]
 
   external_deps = []
@@ -59,13 +57,15 @@ ohos_executable("hitrace") {
   if (device_company != "qemu" && support_executable_file) {
     external_deps += [ "hiview:libucollection_client" ]
   }
+  external_deps += [
+    "bounds_checking_function:libsec_static",
+    "zlib:libz",
+  ]
 
   include_dirs = [
     "./include",
-    "//third_party/zlib",
     "../frameworks/include/",
     "../interfaces/native/innerkits/include/hitrace_meter",
-    "//third_party/bounds_checking_function/include",
   ]
   subsystem_name = "hiviewdfx"
   part_name = "hitrace"
@@ -81,9 +81,7 @@ ohos_executable("bytrace") {
   deps = [
     ":hitrace_osal_inner",
     "../config:hitrace_utils",
-    "//third_party/bounds_checking_function:libsec_static",
     "//third_party/cJSON:cjson",
-    "//third_party/zlib:libz",
   ]
 
   external_deps = []
@@ -97,13 +95,15 @@ ohos_executable("bytrace") {
   if (device_company != "qemu" && support_executable_file) {
     external_deps += [ "hiview:libucollection_client" ]
   }
+  external_deps += [
+    "bounds_checking_function:libsec_static",
+    "zlib:libz",
+  ]
 
   include_dirs = [
     "./include",
-    "//third_party/zlib",
     "../frameworks/include/",
     "../interfaces/native/innerkits/include/hitrace_meter",
-    "//third_party/bounds_checking_function/include",
   ]
   subsystem_name = "hiviewdfx"
   part_name = "hitrace"
@@ -119,7 +119,13 @@ ohos_prebuilt_etc("hitrace.cfg") {
 ohos_executable("hitrace_example") {
   sources = [ "example/hitrace_example.cpp" ]
   deps = [ "../interfaces/native/innerkits:hitrace_meter" ]
-  external_deps = [ "hilog:libhilog" ]
+
+  external_deps = []
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
   install_enable = false
   subsystem_name = "hiviewdfx"
   part_name = "hitrace"
