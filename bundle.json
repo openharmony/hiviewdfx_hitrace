@@ -24,15 +24,13 @@
     "deps": {
       "components": [
         "bounds_checking_function",
+        "cJSON",
         "hilog",
         "hilog_lite",
         "hiview",
         "init",
         "napi",
         "zlib"
-      ],
-      "third_party": [
-        "cJSON"
       ]
     },
     "build": {

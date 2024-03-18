@@ -43,7 +43,6 @@ ohos_executable("hitrace") {
   deps = [
     ":hitrace_osal_inner",
     "../config:hitrace_utils",
-    "//third_party/cJSON:cjson",
   ]
 
   external_deps = []
@@ -59,6 +58,7 @@ ohos_executable("hitrace") {
   }
   external_deps += [
     "bounds_checking_function:libsec_static",
+    "cJSON:cjson",
     "zlib:libz",
   ]
 
@@ -81,7 +81,6 @@ ohos_executable("bytrace") {
   deps = [
     ":hitrace_osal_inner",
     "../config:hitrace_utils",
-    "//third_party/cJSON:cjson",
   ]
 
   external_deps = []
@@ -97,6 +96,7 @@ ohos_executable("bytrace") {
   }
   external_deps += [
     "bounds_checking_function:libsec_static",
+    "cJSON:cjson",
     "zlib:libz",
   ]
 
