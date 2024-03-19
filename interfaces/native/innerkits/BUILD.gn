@@ -106,13 +106,11 @@ ohos_shared_library("hitrace_dump") {
     "./src/hitrace_dump.cpp",
   ]
 
-  deps = [
-    "../../../config:hitrace_utils",
-    "//third_party/cJSON:cjson",
-  ]
+  deps = [ "../../../config:hitrace_utils" ]
 
   external_deps = [
     "bounds_checking_function:libsec_static",
+    "cJSON:cjson",
     "init:libbeget_proxy",
     "init:libbegetutil",
   ]
