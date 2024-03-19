@@ -422,7 +422,7 @@ void SetMainThreadInfo()
     g_appTracePrefix +=  "-" + pidStr + pidFixStr + " (" + pidFixStr + pidStr + ")";
 }
 
-bool SetAllThreadInfo(int& tid)
+bool SetAllThreadInfo(const int& tid)
 {
     std::string tidStr = std::to_string(tid);
     std::string file = "/proc/self/task/" + tidStr + "/comm";
@@ -892,10 +892,10 @@ int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std:
 
     std::string destFileName = fileName;
     if (destFileName.empty()) {
-        auto ret = SetAppFileName(destFileName, fileName);
-        if (ret != RET_SUCC) {
+        auto retval = SetAppFileName(destFileName, fileName);
+        if (retval != RET_SUCC) {
             HILOG_ERROR(LOG_CORE, "set appFileName failed: %{public}d(%{public}s)", errno, strerror(errno));
-            return ret;
+            return retval;
         }
     }
 
