@@ -17,6 +17,11 @@
 #define INTERFACES_INNERKITS_NATIVE_HITRACE_METER_H
 
 #include <string>
+#include <asm/unistd.h>
+#include <linux/perf_event.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+#include <errno.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -189,6 +194,54 @@ public:
     }
 private:
     uint64_t mTag;
+};
+
+class HitracePerScoped {
+public:
+    inline HitracePerScoped(bool isDebug, uint64_t tag, const std::string &name) : mTag(tag), mName(name)
+    {
+        if (!isDebug) {
+            return;
+        }
+        struct perf_event_attr pe;
+        memset(&pe, 0, sizeof(struct perf_event_attr));
+        pe.type = PERF_TYPE_HARDWARE;
+        pe.size = sizeof(struct perf_event_attr);
+        pe.config = PERF_COUNT_HW_INSTRUCTIONS;
+        pe.disabled = 1;
+        pe.exclude_kernel = 0;
+        pe.exclude_hv = 0;
+        // struct perf_evnet_attr* hw_event, pid_t pid, int cpu, int group_fd, unsigned long flags)
+        fd = syscall(__NR_perf_event_open, &pe, 0, -1, -1 ,0);
+        if (fd == -1) {
+            return;
+        }
+        ioctl(fd, PERF_EVENT_IOC_RESET, 0);
+        ioctl(fd, PERF_EVENT_IOC_ENABLE, 0);
+    }
+    inline long long GetCount()
+    {
+        if (fd == -1) {
+            return count;
+        }
+        read(fd, &count, sizeof(long long));
+        return count;
+    }
+    inline ~HitracePerScoped()
+    {
+        if (fd == -1) {
+            return;
+        }
+        ioctl(fd, PERF_EVENT_IOC_DISABLE, 0);
+        read(fd, &count, sizeof(long long));
+        close(fd);
+        CountTrace(mTag, mName, count);
+    }
+private:
+    uint64_t mTag;
+    std::string mName;
+    int fd = -1;
+    long long count = 0;
 };
 
 class HitraceMeterFmtScoped {
