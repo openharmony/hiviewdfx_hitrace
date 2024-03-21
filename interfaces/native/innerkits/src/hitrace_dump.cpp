@@ -775,6 +775,24 @@ std::string GenerateName(bool isSnapshot = true)
 }
 
 /**
+ * When the raw trace is started, clear the saved_events_format files in the folder.
+ */
+void ClearSavedEventsFormat()
+{
+    const std::string savedEventsFormatPath = DEFAULT_OUTPUT_DIR + SAVED_EVENTS_FORMAT;
+    if (access(savedEventsFormatPath.c_str(), F_OK) != 0) {
+        // saved_events_format not exit
+        return;
+    }
+    // saved_events_format exit
+    if (remove(savedEventsFormatPath.c_str()) == 0) {
+        HILOG_INFO(LOG_CORE, "Delete saved_events_format success.");
+    } else {
+        HILOG_ERROR(LOG_CORE, "Delete saved_events_format failed.");
+    }
+}
+
+/**
  * read trace data loop
  * g_dumpFlag: true = open，false = close
  * g_dumpEnd: true = end，false = not end
@@ -789,6 +807,7 @@ void ProcessDumpTask()
     const std::string threadName = "TraceDumpTask";
     prctl(PR_SET_NAME, threadName.c_str());
     HILOG_INFO(LOG_CORE, "ProcessDumpTask: trace dump thread start.");
+    ClearSavedEventsFormat();
     if (g_currentTraceParams.fileSize.empty()) {
         std::string outputFileName = GenerateName(false);
         if (DumpTraceLoop(outputFileName, false)) {
