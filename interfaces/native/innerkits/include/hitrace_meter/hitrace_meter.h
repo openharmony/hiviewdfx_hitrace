@@ -198,9 +198,9 @@ private:
     uint64_t mTag;
 };
 
-class HitracePerScoped {
+class HitracePerfScoped {
 public:
-    inline HitracePerScoped(bool isDebug, uint64_t tag, const std::string &name) : mTag(tag), mName(name)
+    inline HitracePerfScoped(bool isDebug, uint64_t tag, const std::string &name) : mTag(tag), mName(name)
     {
         if (!isDebug) {
             return;
@@ -230,7 +230,57 @@ public:
         return count;
     }
 
-    inline ~HitracePerScoped()
+    inline ~HitracePerfScoped()
+    {
+        if (fd == -1) {
+            return;
+        }
+        ioctl(fd, PERF_EVENT_IOC_DISABLE, 0);
+        read(fd, &count, sizeof(long long));
+        close(fd);
+        CountTrace(mTag, mName, count);
+    }
+
+private:
+    uint64_t mTag;
+    std::string mName;
+    int fd = -1;
+    long long count = 0;
+};
+
+class HitracePerfCycleScoped {
+public:
+    inline HitracePerfCycleScoped(bool isDebug, uint64_t tag, const std::string &name) : mTag(tag), mName(name)
+    {
+        if (!isDebug) {
+            return;
+        }
+        struct perf_event_attr pe;
+        (void)memset_s(&pe, sizeof(struct perf_event_attr), 0, sizeof(struct perf_event_attr));
+        pe.type = PERF_TYPE_HARDWARE;
+        pe.size = sizeof(struct perf_event_attr);
+        pe.config = PERF_COUNT_HW_CPU_CYCLES;
+        pe.disabled = 1;
+        pe.exclude_kernel = 0;
+        pe.exclude_hv = 0;
+        fd = syscall(__NR_perf_event_open, &pe, 0, -1, -1, 0);
+        if (fd == -1) {
+            return;
+        }
+        ioctl(fd, PERF_EVENT_IOC_RESET, 0);
+        ioctl(fd, PERF_EVENT_IOC_ENABLE, 0);
+    }
+
+    inline long long GetCount()
+    {
+        if (fd == -1) {
+            return count;
+        }
+        read(fd, &count, sizeof(long long));
+        return count;
+    }
+
+    inline ~HitracePerfCycleScoped()
     {
         if (fd == -1) {
             return;
