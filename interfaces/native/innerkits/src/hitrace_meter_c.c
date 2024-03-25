@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Huawei Device Co., Ltd.
+ * Copyright (C) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,27 +16,27 @@
 #include "hitrace_meter_c.h"
 #include "hitrace_meter_wrapper.h"
 
-void OH_HiTrace_StartTrace_C(uint64_t tag, const char* value)
+void HiTraceStartTrace(uint64_t tag, const char* value)
 {
     StartTraceCwrapper(tag, value);
 }
 
-void OH_HiTrace_FinishTrace_C(uint64_t tag)
+void HiTraceFinishTrace(uint64_t tag)
 {
     FinishTraceCwrapper(tag);
 }
 
-void OH_HiTrace_StartAsyncTrace_C(uint64_t tag, const char* value, int32_t taskId)
+void HiTraceStartAsyncTrace(uint64_t tag, const char* value, int32_t taskId)
 {
     StartAsyncTraceCwrapper(tag, value, taskId);
 }
 
-void OH_HiTrace_FinishAsyncTrace_C(uint64_t tag, const char* value, int32_t taskId)
+void HiTraceFinishAsyncTrace(uint64_t tag, const char* value, int32_t taskId)
 {
     FinishAsyncTraceCwrapper(tag, value, taskId);
 }
 
-void OH_HiTrace_CountTrace_C(uint64_t tag, const char* value, int32_t count)
+void HiTraceCountTrace(uint64_t tag, const char* value, int32_t count)
 {
     CountTraceCwrapper(tag, value, count);
 }

@@ -22,11 +22,11 @@
 extern "C" {
 #endif
 
-void OH_HiTrace_StartTrace_C(uint64_t tag, const char* value);
-void OH_HiTrace_FinishTrace_C(uint64_t tag);
-void OH_HiTrace_StartAsyncTrace_C(uint64_t tag, const char* value, int32_t taskId);
-void OH_HiTrace_FinishAsyncTrace_C(uint64_t tag, const char* value, int32_t taskId);
-void OH_HiTrace_CountTrace_C(uint64_t tag, const char* value, int32_t count);
+void HiTraceStartTrace(uint64_t tag, const char* value);
+void HiTraceFinishTrace(uint64_t tag);
+void HiTraceStartAsyncTrace(uint64_t tag, const char* value, int32_t taskId);
+void HiTraceFinishAsyncTrace(uint64_t tag, const char* value, int32_t taskId);
+void HiTraceCountTrace(uint64_t tag, const char* value, int32_t count);
 
 #ifdef __cplusplus
 }
