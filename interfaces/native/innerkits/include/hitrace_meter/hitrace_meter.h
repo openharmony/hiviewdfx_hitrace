@@ -180,8 +180,7 @@ enum TraceFlag {
     FLAG_ALL_THREAD = 2
 };
 
-struct ReadFormat
-{
+struct ReadFormat {
     uint64_t nr;
     uint64_t values[2];
 };
