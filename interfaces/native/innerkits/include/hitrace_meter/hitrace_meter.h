@@ -257,16 +257,18 @@ public:
 
     inline ~HitracePerfScoped()
     {
-        if (fd1st == -1) {
-            return;
+        if (fd1st != -1) {
+            ioctl(fd1st, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
+            read(fd1st, &countIns, sizeof(long long));
+            close(fd1st);
+            CountTrace(mTag, mName + "-Ins", countIns);
         }
-        ioctl(fd1st, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
-        read(fd1st, &countIns, sizeof(long long));
-        read(fd2nd, &countCycles, sizeof(long long));
-        close(fd1st);
-        close(fd2nd);
-        CountTrace(mTag, mName + "-Ins", countIns);
-        CountTrace(mTag, mName + "-Cycle", countCycles);
+        if (fd2nd != -1) {
+            ioctl(fd2nd, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
+            read(fd2nd, &countCycles, sizeof(long long));
+            close(fd2nd);
+            CountTrace(mTag, mName + "-Cycle", countCycles);
+        }
     }
 
 private:
