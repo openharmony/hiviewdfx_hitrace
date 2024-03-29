@@ -180,11 +180,6 @@ enum TraceFlag {
     FLAG_ALL_THREAD = 2
 };
 
-struct ReadFormat {
-    uint64_t nr;
-    uint64_t values[2];
-};
-
 int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std::string& fileName);
 int StopCaptureAppTrace(void);
 
@@ -210,24 +205,36 @@ public:
         if (!isDebug) {
             return;
         }
-        struct perf_event_attr pe;
-        (void)memset_s(&pe, sizeof(struct perf_event_attr), 0, sizeof(struct perf_event_attr));
-        pe.type = PERF_TYPE_HARDWARE;
-        pe.size = sizeof(struct perf_event_attr);
-        pe.config = PERF_COUNT_HW_INSTRUCTIONS;
-        pe.disabled = 1;
-        pe.exclude_kernel = 0;
-        pe.read_format = PERF_FORMAT_GROUP;
-        pe.exclude_hv = 0;
-        fd1st = syscall(__NR_perf_event_open, &pe, 0, -1, -1, 0);
+        struct perf_event_attr peIns;
+        (void)memset_s(&peIns, sizeof(struct perf_event_attr), 0, sizeof(struct perf_event_attr));
+        peIns.type = PERF_TYPE_HARDWARE;
+        peIns.size = sizeof(struct perf_event_attr);
+        peIns.config = PERF_COUNT_HW_INSTRUCTIONS;
+        peIns.disabled = 1;
+        peIns.exclude_kernel = 0;
+        peIns.exclude_hv = 0;
+        fd1st = syscall(__NR_perf_event_open, &peIns, 0, -1, -1, 0);
         if (fd1st == -1) {
             err = errno;
             return;
         }
-        pe.config = PERF_COUNT_HW_CPU_CYCLES;
-        fd2nd = syscall(__NR_perf_event_open, &pe, 0, -1, fd1st, 0);
+        struct perf_event_attr peCycles;
+        (void)memset_s(&peCycles, sizeof(struct perf_event_attr), 0, sizeof(struct perf_event_attr));
+        peCycles.type = PERF_TYPE_HARDWARE;
+        peCycles.size = sizeof(struct perf_event_attr);
+        peCycles.config = PERF_COUNT_HW_CPU_CYCLES;
+        peCycles.disabled = 1;
+        peCycles.exclude_kernel = 0;
+        peCycles.exclude_hv = 0;
+        fd2nd = syscall(__NR_perf_event_open, &peCycles, 0, -1, -1, 0);
+        if (fd2nd == -1) {
+            err = errno;
+            return;
+        }
         ioctl(fd1st, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);
         ioctl(fd1st, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
+        ioctl(fd2nd, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);
+        ioctl(fd2nd, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
     }
 
     inline long long GetInsCount()
@@ -235,19 +242,17 @@ public:
         if (fd1st == -1) {
             return err;
         }
-        struct ReadFormat aread;
-        read(fd1st, &aread, sizeof(struct ReadFormat));
-        return aread.values[0];
+        read(fd1st, &countIns, sizeof(long long));
+        return countIns;
     }
 
     inline long long GetCycleCount()
     {
-        if (fd1st == -1) {
+        if (fd2nd == -1) {
             return err;
         }
-        struct ReadFormat aread;
-        read(fd1st, &aread, sizeof(struct ReadFormat));
-        return aread.values[1];
+        read(fd2nd, &countCycles, sizeof(long long));
+        return countCycles;
     }
 
     inline ~HitracePerfScoped()
@@ -256,12 +261,12 @@ public:
             return;
         }
         ioctl(fd1st, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
-        struct ReadFormat aread;
-        read(fd1st, &aread, sizeof(struct ReadFormat));
+        read(fd1st, &countIns, sizeof(long long));
+        read(fd2nd, &countCycles, sizeof(long long));
         close(fd1st);
         close(fd2nd);
-        CountTrace(mTag, mName + "-Ins", aread.values[0]);
-        CountTrace(mTag, mName + "-Cycle", aread.values[1]);
+        CountTrace(mTag, mName + "-Ins", countIns);
+        CountTrace(mTag, mName + "-Cycle", countCycles);
     }
 
 private:
@@ -269,6 +274,8 @@ private:
     std::string mName;
     int fd1st = -1;
     int fd2nd = -1;
+    long long countIns = 0;
+    long long countCycles = 0;
     int err = 0;
 };
 
