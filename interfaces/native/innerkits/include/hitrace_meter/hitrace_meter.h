@@ -231,10 +231,10 @@ public:
             err = errno;
             return;
         }
-        ioctl(fd1st, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);
-        ioctl(fd1st, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
-        ioctl(fd2nd, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);
-        ioctl(fd2nd, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
+        ioctl(fd1st, PERF_EVENT_IOC_RESET, 0);
+        ioctl(fd1st, PERF_EVENT_IOC_ENABLE, 0);
+        ioctl(fd2nd, PERF_EVENT_IOC_RESET, 0);
+        ioctl(fd2nd, PERF_EVENT_IOC_ENABLE, 0);
     }
 
     inline long long GetInsCount()
@@ -258,13 +258,13 @@ public:
     inline ~HitracePerfScoped()
     {
         if (fd1st != -1) {
-            ioctl(fd1st, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
+            ioctl(fd1st, PERF_EVENT_IOC_DISABLE, 0);
             read(fd1st, &countIns, sizeof(long long));
             close(fd1st);
             CountTrace(mTag, mName + "-Ins", countIns);
         }
         if (fd2nd != -1) {
-            ioctl(fd2nd, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
+            ioctl(fd2nd, PERF_EVENT_IOC_DISABLE, 0);
             read(fd2nd, &countCycles, sizeof(long long));
             close(fd2nd);
             CountTrace(mTag, mName + "-Cycle", countCycles);
