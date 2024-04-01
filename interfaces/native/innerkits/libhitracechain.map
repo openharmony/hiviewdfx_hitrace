@@ -35,6 +35,7 @@
         "HiTraceChainSetId";
         "HiTraceChainClearId";
         "HiTraceChainCreateSpan";
+        "HiTraceChainTracepoint";
   };
   local:
     *;
