@@ -141,7 +141,7 @@ const int DEFAULT_BUFFER_SIZE = 18432; // 18 MB
 constexpr unsigned int MAX_OUTPUT_LEN = 255;
 const int PAGE_SIZE_KB = 4; // 4 KB
 const int MIN_FILE_SIZE = 51200; // 50 MB
-const int MAX_FILE_SIZE = 500000; // 500 MB
+const int MAX_FILE_SIZE = 512000; // 500 MB
 
 string g_traceRootPath;
 string g_traceHmDir;
