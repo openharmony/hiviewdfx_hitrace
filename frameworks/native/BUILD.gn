@@ -14,15 +14,24 @@
 import("//build/ohos.gni")
 
 ohos_source_set("hitracechain_source") {
-  include_dirs = [ "../../interfaces/native/innerkits/include" ]
+  include_dirs = [
+    "../../interfaces/native/innerkits/include",
+    "//third_party/bounds_checking_function/include",
+    "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/hitrace_meter",
+    "//base/hiviewdfx/hitrace/frameworks/include",
+  ]
 
   sources = [
+    "//base/hiviewdfx/hitrace/interfaces/native/innerkits/src/hitrace_meter.cpp",
+    "//base/hiviewdfx/hitrace/interfaces/native/innerkits/src/hitrace_meter_c.c",
+    "//base/hiviewdfx/hitrace/interfaces/native/innerkits/src/hitrace_meter_wrapper.cpp",
     "hitracechain.cpp",
     "hitracechainc.c",
     "hitraceid.cpp",
   ]
 
   external_deps = []
+  external_deps += [ "init:libbegetutil" ]
 
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]

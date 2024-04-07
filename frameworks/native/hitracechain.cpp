@@ -76,5 +76,15 @@ void HiTraceChain::Tracepoint(HiTraceCommunicationMode mode, HiTraceTracepointTy
 
     return;
 }
+
+HiTraceId HiTraceChain::SaveAndSet(const HiTraceId& id)
+{
+    return HiTraceId(::HiTraceChainSaveAndSetId(&(id.id_)));
+}
+
+void HiTraceChain::Restore(const HiTraceId& id)
+{
+    ::HiTraceChainRestoreId(&(id.id_));
+}
 } // namespace HiviewDFX
 } // namespace OHOS

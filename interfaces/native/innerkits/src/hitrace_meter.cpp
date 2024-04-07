@@ -561,7 +561,8 @@ void WriteAppTrace(MarkerType type, const std::string& name, const int64_t value
     }
 }
 
-void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& name, const int64_t value)
+void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& name, const int64_t value,
+    const HiTraceIdStruct* hiTraceIdStruct = nullptr)
 {
     if (UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
         return;
@@ -582,7 +583,7 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
         char buf[BUFFER_LEN] = {0};
         int len = name.length();
         if (UNEXPECTANTLY(len <= NAME_NORMAL_LEN)) {
-            HiTraceId hiTraceId = HiTraceChain::GetId();
+            HiTraceId hiTraceId = (hiTraceIdStruct == nullptr) ? HiTraceChain::GetId() : HiTraceId(*hiTraceIdStruct);
             bool isHiTraceIdValid = hiTraceId.IsValid();
             int bytes = 0;
             if (type == MARKER_BEGIN) {
@@ -702,6 +703,11 @@ void StartAsyncTraceWrapper(uint64_t label, const char *value, int32_t taskId)
 {
     std::string traceValue = value;
     StartAsyncTrace(label, traceValue, taskId);
+}
+
+void StartTraceChain(uint64_t label, const struct HiTraceIdStruct* hiTraceId, const char *value)
+{
+    AddHitraceMeterMarker(MARKER_BEGIN, label, value, 0, hiTraceId);
 }
 
 void StartAsyncTraceDebug(bool isDebug, uint64_t label, const string& value, int32_t taskId, float limit UNUSED_PARAM)

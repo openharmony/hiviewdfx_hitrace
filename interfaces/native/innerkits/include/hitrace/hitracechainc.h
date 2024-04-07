@@ -109,6 +109,8 @@ HiTraceIdStruct HiTraceChainGetId(void);
 void HiTraceChainSetId(const HiTraceIdStruct* pId);
 void HiTraceChainClearId(void);
 HiTraceIdStruct HiTraceChainCreateSpan(void);
+HiTraceIdStruct HiTraceChainSaveAndSetId(const HiTraceIdStruct* pId);
+void HiTraceChainRestoreId(const HiTraceIdStruct* oldId);
 void HiTraceChainTracepoint(HiTraceTracepointType type, const HiTraceIdStruct* pId, const char* fmt, ...)
     __attribute__((__format__(os_log, 3, 4)));
 void HiTraceChainTracepointWithArgs(HiTraceTracepointType type, const HiTraceIdStruct* pId, const char* fmt,

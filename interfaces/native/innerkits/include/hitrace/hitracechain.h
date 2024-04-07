@@ -75,6 +75,17 @@ public:
      */
     static void Tracepoint(HiTraceCommunicationMode mode, HiTraceTracepointType type, const HiTraceId& id,
         const char* fmt, ...) __attribute__((__format__(os_log, 4, 5)));
+
+    /**
+     * @brief set the target id and return the old id.
+     * @param id the trace id of target id.
+     */
+    static HiTraceId SaveAndSet(const HiTraceId& id);
+
+    /**
+     * @brief restore the current thread id.
+     */
+    static void Restore(const HiTraceId& id);
 private:
     HiTraceChain() = default;
     ~HiTraceChain() = default;

@@ -22,6 +22,8 @@
 extern "C" {
 #endif
 
+#define HITRACE_TAG_OHOS (1ULL << 30)
+
 void HiTraceStartTrace(uint64_t tag, const char* value);
 void HiTraceFinishTrace(uint64_t tag);
 void HiTraceStartAsyncTrace(uint64_t tag, const char* value, int32_t taskId);

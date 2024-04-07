@@ -15,11 +15,16 @@ import("//build/ohos.gni")
 
 ohos_shared_library("hitrace_ndk") {
   include_dirs = [
-    "../include/",
-    "../../interfaces/native/kits/include/",
+    "../include",
+    "../../interfaces/native/innerkits/include",
   ]
 
-  sources = [ "hitrace_meter_ndk.c" ]
+  sources = [
+    "../../interfaces/native/innerkits/src/hitrace_meter_c.c",
+    "../native/hitracechainc.c",
+    "hitrace_chain_ndk.c",
+    "hitrace_meter_ndk.c",
+  ]
 
   deps = [ "../../interfaces/native/innerkits:hitrace_meter" ]
 

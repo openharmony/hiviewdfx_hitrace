@@ -17,14 +17,24 @@ module_output_path = "hiviewdfx/hitrace"
 
 config("module_private_config") {
   visibility = [ ":*" ]
-  include_dirs = [ "../interfaces/native/innerkits/include" ]
+  include_dirs = [
+    "../interfaces/native/innerkits/include",
+    "../frameworks/include",
+    "../interfaces/native/innerkits/include/hitrace_meter",
+    "../interfaces/native/innerkits/include/hitrace",
+  ]
 }
 
 ohos_unittest("HitraceCTest") {
   module_out_path = module_output_path
 
   sources = [
+    "../frameworks/native/hitracechain.cpp",
     "../frameworks/native/hitracechainc.c",
+    "../frameworks/native/hitraceid.cpp",
+    "../interfaces/native/innerkits/src/hitrace_meter.cpp",
+    "../interfaces/native/innerkits/src/hitrace_meter_c.c",
+    "../interfaces/native/innerkits/src/hitrace_meter_wrapper.cpp",
     "unittest/common/native/hitracechainc_test.cpp",
   ]
 
@@ -38,7 +48,10 @@ ohos_unittest("HitraceCTest") {
   } else {
     external_deps += [ "hilog:libhilog" ]
   }
-  external_deps += [ "bounds_checking_function:libsec_static" ]
+  external_deps += [
+    "bounds_checking_function:libsec_static",
+    "init:libbegetutil",
+  ]
 }
 
 ohos_unittest("HitraceCppTest") {
@@ -48,6 +61,9 @@ ohos_unittest("HitraceCppTest") {
     "../frameworks/native/hitracechain.cpp",
     "../frameworks/native/hitracechainc.c",
     "../frameworks/native/hitraceid.cpp",
+    "../interfaces/native/innerkits/src/hitrace_meter.cpp",
+    "../interfaces/native/innerkits/src/hitrace_meter_c.c",
+    "../interfaces/native/innerkits/src/hitrace_meter_wrapper.cpp",
     "unittest/common/native/hitracechaincpp_test.cpp",
   ]
 
@@ -61,7 +77,10 @@ ohos_unittest("HitraceCppTest") {
   } else {
     external_deps += [ "hilog:libhilog" ]
   }
-  external_deps += [ "bounds_checking_function:libsec_static" ]
+  external_deps += [
+    "bounds_checking_function:libsec_static",
+    "init:libbegetutil",
+  ]
 }
 
 config("HitraceNDKTest_config") {

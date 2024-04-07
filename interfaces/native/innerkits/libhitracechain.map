@@ -26,6 +26,9 @@
         "OHOS::HiviewDFX::HiTraceId::SetParentSpanId(unsigned long long)";
         "OHOS::HiviewDFX::HiTraceId::SetParentSpanId(unsigned long)";
         "OHOS::HiviewDFX::HiTraceId::SetFlags(int)";
+        "OHOS::HiviewDFX::HiTraceChain::SaveAndSet(OHOS::HiviewDFX::HiTraceId const&)";
+        "OHOS::HiviewDFX::HiTraceChain::Restore(OHOS::HiviewDFX::HiTraceId const&)";
+        "OHOS::HiviewDFX::HiTraceId::HiTraceId(HiTraceIdStruct const&)";
     };
   extern "C" {
         "HiTraceChainTracepointInner";
@@ -36,6 +39,9 @@
         "HiTraceChainClearId";
         "HiTraceChainCreateSpan";
         "HiTraceChainTracepoint";
+        "HiTraceChainSaveAndSetId";
+        "HiTraceChainRestoreId";
+        "HiTraceFinishTrace";
   };
   local:
     *;
