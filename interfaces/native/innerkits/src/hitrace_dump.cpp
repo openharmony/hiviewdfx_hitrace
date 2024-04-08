@@ -75,7 +75,6 @@ const int DEFAULT_BUFFER_SIZE = 12 * 1024;
 const int DEFAULT_FILE_SIZE = 100 * 1024;
 const int HM_DEFAULT_BUFFER_SIZE = 144 * 1024;
 const int SAVED_CMDLINES_SIZE = 3072; // 3M
-const int MAX_OUTPUT_FILE_SIZE = 20;
 const int KB_PER_MB = 1024;
 
 const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
@@ -818,14 +817,6 @@ void ProcessDumpTask()
     }
     
     while (g_dumpFlag) {
-        if (g_outputFilesForCmd.size() >= MAX_OUTPUT_FILE_SIZE && access(g_outputFilesForCmd[0].c_str(), F_OK) == 0) {
-            if (remove(g_outputFilesForCmd[0].c_str()) == 0) {
-                g_outputFilesForCmd.erase(g_outputFilesForCmd.begin());
-                HILOG_INFO(LOG_CORE, "delete first: %{public}s success.", g_outputFilesForCmd[0].c_str());
-            } else {
-                HILOG_ERROR(LOG_CORE, "delete first: %{public}s failed.", g_outputFilesForCmd[0].c_str());
-            }
-        }
         // Generate file name
         std::string outputFileName = GenerateName(false);
         if (DumpTraceLoop(outputFileName, true)) {
@@ -904,7 +895,7 @@ bool WaitPidTimeout(pid_t pid, const int timeoutUsec)
             HILOG_ERROR(LOG_CORE, "wait pid(%{public}d) exit failed, status: %{public}d.", pid, status);
             return false;
         }
-        HILOG_INFO(LOG_CORE, "grasping trace, pid(%{public}d).", pid);
+        HILOG_INFO(LOG_CORE, "grasping trace, pid(%{public}d), ret(%{public}d).", pid, ret);
     }
     HILOG_ERROR(LOG_CORE, "wait pid(%{public}d) %{public}d us timeout.", pid, timeoutUsec);
     return false;
