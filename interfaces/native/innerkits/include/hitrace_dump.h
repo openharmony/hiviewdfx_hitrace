@@ -69,6 +69,13 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups);
 TraceRetInfo DumpTrace();
 
 /**
+ * Reading trace data once from ftrace ringbuffer in the kernel.
+ * Using child processes to process trace tasks.
+ * timeLimit: the maximum time(s) allowed for the trace task.
+*/
+TraceRetInfo DumpTrace(int timeLimit);
+
+/**
  * Enable sub threads to periodically drop disk trace data.
  * End the periodic disk drop task until the next call to DumpTraceOff().
 */
