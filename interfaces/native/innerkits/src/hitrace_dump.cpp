@@ -77,6 +77,7 @@ const int HM_DEFAULT_BUFFER_SIZE = 144 * 1024;
 const int SAVED_CMDLINES_SIZE = 3072; // 3M
 const int MAX_OUTPUT_FILE_SIZE = 20;
 const int KB_PER_MB = 1024;
+const int S_TO_NS = 1000000000;
 
 const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
 const std::string SNAPSHOT_PREFIX = "trace_";
@@ -133,6 +134,7 @@ uint8_t g_buffer[BUFFER_SIZE] = {0};
 std::vector<std::pair<std::string, int>> g_traceFilesTable;
 std::vector<std::string> g_outputFilesForCmd;
 int g_outputFileSize = 0;
+int g_timeLimit = 0;
 
 TraceParams g_currentTraceParams = {};
 
@@ -491,6 +493,13 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
     int count = 0;
     const int maxCount = 2;
 
+    struct timespec bts = {0, 0};
+    int64_t traceStartTime = 0;
+
+    if ((contentType == CONTENT_TYPE_CPU_RAW) && (g_timeLimit > 0)) {
+        clock_gettime(CLOCK_BOOTTIME, &bts);
+        traceStartTime = bts.tv_sec * S_TO_NS + bts.tv_nsec - g_timeLimit * S_TO_NS;
+    }
     while (true) {
         int bytes = 0;
         bool endFlag = false;
@@ -503,6 +512,12 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
                 break;
             }
 
+            if (traceStartTime > 0) {
+                uint64_t traceTime = *(reinterpret_cast<uint64_t *>(g_buffer));
+                if (traceTime < traceStartTime) {
+                    continue;
+                }
+            }
             if (CheckPage(contentType, g_buffer + bytes) == false) {
                 count++;
             }
@@ -1300,6 +1315,28 @@ TraceRetInfo DumpTrace()
 
     ret.errorCode = DumpTraceInner(ret.outputFiles);
     HILOG_DEBUG(LOG_CORE, "DumpTrace done.");
+    return ret;
+}
+
+TraceRetInfo DumpTrace(int timeLimit)
+{
+    HILOG_INFO(LOG_CORE, "DumpTrace with time limit start, time limit is %d.", timeLimit);
+    TraceRetInfo ret;
+    if (timeLimit <= 0) {
+        HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input.");
+        ret.errorCode = CALL_ERROR;
+        return ret;
+    }
+    {
+        std::lock_guard<std::mutex> lock(g_traceMutex);
+        g_timeLimit = timeLimit;
+    }
+    ret = DumpTrace();
+    {
+        std::lock_guard<std::mutex> lock(g_traceMutex);
+        g_timeLimit = 0;
+    }
+    HILOG_INFO(LOG_CORE, "DumpTrace with time limit done.");
     return ret;
 }
 
