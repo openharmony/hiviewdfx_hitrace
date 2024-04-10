@@ -13,17 +13,22 @@
  * limitations under the License.
  */
 
+#include <asm/unistd.h>
 #include <atomic>
 #include <cinttypes>
 #include <climits>
 #include <ctime>
+#include <cerrno>
 #include <fcntl.h>
 #include <fstream>
+#include <linux/perf_event.h>
 #include <mutex>
 #include <sched.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
+
 #include "securec.h"
 #include "hilog/log.h"
 #include "param/sys_param.h"
@@ -954,4 +959,75 @@ int StopCaptureAppTrace()
     g_traceBuffer = nullptr;
 
     return RET_SUCC;
+}
+
+HitracePerfScoped::HitracePerfScoped(bool isDebug, uint64_t tag, const std::string &name) : mTag_(tag), mName_(name)
+{
+    if (!isDebug) {
+        return;
+    }
+    struct perf_event_attr peIns;
+    (void)memset_s(&peIns, sizeof(struct perf_event_attr), 0, sizeof(struct perf_event_attr));
+    peIns.type = PERF_TYPE_HARDWARE;
+    peIns.size = sizeof(struct perf_event_attr);
+    peIns.config = PERF_COUNT_HW_INSTRUCTIONS;
+    peIns.disabled = 1;
+    peIns.exclude_kernel = 0;
+    peIns.exclude_hv = 0;
+    fd1st_ = syscall(__NR_perf_event_open, &peIns, 0, -1, -1, 0);
+    if (fd1st_ == -1) {
+        err_ = errno;
+        return;
+    }
+    struct perf_event_attr peCycles;
+    (void)memset_s(&peCycles, sizeof(struct perf_event_attr), 0, sizeof(struct perf_event_attr));
+    peCycles.type = PERF_TYPE_HARDWARE;
+    peCycles.size = sizeof(struct perf_event_attr);
+    peCycles.config = PERF_COUNT_HW_CPU_CYCLES;
+    peCycles.disabled = 1;
+    peCycles.exclude_kernel = 0;
+    peCycles.exclude_hv = 0;
+    fd2nd_ = syscall(__NR_perf_event_open, &peCycles, 0, -1, -1, 0);
+    if (fd2nd_ == -1) {
+        err_ = errno;
+        return;
+    }
+    ioctl(fd1st_, PERF_EVENT_IOC_RESET, 0);
+    ioctl(fd1st_, PERF_EVENT_IOC_ENABLE, 0);
+    ioctl(fd2nd_, PERF_EVENT_IOC_RESET, 0);
+    ioctl(fd2nd_, PERF_EVENT_IOC_ENABLE, 0);
+}
+
+HitracePerfScoped::~HitracePerfScoped()
+{
+    if (fd1st_ != -1) {
+        ioctl(fd1st_, PERF_EVENT_IOC_DISABLE, 0);
+        read(fd1st_, &countIns_, sizeof(long long));
+        close(fd1st_);
+        CountTrace(mTag_, mName_ + "-Ins", countIns_);
+    }
+    if (fd2nd_ != -1) {
+        ioctl(fd2nd_, PERF_EVENT_IOC_DISABLE, 0);
+        read(fd2nd_, &countCycles_, sizeof(long long));
+        close(fd2nd_);
+        CountTrace(mTag_, mName_ + "-Cycle", countCycles_);
+    }
+}
+
+inline long long HitracePerfScoped::GetInsCount()
+{
+    if (fd1st_ == -1) {
+        return err_;
+    }
+    read(fd1st_, &countIns_, sizeof(long long));
+    return countIns_;
+}
+
+inline long long HitracePerfScoped::GetCycleCount()
+{
+    if (fd2nd_ == -1) {
+        return err_;
+    }
+    read(fd2nd_, &countCycles_, sizeof(long long));
+    return countCycles_;
 }
