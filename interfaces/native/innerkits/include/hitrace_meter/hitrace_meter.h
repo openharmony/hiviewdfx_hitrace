@@ -101,7 +101,7 @@ constexpr uint64_t HITRACE_TAG_VALID_MASK = ((HITRACE_TAG_LAST - 1) | HITRACE_TA
 /**
  * Update trace label when your process has started.
  */
-void UpdateTraceLabel();
+void UpdateTraceLabel(void);
 
 /**
  * Disable trace outputs.
