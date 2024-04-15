@@ -75,6 +75,7 @@ ohos_static_library("hitrace_inner") {
   ]
 
   external_deps = [
+    "bounds_checking_function:libsec_static",
     "init:libbeget_proxy",
     "init:libbegetutil",
   ]
