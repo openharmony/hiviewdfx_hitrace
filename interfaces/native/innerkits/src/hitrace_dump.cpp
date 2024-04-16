@@ -30,6 +30,7 @@
 #include <unistd.h>
 #include <cstdio>
 #include <cstdlib>
+#include <sys/file.h>
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -1184,11 +1185,22 @@ void ClearRemainingTrace()
                 continue;
             }
             std::string subFileName = DEFAULT_OUTPUT_DIR + name;
+            int dataFile = open(subFileName.c_str(), O_RDONLY | O_NONBLOCK);
+            if (dataFile == -1) {
+                HILOG_INFO(LOG_CORE, "open old trace file failed:  %{public}s", subFileName.c_str());
+                continue;
+            }
+            if (flock(dataFile, LOCK_EX | LOCK_NB) < 0) {
+                HILOG_INFO(LOG_CORE, "get old trace file lock failed, skip remove: %{public}s", subFileName.c_str());
+                continue;
+            }
             if (remove(subFileName.c_str()) == 0) {
                 HILOG_INFO(LOG_CORE, "Delete old trace file: %{public}s success.", subFileName.c_str());
             } else {
                 HILOG_ERROR(LOG_CORE, "Delete old trace file: %{public}s failed.", subFileName.c_str());
             }
+            flock(dataFile, LOCK_UN);
+            close(dataFile);
         }
     }
     closedir(dirPtr);
