@@ -45,6 +45,11 @@ void CountTraceCwrapper(uint64_t tag, const char *value, int64_t count)
     CountTrace(tag, value, count);
 }
 
+void StartTraceChainPoint(const struct HiTraceIdStruct* hiTraceId, const char *value)
+{
+    StartTraceChain(HITRACE_TAG_OHOS, hiTraceId, value);
+}
+
 #ifdef __cplusplus
 }
 #endif

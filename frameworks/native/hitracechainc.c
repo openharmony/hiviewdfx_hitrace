@@ -23,11 +23,16 @@
 #include "hilog/log.h"
 #include "hilog_trace.h"
 #include "hitracechain_inner.h"
+#include "hitrace_meter_wrapper.h"
+#include "hitrace_meter_c.h"
 
 #undef LOG_DOMAIN
 #undef LOG_TAG
 static const unsigned int LOG_DOMAIN = 0xD002D03;
 static const char* LOG_TAG = "HiTraceC";
+static const int BUFF_ZERO_NUMBER = 0;
+static const int BUFF_ONE_NUMBER = 1;
+static const int BUFF_TWO_NUMBER = 2;
 
 typedef struct HiTraceChainIdStruct {
     union {
@@ -254,6 +259,7 @@ void HiTraceChainTracepointInner(HiTraceCommunicationMode mode, HiTraceTracepoin
     static const int tpBufferSize = 1024;
     static const char* hiTraceTypeStr[] = { "CS", "CR", "SS", "SR", "GENERAL", };
     static const char* hiTraceModeStr[] = { "DEFAULT", "THREAD", "PROCESS", "DEVICE", };
+    static const int hitraceMask = 3;
 
     if ((mode < HITRACE_CM_MIN) || (mode > HITRACE_CM_MAX)) {
         return;
@@ -266,6 +272,33 @@ void HiTraceChainTracepointInner(HiTraceCommunicationMode mode, HiTraceTracepoin
         return;
     }
 
+    char buff[tpBufferSize];
+    if (type == HITRACE_TP_CS || type == HITRACE_TP_CR) {
+        buff[BUFF_ZERO_NUMBER] = 'C';
+    }
+
+    if (type == HITRACE_TP_SR || type == HITRACE_TP_SS) {
+        buff[BUFF_ZERO_NUMBER] = 'S';
+    }
+    buff[BUFF_ONE_NUMBER] = '#';
+    buff[BUFF_TWO_NUMBER] = '#';
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat-nonliteral"
+    // if using privacy parameter: vsnprintf => hilog_vsnprintf
+    int ret = vsnprintf_s(buff + hitraceMask, tpBufferSize - hitraceMask, tpBufferSize - 1 - hitraceMask, fmt, args);
+#pragma clang diagnostic pop
+    if (ret == -1) { // -1: vsnprintf_s copy string fail
+        return;
+    }
+    if (type == HITRACE_TP_CS || type == HITRACE_TP_SR) {
+        StartTraceChainPoint(pId, buff);
+    }
+
+    if (type == HITRACE_TP_CR || type == HITRACE_TP_SS) {
+        HiTraceFinishTrace(HITRACE_TAG_OHOS);
+    }
+
     if (!HiTraceChainIsFlagEnabled(pId, HITRACE_FLAG_TP_INFO) &&
         !HiTraceChainIsFlagEnabled(pId, HITRACE_FLAG_D2D_TP_INFO)) {
         // Both tp and d2d-tp flags are disabled.
@@ -274,20 +307,9 @@ void HiTraceChainTracepointInner(HiTraceCommunicationMode mode, HiTraceTracepoin
         // Only d2d-tp flag is enabled. But the communication mode is not device-to-device.
         return;
     }
-
-    char buff[tpBufferSize];
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wformat-nonliteral"
-    // if using privacy parameter: vsnprintf => hilog_vsnprintf
-    int ret = vsnprintf_s(buff, tpBufferSize, tpBufferSize - 1, fmt, args);
-#pragma clang diagnostic pop
-    if (ret == -1) { // -1: vsnprintf_s copy string fail
-        return;
-    }
-
     HILOG_INFO(LOG_CORE, "<%{public}s,%{public}s,[%{public}llx,%{public}llx,%{public}llx]> %{public}s",
                hiTraceModeStr[mode], hiTraceTypeStr[type], (unsigned long long)pId->chainId,
-               (unsigned long long)pId->spanId, (unsigned long long)pId->parentSpanId, buff);
+               (unsigned long long)pId->spanId, (unsigned long long)pId->parentSpanId, buff + hitraceMask);
     return;
 }
 
@@ -349,6 +371,22 @@ int HiTraceChainGetInfo(uint64_t* chainId, uint32_t* flags, uint64_t* spanId, ui
     *spanId = HiTraceChainGetSpanId(&id);
     *parentSpanId = HiTraceChainGetParentSpanId(&id);
     return HITRACE_INFO_ALL_VALID;
+}
+
+HiTraceIdStruct HiTraceChainSaveAndSetId(const HiTraceIdStruct* pId)
+{
+    HiTraceIdStruct oldId = g_hiTraceId.id;
+    if (pId != NULL && pId->valid == HITRACE_ID_VALID) {
+        g_hiTraceId.id = *pId;
+    }
+    return oldId;
+}
+
+void HiTraceChainRestoreId(const HiTraceIdStruct* pId)
+{
+    if (pId != NULL) {
+        g_hiTraceId.id = *pId;
+    }
 }
 
 static void __attribute__((constructor)) HiTraceChainInit(void)

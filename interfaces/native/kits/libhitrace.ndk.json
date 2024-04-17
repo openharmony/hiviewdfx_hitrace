@@ -13,5 +13,68 @@
     },
     {
         "name": "OH_HiTrace_CountTrace"
+    },
+    {
+        "name": "OH_HiTrace_BeginChain"
+    },
+    {
+        "name": "OH_HiTrace_EndChain"
+    },
+    {
+        "name": "OH_HiTrace_GetId"
+    },
+    {
+        "name": "OH_HiTrace_SetId"
+    },
+    {
+        "name": "OH_HiTrace_ClearId"
+    },
+    {
+        "name": "OH_HiTrace_CreateSpan"
+    },
+    {
+        "name": "OH_HiTrace_Tracepoint"
+    },
+    {
+        "name": "OH_HiTrace_InitId"
+    },
+    {
+        "name": "OH_HiTrace_IdFromBytes"
+    },
+    {
+        "name": "OH_HiTrace_IsIdValid"
+    },
+    {
+        "name": "OH_HiTrace_IsFlagEnabled"
+    },
+    {
+        "name": "OH_HiTrace_EnableFlag"
+    },
+    {
+        "name": "OH_HiTrace_GetFlags"
+    },
+    {
+        "name": "OH_HiTrace_SetFlags"
+    },
+    {
+        "name": "OH_HiTrace_GetChainId"
+    },
+    {
+        "name": "OH_HiTrace_SetChainId"
+    },
+    {
+        "name": "OH_HiTrace_GetSpanId"
+    },
+    {
+        "name": "OH_HiTrace_SetSpanId"
+    },
+    {
+        "name": "OH_HiTrace_GetParentSpanId"
+    },
+    {
+        "name": "OH_HiTrace_SetParentSpanId"
+    },
+    {
+        "name": "OH_HiTrace_IdToBytes"
     }
 ]

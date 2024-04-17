@@ -34,6 +34,9 @@ void FinishAsyncTraceCwrapper(uint64_t tag, const char *value, int32_t taskId);
 
 void CountTraceCwrapper(uint64_t tag, const char *value, int64_t count);
 
+struct HiTraceIdStruct;
+void StartTraceChainPoint(const struct HiTraceIdStruct* hiTraceId, const char *value);
+
 #ifdef __cplusplus
 }
 #endif

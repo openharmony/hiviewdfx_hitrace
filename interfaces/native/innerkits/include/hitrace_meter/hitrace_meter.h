@@ -134,6 +134,12 @@ void StartAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, cons
 void StartAsyncTraceWrapper(uint64_t label, const char *value, int32_t taskId);
 
 /**
+ * Track the beginning of an hitrace chain event.
+ */
+struct HiTraceIdStruct;
+void StartTraceChain(uint64_t label, const struct HiTraceIdStruct* hiTraceId, const char *value);
+
+/**
  * Track the end of an asynchronous event.
  */
 void FinishAsyncTrace(uint64_t label, const std::string& value, int32_t taskId);
