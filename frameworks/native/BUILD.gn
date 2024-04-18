@@ -31,7 +31,10 @@ ohos_source_set("hitracechain_source") {
   ]
 
   external_deps = []
-  external_deps += [ "init:libbegetutil" ]
+  external_deps += [
+    "bounds_checking_function:libsec_static",
+    "init:libbegetutil",
+  ]
 
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]

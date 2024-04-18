@@ -28,7 +28,7 @@ ohos_shared_library("hitrace_ndk") {
 
   deps = [ "../../interfaces/native/innerkits:hitrace_meter" ]
 
-  external_deps = []
+  external_deps = [ "bounds_checking_function:libsec_static" ]
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]
   } else {
