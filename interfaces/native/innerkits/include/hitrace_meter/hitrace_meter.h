@@ -24,6 +24,7 @@ extern "C" {
 
 constexpr uint64_t HITRACE_TAG_NEVER = 0; // This tag is never enabled.
 constexpr uint64_t HITRACE_TAG_ALWAYS = (1ULL << 0); // This tag is always enabled.
+constexpr uint64_t HITRACE_TAG_DRM = (1ULL << 6); // Media subsystem Digital Rights Management tag.
 constexpr uint64_t HITRACE_TAG_SECURITY = (1ULL << 7); // Security subsystem tag.
 constexpr uint64_t HITRACE_TAG_ANIMATION = (1ULL << 9); // Animation tag.
 constexpr uint64_t HITRACE_TAG_PUSH = (1ULL << 10); // Push subsystem tag.

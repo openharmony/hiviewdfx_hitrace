@@ -1,5 +1,11 @@
 {
     "tag_category": {
+        "drm": {
+            "description": "Digital Rights Management",
+            "tag_offset": 6,
+            "sysFiles": [],
+            "type": 0
+        },
         "security": {
             "description": "Security subsystem",
             "tag_offset": 7,
