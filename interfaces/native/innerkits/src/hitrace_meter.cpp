@@ -161,7 +161,11 @@ bool IsAppspawnProcess()
 void InitPid()
 {
     std::string pidStr = std::to_string(getprocpid());
-    (void)strcpy_s(g_pid, PID_BUF_SIZE, pidStr.c_str());
+    int ret = strcpy_s(g_pid, PID_BUF_SIZE, pidStr.c_str());
+    if (ret != 0) {
+        HILOG_ERROR(LOG_CORE, "pid[%{public}s] strcpy_s fail ret: %{public}d.", pidStr.c_str(), ret);
+        return;
+    }
     if (!g_needReloadPid && IsAppspawnProcess()) {
         // appspawn restarted, all app need init pid again.
         g_needReloadPid = true;
@@ -173,7 +177,11 @@ void InitPid()
 void ReloadPid()
 {
     std::string pidStr = std::to_string(getprocpid());
-    (void)strcpy_s(g_pid, PID_BUF_SIZE, pidStr.c_str());
+    int ret = strcpy_s(g_pid, PID_BUF_SIZE, pidStr.c_str());
+    if (ret != 0) {
+        HILOG_ERROR(LOG_CORE, "pid[%{public}s] strcpy_s fail ret: %{public}d.", pidStr.c_str(), ret);
+        return;
+    }
     if (!IsAppspawnProcess()) {
         // appspawn restarted, all app need reload pid again.
         g_pidHasReload = true;
@@ -392,7 +400,7 @@ bool WriteTraceToFile(char* buf, const int len)
 
 char* GetTraceBuffer(int size)
 {
-    if (g_writeOffset + size > DEFAULT_CACHE_SIZE) {
+    if (g_writeOffset + size > DEFAULT_CACHE_SIZE && g_writeOffset + size < MAX_FILE_SIZE) {
         // The remaining space is insufficient to cache the data. Write the data to the file.
         if (!WriteTraceToFile(g_traceBuffer.get(), g_writeOffset)) {
             return nullptr;
@@ -522,7 +530,7 @@ void WriteAppTraceLong(const int len, MarkerType type, const std::string& name, 
 
 bool CheckFileSize(int len)
 {
-    if (g_fileSize + g_writeOffset + len > g_fileLimitSize.load()) {
+    if (static_cast<uint64_t>(g_fileSize + g_writeOffset + len) > g_fileLimitSize.load()) {
         static bool isWriteLog = false;
         WriteOnceLog(LOG_INFO, "File size limit exceeded, stop capture trace.", isWriteLog);
         StopCaptureAppTrace();
@@ -619,7 +627,7 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
 }
 }; // namespace
 
-void UpdateTraceLabel()
+void UpdateTraceLabel(void)
 {
     if (!g_isHitraceMeterInit) {
         return;
