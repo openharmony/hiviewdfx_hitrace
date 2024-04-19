@@ -95,9 +95,14 @@ config("HitraceNDKTest_config") {
 ohos_unittest("HitraceNDKTest") {
   module_out_path = module_output_path
 
-  sources = [ "unittest/hitrace_meter/hitrace_ndk_test.cpp" ]
+  sources = [
+    "../interfaces/native/innerkits/src/hitrace_meter.cpp",
+    "unittest/hitrace_meter/hitrace_ndk_test.cpp",
+  ]
 
   configs = [ ":HitraceNDKTest_config" ]
+
+  cflags = [ "-DHITRACE_UNITTEST" ]
 
   deps = [
     "../cmd:hitrace_osal_inner",

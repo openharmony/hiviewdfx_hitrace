@@ -24,6 +24,7 @@
 #include "gtest/hwext/gtest-tag.h"
 #include "hitrace/hitracechainc.h"
 #include "hitrace/hitraceid.h"
+#include "hitrace_meter_c.h"
 
 namespace OHOS {
 namespace HiviewDFX {
@@ -593,6 +594,41 @@ HWTEST_F(HiTraceChainCppTest, InvalidParamTest_001, TestSize.Level1)
     HiTraceId invalidNameId = HiTraceChain::Begin("", HITRACE_FLAG_TP_INFO);
     EXPECT_EQ(1, invalidNameId.IsValid());
     HiTraceChain::End(invalidNameId);
+}
+
+/**
+ * @tc.name: Dfx_HiTraceChainCppTest_HiTraceTest_001
+ * @tc.desc: Start trace with SYNC or ASYNC.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HiTraceChainCppTest, HiTraceTest_001, TestSize.Level1)
+{
+    /**
+     * @tc.steps: step1. start trace with invalid flag and validate trace id.
+     * @tc.expected: step1. trace id is invalid.
+     * @tc.steps: step2. start trace with invalid name and validate trace id.
+     * @tc.expected: step2. trace id is valid.
+     */
+    /* begin with invalid flag */
+    HiTraceId invalidFlagId = HiTraceChain::Begin("invalid param", HITRACE_FLAG_MAX+1);
+    EXPECT_EQ(0, invalidFlagId.IsValid());
+    invalidFlagId = HiTraceChain::Begin("invalid param", -1);
+    EXPECT_EQ(0, invalidFlagId.IsValid());
+    HiTraceChain::End(invalidFlagId);
+
+    /* begin with invalid name */
+    HiTraceId invalidNameId = HiTraceChain::Begin("", HITRACE_FLAG_TP_INFO);
+    EXPECT_EQ(1, invalidNameId.IsValid());
+    HiTraceChain::End(invalidNameId);
+
+    /* Function interface overlay */
+    int taskId = 123;
+    int count = 1;
+    HiTraceStartTrace(HITRACE_TAG_OHOS, "HiTraceTest001");
+    HiTraceFinishTrace(HITRACE_TAG_OHOS);
+    HiTraceStartAsyncTrace(HITRACE_TAG_OHOS, "HiTraceTest001", taskId);
+    HiTraceFinishAsyncTrace(HITRACE_TAG_OHOS, "HiTraceTest001", taskId);
+    HiTraceCountTrace(HITRACE_TAG_OHOS, "HiTraceTest001", count);
 }
 }  // namespace HiviewDFX
 }  // namespace OHOS

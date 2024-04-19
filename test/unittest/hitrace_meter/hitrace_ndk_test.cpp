@@ -341,6 +341,89 @@ HWTEST_F(HitraceNDKTest, StartTrace_001, TestSize.Level0)
     ASSERT_TRUE(isFinishSuc) << "Hitrace Can't find \"E|\" from trace.";
 }
 
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: Testing AddHitraceMeterMarker function
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_001, TestSize.Level0)
+{
+    std::string traceName = "AddHitraceMeterMarker001";
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    SetReloadPid(true);
+    SetAddHitraceMeterMarker(TAG, traceName);
+    FinishTrace(TAG);
+    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
+    vector<string> list = ReadTrace();
+    bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
+    ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
+    bool isFinishSuc = GetTraceResult('E', traceName, nullptr, 0, list);
+    ASSERT_TRUE(isFinishSuc) << "Hitrace Can't find \"E|\" from trace.";
+
+    traceName.resize(520);
+    SetReloadPid(false);
+    SetpidHasReload(false);
+    SetAddHitraceMeterMarker(TAG, traceName);
+    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
+    list.clear();
+    list = ReadTrace();
+    isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
+    ASSERT_FALSE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
+}
+
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: Testing AddHitraceMeterMarker function
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_002, TestSize.Level0)
+{
+    std::string traceName = "AddHitraceMeterMarker002";
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    SetAppFd(1);
+    SetAddHitraceMeterMarker(TAG, traceName);
+    FinishTrace(TAG);
+    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
+    vector<string> list = ReadTrace();
+    bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
+    ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
+    bool isFinishSuc = GetTraceResult('E', traceName, nullptr, 0, list);
+    ASSERT_TRUE(isFinishSuc) << "Hitrace Can't find \"E|\" from trace.";
+    SetAppFd(-1);
+}
+
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: Testing AddHitraceMeterMarker function
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_003, TestSize.Level0)
+{
+    std::string traceName = "AddHitraceMeterMarker003";
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    SetWriteToTraceMarker("B|3728|H:AddHitraceMeterMarker003", 0);
+    SetWriteToTraceMarker("B|3728|H:AddHitraceMeterMarker003", 640);
+    FinishTraceDebug(false, TAG);
+}
+
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: tracing_mark_write file node normal output start tracing and end tracing with args
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_004, TestSize.Level0)
+{
+    string traceName = "AddHitraceMeterMarker004";
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    int var = 1;
+    StartTraceArgs(HITRACE_TAG_ZAUDIO, traceName.c_str(), var);
+    FinishTrace(HITRACE_TAG_ZAUDIO);
+    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+}
 
 /**
  * @tc.name: Hitrace
@@ -994,6 +1077,49 @@ HWTEST_F(HitraceNDKTest, StartTrace_027, TestSize.Level1)
     ASSERT_FALSE(IsTagEnabled(HITRACE_TAG_POWER));
 }
 
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: tracing_mark_write file node general output start and end tracing for debugging.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, StartTrace_028, TestSize.Level1)
+{
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    StartTraceDebug(false, TAG, "StartTraceTest028");
+    FinishTraceDebug(true, TAG);
+}
+
+/**
+ * @tc.name: Hitrace
+ * @tc.desc: Testing IsTagEnabled with multiple tags
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, StartCaptureAppTrace_001, TestSize.Level1)
+{
+    std::string traceName = "StartCaptureAppTrace001";
+    string fileName;
+    int fileSize = 100 * 1204 * 1024; // 100M
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+
+    int ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, TAG, fileSize, fileName);
+    ASSERT_TRUE(ret == RetType::RET_SUCC);
+    ret = StopCaptureAppTrace();
+    ASSERT_TRUE(ret == RetType::RET_SUCC);
+
+    // exception scence
+    ret = StartCaptureAppTrace((TraceFlag)3, TAG, fileSize, fileName);
+    ASSERT_TRUE(ret != RetType::RET_SUCC);
+    ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, TRACE_INVALIDATE_TAG, fileSize, fileName);
+    ASSERT_TRUE(ret != RetType::RET_SUCC);
+    ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, TAG, 0, fileName);
+    ASSERT_TRUE(ret != RetType::RET_SUCC);
+
+    ret = StopCaptureAppTrace();
+    ASSERT_TRUE(ret != RetType::RET_SUCC);
+    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
+}
 } // namespace HitraceTest
 } // namespace HiviewDFX
 } // namespace OHOS

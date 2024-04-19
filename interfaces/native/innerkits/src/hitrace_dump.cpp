@@ -514,7 +514,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
 
             if (traceStartTime > 0) {
                 uint64_t traceTime = *(reinterpret_cast<uint64_t *>(g_buffer));
-                if (traceTime < traceStartTime) {
+                if (traceTime < static_cast<uint64_t>(traceStartTime)) {
                     continue;
                 }
             }
