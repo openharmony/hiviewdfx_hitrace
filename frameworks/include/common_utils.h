@@ -59,6 +59,8 @@ bool MarkClockSync(const std::string& traceRootPath);
 bool ParseTagInfo(std::map<std::string, TagCategory> &allTags,
                   std::map<std::string, std::vector<std::string>> &tagGroupTable);
 
+bool IsNumber(const std::string &str);
+
 } // Hitrace
 } // HiviewDFX
 } // OHOS

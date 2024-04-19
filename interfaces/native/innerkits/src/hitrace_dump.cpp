@@ -63,6 +63,7 @@ struct TraceParams {
     std::string isOverWrite;
     std::string outputFile;
     std::string fileSize;
+    std::string appPid;
 };
 
 constexpr uint16_t MAGIC_NUMBER = 57161;
@@ -824,7 +825,8 @@ void ProcessDumpTask()
     HILOG_INFO(LOG_CORE, "ProcessDumpTask: trace dump thread start.");
     ClearSavedEventsFormat();
     if (g_currentTraceParams.fileSize.empty()) {
-        std::string outputFileName = GenerateName(false);
+        std::string outputFileName = g_currentTraceParams.outputFile.empty() ?
+                                     GenerateName(false) : g_currentTraceParams.outputFile;
         if (DumpTraceLoop(outputFileName, false)) {
             g_outputFilesForCmd.push_back(outputFileName);
         }
@@ -1151,6 +1153,18 @@ bool ParseArgs(const std::string &args, TraceParams &cmdTraceParams, const std::
             cmdTraceParams.outputFile = item.substr(pos + 1);
         } else if (itemName == "fileSize") {
             cmdTraceParams.fileSize = item.substr(pos + 1);
+        } else if (itemName == "appPid") {
+            std::string pidStr = item.substr(pos + 1);
+            if (!IsNumber(pidStr)) {
+                HILOG_ERROR(LOG_CORE, "Illegal input, appPid(%{public}s) must be number.", pidStr.c_str());
+                return false;
+            }
+            int appPid = std::stoi(pidStr);
+            if (appPid <= 0) {
+                HILOG_ERROR(LOG_CORE, "Illegal input, appPid(%{public}d) must be greater than 0.", appPid);
+                return false;
+            }
+            OHOS::system::SetParameter("debug.hitrace.app_pid", pidStr);
         } else {
             HILOG_ERROR(LOG_CORE, "Extra trace command line options appear when ParseArgs: %{public}s, return false.",
                 itemName.c_str());
@@ -1370,7 +1384,6 @@ TraceRetInfo DumpTraceOff()
         ret.outputFiles = g_outputFilesForCmd;
         return ret;
     }
-    
     g_dumpFlag = false;
     while (!g_dumpEnd) {
         usleep(UNIT_TIME);
@@ -1395,6 +1408,7 @@ TraceErrorCode CloseTrace()
     while (!g_dumpEnd) {
         usleep(UNIT_TIME);
     }
+    OHOS::system::SetParameter("debug.hitrace.app_pid", "-1");
     std::map<std::string, TagCategory> allTags;
     std::map<std::string, std::vector<std::string>> tagGroupTable;
     if (!ParseTagInfo(allTags, tagGroupTable) || allTags.size() == 0 || tagGroupTable.size() == 0) {
