@@ -221,6 +221,18 @@ bool ParseTagInfo(std::map<std::string, TagCategory> &allTags,
     return true;
 }
 
+bool IsNumber(const std::string &str)
+{
+    if (str.empty()) {
+        return false;
+    }
+    for (auto c : str) {
+        if (!isdigit(c)) {
+            return false;
+        }
+    }
+    return true;
+}
 } // Hitrace
 } // HiviewDFX
 } // OHOS

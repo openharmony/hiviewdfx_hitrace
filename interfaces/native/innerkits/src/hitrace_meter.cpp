@@ -50,6 +50,7 @@ int g_appFd = -1;
 std::once_flag g_onceFlag;
 std::once_flag g_onceWriteMarkerFailedFlag;
 CachedHandle g_cachedHandle;
+CachedHandle g_appPidCachedHandle;
 
 std::atomic<bool> g_isHitraceMeterDisabled(false);
 std::atomic<bool> g_isHitraceMeterInit(false);
@@ -58,9 +59,11 @@ std::atomic<bool> g_pidHasReload(false);
 
 std::atomic<uint64_t> g_tagsProperty(HITRACE_TAG_NOT_READY);
 std::atomic<uint64_t> g_appTag(HITRACE_TAG_NOT_READY);
+std::atomic<int64_t> g_appTagMatchPid(-1);
 
 const std::string KEY_TRACE_TAG = "debug.hitrace.tags.enableflags";
 const std::string KEY_APP_NUMBER = "debug.hitrace.app_number";
+const std::string KEY_APP_PID = "debug.hitrace.app_pid";
 const std::string KEY_RO_DEBUGGABLE = "ro.debuggable";
 const std::string KEY_PREFIX = "debug.hitrace.app_";
 const std::string SANDBOX_PATH = "/data/storage/el2/log/";
@@ -128,15 +131,15 @@ inline void CreateCacheHandle()
 {
     const char* devValue = "true";
     g_cachedHandle = CachedParameterCreate(KEY_TRACE_TAG.c_str(), devValue);
+    g_appPidCachedHandle = CachedParameterCreate(KEY_APP_PID.c_str(), devValue);
 }
 
 inline void UpdateSysParamTags()
 {
     // Get the system parameters of KEY_TRACE_TAG.
     int changed = 0;
-    if (UNEXPECTANTLY(g_cachedHandle == nullptr)) {
+    if (UNEXPECTANTLY(g_cachedHandle == nullptr || g_appPidCachedHandle == nullptr)) {
         CreateCacheHandle();
-        HILOG_ERROR(LOG_CORE, "g_cachedHandle is null.");
         return;
     }
     const char *paramValue = CachedParameterGetChanged(g_cachedHandle, &changed);
@@ -144,6 +147,11 @@ inline void UpdateSysParamTags()
         uint64_t tags = 0;
         tags = strtoull(paramValue, nullptr, 0);
         g_tagsProperty = (tags | HITRACE_TAG_ALWAYS) & HITRACE_TAG_VALID_MASK;
+    }
+    int appPidChanged = 0;
+    const char *paramPid = CachedParameterGetChanged(g_appPidCachedHandle, &changed);
+    if (appPidChanged == 1 && paramPid != nullptr) {
+        g_appTagMatchPid = strtoll(paramPid, nullptr, 0);
     }
 }
 
@@ -592,6 +600,9 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
     }
     UpdateSysParamTags();
     if (UNEXPECTANTLY(g_tagsProperty & tag) && g_markerFd != -1) {
+        if (tag == HITRACE_TAG_APP && g_appTagMatchPid > 0 && g_appTagMatchPid != std::stoi(g_pid)) {
+            return;
+        }
         // record fomart: "type|pid|name value".
         char buf[BUFFER_LEN] = {0};
         int len = name.length();
