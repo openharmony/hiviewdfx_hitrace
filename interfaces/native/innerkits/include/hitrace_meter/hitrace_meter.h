@@ -163,6 +163,13 @@ void CountTraceDebug(bool isDebug, uint64_t label, const std::string& name, int6
 void CountTraceWrapper(uint64_t label, const char *name, int64_t count);
 bool IsTagEnabled(uint64_t tag);
 
+#ifdef HITRACE_UNITTEST
+void SetReloadPid(bool isReloadPid);
+void SetpidHasReload(bool ispidHasReload);
+void SetAppFd(int appFd);
+void SetAddHitraceMeterMarker(uint64_t label, const std::string& value);
+void SetWriteToTraceMarker(const char* buf, const int count);
+#endif
 enum RetType {
     RET_SUCC = 0, // Successful
     RET_STARTED = 1, // The capture process has already started

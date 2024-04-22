@@ -174,10 +174,12 @@ void InitPid()
         HILOG_ERROR(LOG_CORE, "pid[%{public}s] strcpy_s fail ret: %{public}d.", pidStr.c_str(), ret);
         return;
     }
+#ifndef UNITTEST
     if (!g_needReloadPid && IsAppspawnProcess()) {
         // appspawn restarted, all app need init pid again.
         g_needReloadPid = true;
     }
+#endif
     HILOG_ERROR(LOG_CORE, "pid[%{public}s] first get g_tagsProperty: %{public}s", pidStr.c_str(),
         to_string(g_tagsProperty.load()).c_str());
 }
@@ -333,6 +335,9 @@ int SetAppFileName(std::string& destFileName, std::string& fileName)
 {
     destFileName = SANDBOX_PATH + "trace/";
     mode_t permissions = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH; // 0755
+#ifdef HITRACE_UNITTEST
+    destFileName = "/data/local/tmp/";
+#endif
     if (access(destFileName.c_str(), F_OK) != 0 && mkdir(destFileName.c_str(), permissions) == -1) {
         HILOG_ERROR(LOG_CORE, "failed to create dir(%{public}s):%{public}d(%{public}s)", destFileName.c_str(),
             errno, strerror(errno));
@@ -616,8 +621,7 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
                     hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str())
                     : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "B|%s|H:%s ", g_pid, name.c_str());
             } else if (type == MARKER_END) {
-                bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                    "E|%s|", g_pid);
+                bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "E|%s|", g_pid);
             } else {
                 char marktypestr = g_markTypes[type];
                 bytes = isHiTraceIdValid ? snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
@@ -631,8 +635,11 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
             AddTraceMarkerLarge(name, type, value);
         }
     }
-
-    if (UNEXPECTANTLY(g_appTag.load() != HITRACE_TAG_NOT_READY) && g_appFd != -1) {
+    auto g_appTagload = g_appTag.load();
+#ifdef HITRACE_UNITTEST
+    g_appTagload = HITRACE_TAG_APP;
+#endif
+    if (UNEXPECTANTLY(g_appTagload != HITRACE_TAG_NOT_READY) && g_appFd != -1) {
         WriteAppTrace(type, name, value);
     }
 }
@@ -645,7 +652,32 @@ void UpdateTraceLabel(void)
     }
     UpdateSysParamTags();
 }
+#ifdef HITRACE_UNITTEST
+void SetReloadPid(bool isReloadPid)
+{
+    g_needReloadPid = isReloadPid;
+}
 
+void SetpidHasReload(bool ispidHasReload)
+{
+    g_pidHasReload = ispidHasReload;
+}
+
+void SetAppFd(int appFd)
+{
+    g_appFd = appFd;
+}
+
+void SetAddHitraceMeterMarker(uint64_t label, const string& value)
+{
+    AddHitraceMeterMarker(MARKER_BEGIN, label, value, 0);
+}
+
+void SetWriteToTraceMarker(const char* buf, const int count)
+{
+    WriteToTraceMarker(buf, count);
+}
+#endif
 void SetTraceDisabled(bool disable)
 {
     g_isHitraceMeterDisabled = disable;
