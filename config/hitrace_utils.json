@@ -525,6 +525,12 @@
             "tag_offset": 0,
             "sysFiles": ["events/thermal_power_allocator/enable"],
             "type": 1
+        },
+        "commercial": {
+            "description": "Commercial version tag",
+            "tag_offset": 5,
+            "sysFiles": [],
+            "type": 0
         }
     },
     "tag_groups": {

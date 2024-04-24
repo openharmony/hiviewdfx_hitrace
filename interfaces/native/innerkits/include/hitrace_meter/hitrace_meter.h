@@ -84,6 +84,7 @@ constexpr uint64_t HITRACE_TAG_APP = (1ULL << 62); // App tag.
 constexpr uint64_t HITRACE_TAG_LAST = HITRACE_TAG_APP;
 constexpr uint64_t HITRACE_TAG_NOT_READY = (1ULL << 63); // Reserved for initialization.
 constexpr uint64_t HITRACE_TAG_VALID_MASK = ((HITRACE_TAG_LAST - 1) | HITRACE_TAG_LAST);
+constexpr uint64_t HITRACE_TAG_COMMERCIAL = (1ULL << 5); // Tag for commercial version.
 
 #ifndef HITRACE_TAG
 #define HITRACE_TAG HITRACE_TAG_NEVER

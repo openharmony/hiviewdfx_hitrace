@@ -174,7 +174,7 @@ void InitPid()
         HILOG_ERROR(LOG_CORE, "pid[%{public}s] strcpy_s fail ret: %{public}d.", pidStr.c_str(), ret);
         return;
     }
-#ifndef UNITTEST
+#ifndef HITRACE_UNITTEST
     if (!g_needReloadPid && IsAppspawnProcess()) {
         // appspawn restarted, all app need init pid again.
         g_needReloadPid = true;
