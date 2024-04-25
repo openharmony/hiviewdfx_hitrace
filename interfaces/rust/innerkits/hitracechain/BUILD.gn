@@ -18,7 +18,7 @@ ohos_rust_shared_library("hitracechain_rust") {
     "src/lib.rs",
     "src/macros.rs",
   ]
-
+  rustflags = [ "-Zstack-protector=all" ]
   deps = [
     "../../../../frameworks/native/c_wrapper:hitracechain_c_wrapper",
     "../../../native/innerkits:libhitracechain",
