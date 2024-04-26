@@ -174,12 +174,12 @@ void InitPid()
         HILOG_ERROR(LOG_CORE, "pid[%{public}s] strcpy_s fail ret: %{public}d.", pidStr.c_str(), ret);
         return;
     }
-#ifndef HITRACE_UNITTEST
+
     if (!g_needReloadPid && IsAppspawnProcess()) {
         // appspawn restarted, all app need init pid again.
         g_needReloadPid = true;
     }
-#endif
+
     HILOG_ERROR(LOG_CORE, "pid[%{public}s] first get g_tagsProperty: %{public}s", pidStr.c_str(),
         to_string(g_tagsProperty.load()).c_str());
 }
@@ -204,6 +204,9 @@ void OpenTraceMarkerFile()
     const std::string debugFile = "/sys/kernel/debug/tracing/trace_marker";
     const std::string traceFile = "/sys/kernel/tracing/trace_marker";
     g_markerFd = open(debugFile.c_str(), O_WRONLY | O_CLOEXEC);
+#ifdef HITRACE_UNITTEST
+    SetMarkerFd(g_markerFd);
+#endif
     if (g_markerFd == -1) {
         HILOG_ERROR(LOG_CORE, "open trace file %{public}s failed: %{public}d", debugFile.c_str(), errno);
         g_markerFd = open(traceFile.c_str(), O_WRONLY | O_CLOEXEC);
@@ -645,13 +648,6 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
 }
 }; // namespace
 
-void UpdateTraceLabel(void)
-{
-    if (!g_isHitraceMeterInit) {
-        return;
-    }
-    UpdateSysParamTags();
-}
 #ifdef HITRACE_UNITTEST
 void SetReloadPid(bool isReloadPid)
 {
@@ -668,6 +664,31 @@ void SetAppFd(int appFd)
     g_appFd = appFd;
 }
 
+void GetSetMainThreadInfo()
+{
+    SetMainThreadInfo();
+}
+
+void GetSetCommStr()
+{
+    SetCommStr();
+}
+
+void SetTraceBuffer(int size)
+{
+    GetTraceBuffer(size);
+}
+
+void SetFileLimitSize(uint64_t fileLimitSize)
+{
+    g_fileLimitSize = fileLimitSize;
+}
+
+void SetAddTraceMarkerLarge(const std::string& name, const int64_t value)
+{
+    AddTraceMarkerLarge(name, MARKER_BEGIN, value);
+}
+
 void SetAddHitraceMeterMarker(uint64_t label, const string& value)
 {
     AddHitraceMeterMarker(MARKER_BEGIN, label, value, 0);
@@ -677,7 +698,53 @@ void SetWriteToTraceMarker(const char* buf, const int count)
 {
     WriteToTraceMarker(buf, count);
 }
+
+void SetGetProcData(const char* file)
+{
+    GetProcData(file, g_appName, NAME_NORMAL_LEN);
+}
+
+void HitracePerfScoped::SetHitracePerfScoped(int fd1st, int fd2nd)
+{
+    if (fd1st == -1 && fd2nd == -1) {
+        fd1st_ = fd1st;
+        fd2nd_ = fd2nd;
+    }
+    GetInsCount();
+    GetCycleCount();
+}
+
+void SetCachedHandleAndAppPidCachedHandle(CachedHandle cachedHandle, CachedHandle appPidCachedHandle)
+{
+    g_cachedHandle = cachedHandle;
+    g_appPidCachedHandle = appPidCachedHandle;
+    UpdateSysParamTags();
+}
+
+void SetMarkerFd(int markerFd)
+{
+    if (markerFd != -1) {
+        g_markerFd = -1;
+    }
+}
+
+void SetWriteAppTrace(TraceFlag appFlag, const std::string& name, const int64_t value, bool tid)
+{
+    if (tid) {
+        g_tgid = getproctid();
+    }
+    g_appFlag = appFlag;
+    WriteAppTrace(MARKER_BEGIN, name, value);
+}
 #endif
+void UpdateTraceLabel(void)
+{
+    if (!g_isHitraceMeterInit) {
+        return;
+    }
+    UpdateSysParamTags();
+}
+
 void SetTraceDisabled(bool disable)
 {
     g_isHitraceMeterDisabled = disable;

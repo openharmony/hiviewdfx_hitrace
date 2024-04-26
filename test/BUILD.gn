@@ -123,7 +123,13 @@ ohos_unittest("HitraceNDKTest") {
 ohos_unittest("HitraceDumpTest") {
   module_out_path = module_output_path
 
-  sources = [ "unittest/hitrace_dump/hitrace_dump_test.cpp" ]
+  sources = [
+    "../frameworks/native/common_utils.cpp",
+    "../interfaces/native/innerkits/src/hitrace_dump.cpp",
+    "unittest/hitrace_dump/hitrace_dump_test.cpp",
+  ]
+
+  cflags = [ "-DHITRACE_UNITTEST" ]
 
   include_dirs = [
     "../frameworks/include/",
@@ -137,6 +143,7 @@ ohos_unittest("HitraceDumpTest") {
 
   external_deps = [
     "bounds_checking_function:libsec_static",
+    "cJSON:cjson",
     "init:libbegetutil",
   ]
   if (defined(ohos_lite)) {

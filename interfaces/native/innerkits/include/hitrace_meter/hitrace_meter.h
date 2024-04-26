@@ -17,7 +17,9 @@
 #define INTERFACES_INNERKITS_NATIVE_HITRACE_METER_H
 
 #include <string>
-
+#ifdef HITRACE_UNITTEST
+#include "param/sys_param.h"
+#endif
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -164,13 +166,6 @@ void CountTraceDebug(bool isDebug, uint64_t label, const std::string& name, int6
 void CountTraceWrapper(uint64_t label, const char *name, int64_t count);
 bool IsTagEnabled(uint64_t tag);
 
-#ifdef HITRACE_UNITTEST
-void SetReloadPid(bool isReloadPid);
-void SetpidHasReload(bool ispidHasReload);
-void SetAppFd(int appFd);
-void SetAddHitraceMeterMarker(uint64_t label, const std::string& value);
-void SetWriteToTraceMarker(const char* buf, const int count);
-#endif
 enum RetType {
     RET_SUCC = 0, // Successful
     RET_STARTED = 1, // The capture process has already started
@@ -187,6 +182,22 @@ enum TraceFlag {
     FLAG_MAIN_THREAD = 1,
     FLAG_ALL_THREAD = 2
 };
+#ifdef HITRACE_UNITTEST
+void SetReloadPid(bool isReloadPid);
+void SetpidHasReload(bool ispidHasReload);
+void SetAppFd(int appFd);
+void SetMarkerFd(int markerFd);
+void SetFileLimitSize(uint64_t fileLimitSize);
+void SetAddHitraceMeterMarker(uint64_t label, const std::string& value);
+void SetAddTraceMarkerLarge(const std::string& name, const int64_t value);
+void SetWriteAppTrace(TraceFlag appFlag, const std::string& name, const int64_t value, bool tid);
+void SetWriteToTraceMarker(const char* buf, const int count);
+void SetCachedHandleAndAppPidCachedHandle(CachedHandle cachedHandle, CachedHandle appPidCachedHandle);
+void SetGetProcData(const char* file);
+void GetSetMainThreadInfo();
+void GetSetCommStr();
+void SetTraceBuffer(int size);
+#endif
 
 int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std::string& fileName);
 int StopCaptureAppTrace(void);
@@ -215,7 +226,9 @@ public:
     inline long long GetInsCount();
 
     inline long long GetCycleCount();
-
+#ifdef HITRACE_UNITTEST
+    void SetHitracePerfScoped(int fd1st, int fd2nd);
+#endif
 private:
     uint64_t mTag_;
     std::string mName_;
