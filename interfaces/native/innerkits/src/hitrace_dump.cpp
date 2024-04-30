@@ -1219,9 +1219,20 @@ void ClearRemainingTrace()
     }
     closedir(dirPtr);
 }
-
 } // namespace
 
+#ifdef HITRACE_UNITTEST
+void SetSysInitParamTags(uint64_t sysInitParamTags)
+{
+    g_sysInitParamTags = sysInitParamTags;
+}
+
+bool SetCheckParam()
+{
+    int ret = CheckParam();
+    return ret;
+}
+#endif
 
 TraceMode GetTraceMode()
 {

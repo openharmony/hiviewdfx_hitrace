@@ -47,6 +47,11 @@ struct TraceRetInfo {
     std::vector<std::string> outputFiles;
 };
 
+#ifdef HITRACE_UNITTEST
+void SetSysInitParamTags(uint64_t sysInitParamTags);
+bool SetCheckParam();
+#endif
+
 /**
  * Get the current trace mode.
 */
