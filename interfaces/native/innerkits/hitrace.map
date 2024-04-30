@@ -1,0 +1,67 @@
+{
+  global:
+    extern "C++" {
+        UpdateTraceLabel;
+        SetTraceDisabled; 
+        StartTrace;
+        StartTraceDebug;
+        StartTraceArgs;
+        StartTraceArgsDebug;
+        StartTraceWrapper;
+        FinishTrace;
+        FinishTraceDebug;
+        StartAsyncTrace;
+        StartAsyncTraceDebug;
+        StartAsyncTraceArgs;
+        StartAsyncTraceArgsDebug;
+        StartAsyncTraceWrapper;
+        StartTraceChain;
+        FinishAsyncTrace;
+        FinishAsyncTraceDebug;
+        FinishAsyncTraceArgs;
+        FinishAsyncTraceArgsDebug;
+        FinishAsyncTraceWrapper;
+        MiddleTrace;
+        MiddleTraceDebug;
+        CountTrace;
+        CountTraceDebug;
+        CountTraceWrapper;
+        IsTagEnabled;
+        StartCaptureAppTrace;
+        StopCaptureAppTrace;
+        "OHOS::HiviewDFX::Hitrace::GetTraceMode()";
+        "OHOS::HiviewDFX::Hitrace::OpenTrace(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+        "OHOS::HiviewDFX::Hitrace::OpenTrace(std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&)";
+        "OHOS::HiviewDFX::Hitrace::DumpTrace()";
+        "OHOS::HiviewDFX::Hitrace::DumpTrace(int)";
+        "OHOS::HiviewDFX::Hitrace::DumpTraceOn()";
+        "OHOS::HiviewDFX::Hitrace::DumpTraceOff()";
+        "OHOS::HiviewDFX::Hitrace::CloseTrace()";
+        "OHOS::HiviewDFX::Hitrace::GetTraceFilesTable()";
+        "OHOS::HiviewDFX::Hitrace::SetTraceFilesTable(std::__h::vector<std::__h::pair<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, int>, std::__h::allocator<std::__h::pair<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, int>>>&)";
+        "HitraceScoped::HitraceScoped(unsigned long, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+        "HitraceScoped::HitraceScoped(unsigned long long, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+        "HitraceScoped::~HitraceScoped()";
+        "HitracePerfScoped::HitracePerfScoped(bool, unsigned long, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+        "HitracePerfScoped::HitracePerfScoped(bool, unsigned long long, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+        "HitracePerfScoped::~HitracePerfScoped()";
+        "HitraceMeterFmtScoped::HitraceMeterFmtScoped(unsigned long, char const*, ...)";
+        "HitraceMeterFmtScoped::HitraceMeterFmtScoped(unsigned long long, char const*, ...)";
+        "HitraceMeterFmtScoped::~HitraceMeterFmtScoped()";
+    };
+    extern "C" {
+        "HiTraceStartTrace";
+        "HiTraceFinishTrace";
+        "HiTraceStartAsyncTrace";
+        "HiTraceFinishAsyncTrace";
+        "HiTraceCountTrace";
+        "StartTraceCwrapper";
+        "FinishTraceCwrapper";
+        "StartAsyncTraceCwrapper";
+        "FinishAsyncTraceCwrapper";
+        "CountTraceCwrapper";
+        "StartTraceChainPoint";
+    };
+  local:
+    *;
+};
