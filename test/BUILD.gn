@@ -125,8 +125,11 @@ ohos_unittest("HitraceDumpTest") {
 
   sources = [
     "../frameworks/native/common_utils.cpp",
+    "../interfaces/native/innerkits/src/hitrace_dump.cpp",
     "unittest/hitrace_dump/hitrace_dump_test.cpp",
   ]
+
+  cflags = [ "-DHITRACE_UNITTEST" ]
 
   include_dirs = [
     "../frameworks/include/",

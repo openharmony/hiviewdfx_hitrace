@@ -90,6 +90,16 @@ bool TraverseFiles(std::vector<std::string> files, std::string outputFileName)
     return isExists;
 }
 
+bool RunCmd(const string& cmdstr)
+{
+    FILE *fp = popen(cmdstr.c_str(), "r");
+    if (fp == nullptr) {
+        return false;
+    }
+    pclose(fp);
+    return true;
+}
+
 class HitraceDumpTest : public testing::Test {
 public:
     static void SetUpTestCase(void);
@@ -383,6 +393,7 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_003, TestSize.Level0)
     ASSERT_TRUE(access(outputFileName.c_str(), F_OK) < 0) << "The file was not deleted half an hour ago";
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
+
 /**
  * @tc.name: DumpForServiceMode_004
  * @tc.desc: Invalid parameter verification in CMD_MODE.
@@ -418,6 +429,23 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_005, TestSize.Level0)
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::CALL_ERROR);
+
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpForServiceMode_006
+ * @tc.desc: Invalid parameter verification in CMD_MODE.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForServiceMode_006, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(access(DEFAULT_OUTPUT_DIR.c_str(), F_OK) == 0) << "/data/log/hitrace not exists.";
+
+    SetSysInitParamTags(123);
+    ASSERT_TRUE(SetCheckParam() == false);
 
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
@@ -490,4 +518,30 @@ HWTEST_F(HitraceDumpTest, CommonUtils_005, TestSize.Level0)
     ASSERT_TRUE(tagGroupTable.size() > 0);
 }
 
+/**
+ * @tc.name: CommonUtils_006
+ * @tc.desc: Test ParseTagInfo().
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceDumpTest, CommonUtils_006, TestSize.Level0)
+{
+    std::map<std::string, OHOS::HiviewDFX::Hitrace::TagCategory> allTags;
+    std::map<std::string, std::vector<std::string>> tagGroupTable;
+
+    ASSERT_TRUE(RunCmd("mount -o rw,remount /"));
+    ASSERT_TRUE(RunCmd("cp /system/etc/hiview/hitrace_utils.json /system/etc/hiview/hitrace_utils-bak.json"));
+    ASSERT_TRUE(RunCmd("sed -i 's/tag_groups/TestCommonUtils/g' /system/etc/hiview/hitrace_utils.json"));
+    ParseTagInfo(allTags, tagGroupTable);
+    ASSERT_TRUE(RunCmd("sed -i 's/tag_category/TestCommonUtils/g' /system/etc/hiview/hitrace_utils.json"));
+    ParseTagInfo(allTags, tagGroupTable);
+    ASSERT_TRUE(RunCmd("rm /system/etc/hiview/hitrace_utils.json"));
+    ParseTagInfo(allTags, tagGroupTable);
+    ASSERT_TRUE(RunCmd("mv /system/etc/hiview/hitrace_utils-bak.json /system/etc/hiview/hitrace_utils.json"));
+
+    ASSERT_TRUE(IsNumber("scene_performance") == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(IsNumber("") == false);
+    ASSERT_TRUE(IsNumber("tags:sched clockType:boot bufferSize:1024 overwrite:1") == false);
+    CanonicalizeSpecPath(nullptr);
+    MarkClockSync("/sys/kernel/debug/tracing/test_trace_marker");
+}
 } // namespace
