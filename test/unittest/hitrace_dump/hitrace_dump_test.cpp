@@ -314,6 +314,56 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_006, TestSize.Level0)
 }
 
 /**
+ * @tc.name: DumpForCmdMode_007
+ * @tc.desc: Test the CMD_MODE when set fileLimit in args.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForCmdMode_007, TestSize.Level0)
+{
+    std::string args = "tags:sched,ace,app,disk,distributeddatamgr,freq,graphic,idle,irq,load,mdfs,mmc,";
+    args += "notification,ohos,pagecache,regulators,sync,ufs,workq,zaudio,zcamera,zimage,zmedia ";
+    args += "clockType: boot bufferSize:1024 overwrite: 1 fileLimit: 2 fileSize: 51200";
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
+
+    ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::SUCCESS);
+    sleep(1);
+
+    TraceRetInfo ret = DumpTraceOff();
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(ret.outputFiles.size() > 0);
+
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpForCmdMode_008
+ * @tc.desc: Test the CMD_MODE when there's extra space in args.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForCmdMode_008, TestSize.Level0)
+{
+    std::string filePathName = "/data/local/tmp/mylongtrace.sys";
+    std::string args = "tags:sched,ace,app,disk,distributeddatamgr,freq,graphic,idle,irq,load,mdfs,mmc,";
+    args += "notification,ohos,pagecache,regulators,sync,ufs,workq,zaudio,zcamera,zimage,zmedia ";
+    args += "clockType: boot bufferSize:1024 overwrite: 1 output:" + filePathName;
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
+
+    ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::SUCCESS);
+    if (remove(filePathName.c_str()) == 0) {
+        HILOG_INFO(LOG_CORE, "Delete mylongtrace.sys success.");
+    } else {
+        HILOG_ERROR(LOG_CORE, "Delete mylongtrace.sys failed.");
+    }
+    sleep(10);
+
+    TraceRetInfo ret = DumpTraceOff();
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(ret.outputFiles.size() > 0);
+
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
  * @tc.name: ParammeterCheck_001
  * @tc.desc: Check parameter after interface call.
  * @tc.type: FUNC
