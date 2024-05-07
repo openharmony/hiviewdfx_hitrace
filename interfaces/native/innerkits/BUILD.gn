@@ -121,7 +121,7 @@ ohos_shared_library("hitrace_dump") {
   } else {
     external_deps += [ "hilog:libhilog" ]
   }
-
+  version_script = "hitrace.map"
   innerapi_tags = [ "platformsdk" ]
   part_name = "hitrace"
   subsystem_name = "hiviewdfx"
@@ -141,7 +141,7 @@ ohos_shared_library("hitrace_meter") {
   } else {
     external_deps += [ "hilog:libhilog" ]
   }
-
+  version_script = "hitrace.map"
   output_extension = "so"
 
   innerapi_tags = [

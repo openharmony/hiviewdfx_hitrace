@@ -30,7 +30,7 @@ ohos_shared_library("hitracechain_c_wrapper") {
   } else {
     external_deps += [ "hilog:libhilog" ]
   }
-
+  version_script = "hitracechain_c_wrapper.map"
   output_extension = "so"
 
   part_name = "hitrace"

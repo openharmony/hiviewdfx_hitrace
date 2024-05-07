@@ -1,0 +1,12 @@
+{
+  global:
+    extern "C" {
+        "OH_HiTrace_StartTrace";
+        "OH_HiTrace_FinishTrace";
+        "OH_HiTrace_StartAsyncTrace";
+        "OH_HiTrace_FinishAsyncTrace";
+        "OH_HiTrace_CountTrace";
+    };
+  local:
+    *;
+};
