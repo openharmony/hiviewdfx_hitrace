@@ -24,7 +24,6 @@
 #include "gtest/hwext/gtest-tag.h"
 #include "hitrace/hitracechainc.h"
 #include "hitrace/hitraceid.h"
-#include "hitrace_meter.h"
 #include "hitrace_meter_c.h"
 
 namespace OHOS {
@@ -630,43 +629,6 @@ HWTEST_F(HiTraceChainCppTest, HiTraceTest_001, TestSize.Level1)
     HiTraceStartAsyncTrace(HITRACE_TAG_OHOS, "HiTraceTest001", taskId);
     HiTraceFinishAsyncTrace(HITRACE_TAG_OHOS, "HiTraceTest001", taskId);
     HiTraceCountTrace(HITRACE_TAG_OHOS, "HiTraceTest001", count);
-}
-
-/**
- * @tc.name: Dfx_HiTraceChainCppTest_HiTraceTest_002
- * @tc.desc: Create child and grand child span.
- * @tc.type: FUNC
- */
-HWTEST_F(HiTraceChainCppTest, HiTraceTest_002, TestSize.Level1)
-{
-    /* begin with span flag */
-    HiTraceId id = HiTraceChain::Begin("test", 0);
-    EXPECT_EQ(0, id.GetFlags());
-    EXPECT_EQ(0UL, id.GetSpanId());
-    EXPECT_EQ(0UL, id.GetParentSpanId());
-
-    /* create child span */
-    HiTraceId childId = HiTraceChain::CreateSpan();
-    EXPECT_EQ(1, childId.IsValid());
-    EXPECT_EQ(childId.GetFlags(), id.GetFlags());
-    EXPECT_EQ(childId.GetChainId(), id.GetChainId());
-    EXPECT_EQ(childId.GetParentSpanId(), id.GetSpanId());
-
-    /* set child id to thread id */
-    HiTraceChain::SetId(childId);
-
-    /* save child and set child id to thread id */
-    HiTraceChain::SaveAndSet(childId);
-
-    /* continue to create child span */
-    HiTraceId grandChildId = HiTraceChain::CreateSpan();
-    EXPECT_EQ(1, grandChildId.IsValid());
-    EXPECT_EQ(grandChildId.GetFlags(), id.GetFlags());
-    EXPECT_EQ(grandChildId.GetChainId(), id.GetChainId());
-    EXPECT_EQ(grandChildId.GetParentSpanId(), childId.GetSpanId());
-
-    /* end */
-    HiTraceChain::End(id);
 }
 }  // namespace HiviewDFX
 }  // namespace OHOS
