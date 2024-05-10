@@ -47,6 +47,7 @@ namespace {
 const std::string TAG_PROP = "debug.hitrace.tags.enableflags";
 const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
 const std::string LOG_DIR = "/data/log/";
+const int SLEEP_TIME = 10; // sleep 10ms
 
 std::string g_traceRootPath;
 
@@ -354,7 +355,7 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_008, TestSize.Level0)
     } else {
         HILOG_ERROR(LOG_CORE, "Delete mylongtrace.sys failed.");
     }
-    sleep(10);
+    sleep(SLEEP_TIME);
 
     TraceRetInfo ret = DumpTraceOff();
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);

@@ -81,6 +81,7 @@ const int SAVED_CMDLINES_SIZE = 3072; // 3M
 const int KB_PER_MB = 1024;
 const int S_TO_NS = 1000000000;
 const int MAX_NEW_TRACE_FILE_LIMIT = 5;
+const int JUDGE_FILE_EXIST = 10;  // Check whether the trace file exists every 10 times.
 
 const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
 const std::string SNAPSHOT_PREFIX = "trace_";
@@ -140,6 +141,7 @@ int g_outputFileSize = 0;
 int g_timeLimit = 0;
 int g_newTraceFileLimit = 0;
 int g_writeFileLimit = 0;
+bool g_needGenerateNewTraceFile = false;
 
 TraceParams g_currentTraceParams = {};
 
@@ -518,28 +520,22 @@ std::string GenerateName(bool isSnapshot = true)
     return name;
 }
 
-bool WriteNewFile(int &outFd, std::string &outputFile)
+bool CheckFileExist(const std::string &outputFile)
 {
     g_writeFileLimit++;
-    if (g_writeFileLimit > MAX_NEW_TRACE_FILE_LIMIT && access(outputFile.c_str(), F_OK) != 0) {
+    if (g_writeFileLimit > JUDGE_FILE_EXIST) {
         g_writeFileLimit = 0;
-        if (g_newTraceFileLimit > MAX_NEW_TRACE_FILE_LIMIT) {
-            HILOG_ERROR(LOG_CORE, "create new trace file %{public}s failed.", outputFile.c_str());
-            return false;
-        }
-        g_newTraceFileLimit++;
-        std::string outputFileName = GenerateName(false);
-        outputFile = CanonicalizeSpecPath(outputFileName.c_str());
-        outFd = open(outputFile.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
-        if (outFd < 0) {
-            HILOG_ERROR(LOG_CORE, "open %{public}s failed, errno: %{public}d.", outputFile.c_str(), errno);
+        if (access(outputFile.c_str(), F_OK) != 0) {
+            g_needGenerateNewTraceFile = true;
+            HILOG_INFO(LOG_CORE, "CheckFileExist access file:%{public}s failed, errno: %{public}d.",
+                outputFile.c_str(), errno);
             return false;
         }
     }
     return true;
 }
 
-bool WriteFile(uint8_t contentType, const std::string &src, int &outFd, std::string &outputFile)
+bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std::string &outputFile)
 {
     std::string srcPath = CanonicalizeSpecPath(src.c_str());
     int srcFd = open(srcPath.c_str(), O_RDONLY | O_NONBLOCK);
@@ -547,13 +543,13 @@ bool WriteFile(uint8_t contentType, const std::string &src, int &outFd, std::str
         HILOG_ERROR(LOG_CORE, "WriteFile: open %{public}s failed.", src.c_str());
         return false;
     }
+    if (!CheckFileExist(outputFile)) {
+        HILOG_ERROR(LOG_CORE, "need generate new trace file, old file:%{public}s.", outputFile.c_str());
+        return false;
+    }
     struct TraceFileContentHeader contentHeader;
     contentHeader.type = contentType;
     write(outFd, reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
-    if (!WriteNewFile(outFd, outputFile)) {
-        HILOG_ERROR(LOG_CORE, "WriteNewFile %{public}s failed.", outputFile.c_str());
-        return false;
-    }
     int readLen = 0;
     int count = 0;
     const int maxCount = 2;
@@ -607,7 +603,9 @@ bool WriteFile(uint8_t contentType, const std::string &src, int &outFd, std::str
     lseek(outFd, pos, SEEK_SET);
     close(srcFd);
     g_outputFileSize += static_cast<int>(offset);
-    HILOG_INFO(LOG_CORE, "WriteFile end, path: %{public}s, byte: %{public}d.", src.c_str(), readLen);
+    g_needGenerateNewTraceFile = false;
+    HILOG_INFO(LOG_CORE, "WriteFile end, path: %{public}s, byte: %{public}d. g_writeFileLimit: %{public}d",
+        src.c_str(), readLen, g_writeFileLimit);
     return true;
 }
 
@@ -633,7 +631,7 @@ void WriteEventFile(std::string &srcPath, int outFd)
     HILOG_INFO(LOG_CORE, "WriteEventFile end, path: %{public}s, data size: %{public}zd.", srcPath.c_str(), readLen);
 }
 
-bool WriteEventsFormat(int &outFd, std::string &outputFile)
+bool WriteEventsFormat(int outFd, const std::string &outputFile)
 {
     const std::string savedEventsFormatPath = DEFAULT_OUTPUT_DIR + SAVED_EVENTS_FORMAT;
     if (access(savedEventsFormatPath.c_str(), F_OK) != -1) {
@@ -708,7 +706,7 @@ bool WriteEventsFormat(int &outFd, std::string &outputFile)
     return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, filePath, outFd, outputFile);
 }
 
-bool WriteHeaderPage(int &outFd, std::string &outputFile)
+bool WriteHeaderPage(int outFd, const std::string &outputFile)
 {
     if (g_traceHmDir != "") {
         return true;
@@ -717,7 +715,7 @@ bool WriteHeaderPage(int &outFd, std::string &outputFile)
     return WriteFile(CONTENT_TYPE_HEADER_PAGE, headerPagePath, outFd, outputFile);
 }
 
-bool WritePrintkFormats(int &outFd, std::string &outputFile)
+bool WritePrintkFormats(int outFd, const std::string &outputFile)
 {
     if (g_traceHmDir != "") {
         return true;
@@ -736,7 +734,7 @@ bool WriteKallsyms(int outFd)
     return true;
 }
 
-bool HmWriteCpuRawInner(int &outFd, std::string &outputFile)
+bool HmWriteCpuRawInner(int outFd, const std::string &outputFile)
 {
     uint8_t type = CONTENT_TYPE_CPU_RAW;
     std::string src = g_traceRootPath + "hongmeng/trace_pipe_raw";
@@ -744,7 +742,7 @@ bool HmWriteCpuRawInner(int &outFd, std::string &outputFile)
     return WriteFile(type, src, outFd, outputFile);
 }
 
-bool WriteCpuRawInner(int &outFd, std::string &outputFile)
+bool WriteCpuRawInner(int outFd, const std::string &outputFile)
 {
     int cpuNums = GetCpuProcessors();
     int ret = true;
@@ -759,7 +757,7 @@ bool WriteCpuRawInner(int &outFd, std::string &outputFile)
     return ret;
 }
 
-bool WriteCpuRaw(int &outFd, std::string &outputFile)
+bool WriteCpuRaw(int outFd, const std::string &outputFile)
 {
     if (g_traceHmDir == "") {
         return WriteCpuRawInner(outFd, outputFile);
@@ -768,16 +766,36 @@ bool WriteCpuRaw(int &outFd, std::string &outputFile)
     }
 }
 
-bool WriteCmdlines(int &outFd, std::string &outputFile)
+bool WriteCmdlines(int outFd, const std::string &outputFile)
 {
     std::string cmdlinesPath = GetFilePath("saved_cmdlines");
     return WriteFile(CONTENT_TYPE_CMDLINES, cmdlinesPath, outFd, outputFile);
 }
 
-bool WriteTgids(int &outFd, std::string &outputFile)
+bool WriteTgids(int outFd, const std::string &outputFile)
 {
     std::string tgidsPath = GetFilePath("saved_tgids");
     return WriteFile(CONTENT_TYPE_TGIDS, tgidsPath, outFd, outputFile);
+}
+
+bool GenerateNewFile(int &outFd, std::string &outPath)
+{
+    if (access(outPath.c_str(), F_OK) == 0) {
+        return true;
+    }
+    std::string outputFileName = GenerateName(false);
+    outPath = CanonicalizeSpecPath(outputFileName.c_str());
+    outFd = open(outPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    if (outFd < 0) {
+        g_newTraceFileLimit++;
+        HILOG_ERROR(LOG_CORE, "open %{public}s failed, errno: %{public}d.", outPath.c_str(), errno);
+    }
+    if (g_newTraceFileLimit > MAX_NEW_TRACE_FILE_LIMIT) {
+        HILOG_ERROR(LOG_CORE, "create new trace file %{public}s limited.", outPath.c_str());
+        return false;
+    }
+    g_needGenerateNewTraceFile = true;
+    return true;
 }
 
 bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
@@ -801,20 +819,30 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
     if (g_traceHmDir != "") {
         header.fileType = HM_FILE_RAW_TRACE;
     }
-    write(outFd, reinterpret_cast<char*>(&header), sizeof(header));
-    WriteEventsFormat(outFd, outPath);
-    while (g_dumpFlag) {
-        if (isLimited && g_outputFileSize > fileSizeThreshold) {
-            break;
+    do {
+        g_needGenerateNewTraceFile = false;
+        write(outFd, reinterpret_cast<char *>(&header), sizeof(header));
+        WriteEventsFormat(outFd, outPath);
+        while (g_dumpFlag) {
+            if (isLimited && g_outputFileSize > fileSizeThreshold) {
+                break;
+            }
+            sleep(sleepTime);
+            if (!WriteCpuRaw(outFd, outPath)) {
+                break;
+            }
         }
-        sleep(sleepTime);
-        WriteCpuRaw(outFd, outPath);
-    }
-    WriteCmdlines(outFd, outPath);
-    WriteTgids(outFd, outPath);
-    WriteHeaderPage(outFd, outPath);
-    WritePrintkFormats(outFd, outPath);
-    WriteKallsyms(outFd);
+        WriteCmdlines(outFd, outPath);
+        WriteTgids(outFd, outPath);
+        WriteHeaderPage(outFd, outPath);
+        WritePrintkFormats(outFd, outPath);
+        WriteKallsyms(outFd);
+        if (!GenerateNewFile(outFd, outPath)) {
+            HILOG_INFO(LOG_CORE, "DumpTraceLoop access file:%{public}s failed, errno: %{public}d.",
+                outPath.c_str(), errno);
+            return false;
+        }
+    } while (g_needGenerateNewTraceFile);
     close(outFd);
     return true;
 }
@@ -1295,7 +1323,7 @@ TraceMode GetTraceMode()
 TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
 {
     if (g_traceMode != CLOSE) {
-        HILOG_ERROR(LOG_CORE, "OpenTrace: CALL_ERROR.");
+        HILOG_ERROR(LOG_CORE, "OpenTrace: CALL_ERROR, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
         return CALL_ERROR;
     }
     std::lock_guard<std::mutex> lock(g_traceMutex);
@@ -1342,7 +1370,7 @@ TraceErrorCode OpenTrace(const std::string &args)
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
     if (g_traceMode != CLOSE) {
-        HILOG_ERROR(LOG_CORE, "Hitrace OpenTrace: CALL_ERROR.");
+        HILOG_ERROR(LOG_CORE, "OpenTrace: CALL_ERROR, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
         return CALL_ERROR;
     }
 
@@ -1383,7 +1411,7 @@ TraceRetInfo DumpTrace()
     HILOG_DEBUG(LOG_CORE, "DumpTrace start.");
     TraceRetInfo ret;
     if (g_traceMode != SERVICE_MODE) {
-        HILOG_ERROR(LOG_CORE, "DumpTrace: CALL_ERROR.");
+        HILOG_ERROR(LOG_CORE, "DumpTrace: CALL_ERROR, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
         ret.errorCode = CALL_ERROR;
         return ret;
     }
@@ -1426,7 +1454,7 @@ TraceErrorCode DumpTraceOn()
     std::lock_guard<std::mutex> lock(g_traceMutex);
     // check current trace status
     if (g_traceMode != CMD_MODE) {
-        HILOG_ERROR(LOG_CORE, "DumpTraceOn: CALL_ERROR.");
+        HILOG_ERROR(LOG_CORE, "DumpTraceOn: CALL_ERROR, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
         return CALL_ERROR;
     }
 
@@ -1443,7 +1471,8 @@ TraceRetInfo DumpTraceOff()
     TraceRetInfo ret;
     // check current trace status
     if (g_traceMode != CMD_MODE) {
-        HILOG_ERROR(LOG_CORE, "DumpTraceOff: The current state is not Recording, data exception.");
+        HILOG_ERROR(LOG_CORE, "DumpTraceOff: The current state is %{public}d, data exception.",
+            static_cast<int>(g_traceMode));
         ret.errorCode = CALL_ERROR;
         ret.outputFiles = g_outputFilesForCmd;
         return ret;
