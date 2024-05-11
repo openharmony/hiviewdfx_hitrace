@@ -63,6 +63,7 @@ struct TraceParams {
     std::string isOverWrite;
     std::string outputFile;
     std::string fileSize;
+    std::string fileLimit;
     std::string appPid;
 };
 
@@ -79,6 +80,8 @@ const int HM_DEFAULT_BUFFER_SIZE = 144 * 1024;
 const int SAVED_CMDLINES_SIZE = 3072; // 3M
 const int KB_PER_MB = 1024;
 const int S_TO_NS = 1000000000;
+const int MAX_NEW_TRACE_FILE_LIMIT = 5;
+const int JUDGE_FILE_EXIST = 10;  // Check whether the trace file exists every 10 times.
 
 const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
 const std::string SNAPSHOT_PREFIX = "trace_";
@@ -136,6 +139,9 @@ std::vector<std::pair<std::string, int>> g_traceFilesTable;
 std::vector<std::string> g_outputFilesForCmd;
 int g_outputFileSize = 0;
 int g_timeLimit = 0;
+int g_newTraceFileLimit = 0;
+int g_writeFileLimit = 0;
+bool g_needGenerateNewTraceFile = false;
 
 TraceParams g_currentTraceParams = {};
 
@@ -479,12 +485,66 @@ bool CheckPage(uint8_t contentType, uint8_t *page)
     return true;
 }
 
-bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
+std::string GenerateName(bool isSnapshot = true)
+{
+    // eg: /data/log/hitrace/trace_localtime@boottime.sys
+    std::string name = DEFAULT_OUTPUT_DIR;
+
+    if (isSnapshot) {
+        name += SNAPSHOT_PREFIX;
+    } else {
+        name += RECORDING_PREFIX;
+    }
+
+    // get localtime
+    time_t currentTime;
+    time(&currentTime);
+    struct tm timeInfo = {};
+    const int bufferSize = 16;
+    char timeStr[bufferSize] = {0};
+    if (localtime_r(&currentTime, &timeInfo) == nullptr) {
+        HILOG_ERROR(LOG_CORE, "Get localtime failed.");
+        return "";
+    }
+    strftime(timeStr, bufferSize, "%Y%m%d%H%M%S", &timeInfo);
+    name += std::string(timeStr);
+    // get boottime
+    struct timespec bts = {0, 0};
+    clock_gettime(CLOCK_BOOTTIME, &bts);
+    name += "@" + std::to_string(bts.tv_sec) + "-" + std::to_string(bts.tv_nsec) + ".sys";
+
+    struct timespec mts = {0, 0};
+    clock_gettime(CLOCK_MONOTONIC, &mts);
+    HILOG_INFO(LOG_CORE, "output trace: %{public}s, boot_time(%{public}" PRId64 "), mono_time(%{public}" PRId64 ").",
+                name.c_str(), static_cast<int64_t>(bts.tv_sec), static_cast<int64_t>(mts.tv_sec));
+    return name;
+}
+
+bool CheckFileExist(const std::string &outputFile)
+{
+    g_writeFileLimit++;
+    if (g_writeFileLimit > JUDGE_FILE_EXIST) {
+        g_writeFileLimit = 0;
+        if (access(outputFile.c_str(), F_OK) != 0) {
+            g_needGenerateNewTraceFile = true;
+            HILOG_INFO(LOG_CORE, "CheckFileExist access file:%{public}s failed, errno: %{public}d.",
+                outputFile.c_str(), errno);
+            return false;
+        }
+    }
+    return true;
+}
+
+bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std::string &outputFile)
 {
     std::string srcPath = CanonicalizeSpecPath(src.c_str());
     int srcFd = open(srcPath.c_str(), O_RDONLY | O_NONBLOCK);
     if (srcFd < 0) {
         HILOG_ERROR(LOG_CORE, "WriteFile: open %{public}s failed.", src.c_str());
+        return false;
+    }
+    if (!CheckFileExist(outputFile)) {
+        HILOG_ERROR(LOG_CORE, "need generate new trace file, old file:%{public}s.", outputFile.c_str());
         return false;
     }
     struct TraceFileContentHeader contentHeader;
@@ -543,7 +603,9 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd)
     lseek(outFd, pos, SEEK_SET);
     close(srcFd);
     g_outputFileSize += static_cast<int>(offset);
-    HILOG_INFO(LOG_CORE, "WriteFile end, path: %{public}s, byte: %{public}d.", src.c_str(), readLen);
+    g_needGenerateNewTraceFile = false;
+    HILOG_INFO(LOG_CORE, "WriteFile end, path: %{public}s, byte: %{public}d. g_writeFileLimit: %{public}d",
+        src.c_str(), readLen, g_writeFileLimit);
     return true;
 }
 
@@ -569,11 +631,11 @@ void WriteEventFile(std::string &srcPath, int outFd)
     HILOG_INFO(LOG_CORE, "WriteEventFile end, path: %{public}s, data size: %{public}zd.", srcPath.c_str(), readLen);
 }
 
-bool WriteEventsFormat(int outFd)
+bool WriteEventsFormat(int outFd, const std::string &outputFile)
 {
     const std::string savedEventsFormatPath = DEFAULT_OUTPUT_DIR + SAVED_EVENTS_FORMAT;
     if (access(savedEventsFormatPath.c_str(), F_OK) != -1) {
-        return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, savedEventsFormatPath, outFd);
+        return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, savedEventsFormatPath, outFd, outputFile);
     }
     std::string filePath = CanonicalizeSpecPath(savedEventsFormatPath.c_str());
     int fd = open(filePath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
@@ -641,25 +703,25 @@ bool WriteEventsFormat(int outFd)
     }
     close(fd);
     HILOG_INFO(LOG_CORE, "WriteEventsFormat end. path: %{public}s.", filePath.c_str());
-    return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, filePath, outFd);
+    return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, filePath, outFd, outputFile);
 }
 
-bool WriteHeaderPage(int outFd)
+bool WriteHeaderPage(int outFd, const std::string &outputFile)
 {
     if (g_traceHmDir != "") {
         return true;
     }
     std::string headerPagePath = GetFilePath("events/header_page");
-    return WriteFile(CONTENT_TYPE_HEADER_PAGE, headerPagePath, outFd);
+    return WriteFile(CONTENT_TYPE_HEADER_PAGE, headerPagePath, outFd, outputFile);
 }
 
-bool WritePrintkFormats(int outFd)
+bool WritePrintkFormats(int outFd, const std::string &outputFile)
 {
     if (g_traceHmDir != "") {
         return true;
     }
     std::string printkFormatPath = GetFilePath("printk_formats");
-    return WriteFile(CONTENT_TYPE_PRINTK_FORMATS, printkFormatPath, outFd);
+    return WriteFile(CONTENT_TYPE_PRINTK_FORMATS, printkFormatPath, outFd, outputFile);
 }
 
 bool WriteKallsyms(int outFd)
@@ -672,22 +734,22 @@ bool WriteKallsyms(int outFd)
     return true;
 }
 
-bool HmWriteCpuRawInner(int outFd)
+bool HmWriteCpuRawInner(int outFd, const std::string &outputFile)
 {
     uint8_t type = CONTENT_TYPE_CPU_RAW;
     std::string src = g_traceRootPath + "hongmeng/trace_pipe_raw";
 
-    return WriteFile(type, src, outFd);
+    return WriteFile(type, src, outFd, outputFile);
 }
 
-bool WriteCpuRawInner(int outFd)
+bool WriteCpuRawInner(int outFd, const std::string &outputFile)
 {
     int cpuNums = GetCpuProcessors();
     int ret = true;
     uint8_t type = CONTENT_TYPE_CPU_RAW;
     for (int i = 0; i < cpuNums; i++) {
         std::string src = g_traceRootPath + "per_cpu/cpu" + std::to_string(i) + "/trace_pipe_raw";
-        if (!WriteFile(static_cast<uint8_t>(type + i), src, outFd)) {
+        if (!WriteFile(static_cast<uint8_t>(type + i), src, outFd, outputFile)) {
             ret = false;
             break;
         }
@@ -695,25 +757,45 @@ bool WriteCpuRawInner(int outFd)
     return ret;
 }
 
-bool WriteCpuRaw(int outFd)
+bool WriteCpuRaw(int outFd, const std::string &outputFile)
 {
     if (g_traceHmDir == "") {
-        return WriteCpuRawInner(outFd);
+        return WriteCpuRawInner(outFd, outputFile);
     } else {
-        return HmWriteCpuRawInner(outFd);
+        return HmWriteCpuRawInner(outFd, outputFile);
     }
 }
 
-bool WriteCmdlines(int outFd)
+bool WriteCmdlines(int outFd, const std::string &outputFile)
 {
     std::string cmdlinesPath = GetFilePath("saved_cmdlines");
-    return WriteFile(CONTENT_TYPE_CMDLINES, cmdlinesPath, outFd);
+    return WriteFile(CONTENT_TYPE_CMDLINES, cmdlinesPath, outFd, outputFile);
 }
 
-bool WriteTgids(int outFd)
+bool WriteTgids(int outFd, const std::string &outputFile)
 {
     std::string tgidsPath = GetFilePath("saved_tgids");
-    return WriteFile(CONTENT_TYPE_TGIDS, tgidsPath, outFd);
+    return WriteFile(CONTENT_TYPE_TGIDS, tgidsPath, outFd, outputFile);
+}
+
+bool GenerateNewFile(int &outFd, std::string &outPath)
+{
+    if (access(outPath.c_str(), F_OK) == 0) {
+        return true;
+    }
+    std::string outputFileName = GenerateName(false);
+    outPath = CanonicalizeSpecPath(outputFileName.c_str());
+    outFd = open(outPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    if (outFd < 0) {
+        g_newTraceFileLimit++;
+        HILOG_ERROR(LOG_CORE, "open %{public}s failed, errno: %{public}d.", outPath.c_str(), errno);
+    }
+    if (g_newTraceFileLimit > MAX_NEW_TRACE_FILE_LIMIT) {
+        HILOG_ERROR(LOG_CORE, "create new trace file %{public}s limited.", outPath.c_str());
+        return false;
+    }
+    g_needGenerateNewTraceFile = true;
+    return true;
 }
 
 bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
@@ -737,58 +819,34 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
     if (g_traceHmDir != "") {
         header.fileType = HM_FILE_RAW_TRACE;
     }
-    write(outFd, reinterpret_cast<char*>(&header), sizeof(header));
-    WriteEventsFormat(outFd);
-    while (g_dumpFlag) {
-        if (isLimited && g_outputFileSize > fileSizeThreshold) {
-            break;
+    do {
+        g_needGenerateNewTraceFile = false;
+        write(outFd, reinterpret_cast<char *>(&header), sizeof(header));
+        WriteEventsFormat(outFd, outPath);
+        while (g_dumpFlag) {
+            if (isLimited && g_outputFileSize > fileSizeThreshold) {
+                break;
+            }
+            sleep(sleepTime);
+            if (!WriteCpuRaw(outFd, outPath)) {
+                break;
+            }
         }
-        sleep(sleepTime);
-        WriteCpuRaw(outFd);
-    }
-    WriteCmdlines(outFd);
-    WriteTgids(outFd);
-    WriteHeaderPage(outFd);
-    WritePrintkFormats(outFd);
-    WriteKallsyms(outFd);
+        WriteCmdlines(outFd, outPath);
+        WriteTgids(outFd, outPath);
+        WriteHeaderPage(outFd, outPath);
+        WritePrintkFormats(outFd, outPath);
+        WriteKallsyms(outFd);
+        if (!GenerateNewFile(outFd, outPath)) {
+            HILOG_INFO(LOG_CORE, "DumpTraceLoop access file:%{public}s failed, errno: %{public}d.",
+                outPath.c_str(), errno);
+            return false;
+        }
+    } while (g_needGenerateNewTraceFile);
     close(outFd);
     return true;
 }
 
-std::string GenerateName(bool isSnapshot = true)
-{
-    // eg: /data/log/hitrace/trace_localtime@boottime.sys
-    std::string name = DEFAULT_OUTPUT_DIR;
-
-    if (isSnapshot) {
-        name += SNAPSHOT_PREFIX;
-    } else {
-        name += RECORDING_PREFIX;
-    }
-
-    // get localtime
-    time_t currentTime;
-    time(&currentTime);
-    struct tm timeInfo = {};
-    const int bufferSize = 16;
-    char timeStr[bufferSize] = {0};
-    if (localtime_r(&currentTime, &timeInfo) == nullptr) {
-        HILOG_ERROR(LOG_CORE, "Get localtime failed.");
-        return "";
-    }
-    strftime(timeStr, bufferSize, "%Y%m%d%H%M%S", &timeInfo);
-    name += std::string(timeStr);
-    // get boottime
-    struct timespec bts = {0, 0};
-    clock_gettime(CLOCK_BOOTTIME, &bts);
-    name += "@" + std::to_string(bts.tv_sec) + "-" + std::to_string(bts.tv_nsec) + ".sys";
-
-    struct timespec mts = {0, 0};
-    clock_gettime(CLOCK_MONOTONIC, &mts);
-    HILOG_INFO(LOG_CORE, "output trace: %{public}s, boot_time(%{public}" PRId64 "), mono_time(%{public}" PRId64 ").",
-                name.c_str(), static_cast<int64_t>(bts.tv_sec), static_cast<int64_t>(mts.tv_sec));
-    return name;
-}
 
 /**
  * When the raw trace is started, clear the saved_events_format files in the folder.
@@ -805,6 +863,26 @@ void ClearSavedEventsFormat()
         HILOG_INFO(LOG_CORE, "Delete saved_events_format success.");
     } else {
         HILOG_ERROR(LOG_CORE, "Delete saved_events_format failed.");
+    }
+}
+
+/**
+ * open trace file aging mechanism
+ */
+void ClearOldTraceFile()
+{
+    if (g_currentTraceParams.fileLimit.empty()) {
+        HILOG_INFO(LOG_CORE, "no activate aging mechanism.");
+        return;
+    }
+    if (g_outputFilesForCmd.size() >= std::stoi(g_currentTraceParams.fileLimit)
+        && access(g_outputFilesForCmd[0].c_str(), F_OK) == 0) {
+        if (remove(g_outputFilesForCmd[0].c_str()) == 0) {
+            g_outputFilesForCmd.erase(g_outputFilesForCmd.begin());
+            HILOG_INFO(LOG_CORE, "delete first: %{public}s success.", g_outputFilesForCmd[0].c_str());
+        } else {
+            HILOG_ERROR(LOG_CORE, "delete first: %{public}s failed.", g_outputFilesForCmd[0].c_str());
+        }
     }
 }
 
@@ -835,6 +913,7 @@ void ProcessDumpTask()
     }
     
     while (g_dumpFlag) {
+        ClearOldTraceFile();
         // Generate file name
         std::string outputFileName = GenerateName(false);
         if (DumpTraceLoop(outputFileName, true)) {
@@ -886,9 +965,9 @@ bool ReadRawTrace(std::string &outputFileName)
     }
     write(outFd, reinterpret_cast<char*>(&header), sizeof(header));
 
-    if (WriteEventsFormat(outFd) && WriteCpuRaw(outFd) &&
-        WriteCmdlines(outFd) && WriteTgids(outFd) &&
-        WriteHeaderPage(outFd) && WritePrintkFormats(outFd) &&
+    if (WriteEventsFormat(outFd, outPath) && WriteCpuRaw(outFd, outPath) &&
+        WriteCmdlines(outFd, outPath) && WriteTgids(outFd, outPath) &&
+        WriteHeaderPage(outFd, outPath) && WritePrintkFormats(outFd, outPath) &&
         WriteKallsyms(outFd)) {
         close(outFd);
         return true;
@@ -1153,6 +1232,8 @@ bool ParseArgs(const std::string &args, TraceParams &cmdTraceParams, const std::
             cmdTraceParams.outputFile = item.substr(pos + 1);
         } else if (itemName == "fileSize") {
             cmdTraceParams.fileSize = item.substr(pos + 1);
+        } else if (itemName == "fileLimit") {
+            cmdTraceParams.fileLimit = item.substr(pos + 1);
         } else if (itemName == "appPid") {
             std::string pidStr = item.substr(pos + 1);
             if (!IsNumber(pidStr)) {
@@ -1242,7 +1323,7 @@ TraceMode GetTraceMode()
 TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
 {
     if (g_traceMode != CLOSE) {
-        HILOG_ERROR(LOG_CORE, "OpenTrace: CALL_ERROR.");
+        HILOG_ERROR(LOG_CORE, "OpenTrace: CALL_ERROR, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
         return CALL_ERROR;
     }
     std::lock_guard<std::mutex> lock(g_traceMutex);
@@ -1289,7 +1370,7 @@ TraceErrorCode OpenTrace(const std::string &args)
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
     if (g_traceMode != CLOSE) {
-        HILOG_ERROR(LOG_CORE, "Hitrace OpenTrace: CALL_ERROR.");
+        HILOG_ERROR(LOG_CORE, "OpenTrace: CALL_ERROR, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
         return CALL_ERROR;
     }
 
@@ -1330,7 +1411,7 @@ TraceRetInfo DumpTrace()
     HILOG_DEBUG(LOG_CORE, "DumpTrace start.");
     TraceRetInfo ret;
     if (g_traceMode != SERVICE_MODE) {
-        HILOG_ERROR(LOG_CORE, "DumpTrace: CALL_ERROR.");
+        HILOG_ERROR(LOG_CORE, "DumpTrace: CALL_ERROR, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
         ret.errorCode = CALL_ERROR;
         return ret;
     }
@@ -1373,7 +1454,7 @@ TraceErrorCode DumpTraceOn()
     std::lock_guard<std::mutex> lock(g_traceMutex);
     // check current trace status
     if (g_traceMode != CMD_MODE) {
-        HILOG_ERROR(LOG_CORE, "DumpTraceOn: CALL_ERROR.");
+        HILOG_ERROR(LOG_CORE, "DumpTraceOn: CALL_ERROR, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
         return CALL_ERROR;
     }
 
@@ -1390,7 +1471,8 @@ TraceRetInfo DumpTraceOff()
     TraceRetInfo ret;
     // check current trace status
     if (g_traceMode != CMD_MODE) {
-        HILOG_ERROR(LOG_CORE, "DumpTraceOff: The current state is not Recording, data exception.");
+        HILOG_ERROR(LOG_CORE, "DumpTraceOff: The current state is %{public}d, data exception.",
+            static_cast<int>(g_traceMode));
         ret.errorCode = CALL_ERROR;
         ret.outputFiles = g_outputFilesForCmd;
         return ret;
