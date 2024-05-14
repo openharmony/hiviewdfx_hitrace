@@ -6,6 +6,27 @@
         "OH_HiTrace_StartAsyncTrace";
         "OH_HiTrace_FinishAsyncTrace";
         "OH_HiTrace_CountTrace";
+        "OH_HiTrace_BeginChain";
+        "OH_HiTrace_EndChain";
+        "OH_HiTrace_GetId";
+        "OH_HiTrace_SetId";
+        "OH_HiTrace_ClearId";
+        "OH_HiTrace_CreateSpan";
+        "OH_HiTrace_Tracepoint";
+        "OH_HiTrace_InitId";
+        "OH_HiTrace_IdFromBytes";
+        "OH_HiTrace_IsIdValid";
+        "OH_HiTrace_IsFlagEnabled";
+        "OH_HiTrace_EnableFlag";
+        "OH_HiTrace_GetFlags";
+        "OH_HiTrace_SetFlags";
+        "OH_HiTrace_GetChainId";
+        "OH_HiTrace_SetChainId";
+        "OH_HiTrace_GetSpanId";
+        "OH_HiTrace_SetSpanId";
+        "OH_HiTrace_GetParentSpanId";
+        "OH_HiTrace_SetParentSpanId";
+        "OH_HiTrace_IdToBytes";
     };
   local:
     *;
