@@ -26,7 +26,7 @@
 #include <vector>
 #include <string>
 #include <memory>
-
+#include <filesystem>
 #include <unistd.h>
 #include <cstdio>
 #include <cstdlib>
@@ -866,22 +866,57 @@ void ClearSavedEventsFormat()
     }
 }
 
+void GetFilesInDirectory(std::vector<std::string> &fileNames)
+{
+    for (const auto &entry : std::filesystem::directory_iterator(DEFAULT_OUTPUT_DIR)) {
+        if (entry.is_regular_file() &&
+            entry.path().filename().string().substr(0, RECORDING_PREFIX.size()) == RECORDING_PREFIX) {
+            fileNames.push_back(entry.path().filename().string());
+        }
+    }
+}
+
 /**
  * open trace file aging mechanism
  */
+void ClearOldTraceFileInDirectory()
+{
+    if (g_currentTraceParams.fileLimit.empty()) {
+        HILOG_INFO(LOG_CORE, "ClearOldTraceFileInDirectory: no activate aging mechanism.");
+        return;
+    }
+    std::vector<std::string> fileNames;
+    GetFilesInDirectory(fileNames);
+    if (fileNames.size() <= 0) {
+        HILOG_INFO(LOG_CORE, "no file need clear");
+    }
+    while (fileNames.size() > std::stoi(g_currentTraceParams.fileLimit)) {
+        if (remove((DEFAULT_OUTPUT_DIR+fileNames[0]).c_str()) == 0) {
+            HILOG_INFO(LOG_CORE, "ClearOldTraceFileInDirectory: delete first: %{public}s success.",
+                fileNames[0].c_str());
+            fileNames.erase(fileNames.begin());
+        } else {
+            HILOG_ERROR(LOG_CORE, "ClearOldTraceFileInDirectory: delete first: %{public}s failed, errno: %{public}d.",
+                fileNames[0].c_str(), errno);
+        }
+    }
+}
+
 void ClearOldTraceFile()
 {
     if (g_currentTraceParams.fileLimit.empty()) {
-        HILOG_INFO(LOG_CORE, "no activate aging mechanism.");
+        HILOG_INFO(LOG_CORE, "ClearOldTraceFile: no activate aging mechanism.");
         return;
     }
-    if (g_outputFilesForCmd.size() >= std::stoi(g_currentTraceParams.fileLimit)
-        && access(g_outputFilesForCmd[0].c_str(), F_OK) == 0) {
+    if (g_outputFilesForCmd.size() > std::stoi(g_currentTraceParams.fileLimit) &&
+        access(g_outputFilesForCmd[0].c_str(), F_OK) == 0) {
         if (remove(g_outputFilesForCmd[0].c_str()) == 0) {
             g_outputFilesForCmd.erase(g_outputFilesForCmd.begin());
-            HILOG_INFO(LOG_CORE, "delete first: %{public}s success.", g_outputFilesForCmd[0].c_str());
+            HILOG_INFO(LOG_CORE, "ClearOldTraceFile: delete first: %{public}s success.",
+                g_outputFilesForCmd[0].c_str());
         } else {
-            HILOG_ERROR(LOG_CORE, "delete first: %{public}s failed.", g_outputFilesForCmd[0].c_str());
+            HILOG_ERROR(LOG_CORE, "ClearOldTraceFile: delete first: %{public}s failed, errno: %{public}d.",
+                g_outputFilesForCmd[0].c_str(), errno);
         }
     }
 }
@@ -902,6 +937,7 @@ void ProcessDumpTask()
     prctl(PR_SET_NAME, threadName.c_str());
     HILOG_INFO(LOG_CORE, "ProcessDumpTask: trace dump thread start.");
     ClearSavedEventsFormat();
+    ClearOldTraceFileInDirectory();
     if (g_currentTraceParams.fileSize.empty()) {
         std::string outputFileName = g_currentTraceParams.outputFile.empty() ?
                                      GenerateName(false) : g_currentTraceParams.outputFile;
@@ -1401,7 +1437,7 @@ TraceErrorCode OpenTrace(const std::string &args)
         return FILE_ERROR;
     }
     g_traceMode = CMD_MODE;
-    HILOG_INFO(LOG_CORE, "Hitrace OpenTrace: CMD_MODE open success.");
+    HILOG_INFO(LOG_CORE, "Hitrace OpenTrace: CMD_MODE open success, args:%{public}s.", args.c_str());
     return ret;
 }
 

@@ -365,6 +365,28 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_008, TestSize.Level0)
 }
 
 /**
+ * @tc.name: DumpForCmdMode_009
+ * @tc.desc: Test the CMD_MODE when set fileLimit in args.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForCmdMode_009, TestSize.Level0)
+{
+    std::string args = "tags:sched,ace,app,disk,distributeddatamgr,freq,graphic,idle,irq,load,mdfs,mmc,";
+    args += "notification,ohos,pagecache,regulators,sync,ufs,workq,zaudio,zcamera,zimage,zmedia ";
+    args += "clockType: boot bufferSize:1024 overwrite: 1 fileLimit: 2";
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
+
+    ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::SUCCESS);
+    sleep(1);
+
+    TraceRetInfo ret = DumpTraceOff();
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(ret.outputFiles.size() > 0);
+
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
  * @tc.name: ParammeterCheck_001
  * @tc.desc: Check parameter after interface call.
  * @tc.type: FUNC

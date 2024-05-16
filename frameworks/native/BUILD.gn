@@ -16,7 +16,6 @@ import("//build/ohos.gni")
 ohos_source_set("hitracechain_source") {
   include_dirs = [
     "../../interfaces/native/innerkits/include",
-    "//third_party/bounds_checking_function/include",
     "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/hitrace_meter",
     "//base/hiviewdfx/hitrace/frameworks/include",
   ]
@@ -41,7 +40,6 @@ ohos_source_set("hitracechain_source") {
   } else {
     external_deps += [ "hilog:libhilog" ]
   }
-  external_deps += [ "bounds_checking_function:libsec_static" ]
 
   part_name = "hitrace"
   subsystem_name = "hiviewdfx"
