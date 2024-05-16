@@ -23,6 +23,7 @@ extern "C" {
 #endif
 
 #define HITRACE_TAG_OHOS (1ULL << 30)
+#define HITRACE_TAG_DISTRIBUTEDDATA (1ULL << 36)
 
 void HiTraceStartTrace(uint64_t tag, const char* value);
 void HiTraceFinishTrace(uint64_t tag);
