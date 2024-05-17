@@ -690,6 +690,8 @@ bool WriteEventsFormat(int outFd, const std::string &outputFile)
         "events/thermal_power_allocator/thermal_power_allocator_pid/format",
         "events/ftrace/print/format",
         "events/tracing_mark_write/tracing_mark_write/format",
+        "events/power/cpu_idle/format",
+        "events/power_kernel/cpu_idle/format",
     };
     for (size_t i = 0; i < priorityTracingCategory.size(); i++) {
         std::string srcPath = g_traceRootPath + "hongmeng/" + priorityTracingCategory[i];
