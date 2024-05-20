@@ -894,11 +894,11 @@ void ClearOldTraceFileInDirectory()
         if (remove((DEFAULT_OUTPUT_DIR+fileNames[0]).c_str()) == 0) {
             HILOG_INFO(LOG_CORE, "ClearOldTraceFileInDirectory: delete first: %{public}s success.",
                 fileNames[0].c_str());
-            fileNames.erase(fileNames.begin());
         } else {
             HILOG_ERROR(LOG_CORE, "ClearOldTraceFileInDirectory: delete first: %{public}s failed, errno: %{public}d.",
                 fileNames[0].c_str(), errno);
         }
+        fileNames.erase(fileNames.begin());
     }
 }
 

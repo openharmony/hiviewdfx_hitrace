@@ -416,7 +416,7 @@ bool WriteTraceToFile(char* buf, const int len)
 
 char* GetTraceBuffer(int size)
 {
-    if (g_writeOffset + size > DEFAULT_CACHE_SIZE && g_writeOffset + size < MAX_FILE_SIZE) {
+    if ((g_writeOffset + size) > DEFAULT_CACHE_SIZE && (g_writeOffset + size) < MAX_FILE_SIZE) {
         // The remaining space is insufficient to cache the data. Write the data to the file.
         if (!WriteTraceToFile(g_traceBuffer.get(), g_writeOffset)) {
             return nullptr;
