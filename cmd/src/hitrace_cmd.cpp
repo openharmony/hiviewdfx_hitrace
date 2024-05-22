@@ -144,7 +144,6 @@ const int MIN_FILE_SIZE = 51200; // 50 MB
 const int MAX_FILE_SIZE = 512000; // 500 MB
 
 string g_traceRootPath;
-string g_traceHmDir;
 
 std::shared_ptr<OHOS::HiviewDFX::UCollectClient::TraceCollector> g_traceCollector;
 
@@ -196,7 +195,7 @@ static bool WriteStrToFile(const string& filename, const std::string& str)
 {
     ofstream out;
     std::string inSpecPath =
-        OHOS::HiviewDFX::Hitrace::CanonicalizeSpecPath((g_traceRootPath + g_traceHmDir + filename).c_str());
+        OHOS::HiviewDFX::Hitrace::CanonicalizeSpecPath((g_traceRootPath + filename).c_str());
     out.open(inSpecPath, ios::out);
     if (out.fail()) {
         ConsoleLog("error: open " + inSpecPath + " failed.");
@@ -312,7 +311,7 @@ static bool ParseLongOpt(const string& cmd, int optionIndex)
     if (!strcmp(LONG_OPTIONS[optionIndex].name, "buffer_size")) {
         int bufferSizeKB = 0;
         int maxBufferSizeKB = MAX_BUFFER_SIZE;
-        if (g_traceHmDir != "") {
+        if (IsHmKernel()) {
             maxBufferSizeKB = HM_MAX_BUFFER_SIZE;
         }
         if (!StrToNum(optarg, bufferSizeKB)) {
@@ -398,7 +397,7 @@ static bool ParseOpt(int opt, char** argv, int optIndex)
         case 'b': {
             int bufferSizeKB = 0;
             int maxBufferSizeKB = MAX_BUFFER_SIZE;
-            if (g_traceHmDir != "") {
+            if (IsHmKernel()) {
                 maxBufferSizeKB = HM_MAX_BUFFER_SIZE;
             }
             if (!StrToNum(optarg, bufferSizeKB)) {
@@ -565,7 +564,7 @@ static void DumpCompressedTrace(int traceFd, int outFd)
 
 static void DumpTrace()
 {
-    std::string tracePath = g_traceRootPath + g_traceHmDir + TRACE_PATH;
+    std::string tracePath = g_traceRootPath + TRACE_PATH;
     string traceSpecPath = OHOS::HiviewDFX::Hitrace::CanonicalizeSpecPath(tracePath.c_str());
     int traceFd = open(traceSpecPath.c_str(), O_RDONLY);
     if (traceFd == -1) {
@@ -886,10 +885,6 @@ int main(int argc, char **argv)
     if (!IsTraceMounted()) {
         ConsoleLog("error: trace isn't mounted, exit.");
         return -1;
-    }
-
-    if (access((g_traceRootPath + "hongmeng/").c_str(), F_OK) != -1) {
-        g_traceHmDir = "hongmeng/";
     }
 
     if (!InitAllSupportTags()) {
