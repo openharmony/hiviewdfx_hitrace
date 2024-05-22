@@ -196,9 +196,6 @@ static napi_value JSTraceStart(napi_env env, napi_callback_info info)
     napi_value argv[ARGC_NUMBER_THREE];
     ParseParams(env, info, argc, argv);
     NAPI_ASSERT(env, argc >= ARGC_NUMBER_TWO, "Wrong number of arguments");
-    if (argc < ARGC_NUMBER_TWO) {
-        HILOG_ERROR(LOG_CORE, "Wrong number of parameters.");
-    }
     std::string name;
     if (!ParseStringParam(env, argv[FIRST_ARG_INDEX], name)) {
         return nullptr;
