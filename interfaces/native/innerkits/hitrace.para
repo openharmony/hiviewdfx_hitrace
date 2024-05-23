@@ -12,3 +12,4 @@
 # limitations under the License.
 
 debug.hitrace.tags.enableflags=0
+debug.hitrace.app_pid=-1
