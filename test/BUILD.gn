@@ -124,6 +124,7 @@ ohos_unittest("HitraceDumpTest") {
   module_out_path = module_output_path
 
   sources = [
+    "../cmd/src/hitrace_osal.cpp",
     "../frameworks/native/common_utils.cpp",
     "../frameworks/native/dynamic_buffer.cpp",
     "../interfaces/native/innerkits/src/hitrace_dump.cpp",
@@ -133,6 +134,7 @@ ohos_unittest("HitraceDumpTest") {
   cflags = [ "-DHITRACE_UNITTEST" ]
 
   include_dirs = [
+    "../cmd/include/",
     "../frameworks/include/",
     "../interfaces/native/innerkits/include",
   ]

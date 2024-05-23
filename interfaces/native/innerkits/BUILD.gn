@@ -98,10 +98,12 @@ config("hitrace_dump_config") {
 ohos_shared_library("hitrace_dump") {
   include_dirs = [
     "./include",
+    "../../../cmd/include/",
     "../../../frameworks/include/",
   ]
   public_configs = [ ":hitrace_dump_config" ]
   sources = [
+    "../../../cmd/src/hitrace_osal.cpp",
     "../../../frameworks/native/common_utils.cpp",
     "../../../frameworks/native/dynamic_buffer.cpp",
     "./src/hitrace_dump.cpp",
