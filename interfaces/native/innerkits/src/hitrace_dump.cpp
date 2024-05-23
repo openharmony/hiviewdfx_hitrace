@@ -14,7 +14,6 @@
  */
 
 #include "hitrace_dump.h"
-#include "hitrace_osal.h"
 #include "common_utils.h"
 #include "dynamic_buffer.h"
 
@@ -47,8 +46,7 @@
 #include "hilog/log.h"
 #include "securec.h"
 
-using namespace std;
-using namespace OHOS::HiviewDFX::HitraceOsal;
+
 using OHOS::HiviewDFX::HiLog;
 
 namespace OHOS {
@@ -135,6 +133,7 @@ bool g_serviceThreadIsStart = false;
 uint64_t g_sysInitParamTags = 0;
 TraceMode g_traceMode = TraceMode::CLOSE;
 std::string g_traceRootPath;
+std::string g_traceHmDir;
 uint8_t g_buffer[BUFFER_SIZE] = {0};
 std::vector<std::pair<std::string, int>> g_traceFilesTable;
 std::vector<std::string> g_outputFilesForCmd;
@@ -148,7 +147,11 @@ TraceParams g_currentTraceParams = {};
 
 std::string GetFilePath(const std::string &fileName)
 {
-    return g_traceRootPath + fileName;
+    if (access((g_traceRootPath + "hongmeng/" + fileName).c_str(), F_OK) == 0) {
+        return g_traceRootPath + "hongmeng/" + fileName;
+    } else {
+        return g_traceRootPath + fileName;
+    }
 }
 
 std::vector<std::string> Split(const std::string &str, char delimiter)
@@ -259,6 +262,11 @@ bool WriteStrToFileInner(const std::string& filename, const std::string& str)
 bool WriteStrToFile(const std::string& filename, const std::string& str)
 {
     bool ret = false;
+    if (access((g_traceRootPath + "hongmeng/" + filename).c_str(), W_OK) == 0) {
+        if (WriteStrToFileInner(g_traceRootPath + "hongmeng/" + filename, str)) {
+            ret = true;
+        }
+    }
     if (access((g_traceRootPath + filename).c_str(), W_OK) == 0) {
         if (WriteStrToFileInner(g_traceRootPath + filename, str)) {
             ret = true;
@@ -275,7 +283,7 @@ void SetFtraceEnabled(const std::string &path, bool enabled)
 
 void TruncateFile()
 {
-    int fd = creat((g_traceRootPath + "trace").c_str(), 0);
+    int fd = creat((g_traceRootPath + g_traceHmDir + "trace").c_str(), 0);
     if (fd == -1) {
         HILOG_ERROR(LOG_CORE, "TruncateFile: clear old trace failed.");
         return;
@@ -467,7 +475,7 @@ bool CheckPage(uint8_t contentType, uint8_t *page)
     const int pageThreshold = PAGE_SIZE / 2;
 
     // Check raw_trace page size.
-    if (contentType >= CONTENT_TYPE_CPU_RAW && !IsHmKernel()) {
+    if (contentType >= CONTENT_TYPE_CPU_RAW && g_traceHmDir == "") {
         PageHeader *pageHeader = reinterpret_cast<PageHeader*>(&page);
         if (pageHeader->size < static_cast<uint64_t>(pageThreshold)) {
             return false;
@@ -686,7 +694,11 @@ bool WriteEventsFormat(int outFd, const std::string &outputFile)
         "events/power_kernel/cpu_idle/format",
     };
     for (size_t i = 0; i < priorityTracingCategory.size(); i++) {
-        std::string srcPath = g_traceRootPath + priorityTracingCategory[i];
+        std::string srcPath = g_traceRootPath + "hongmeng/" + priorityTracingCategory[i];
+        if (access(srcPath.c_str(), R_OK) != -1) {
+            WriteEventFile(srcPath, fd);
+        }
+        srcPath = g_traceRootPath + priorityTracingCategory[i];
         if (access(srcPath.c_str(), R_OK) != -1) {
             WriteEventFile(srcPath, fd);
         }
@@ -698,7 +710,7 @@ bool WriteEventsFormat(int outFd, const std::string &outputFile)
 
 bool WriteHeaderPage(int outFd, const std::string &outputFile)
 {
-    if (IsHmKernel()) {
+    if (g_traceHmDir != "") {
         return true;
     }
     std::string headerPagePath = GetFilePath("events/header_page");
@@ -707,7 +719,7 @@ bool WriteHeaderPage(int outFd, const std::string &outputFile)
 
 bool WritePrintkFormats(int outFd, const std::string &outputFile)
 {
-    if (IsHmKernel()) {
+    if (g_traceHmDir != "") {
         return true;
     }
     std::string printkFormatPath = GetFilePath("printk_formats");
@@ -716,8 +728,8 @@ bool WritePrintkFormats(int outFd, const std::string &outputFile)
 
 bool WriteKallsyms(int outFd)
 {
-    /* not implement in hmkernel */
-    if (IsHmKernel()) {
+    /* not implement in hongmeng */
+    if (g_traceHmDir != "") {
         return true;
     }
     /* not implement in linux */
@@ -727,7 +739,7 @@ bool WriteKallsyms(int outFd)
 bool HmWriteCpuRawInner(int outFd, const std::string &outputFile)
 {
     uint8_t type = CONTENT_TYPE_CPU_RAW;
-    std::string src = g_traceRootPath + "/trace_pipe_raw";
+    std::string src = g_traceRootPath + "hongmeng/trace_pipe_raw";
 
     return WriteFile(type, src, outFd, outputFile);
 }
@@ -749,7 +761,7 @@ bool WriteCpuRawInner(int outFd, const std::string &outputFile)
 
 bool WriteCpuRaw(int outFd, const std::string &outputFile)
 {
-    if (!IsHmKernel()) {
+    if (g_traceHmDir == "") {
         return WriteCpuRawInner(outFd, outputFile);
     } else {
         return HmWriteCpuRawInner(outFd, outputFile);
@@ -806,7 +818,7 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
     struct TraceFileHeader header;
     GetArchWordSize(header);
     GetCpuNums(header);
-    if (IsHmKernel()) {
+    if (g_traceHmDir != "") {
         header.fileType = HM_FILE_RAW_TRACE;
     }
     do {
@@ -880,7 +892,7 @@ void ClearOldTraceFileInDirectory()
     if (fileNames.size() <= 0) {
         HILOG_INFO(LOG_CORE, "no file need clear");
     }
-    while (static_cast<int>(fileNames.size()) > std::stoi(g_currentTraceParams.fileLimit)) {
+    while (fileNames.size() > std::stoi(g_currentTraceParams.fileLimit)) {
         if (remove((DEFAULT_OUTPUT_DIR+fileNames[0]).c_str()) == 0) {
             HILOG_INFO(LOG_CORE, "ClearOldTraceFileInDirectory: delete first: %{public}s success.",
                 fileNames[0].c_str());
@@ -898,7 +910,7 @@ void ClearOldTraceFile()
         HILOG_INFO(LOG_CORE, "ClearOldTraceFile: no activate aging mechanism.");
         return;
     }
-    if (static_cast<int>(g_outputFilesForCmd.size()) > std::stoi(g_currentTraceParams.fileLimit) &&
+    if (g_outputFilesForCmd.size() > std::stoi(g_currentTraceParams.fileLimit) &&
         access(g_outputFilesForCmd[0].c_str(), F_OK) == 0) {
         if (remove(g_outputFilesForCmd[0].c_str()) == 0) {
             g_outputFilesForCmd.erase(g_outputFilesForCmd.begin());
@@ -986,7 +998,7 @@ bool ReadRawTrace(std::string &outputFileName)
     struct TraceFileHeader header;
     GetArchWordSize(header);
     GetCpuNums(header);
-    if (IsHmKernel()) {
+    if (g_traceHmDir != "") {
         header.fileType = HM_FILE_RAW_TRACE;
     }
     write(outFd, reinterpret_cast<char*>(&header), sizeof(header));
@@ -1198,7 +1210,7 @@ TraceErrorCode HandleServiceTraceOpen(const std::vector<std::string> &tagGroups,
     TraceParams serviceTraceParams;
     serviceTraceParams.tagGroups = tagGroups;
     serviceTraceParams.bufferSize = std::to_string(DEFAULT_BUFFER_SIZE);
-    if (IsHmKernel()) {
+    if (g_traceHmDir != "") {
         serviceTraceParams.bufferSize = std::to_string(HM_DEFAULT_BUFFER_SIZE);
     }
     serviceTraceParams.clockType = "boot";
@@ -1358,6 +1370,10 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
         return TRACE_NOT_SUPPORTED;
     }
 
+    if (access((g_traceRootPath + "hongmeng/").c_str(), F_OK) != -1) {
+        g_traceHmDir = "hongmeng/";
+    }
+
     std::map<std::string, TagCategory> allTags;
     std::map<std::string, std::vector<std::string>> tagGroupTable;
     if (!ParseTagInfo(allTags, tagGroupTable)) {
@@ -1378,7 +1394,7 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
     g_traceMode = SERVICE_MODE;
 
     ClearRemainingTrace();
-    if (!IsHmKernel() && !g_serviceThreadIsStart) {
+    if (g_traceHmDir == "" && !g_serviceThreadIsStart) {
         // open SERVICE_MODE monitor thread
         std::thread auxiliaryTask(MonitorServiceTask);
         auxiliaryTask.detach();
@@ -1399,6 +1415,9 @@ TraceErrorCode OpenTrace(const std::string &args)
     if (!IsTraceMounted()) {
         HILOG_ERROR(LOG_CORE, "Hitrace OpenTrace: TRACE_NOT_SUPPORTED.");
         return TRACE_NOT_SUPPORTED;
+    }
+    if (access((g_traceRootPath + "hongmeng/").c_str(), F_OK) != -1) {
+        g_traceHmDir = "hongmeng/";
     }
 
     std::map<std::string, TagCategory> allTags;
