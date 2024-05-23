@@ -17,7 +17,6 @@
 
 #include <cstdio>
 #include <string>
-#include <sys/utsname.h>
 
 #include "parameters.h"
 
@@ -46,17 +45,6 @@ bool RefreshBinderServices(void)
 bool RefreshHalServices(void)
 {
     return true;
-}
-
-bool IsHmKernel()
-{
-    bool isHM = false;
-    utsname unameBuf;
-    if ((uname(&unameBuf)) == 0) {
-        std::string osRelease = unameBuf.release;
-        isHM = osRelease.find("hmkernel") != std::string::npos;
-    }
-    return isHM;
 }
 }
 }
