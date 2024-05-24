@@ -638,7 +638,7 @@ bool WriteEventsFormat(int outFd, const std::string &outputFile)
         return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, savedEventsFormatPath, outFd, outputFile);
     }
     std::string filePath = CanonicalizeSpecPath(savedEventsFormatPath.c_str());
-    int fd = open(filePath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    int fd = open(filePath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644:-rw-r--r--
     if (fd < 0) {
         HILOG_ERROR(LOG_CORE, "WriteEventsFormat: open %{public}s failed.", savedEventsFormatPath.c_str());
         return false;
@@ -787,7 +787,7 @@ bool GenerateNewFile(int &outFd, std::string &outPath)
     }
     std::string outputFileName = GenerateName(false);
     outPath = CanonicalizeSpecPath(outputFileName.c_str());
-    outFd = open(outPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    outFd = open(outPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644:-rw-r--r--
     if (outFd < 0) {
         g_newTraceFileLimit++;
         HILOG_ERROR(LOG_CORE, "open %{public}s failed, errno: %{public}d.", outPath.c_str(), errno);
@@ -809,7 +809,7 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
     }
     g_outputFileSize = 0;
     std::string outPath = CanonicalizeSpecPath(outputFileName.c_str());
-    int outFd = open(outPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    int outFd = open(outPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644:-rw-r--r--
     if (outFd < 0) {
         HILOG_ERROR(LOG_CORE, "open %{public}s failed, errno: %{public}d.", outPath.c_str(), errno);
         return false;
@@ -892,7 +892,7 @@ void ClearOldTraceFileInDirectory()
     if (fileNames.size() <= 0) {
         HILOG_INFO(LOG_CORE, "no file need clear");
     }
-    while (fileNames.size() > std::stoi(g_currentTraceParams.fileLimit)) {
+    while (static_cast<int>(fileNames.size()) > std::stoi(g_currentTraceParams.fileLimit)) {
         if (remove((DEFAULT_OUTPUT_DIR+fileNames[0]).c_str()) == 0) {
             HILOG_INFO(LOG_CORE, "ClearOldTraceFileInDirectory: delete first: %{public}s success.",
                 fileNames[0].c_str());
@@ -910,7 +910,7 @@ void ClearOldTraceFile()
         HILOG_INFO(LOG_CORE, "ClearOldTraceFile: no activate aging mechanism.");
         return;
     }
-    if (g_outputFilesForCmd.size() > std::stoi(g_currentTraceParams.fileLimit) &&
+    if (static_cast<int>(g_outputFilesForCmd.size()) > std::stoi(g_currentTraceParams.fileLimit) &&
         access(g_outputFilesForCmd[0].c_str(), F_OK) == 0) {
         if (remove(g_outputFilesForCmd[0].c_str()) == 0) {
             g_outputFilesForCmd.erase(g_outputFilesForCmd.begin());
@@ -991,7 +991,7 @@ bool ReadRawTrace(std::string &outputFileName)
 {
     // read trace data from /per_cpu/cpux/trace_pipe_raw
     std::string outPath = CanonicalizeSpecPath(outputFileName.c_str());
-    int outFd = open(outPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    int outFd = open(outPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644:-rw-r--r--
     if (outFd < 0) {
         return false;
     }
