@@ -55,7 +55,6 @@ constexpr uint32_t SLEEP_ONE_SECOND = 1;
 const uint64_t TAG = HITRACE_TAG_OHOS;
 constexpr int HITRACEID_LEN = 64;
 static string g_traceRootPath;
-static string g_traceHmDir;
 static int g_pid;
 CachedHandle g_cachedHandle;
 CachedHandle g_appPidCachedHandle;
@@ -85,9 +84,6 @@ void  HitraceNDKTest::SetUpTestCase()
         g_traceRootPath = tracefsDir;
     } else {
         HILOG_ERROR(LOG_CORE, "Error: Finding trace folder failed");
-    }
-    if (access((g_traceRootPath + "hongmeng/").c_str(), F_OK) != -1) {
-        g_traceHmDir = "hongmeng/";
     }
     CleanFtrace();
 }
@@ -231,11 +227,6 @@ static bool WriteStrToFileInner(const string& fileName, const string& str)
 static bool WriteStringToFile(const std::string& filename, const std::string& str)
 {
     bool ret = false;
-    if (access((g_traceRootPath + "hongmeng/" + filename).c_str(), W_OK) == 0) {
-        if (WriteStrToFileInner(g_traceRootPath + "hongmeng/" + filename, str)) {
-            ret = true;
-        }
-    }
     if (access((g_traceRootPath + filename).c_str(), W_OK) == 0) {
         if (WriteStrToFileInner(g_traceRootPath + filename, str)) {
             ret = true;
@@ -252,7 +243,7 @@ bool CleanTrace()
         return false;
     }
     ofstream ofs;
-    ofs.open(g_traceRootPath + g_traceHmDir + TRACE_PATH, ofstream::out);
+    ofs.open(g_traceRootPath + TRACE_PATH, ofstream::out);
     if (!ofs.is_open()) {
         HILOG_ERROR(LOG_CORE, "Error: opening trace path failed.");
         return false;
@@ -310,7 +301,7 @@ vector<string> ReadFile2string(const string& filename)
 
 vector<string> ReadTrace()
 {
-    return ReadFile2string(g_traceRootPath + g_traceHmDir + TRACE_PATH);
+    return ReadFile2string(g_traceRootPath + TRACE_PATH);
 }
 
 bool RunCmd(const string& cmdstr)
