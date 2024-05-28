@@ -32,6 +32,8 @@ ohos_shared_library("cj_hitracechain_ffi") {
 
   external_deps += [ "napi:cj_bind_ffi" ]
 
+  external_deps += [ "bounds_checking_function:libsec_shared" ]
+
   innerapi_tags = [ "platformsdk" ]
 
   part_name = "hitrace"
@@ -53,6 +55,8 @@ ohos_shared_library("cj_hitracemeter_ffi") {
   external_deps = []
 
   external_deps += [ "napi:cj_bind_ffi" ]
+
+  external_deps += [ "bounds_checking_function:libsec_shared" ]
 
   innerapi_tags = [ "platformsdk" ]
 
