@@ -315,7 +315,7 @@ bool RunCmd(const string& cmdstr)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_001
  * @tc.desc: tracing_mark_write file node normal output start tracing and end tracing.
  * @tc.type: FUNC
  */
@@ -335,7 +335,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_001, TestSize.Level0)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_AddHitraceMeterMarker_001
  * @tc.desc: Testing AddHitraceMeterMarker function
  * @tc.type: FUNC
  */
@@ -367,7 +367,7 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_001, TestSize.Level0)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_AddHitraceMeterMarker_002
  * @tc.desc: Testing AddHitraceMeterMarker function
  * @tc.type: FUNC
  */
@@ -389,7 +389,7 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_002, TestSize.Level0)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_AddHitraceMeterMarker_003
  * @tc.desc: Testing AddHitraceMeterMarker function
  * @tc.type: FUNC
  */
@@ -404,8 +404,8 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_003, TestSize.Level0)
 }
 
 /**
- * @tc.name: Hitrace
- * @tc.desc: tracing_mark_write file node normal output start tracing and end tracing with args
+ * @tc.name: HiTraceNDKTest_AddHitraceMeterMarker_004
+ * @tc.desc: Testing AddHitraceMeterMarker function
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_004, TestSize.Level0)
@@ -420,15 +420,15 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_004, TestSize.Level0)
 }
 
 /**
- * @tc.name: Hitrace
- * @tc.desc: tracing_mark_write file node normal output start tracing and end tracing with args
+ * @tc.name: HiTraceNDKTest_AddHitraceMeterMarker_005
+ * @tc.desc: Testing AddHitraceMeterMarker function
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_005, TestSize.Level0)
 {
     std::string traceName = "HitraceStartTrace005";
     string fileName;
-    int fileSize = 100 * 1204 * 1024; // 100M
+    int fileSize = 100 * 1024 * 1024; // 100M
 
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
@@ -458,15 +458,15 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_005, TestSize.Level0)
 }
 
 /**
- * @tc.name: Hitrace
- * @tc.desc: tracing_mark_write file node normal output start tracing and end tracing with args
+ * @tc.name: HiTraceNDKTest_AddHitraceMeterMarker_006
+ * @tc.desc: Testing AddHitraceMeterMarker function
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_006, TestSize.Level0)
 {
     std::string traceName = "HitraceStartTrace006";
     string fileName;
-    int fileSize = 100 * 1204 * 1024; // 100M
+    int fileSize = 100 * 1024 * 1024; // 100M
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
 
@@ -479,8 +479,8 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_006, TestSize.Level0)
 }
 
 /**
- * @tc.name: Hitrace
- * @tc.desc: tracing_mark_write file node normal output start tracing and end tracing with args
+ * @tc.name: HiTraceNDKTest_AddHitraceMeterMarker_007
+ * @tc.desc: Testing AddHitraceMeterMarker function
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_007, TestSize.Level0)
@@ -504,7 +504,29 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_007, TestSize.Level0)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_AddHitraceMeterMarker_008
+ * @tc.desc: Testing AddHitraceMeterMarker function
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_008, TestSize.Level0)
+{
+    std::string traceName = "HitraceStartTrace008";
+
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+
+    SetAddHitraceMeterMarker(TAG, traceName);
+    FinishTrace(TAG);
+    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
+    vector<string> list = ReadTrace();
+    bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
+    ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
+    bool isFinishSuc = GetTraceResult('E', traceName, nullptr, 0, list);
+    ASSERT_TRUE(isFinishSuc) << "Hitrace Can't find \"E|\" from trace.";
+}
+
+/**
+ * @tc.name: HiTraceNDKTest_StartHiTraceIdTest_001
  * @tc.desc: tracing_mark_write file node normal output  hitraceId.
  * @tc.type: FUNC
  */
@@ -526,7 +548,7 @@ HWTEST_F(HitraceNDKTest, StartHiTraceIdTest_001, TestSize.Level0)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartHiTraceIdTest_002
  * @tc.desc: tracing_mark_write file node large output  hitraceId.
  * @tc.type: FUNC
  */
@@ -554,7 +576,7 @@ HWTEST_F(HitraceNDKTest, StartHiTraceIdTest_002, TestSize.Level0)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartAsyncHiTraceIdTest_001
  * @tc.desc: tracing_mark_write file node normal output start trace and end trace
  * @tc.type: FUNC
  */
@@ -577,7 +599,7 @@ HWTEST_F(HitraceNDKTest, StartAsyncHiTraceIdTest_001, TestSize.Level0)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_002
  * @tc.desc: tracing_mark_write file node has no output.
  * @tc.type: FUNC
  */
@@ -602,7 +624,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_002, TestSize.Level0)
 }
 
 /**
-  * @tc.name: Hitrace
+  * @tc.name: HiTraceNDKTest_StartTrace_003
   * @tc.desc: tracing_mark_write file node normal output start trace and end trace.
   * @tc.type: FUNC
   */
@@ -633,7 +655,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_003, TestSize.Level0)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_004
  * @tc.desc: test Input and output interval 1ms execution, time fluctuation 1ms
  * @tc.type: FUNC
  */
@@ -654,7 +676,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_004, TestSize.Level0)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_005
  * @tc.desc: tracing_mark_write file node normal output start trace and end trace
  * @tc.type: FUNC
  */
@@ -675,7 +697,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_005, TestSize.Level0)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_006
  * @tc.desc: tracing_mark_write file node normal output start trace and end trace
  * @tc.type: FUNC
  */
@@ -693,7 +715,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_006, TestSize.Level0)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_007
  * @tc.desc: tracing_mark_write file node normal output start trace and end trace.
  * @tc.type: FUNC
  */
@@ -713,7 +735,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_007, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_008
  * @tc.desc: tracing_mark_write file node normal output start trace and end trace.
  * @tc.type: FUNC
  */
@@ -744,7 +766,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_008, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_009
  * @tc.desc: tracing_mark_write file node normal output start trace and end trace
  * @tc.type: FUNC
  */
@@ -765,7 +787,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_009, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_010
  * @tc.desc: tracing_mark_write file node normal output start trace and end trace
  * @tc.type: FUNC
  */
@@ -783,7 +805,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_010, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_011
  * @tc.desc: tracing_mark_write file node general output start and end tracing for debugging.
  * @tc.type: FUNC
  */
@@ -796,7 +818,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_011, TestSize.Level1)
 }
 
 /**
-  * @tc.name: Hitrace
+  * @tc.name: HiTraceNDKTest_StartTrace_012
   * @tc.desc: tracing_mark_write file node general output start and end tracing for debugging.
   * @tc.type: FUNC
   */
@@ -809,7 +831,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_012, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_013
  * @tc.desc: Testing StartAsyncTraceDebug and FinishAsyncTraceDebug functions
  * @tc.type: FUNC
  */
@@ -827,7 +849,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_013, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_014
  * @tc.desc: Testing CountTraceDebug function
  * @tc.type: FUNC
  */
@@ -840,7 +862,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_014, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_015
  * @tc.desc: Testing MiddleTrace function
  * @tc.type: FUNC
  */
@@ -852,7 +874,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_015, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_016
  * @tc.desc: Testing MiddleTraceDebug function
  * @tc.type: FUNC
  */
@@ -865,7 +887,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_016, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_017
  * @tc.desc: tracing_mark_write file node normal output start tracing and end tracing with args
  * @tc.type: FUNC
  */
@@ -887,7 +909,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_017, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_018
  * @tc.desc: tracing_mark_write file node normal output start trace and end trace async with args
  * @tc.type: FUNC
  */
@@ -909,7 +931,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_018, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_019
  * @tc.desc: Testing StartTraceArgsDebug function
  * @tc.type: FUNC
  */
@@ -924,7 +946,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_019, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_020
  * @tc.desc: Testing StartAsyncTraceArgsDebug and FinishAsyncTraceArgsDebug function
  * @tc.type: FUNC
  */
@@ -943,7 +965,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_020, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTraceWrapper_001
  * @tc.desc: Testing StartTraceWrapper function
  * @tc.type: FUNC
  */
@@ -963,7 +985,7 @@ HWTEST_F(HitraceNDKTest, StartTraceWrapper_001, TestSize.Level0)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartAsyncTraceWrapper
  * @tc.desc: Testing  StartAsyncTraceWrapper function
  * @tc.type: FUNC
  */
@@ -984,7 +1006,7 @@ HWTEST_F(HitraceNDKTest, StartAsyncTraceWrapper_001, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_CountTraceWrapper_001
  * @tc.desc: Testing CountTraceWrapper function
  * @tc.type: FUNC
  */
@@ -1002,7 +1024,7 @@ HWTEST_F(HitraceNDKTest, CountTraceWrapper_001, TestSize.Level0)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_021
  * @tc.desc: Testing SetTraceDisabled function
  * @tc.type: FUNC
  */
@@ -1014,7 +1036,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_021, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_022
  * @tc.desc: Testing SetTraceDisabled function
  * @tc.type: FUNC
  */
@@ -1030,7 +1052,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_022, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_023
  * @tc.desc: Testing IsAppValid function
  * @tc.type: FUNC
  */
@@ -1045,7 +1067,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_023, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_024
  * @tc.desc: Testing trace cmd function
  * @tc.type: FUNC
  */
@@ -1093,7 +1115,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_024, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_025
  * @tc.desc: Testing bytrace cmd function
  * @tc.type: FUNC
  */
@@ -1141,7 +1163,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_025, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_026
  * @tc.desc: Testing IsTagEnabled
  * @tc.type: FUNC
  */
@@ -1157,7 +1179,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_026, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_027
  * @tc.desc: Testing IsTagEnabled with multiple tags
  * @tc.type: FUNC
  */
@@ -1173,7 +1195,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_027, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_028
  * @tc.desc: tracing_mark_write file node general output start and end tracing for debugging.
  * @tc.type: FUNC
  */
@@ -1186,7 +1208,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_028, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartTrace_029
  * @tc.desc: tracing_mark_write file node normal output start trace and end trace async with args
  * @tc.type: FUNC
  */
@@ -1208,7 +1230,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_029, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartCaptureAppTrace_001
  * @tc.desc: Testing IsTagEnabled with multiple tags
  * @tc.type: FUNC
  */
@@ -1216,7 +1238,7 @@ HWTEST_F(HitraceNDKTest, StartCaptureAppTrace_001, TestSize.Level1)
 {
     std::string traceName = "StartCaptureAppTrace001";
     string fileName;
-    int fileSize = 100 * 1204 * 1024; // 100M
+    int fileSize = 100 * 1024 * 1024; // 100M
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
 
@@ -1239,7 +1261,7 @@ HWTEST_F(HitraceNDKTest, StartCaptureAppTrace_001, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartCaptureAppTrace_002
  * @tc.desc: Testing IsTagEnabled with multiple tags
  * @tc.type: FUNC
  */
@@ -1247,7 +1269,7 @@ HWTEST_F(HitraceNDKTest, StartCaptureAppTrace_002, TestSize.Level1)
 {
     std::string traceName = "StartCaptureAppTrace002";
     string fileName;
-    int fileSize = 100 * 1204 * 1024; // 100M
+    int fileSize = 100 * 1024 * 1024; // 100M
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
 
@@ -1266,7 +1288,7 @@ HWTEST_F(HitraceNDKTest, StartCaptureAppTrace_002, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_StartCaptureAppTrace_003
  * @tc.desc: Testing IsTagEnabled with multiple tags
  * @tc.type: FUNC
  */
@@ -1278,7 +1300,7 @@ HWTEST_F(HitraceNDKTest, StartCaptureAppTrace_003, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_HitraceMeterFmtScoped_001
  * @tc.desc: Testing IsTagEnabled with multiple tags
  * @tc.type: FUNC
  */
@@ -1298,7 +1320,7 @@ HWTEST_F(HitraceNDKTest, HitraceMeterFmtScoped_001, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_HitracePerfScoped_001
  * @tc.desc: Testing IsTagEnabled with multiple tags
  * @tc.type: FUNC
  */
@@ -1312,7 +1334,7 @@ HWTEST_F(HitraceNDKTest, HitracePerfScoped_001, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_HitracePerfScoped_002
  * @tc.desc: Testing IsTagEnabled with multiple tags
  * @tc.type: FUNC
  */
@@ -1324,7 +1346,7 @@ HWTEST_F(HitraceNDKTest, HitracePerfScoped_002, TestSize.Level1)
 }
 
 /**
- * @tc.name: Hitrace
+ * @tc.name: HiTraceNDKTest_HitraceOsal_001
  * @tc.desc: Testing IsTagEnabled with multiple tags
  * @tc.type: FUNC
  */

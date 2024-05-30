@@ -655,6 +655,9 @@ HWTEST_F(HiTraceChainCppTest, HiTraceTest_002, TestSize.Level1)
     /* set child id to thread id */
     HiTraceChain::SetId(childId);
 
+    /* Restore child*/
+    HiTraceChain::Restore(childId);
+
     /* save child and set child id to thread id */
     HiTraceChain::SaveAndSet(childId);
 
