@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Huawei Device Co., Ltd.
+ * Copyright (C) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -187,7 +187,6 @@ void SetReloadPid(bool isReloadPid);
 void SetpidHasReload(bool ispidHasReload);
 void SetAppFd(int appFd);
 void SetMarkerFd(int markerFd);
-void SetFileLimitSize(uint64_t fileLimitSize);
 void SetAddHitraceMeterMarker(uint64_t label, const std::string& value);
 void SetAddTraceMarkerLarge(const std::string& name, const int64_t value);
 void SetWriteAppTrace(TraceFlag appFlag, const std::string& name, const int64_t value, bool tid);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Huawei Device Co., Ltd.
+ * Copyright (C) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -73,9 +73,6 @@ constexpr int VAR_NAME_MAX_SIZE = 400;
 constexpr int NAME_NORMAL_LEN = 512;
 constexpr int BUFFER_LEN = 640;
 constexpr int HITRACEID_LEN = 64;
-
-constexpr int HEX_BASE = 16;
-constexpr int DEC_BASE = 10;
 
 static const int PID_BUF_SIZE = 6;
 static char g_pid[PID_BUF_SIZE];
@@ -590,87 +587,6 @@ void WriteAppTrace(MarkerType type, const std::string& name, const int64_t value
     }
 }
 
-void Int2Str(const uint8_t base, uint64_t num, int& idx, char* buff, const uint32_t bufSz)
-{
-    if (idx >= bufSz || base == 0) {
-        return;
-    }
-    if (num < base) {
-        if (num < DEC_BASE) {
-            buff[idx] = num + '0';
-        } else {
-            buff[idx] = num - DEC_BASE + 'a';
-        }
-    } else {
-        Int2Str(base, num / base, idx, buff, bufSz);
-        idx++;
-        if (idx >= bufSz) {
-            return;
-        }
-        num %= base;
-        if (num < DEC_BASE) {
-            buff[idx] = num + '0';
-        } else {
-            buff[idx] = num - DEC_BASE + 'a';
-        }
-    }
-}
-
-// format 1 : "B|%s|H:[%llx,%llx,%llx]#%s "
-// format 2 : "B|%s|H:%s "
-// format 3 : "E|%s|"
-// format 4 : "%c|%s|H:[%llx,%llx,%llx]#%s %lld"
-// format 5 : "%c|%s|H:%s %lld"
-int TraceFormat(const uint8_t formatType, const char markType,
-                const uint64_t& num1, const uint64_t& num2, const uint64_t& num3,
-                const string& name, int64_t value,
-                char* buff, const uint32_t bufSz)
-{
-    int bufIdx = 0;
-    buff[bufIdx++] = markType;
-    buff[bufIdx++] = '|';
-    for (int i = 0; i < PID_BUF_SIZE; ++i) {
-        if (g_pid[i] == '\0') {
-            break;
-        }
-        buff[bufIdx++] = g_pid[i];
-    }
-    buff[bufIdx++] = '|';
-    if (formatType == 3) { // 3 : format type of MARKER_END
-        goto out;
-    }
-    buff[bufIdx++] = 'H';
-    buff[bufIdx++] = ':';
-    if (formatType == 1 || formatType == 4) { // 4 : format type of 'mark type with chain id'
-        buff[bufIdx++] = '[';
-        Int2Str(HEX_BASE, num1, bufIdx, buff, bufSz);
-        bufIdx += 1;
-        buff[bufIdx++] = ',';
-        Int2Str(HEX_BASE, num2, bufIdx, buff, bufSz);
-        bufIdx += 1;
-        buff[bufIdx++] = ',';
-        Int2Str(HEX_BASE, num3, bufIdx, buff, bufSz);
-        bufIdx += 1;
-        buff[bufIdx++] = ']';
-        buff[bufIdx++] = '#';
-    }
-    for (size_t i = 0; i < name.length(); ++i) {
-        buff[bufIdx++] = name[i];
-    }
-    buff[bufIdx++] = ' ';
-    if (formatType >= 4) { // 4 : format type of 'mark type with chain id'
-        if (value < 0) {
-            buff[bufIdx++] = '-';
-            value = -value;
-        }
-        Int2Str(DEC_BASE, static_cast<uint64_t>(value), bufIdx, buff, bufSz);
-        bufIdx += 1;
-    }
-out:
-    buff[bufIdx++] = '\0';
-    return bufIdx;
-}
-
 void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& name, const int64_t value,
     const HiTraceIdStruct* hiTraceIdStruct = nullptr)
 {
@@ -701,22 +617,19 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
             bool isHiTraceIdValid = hiTraceId.IsValid();
             int bytes = 0;
             if (type == MARKER_BEGIN) {
-                bytes = isHiTraceIdValid ?
-                    TraceFormat(1, 'B', hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
-                                name, 0, buf, BUFFER_LEN - 1) :
-                    TraceFormat(2, 'B', // 2 : format type of 'with task id'
-                                0, 0, 0, name, 0, buf, BUFFER_LEN - 1);
+                bytes = isHiTraceIdValid ? snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
+                    "B|%s|H:[%llx,%llx,%llx]#%s ", g_pid, hiTraceId.GetChainId(),
+                    hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str())
+                    : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "B|%s|H:%s ", g_pid, name.c_str());
             } else if (type == MARKER_END) {
-                bytes = TraceFormat(3, 'E', // 3 : format type of 'MARKER_END'
-                                    0, 0, 0, name, 0, buf, BUFFER_LEN - 1);
+                bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "E|%s|", g_pid);
             } else {
                 char marktypestr = g_markTypes[type];
-                bytes = isHiTraceIdValid ?
-                    TraceFormat(4, marktypestr, // 4 : format type of 'mark type with chain id'
-                                hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
-                                name, value, buf, BUFFER_LEN - 1) :
-                    TraceFormat(5, marktypestr, // 5 : format type of 'mark type with task id'
-                                0, 0, 0, name, value, buf, BUFFER_LEN - 1);
+                bytes = isHiTraceIdValid ? snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
+                    "%c|%s|H:[%llx,%llx,%llx]#%s %lld", marktypestr, g_pid,
+                    hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str(), value)
+                    : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
+                    "%c|%s|H:%s %lld", marktypestr, g_pid, name.c_str(), value);
             }
             WriteToTraceMarker(buf, bytes);
         } else {
@@ -762,11 +675,6 @@ void GetSetCommStr()
 void SetTraceBuffer(int size)
 {
     GetTraceBuffer(size);
-}
-
-void SetFileLimitSize(uint64_t fileLimitSize)
-{
-    g_fileLimitSize = fileLimitSize;
 }
 
 void SetAddTraceMarkerLarge(const std::string& name, const int64_t value)
