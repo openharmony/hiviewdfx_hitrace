@@ -21,9 +21,9 @@
 
 extern "C" {
     struct CHiTraceId {
-        int64_t chainId;
-        int32_t spanId;
-        int32_t parentSpanId;
+        uint64_t chainId;
+        uint64_t spanId;
+        uint64_t parentSpanId;
         int32_t flags;
     };
 
