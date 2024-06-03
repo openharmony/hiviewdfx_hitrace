@@ -67,44 +67,9 @@ ohos_executable("hitrace") {
     "../frameworks/include/",
     "../interfaces/native/innerkits/include/hitrace_meter",
   ]
-  subsystem_name = "hiviewdfx"
-  part_name = "hitrace"
-}
 
-ohos_executable("bytrace") {
-  install_enable = true
-  sources = [
-    "../frameworks/native/common_utils.cpp",
-    "./src/hitrace_cmd.cpp",
-  ]
+  symlink_target_name = [ "bytrace" ]
 
-  deps = [
-    ":hitrace_osal_inner",
-    "../config:hitrace_utils",
-  ]
-
-  external_deps = []
-
-  if (defined(ohos_lite)) {
-    external_deps += [ "hilog_lite:hilog_lite" ]
-  } else {
-    external_deps += [ "hilog:libhilog" ]
-  }
-
-  if (device_company != "qemu" && support_executable_file) {
-    external_deps += [ "hiview:libucollection_client" ]
-  }
-  external_deps += [
-    "bounds_checking_function:libsec_static",
-    "cJSON:cjson",
-    "zlib:libz",
-  ]
-
-  include_dirs = [
-    "./include",
-    "../frameworks/include/",
-    "../interfaces/native/innerkits/include/hitrace_meter",
-  ]
   subsystem_name = "hiviewdfx"
   part_name = "hitrace"
 }
@@ -143,7 +108,6 @@ ohos_rust_executable("hitrace_example_rust") {
 group("hitrace_target") {
   if (device_company != "qemu" && support_executable_file) {
     deps = [
-      ":bytrace",
       ":hitrace",
       ":hitrace_example",
     ]
