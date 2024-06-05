@@ -835,7 +835,7 @@ static bool HandleOpenSnapshot()
 static bool HandleDumpSnapshot()
 {
     bool isSuccess = true;
-    auto dumpRet = g_traceCollector->DumpSnapshot(OHOS::HiviewDFX::UCollectClient::TraceCollector::Caller::DEVELOP);
+    auto dumpRet = g_traceCollector->DumpSnapshot(OHOS::HiviewDFX::UCollect::TraceCaller::DEVELOP);
     if (dumpRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: DumpSnapshot failed, errorCode(" + std::to_string(dumpRet.retCode) +")");
         isSuccess = false;
