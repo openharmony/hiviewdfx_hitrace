@@ -70,10 +70,10 @@ bool HiTraceChainImpl::IsFlagEnabled(const HiTraceId& traceId, int32_t flag)
     return isFalgEnabled;
 }
 
-void HiTraceChainImpl::EnableFlag(const HiTraceId& traceId, int32_t flag)
+void HiTraceChainImpl::EnableFlag(HiTraceId& traceId, int32_t flag)
 {
     HiTraceFlag traceFlag = HiTraceFlag(flag);
-    traceId.IsFlagEnabled(traceFlag);
+    traceId.EnableFlag(traceFlag);
 }
 
 } // CJSystemapi

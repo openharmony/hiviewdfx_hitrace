@@ -32,7 +32,7 @@ public:
     static void Tracepoint(uint32_t mode, uint32_t type, HiviewDFX::HiTraceId id, const char* fmt);
     static bool IsValid(const HiviewDFX::HiTraceId& id);
     static bool IsFlagEnabled(const HiviewDFX::HiTraceId& traceId, int32_t flag);
-    static void EnableFlag(const HiviewDFX::HiTraceId& traceId, int32_t flag);
+    static void EnableFlag(HiviewDFX::HiTraceId& traceId, int32_t flag);
 };
 
 } // CJSystemapi
