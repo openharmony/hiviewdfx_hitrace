@@ -53,7 +53,7 @@ ohos_executable("hitrace") {
     external_deps += [ "hilog:libhilog" ]
   }
 
-  if (device_company != "qemu" && support_executable_file) {
+  if (device_company != "qemu" && hitrace_support_executable_file) {
     external_deps += [ "hiview:libucollection_client" ]
   }
   external_deps += [
@@ -106,7 +106,7 @@ ohos_rust_executable("hitrace_example_rust") {
 }
 
 group("hitrace_target") {
-  if (device_company != "qemu" && support_executable_file) {
+  if (device_company != "qemu" && hitrace_support_executable_file) {
     deps = [
       ":hitrace",
       ":hitrace_example",
