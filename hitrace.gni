@@ -14,7 +14,7 @@
 OHOS_HITRACE_DIR = get_path_info(".", "abspath")
 
 declare_args() {
-  support_executable_file = true
+  hitrace_support_executable_file = true
   hiview_enable = false
   if (defined(global_parts_info) &&
       defined(global_parts_info.hiviewdfx_hiview)) {
