@@ -1,4 +1,4 @@
-# Copyright (C) 2023 Huawei Device Co., Ltd.
+# Copyright (C) 2023-2024 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import("//base/hiviewdfx/hitrace/hitrace.gni")
 import("//build/ohos.gni")
 
 ohos_rust_shared_library("hitracechain_rust") {
@@ -20,8 +21,8 @@ ohos_rust_shared_library("hitracechain_rust") {
   ]
   rustflags = [ "-Zstack-protector=all" ]
   deps = [
-    "../../../../frameworks/native/c_wrapper:hitracechain_c_wrapper",
-    "../../../native/innerkits:libhitracechain",
+    "$hitrace_frameworks_path/native/c_wrapper:hitracechain_c_wrapper",
+    "$hitrace_interfaces_path/native/innerkits:libhitracechain",
   ]
 
   crate_name = "hitracechain"

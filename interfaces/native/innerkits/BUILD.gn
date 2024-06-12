@@ -23,17 +23,15 @@ config("libhitrace_pub_config") {
 ohos_shared_library("libhitracechain") {
   public_configs = [ ":libhitrace_pub_config" ]
 
-  deps = [ "../../../frameworks/native:hitracechain_source" ]
+  deps = [ "$hitrace_frameworks_path/native:hitracechain_source" ]
 
-  external_deps = []
   if (defined(ohos_lite)) {
-    external_deps += [ "hilog_lite:hilog_lite" ]
+    external_deps = [ "hilog_lite:hilog_lite" ]
   } else {
-    external_deps += [ "hilog:libhilog" ]
+    external_deps = [ "hilog:libhilog" ]
   }
 
   output_extension = "so"
-
   if (build_public_version) {
     install_enable = true
   } else {
@@ -47,13 +45,12 @@ ohos_shared_library("libhitracechain") {
 
   version_script = "libhitracechain.map"
 
-  part_name = "hitrace"
-
   install_images = [
     "system",
     "updater",
   ]
 
+  part_name = "hitrace"
   subsystem_name = "hiviewdfx"
 }
 
@@ -66,7 +63,7 @@ ohos_static_library("hitrace_inner") {
   include_dirs = [
     "include/hitrace_meter",
     "include",
-    "../../../frameworks/include/",
+    "$hitrace_frameworks_path/include/",
   ]
   sources = [
     "src/hitrace_meter.cpp",
@@ -75,7 +72,7 @@ ohos_static_library("hitrace_inner") {
   ]
 
   external_deps = [
-    "bounds_checking_function:libsec_static",
+    "bounds_checking_function:libsec_shared",
     "init:libbeget_proxy",
     "init:libbegetutil",
   ]
@@ -97,22 +94,22 @@ config("hitrace_dump_config") {
 
 ohos_shared_library("hitrace_dump") {
   include_dirs = [
-    "./include",
-    "../../../cmd/include/",
-    "../../../frameworks/include/",
+    "include",
+    "$hitrace_cmd_path/include",
+    "$hitrace_frameworks_path/include",
   ]
   public_configs = [ ":hitrace_dump_config" ]
   sources = [
-    "../../../cmd/src/hitrace_osal.cpp",
-    "../../../frameworks/native/common_utils.cpp",
-    "../../../frameworks/native/dynamic_buffer.cpp",
-    "./src/hitrace_dump.cpp",
+    "$hitrace_cmd_path/src/hitrace_osal.cpp",
+    "$hitrace_frameworks_path/native/common_utils.cpp",
+    "$hitrace_frameworks_path/native/dynamic_buffer.cpp",
+    "src/hitrace_dump.cpp",
   ]
 
-  deps = [ "../../../config:hitrace_utils" ]
+  deps = [ "$hitrace_config_path:hitrace_utils" ]
 
   external_deps = [
-    "bounds_checking_function:libsec_static",
+    "bounds_checking_function:libsec_shared",
     "cJSON:cjson",
     "init:libbeget_proxy",
     "init:libbegetutil",
@@ -137,7 +134,7 @@ ohos_shared_library("hitrace_meter") {
     ":libhitracechain",
   ]
 
-  external_deps = [ "bounds_checking_function:libsec_static" ]
+  external_deps = [ "bounds_checking_function:libsec_shared" ]
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]
   } else {

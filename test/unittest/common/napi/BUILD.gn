@@ -1,4 +1,4 @@
-# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Copyright (c) 2022-2024 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -17,8 +17,8 @@ module_output_path = "hitrace_js/hitrace_js_target"
 
 ohos_js_unittest("HiTraceChainJsTest") {
   module_out_path = module_output_path
-  hap_profile = "./config.json"
-  certificate_profile = "./signature/hiTraceChainJsUnitTest.p7b"
+  hap_profile = "config.json"
+  certificate_profile = "signature/hiTraceChainJsUnitTest.p7b"
 }
 
 group("unittest") {
