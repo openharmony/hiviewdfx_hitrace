@@ -1296,6 +1296,7 @@ HWTEST_F(HitraceNDKTest, StartCaptureAppTrace_003, TestSize.Level1)
 {
     std::string traceName = "StartCaptureAppTrace003";
     const char* filePath = "";
+    ASSERT_TRUE(CleanTrace());
     SetGetProcData(filePath);
 }
 
@@ -1327,6 +1328,7 @@ HWTEST_F(HitraceNDKTest, HitraceMeterFmtScoped_001, TestSize.Level1)
 HWTEST_F(HitraceNDKTest, HitracePerfScoped_001, TestSize.Level1)
 {
     std::string traceName = "HitracePerfScoped001";
+    ASSERT_TRUE(CleanTrace());
     HitracePerfScoped hitrace(true, TAG, traceName);
     hitrace.SetHitracePerfScoped(-1, -1);
     HitracePerfScoped(true, TAG, traceName);
@@ -1341,6 +1343,7 @@ HWTEST_F(HitraceNDKTest, HitracePerfScoped_001, TestSize.Level1)
 HWTEST_F(HitraceNDKTest, HitracePerfScoped_002, TestSize.Level1)
 {
     std::string traceName = "HitracePerfScoped002";
+    ASSERT_TRUE(CleanTrace());
     HitracePerfScoped hitrace(true, TAG, traceName);
     hitrace.SetHitracePerfScoped(0, 0);
 }
@@ -1352,6 +1355,7 @@ HWTEST_F(HitraceNDKTest, HitracePerfScoped_002, TestSize.Level1)
  */
 HWTEST_F(HitraceNDKTest, HitraceOsal_001, TestSize.Level1)
 {
+    ASSERT_TRUE(CleanTrace());
     SetPropertyInner("", "0");
     SetPropertyInner(TRACE_PROPERTY, "0");
     GetPropertyInner(TRACE_PROPERTY, "0");
