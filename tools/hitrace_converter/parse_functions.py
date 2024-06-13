@@ -702,7 +702,7 @@ PRINT_FMT_THERMAL_POWER_ALLOCATOR_PID = '"thermal_zone_id=%d err=%d err_integral
 PRINT_FMT_THERMAL_POWER_ALLOCATOR = '"thermal_zone_id=%d req_power={%s} total_req_power=%u granted_power={%s} total_granted_power=%u power_range=%u max_allocatable_power=%u current_temperature=%d delta_temperature=%d", REC->tz_id, __print_array(__get_dynamic_array(req_power), REC->num_actors, 4), REC->total_req_power, __print_array(__get_dynamic_array(granted_power), REC->num_actors, 4), REC->total_granted_power, REC->power_range, REC->max_allocatable_power, REC->current_temp, REC->delta_temp'
 PRINT_FMT_PRINT = '"%ps: %s", (void *)REC->ip, REC->buf'
 PRINT_FMT_TRACING_MARK_WRITE = '"%s", ((void *)((char *)REC + (REC->__data_loc_buffer & 0xffff)))'
-
+PRINT_FMT_XACCT_TRACING_MARK_WRITE = '"%c|%d|%s", "EB"[REC->start], REC->start ? REC->name : ""'
 
 print_fmt_func_map = {
 PRINT_FMT_SCHED_WAKEUP_HM: parse_sched_wakeup_hm,
@@ -759,5 +759,6 @@ PRINT_FMT_WORKQUEUE_EXECUTE_START_OR_END: parse_workqueue_execute_start_or_end,
 PRINT_FMT_THERMAL_POWER_ALLOCATOR_PID: parse_thermal_power_allocator_pid,
 PRINT_FMT_THERMAL_POWER_ALLOCATOR: parse_thermal_power_allocator,
 PRINT_FMT_PRINT: parse_print,
-PRINT_FMT_TRACING_MARK_WRITE: parse_tracing_mark_write
+PRINT_FMT_TRACING_MARK_WRITE: parse_tracing_mark_write,
+PRINT_FMT_XACCT_TRACING_MARK_WRITE: parse_tracing_mark_write
 }
