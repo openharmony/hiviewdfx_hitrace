@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import("//base/hiviewdfx/hitrace/hitrace.gni")
 import("//build/test.gni")
 
 module_output_path = "hiviewdfx/hitrace/rust/"
@@ -20,8 +21,9 @@ ohos_rust_unittest("rust_hitracechain_test") {
 
   sources = [ "src/main.rs" ]
 
-  deps =
-      [ "../../../../interfaces/rust/innerkits/hitracechain:hitracechain_rust" ]
+  deps = [
+    "$hitrace_interfaces_path/rust/innerkits/hitracechain:hitracechain_rust",
+  ]
 
   part_name = "hitrace"
   subsystem_name = "hiviewdfx"

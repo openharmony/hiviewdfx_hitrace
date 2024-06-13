@@ -11,52 +11,50 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import("//base/hiviewdfx/hitrace/hitrace.gni")
 import("//build/ohos.gni")
 
 ohos_shared_library("cj_hitracechain_ffi") {
   include_dirs = [
-    "include/",
-    "../../../../interfaces/native/innerkits/include/hitrace",
-    "../../../frameworks/include",
+    "include",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace",
+    "$hitrace_frameworks_path/include",
   ]
-
-  configs = []
 
   sources = [
-    "./src/hitracechain_ffi.cpp",
-    "./src/hitracechain_impl.cpp",
+    "src/hitracechain_ffi.cpp",
+    "src/hitracechain_impl.cpp",
   ]
 
-  deps = [ "../../../native/innerkits:libhitracechain" ]
-  external_deps = []
+  deps = [ "$hitrace_interfaces_path/native/innerkits:libhitracechain" ]
 
-  external_deps += [ "napi:cj_bind_ffi" ]
-
-  external_deps += [ "bounds_checking_function:libsec_shared" ]
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "napi:cj_bind_ffi",
+  ]
 
   innerapi_tags = [ "platformsdk" ]
 
   part_name = "hitrace"
-
   subsystem_name = "hiviewdfx"
 }
 
 ohos_shared_library("cj_hitracemeter_ffi") {
   include_dirs = [
-    "include/",
-    "../../../frameworks/include",
+    "include",
+    "$hitrace_frameworks_path/include",
   ]
   sources = [
-    "./src/hitracemeter_ffi.cpp",
-    "./src/hitracemeter_impl.cpp",
+    "src/hitracemeter_ffi.cpp",
+    "src/hitracemeter_impl.cpp",
   ]
-  deps = [ "../../../native/innerkits:hitrace_meter" ]
 
-  external_deps = []
+  deps = [ "$hitrace_interfaces_path/native/innerkits:hitrace_meter" ]
 
-  external_deps += [ "napi:cj_bind_ffi" ]
-
-  external_deps += [ "bounds_checking_function:libsec_shared" ]
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "napi:cj_bind_ffi",
+  ]
 
   innerapi_tags = [ "platformsdk" ]
 
