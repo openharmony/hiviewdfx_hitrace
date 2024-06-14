@@ -28,6 +28,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
+#include <memory>
 
 #include "securec.h"
 #include "hilog/log.h"
