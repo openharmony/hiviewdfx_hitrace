@@ -31,6 +31,13 @@ def parse(event_print_fmt, data, one_event):
     return result
 
 
+def parse_irq_handler_entry(data, one_event):
+    irq = parse_int_field(one_event, "irq", True)
+    data_pos = parse_int_field(one_event, "name", False) & 0xffff
+
+    return "irq=%d name=%s" % (irq, parse_bytes_to_str(data[data_pos:]))
+
+
 def parse_sched_wakeup_hm(data, one_event):
     pname = parse_bytes_to_str(one_event["fields"]["pname[16]"])
     pid = parse_int_field(one_event, "pid", True)
@@ -647,6 +654,7 @@ def parse_tracing_mark_write(data, one_event):
     return result_str
 
 
+PRINT_FMT_IRQ_HANDLER_ENTRY = '"irq=%d name=%s", REC->irq, ((char *)((void *)((char *)REC + (REC->__data_loc_name & 0xffff))))'
 PRINT_FMT_SCHED_WAKEUP_HM = '"comm=%s pid=%d prio=%d target_cpu=%03d", REC->pname, REC->pid, REC->prio, REC->target_cpu'
 PRINT_FMT_SCHED_WAKEUP = '"comm=%s pid=%d prio=%d target_cpu=%03d", REC->comm, REC->pid, REC->prio, REC->target_cpu'
 PRINT_FMT_SCHED_SWITCH_HM = '"prev_comm=%s prev_pid=%d prev_prio=%d prev_state=%s" " ==> next_comm=%s next_pid=%d next_prio=%d", REC->pname, REC->prev_tid, REC->pprio, hm_trace_tcb_state2str(REC->pstate), REC->nname, REC->next_tid, REC->nprio'
@@ -705,6 +713,7 @@ PRINT_FMT_TRACING_MARK_WRITE = '"%s", ((void *)((char *)REC + (REC->__data_loc_b
 PRINT_FMT_XACCT_TRACING_MARK_WRITE = '"%c|%d|%s", "EB"[REC->start], REC->start ? REC->name : ""'
 
 print_fmt_func_map = {
+PRINT_FMT_IRQ_HANDLER_ENTRY: parse_irq_handler_entry,
 PRINT_FMT_SCHED_WAKEUP_HM: parse_sched_wakeup_hm,
 PRINT_FMT_SCHED_WAKEUP: parse_sched_wakeup,
 PRINT_FMT_SCHED_SWITCH_HM: parse_sched_switch_hm,

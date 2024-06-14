@@ -685,7 +685,8 @@ bool WriteEventsFormat(int outFd, const std::string &outputFile)
         "events/power/cpu_idle/format",
         "events/power_kernel/cpu_idle/format",
         "events/xacct/tracing_mark_write/format",
-        "events/ufs/ufshcd_command/format"
+        "events/ufs/ufshcd_command/format",
+        "events/irq/irq_handler_entry/format"
     };
     for (size_t i = 0; i < priorityTracingCategory.size(); i++) {
         std::string srcPath = g_traceRootPath + priorityTracingCategory[i];
