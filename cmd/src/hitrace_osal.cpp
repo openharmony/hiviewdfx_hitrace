@@ -54,7 +54,7 @@ bool IsHmKernel()
     utsname unameBuf;
     if ((uname(&unameBuf)) == 0) {
         std::string osRelease = unameBuf.release;
-        isHM = osRelease.find("hmkernel") != std::string::npos;
+        isHM = osRelease.find("HongMeng") != std::string::npos;
     }
     return isHM;
 }
