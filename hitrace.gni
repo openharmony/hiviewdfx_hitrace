@@ -19,9 +19,4 @@ hitrace_interfaces_path = "$hitrace_path/interfaces"
 
 declare_args() {
   hitrace_support_executable_file = true
-  hiview_enable = false
-  if (defined(global_parts_info) &&
-      defined(global_parts_info.hiviewdfx_hiview)) {
-    hiview_enable = true
-  }
 }
