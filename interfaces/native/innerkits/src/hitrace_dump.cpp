@@ -940,7 +940,7 @@ void ProcessDumpTask()
         g_dumpEnd = true;
         return;
     }
-    
+
     while (g_dumpFlag) {
         ClearOldTraceFile();
         // Generate file name
@@ -1178,7 +1178,7 @@ void MonitorServiceTask()
             WriteStrToFile(path, std::to_string(result[i]));
         }
     }
-    HILOG_INFO(LOG_CORE, "MonitorServiceTask: monitor thread exit."); 
+    HILOG_INFO(LOG_CORE, "MonitorServiceTask: monitor thread exit.");
     g_serviceThreadIsStart = false;
 }
 
@@ -1502,6 +1502,7 @@ TraceRetInfo DumpTraceOff()
     g_dumpFlag = false;
     while (!g_dumpEnd) {
         usleep(UNIT_TIME);
+        g_dumpFlag = false;
     }
     ret.errorCode = SUCCESS;
     ret.outputFiles = g_outputFilesForCmd;
@@ -1522,6 +1523,7 @@ TraceErrorCode CloseTrace()
     g_dumpFlag = false;
     while (!g_dumpEnd) {
         usleep(UNIT_TIME);
+        g_dumpFlag = false;
     }
     OHOS::system::SetParameter("debug.hitrace.app_pid", "-1");
     std::map<std::string, TagCategory> allTags;
