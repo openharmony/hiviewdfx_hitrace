@@ -157,13 +157,15 @@ def parse_page_header(data):
     global cpu_raw_read_pos
     page_header = {}
 
-    struct_page_header = struct.unpack('QQB', \
-    data[cpu_raw_read_pos:cpu_raw_read_pos + INT64_DATA_READ_LEN * 2 + INT8_DATA_READ_LEN])
-    cpu_raw_read_pos += INT64_DATA_READ_LEN * 2 + INT8_DATA_READ_LEN
-    page_header["time_stamp"] = struct_page_header[0]
+    data_str = data[cpu_raw_read_pos:cpu_raw_read_pos + INT64_DATA_READ_LEN * 2 + INT8_DATA_READ_LEN]
+    data_str_len = len(data_str)
+    if data_str_len == 17:
+        struct_page_header = struct.unpack('QQB', data_str)
+        cpu_raw_read_pos += INT64_DATA_READ_LEN * 2 + INT8_DATA_READ_LEN
+        page_header["time_stamp"] = struct_page_header[0]
 
-    page_header["length"] = struct_page_header[1]
-    page_header["core_id"] = struct_page_header[2]
+        page_header["length"] = struct_page_header[1]
+        page_header["core_id"] = struct_page_header[2]
 
     return page_header
 
@@ -172,10 +174,12 @@ def parse_event_header(data):
     global cpu_raw_read_pos
     event_header = {}
 
-    struct_event_header = struct.unpack('LH', \
-    data[cpu_raw_read_pos:cpu_raw_read_pos + INT32_DATA_READ_LEN + INT16_DATA_READ_LEN])
-    event_header["time_stamp_offset"] = struct_event_header[0]
-    event_header["size"] = struct_event_header[1]
+    data_str = data[cpu_raw_read_pos:cpu_raw_read_pos + INT32_DATA_READ_LEN + INT16_DATA_READ_LEN]
+    data_str_len = len(data_str)
+    if data_str_len == 6:
+        struct_event_header = struct.unpack('LH', data_str)
+        event_header["time_stamp_offset"] = struct_event_header[0]
+        event_header["size"] = struct_event_header[1]
 
     cpu_raw_read_pos += INT32_DATA_READ_LEN + INT16_DATA_READ_LEN
 
