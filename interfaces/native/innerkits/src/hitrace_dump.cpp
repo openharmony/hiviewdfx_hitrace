@@ -1429,7 +1429,6 @@ TraceErrorCode OpenTrace(const std::string &args)
 
 TraceRetInfo DumpTrace()
 {
-    std::lock_guard<std::mutex> lock(g_traceMutex);
     HILOG_DEBUG(LOG_CORE, "DumpTrace start.");
     TraceRetInfo ret;
     if (g_traceMode != SERVICE_MODE) {
@@ -1443,7 +1442,7 @@ TraceRetInfo DumpTrace()
         ret.errorCode = TRACE_IS_OCCUPIED;
         return ret;
     }
-
+    std::lock_guard<std::mutex> lock(g_traceMutex);
     ret.errorCode = DumpTraceInner(ret.outputFiles);
     HILOG_DEBUG(LOG_CORE, "DumpTrace done.");
     return ret;
