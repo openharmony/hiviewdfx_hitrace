@@ -1534,7 +1534,7 @@ TraceErrorCode CloseTrace()
     }
     TraceInit(allTags);
     TruncateFile();
-    HILOG_INFO(LOG_CORE, "CloseTrace down.");
+    HILOG_INFO(LOG_CORE, "CloseTrace done.");
     return SUCCESS;
 }
 
