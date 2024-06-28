@@ -1429,8 +1429,8 @@ TraceErrorCode OpenTrace(const std::string &args)
 
 TraceRetInfo DumpTrace()
 {
-    HILOG_DEBUG(LOG_CORE, "DumpTrace start.");
     TraceRetInfo ret;
+    HILOG_INFO(LOG_CORE, "DumpTrace start.");
     if (g_traceMode != SERVICE_MODE) {
         HILOG_ERROR(LOG_CORE, "DumpTrace: CALL_ERROR, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
         ret.errorCode = CALL_ERROR;
@@ -1444,7 +1444,7 @@ TraceRetInfo DumpTrace()
     }
     std::lock_guard<std::mutex> lock(g_traceMutex);
     ret.errorCode = DumpTraceInner(ret.outputFiles);
-    HILOG_DEBUG(LOG_CORE, "DumpTrace done.");
+    HILOG_INFO(LOG_CORE, "DumpTrace done.");
     return ret;
 }
 
@@ -1512,6 +1512,7 @@ TraceRetInfo DumpTraceOff()
 TraceErrorCode CloseTrace()
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
+    HILOG_INFO(LOG_CORE, "CloseTrace start.");
     if (g_traceMode == CLOSE) {
         HILOG_INFO(LOG_CORE, "Trace already close.");
         return SUCCESS;
@@ -1533,6 +1534,7 @@ TraceErrorCode CloseTrace()
     }
     TraceInit(allTags);
     TruncateFile();
+    HILOG_INFO(LOG_CORE, "CloseTrace down.");
     return SUCCESS;
 }
 
