@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Huawei Device Co., Ltd.
+ * Copyright (C) 2023-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -268,7 +268,7 @@ bool WriteStrToFile(const std::string& filename, const std::string& str)
     return ret;
 }
 
-void SetFtraceEnabled(const std::string &path, bool enabled)
+void SetTraceNodeStatus(const std::string &path, bool enabled)
 {
     WriteStrToFile(path, enabled ? "1" : "0");
 }
@@ -295,6 +295,7 @@ bool SetProperty(const std::string& property, const std::string& value)
     return result;
 }
 
+// close all trace node
 void TraceInit(const std::map<std::string, TagCategory> &allTags)
 {
     // close all ftrace events
@@ -303,7 +304,7 @@ void TraceInit(const std::map<std::string, TagCategory> &allTags)
             continue;
         }
         for (size_t i = 0; i < it->second.sysFiles.size(); i++) {
-            SetFtraceEnabled(it->second.sysFiles[i], false);
+            SetTraceNodeStatus(it->second.sysFiles[i], false);
         }
     }
     // close all user tags
@@ -313,9 +314,10 @@ void TraceInit(const std::map<std::string, TagCategory> &allTags)
     WriteStrToFile("buffer_size_kb", "1");
 
     // close tracing_on
-    SetFtraceEnabled("tracing_on", false);
+    SetTraceNodeStatus("tracing_on", false);
 }
 
+// Open specific trace node
 void SetAllTags(const TraceParams &traceParams, const std::map<std::string, TagCategory> &allTags,
                 const std::map<std::string, std::vector<std::string>> &tagGroupTable)
 {
@@ -360,7 +362,7 @@ void SetAllTags(const TraceParams &traceParams, const std::map<std::string, TagC
 
         if (iter->second.type == 1) {
             for (const auto& path : iter->second.sysFiles) {
-                SetFtraceEnabled(path, true);
+                SetTraceNodeStatus(path, true);
             }
         }
     }
@@ -1189,7 +1191,7 @@ TraceErrorCode HandleTraceOpen(const TraceParams &traceParams,
     if (!SetTraceSetting(traceParams, allTags, tagGroupTable)) {
         return TraceErrorCode::FILE_ERROR;
     }
-    SetFtraceEnabled("tracing_on", true);
+    SetTraceNodeStatus("tracing_on", true);
     g_currentTraceParams = traceParams;
     return TraceErrorCode::SUCCESS;
 }

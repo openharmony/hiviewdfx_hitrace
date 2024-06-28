@@ -150,8 +150,8 @@ inline void UpdateSysParamTags()
         g_tagsProperty = (tags | HITRACE_TAG_ALWAYS) & HITRACE_TAG_VALID_MASK;
     }
     int appPidChanged = 0;
-    const char *paramPid = CachedParameterGetChanged(g_appPidCachedHandle, &changed);
-    if (appPidChanged == 1 && paramPid != nullptr) {
+    const char *paramPid = CachedParameterGetChanged(g_appPidCachedHandle, &appPidChanged);
+    if (UNEXPECTANTLY(appPidChanged == 1) && paramPid != nullptr) {
         g_appTagMatchPid = strtoll(paramPid, nullptr, 0);
     }
 }
