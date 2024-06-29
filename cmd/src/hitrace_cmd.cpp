@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Huawei Device Co., Ltd.
+ * Copyright (C) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -386,7 +386,7 @@ static bool ParseLongOpt(const string& cmd, int optionIndex)
         }
         g_traceArgs.fileSize = fileSizeKB;
     }
-    
+
     return isTrue;
 }
 
@@ -646,7 +646,7 @@ static std::string ReloadTraceArgs()
         if (g_runningState == RECORDING_SHORT_RAW || g_runningState == RECORDING_LONG_BEGIN_RECORD) {
             args += (" fileSize:" + std::to_string(g_traceArgs.fileSize));
         } else {
-            ConsoleLog("warnning: The current state does not support specifying the file size, file size: " +
+            ConsoleLog("warning: The current state does not support specifying the file size, file size: " +
                 std::to_string(g_traceArgs.fileSize) + " is invalid.");
         }
     }
@@ -661,7 +661,7 @@ static bool HandleRecordingShortRaw()
 {
     std::string args = ReloadTraceArgs();
     if (g_traceArgs.output.size() > 0) {
-        ConsoleLog("warnning: The current state does not support specifying the output file path, " +
+        ConsoleLog("warning: The current state does not support specifying the output file path, " +
                    g_traceArgs.output + " is invalid.");
     }
     auto openRet = g_traceCollector->OpenRecording(args);
@@ -731,7 +731,7 @@ static bool HandleRecordingLongBegin()
 {
     std::string args = ReloadTraceArgs();
     if (g_traceArgs.output.size() > 0) {
-        ConsoleLog("warnning: The current state does not support specifying the output file path, " +
+        ConsoleLog("warning: The current state does not support specifying the output file path, " +
                    g_traceArgs.output + " is invalid.");
     }
     auto openRet = g_traceCollector->OpenRecording(args);
@@ -778,7 +778,7 @@ static bool HandleRecordingLongBeginRecord()
 {
     std::string args = ReloadTraceArgs();
     if (g_traceArgs.output.size() > 0) {
-        ConsoleLog("warnning: The current state does not support specifying the output file path, " +
+        ConsoleLog("warning: The current state does not support specifying the output file path, " +
                    g_traceArgs.output + " is invalid.");
     }
     auto openRet = g_traceCollector->OpenRecording(args);
@@ -848,7 +848,7 @@ static bool HandleDumpSnapshot()
     return isSuccess;
 }
 
-static bool HandlCloseSnapshot()
+static bool HandleCloseSnapshot()
 {
     bool isSuccess = true;
     auto closeRet = g_traceCollector->Close();
@@ -895,7 +895,7 @@ int main(int argc, char **argv)
         ConsoleLog("error: parsing args failed, exit.");
         return -1;
     }
-    
+
     if (g_runningState == STATE_NULL) {
         g_runningState = RECORDING_SHORT_TEXT;
     }
@@ -937,7 +937,7 @@ int main(int argc, char **argv)
             isSuccess = HandleDumpSnapshot();
             break;
         case SNAPSHOT_STOP:
-            isSuccess = HandlCloseSnapshot();
+            isSuccess = HandleCloseSnapshot();
             break;
         case SHOW_HELP:
             ShowHelp(argv[0]);
