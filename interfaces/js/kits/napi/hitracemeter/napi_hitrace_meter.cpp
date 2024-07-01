@@ -66,7 +66,7 @@ bool TypeCheck(const napi_env& env, const napi_value& value, const napi_valuetyp
         return false;
     }
     if (valueType != expectType) {
-        HILOG_ERROR(LOG_CORE, "Type of the parameter is invalid.");
+        HILOG_DEBUG(LOG_CORE, "Type of the parameter is invalid.");
         return false;
     }
     return true;

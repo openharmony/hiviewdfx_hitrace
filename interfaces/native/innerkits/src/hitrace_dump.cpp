@@ -559,9 +559,16 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
         /* Write 1M at a time */
         while (bytes < BUFFER_SIZE) {
             ssize_t readBytes = TEMP_FAILURE_RETRY(read(srcFd, g_buffer + bytes, PAGE_SIZE));
-            if (readBytes <= 0) {
+            if (readBytes == 0) {
                 endFlag = true;
-                HILOG_INFO(LOG_CORE, "WriteFile: read %{public}s end or failed.", src.c_str());
+                HILOG_DEBUG(LOG_CORE, "WriteFile: read %{public}s end.", src.c_str());
+                break;
+            }
+
+            if (readBytes < 0) {
+                endFlag = true;
+                HILOG_ERROR(LOG_CORE, "WriteFile: read %{public}s, data size: %{public}zd failed, errno: %{public}d.",
+                    src.c_str(), readBytes, errno);
                 break;
             }
 
@@ -1021,7 +1028,7 @@ bool WaitPidTimeout(pid_t pid, const int timeoutUsec)
             HILOG_ERROR(LOG_CORE, "wait pid(%{public}d) exit failed, status: %{public}d.", pid, status);
             return false;
         }
-        HILOG_INFO(LOG_CORE, "grasping trace, pid(%{public}d), ret(%{public}d).", pid, ret);
+        HILOG_DEBUG(LOG_CORE, "grasping trace, pid(%{public}d), ret(%{public}d).", pid, ret);
     }
     HILOG_ERROR(LOG_CORE, "wait pid(%{public}d) %{public}d us timeout.", pid, timeoutUsec);
     return false;
@@ -1066,7 +1073,7 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
         const int waitTime = 10000; // 10ms
         usleep(waitTime);
         ReadRawTrace(reOutPath);
-        HILOG_INFO(LOG_CORE, "%{public}s exit.", processName.c_str());
+        HILOG_DEBUG(LOG_CORE, "%{public}s exit.", processName.c_str());
         _exit(EXIT_SUCCESS);
     } else {
         const int timeoutUsec = 10000000; // 10s
