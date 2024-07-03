@@ -1385,7 +1385,10 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
     ClearRemainingTrace();
     if (!IsHmKernel() && !g_serviceThreadIsStart) {
         // open SERVICE_MODE monitor thread
-        std::thread auxiliaryTask(MonitorServiceTask);
+        auto it = []() {
+            MonitorServiceTask();
+        };
+        std::thread auxiliaryTask(it);
         auxiliaryTask.detach();
     }
     g_sysInitParamTags = GetSysParamTags();
@@ -1482,7 +1485,10 @@ TraceErrorCode DumpTraceOn()
     }
 
     // start task thread
-    std::thread task(ProcessDumpTask);
+    auto it = []() {
+        ProcessDumpTask();
+    };
+    std::thread task(it);
     task.detach();
     HILOG_INFO(LOG_CORE, "Recording trace on.");
     return SUCCESS;
