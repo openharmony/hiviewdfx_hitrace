@@ -1385,7 +1385,7 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
     ClearRemainingTrace();
     if (!IsHmKernel() && !g_serviceThreadIsStart) {
         // open SERVICE_MODE monitor thread
-        auto it = [](){
+        auto it = []() {
             MonitorServiceTask();
         };
         std::thread auxiliaryTask(it);
@@ -1485,9 +1485,9 @@ TraceErrorCode DumpTraceOn()
     }
 
     // start task thread
-    auto it = [](){
-            ProcessDumpTask();
-        };
+    auto it = []() {
+        ProcessDumpTask();
+    };
     std::thread task(it);
     task.detach();
     HILOG_INFO(LOG_CORE, "Recording trace on.");
