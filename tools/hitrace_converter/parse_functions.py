@@ -16,7 +16,9 @@
 #
 
 def parse_bytes_to_str(data):
-    return data[:data.index(b'\x00')].decode('utf-8')
+    if data.find(b'\x00') != -1:
+        return data[:data.index(b'\x00')].decode('utf-8')
+    return ""
 
 
 def parse_int_field(one_event, name, int_signed):
@@ -646,12 +648,28 @@ def parse_print(data, one_event):
 def parse_tracing_mark_write(data, one_event):
     data_pos = parse_int_field(one_event, "buffer", False) & 0xffff
     result_str = parse_bytes_to_str(data[data_pos:])
-    if result_str.startswith("E|") and result_str[-1] == "|":
-        result_str = result_str[:-1]
-    elif result_str.startswith("S|") or result_str.startswith("F|") or result_str.startswith("C|"):
-        pos = result_str.rfind(' ')
-        result_str = result_str[:pos] + "|" + result_str[pos + 1:]
+    if result_str == None：
+        return ""
+
+    if result_str != None:
+        if result_str.startswith("E|") and result_str[-1] == "|":
+            result_str = result_str[:-1]
+        elif result_str.startswith("S|") or result_str.startswith("F|") or result_str.startswith("C|"):
+            pos = result_str.rfind(' ')
+            result_str = result_str[:pos] + "|" + result_str[pos + 1:]
     return result_str
+
+
+def parse_xacct_tracing_mark_write(data, one_event):
+    start = parse_int_field(one_event, "start", False)
+    pid = parse_int_field(one_event, "pid", False)
+    if start == 1:
+        trace_type = "B"
+        name = parse_bytes_to_str(one_event["fields"]["name[64]"])
+    else:
+        trace_type = "E"
+        name = ""
+    return "%c|%d|%s" % (trace_type, pid, name)
 
 
 PRINT_FMT_IRQ_HANDLER_ENTRY = '"irq=%d name=%s", REC->irq, ((char *)((void *)((char *)REC + (REC->__data_loc_name & 0xffff))))'
@@ -710,7 +728,7 @@ PRINT_FMT_THERMAL_POWER_ALLOCATOR_PID = '"thermal_zone_id=%d err=%d err_integral
 PRINT_FMT_THERMAL_POWER_ALLOCATOR = '"thermal_zone_id=%d req_power={%s} total_req_power=%u granted_power={%s} total_granted_power=%u power_range=%u max_allocatable_power=%u current_temperature=%d delta_temperature=%d", REC->tz_id, __print_array(__get_dynamic_array(req_power), REC->num_actors, 4), REC->total_req_power, __print_array(__get_dynamic_array(granted_power), REC->num_actors, 4), REC->total_granted_power, REC->power_range, REC->max_allocatable_power, REC->current_temp, REC->delta_temp'
 PRINT_FMT_PRINT = '"%ps: %s", (void *)REC->ip, REC->buf'
 PRINT_FMT_TRACING_MARK_WRITE = '"%s", ((void *)((char *)REC + (REC->__data_loc_buffer & 0xffff)))'
-PRINT_FMT_XACCT_TRACING_MARK_WRITE = '"%c|%d|%s", "EB"[REC->start], REC->start ? REC->name : ""'
+PRINT_FMT_XACCT_TRACING_MARK_WRITE = '"%c|%d|%s", "EB"[REC->start], REC->pid, REC->start ? REC->name : ""'
 
 print_fmt_func_map = {
 PRINT_FMT_IRQ_HANDLER_ENTRY: parse_irq_handler_entry,
@@ -769,5 +787,5 @@ PRINT_FMT_THERMAL_POWER_ALLOCATOR_PID: parse_thermal_power_allocator_pid,
 PRINT_FMT_THERMAL_POWER_ALLOCATOR: parse_thermal_power_allocator,
 PRINT_FMT_PRINT: parse_print,
 PRINT_FMT_TRACING_MARK_WRITE: parse_tracing_mark_write,
-PRINT_FMT_XACCT_TRACING_MARK_WRITE: parse_tracing_mark_write
+PRINT_FMT_XACCT_TRACING_MARK_WRITE: parse_xacct_tracing_mark_write
 }
