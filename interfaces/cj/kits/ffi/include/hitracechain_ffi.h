@@ -47,7 +47,7 @@ extern "C" {
         return traceId;
     }
 
-    CHiTraceId FfiOHOSHiTraceChainBegin(const char* name, int32_t flag);
+    CHiTraceId FfiOHOSHiTraceChainBegin(const char* name, int flag);
     void FfiOHOSHiTraceChainEnd(CHiTraceId id);
     CHiTraceId FfiOHOSHiTraceChainGetId();
     void FfiOHOSHiTraceChainSetId(CHiTraceId id);

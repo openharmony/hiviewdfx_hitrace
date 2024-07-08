@@ -34,6 +34,8 @@ ohos_shared_library("hitracechain_napi") {
     external_deps += [ "hilog:libhilog" ]
   }
 
+  external_deps += [ "bounds_checking_function:libsec_shared" ]
+
   relative_install_dir = "module"
   part_name = "hitrace"
   subsystem_name = "hiviewdfx"
@@ -48,6 +50,8 @@ ohos_shared_library("hitracemeter_napi") {
   } else {
     external_deps += [ "hilog:libhilog" ]
   }
+
+  external_deps += [ "bounds_checking_function:libsec_shared" ]
 
   relative_install_dir = "module"
   subsystem_name = "hiviewdfx"

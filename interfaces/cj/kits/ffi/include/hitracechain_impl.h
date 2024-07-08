@@ -23,7 +23,7 @@ namespace CJSystemapi {
 
 class HiTraceChainImpl {
 public:
-    static HiviewDFX::HiTraceId Begin(const char* name, int taskId);
+    static HiviewDFX::HiTraceId Begin(const char* name, int flags);
     static void End(const HiviewDFX::HiTraceId& id);
     static HiviewDFX::HiTraceId GetId();
     static void SetId(const HiviewDFX::HiTraceId& id);

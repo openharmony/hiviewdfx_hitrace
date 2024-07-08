@@ -22,7 +22,7 @@
 extern "C" {
     void FfiOHOSHiTraceStartAsyncTrace(const char* name, int taskId);
     void FfiOHOSHiTraceFinishAsyncTrace(const char* name, int taskId);
-    void FfiOHOSHiTraceCountTrace(const char* name, int taskId);
+    void FfiOHOSHiTraceCountTrace(const char* name, int count);
 }
 
 #endif
