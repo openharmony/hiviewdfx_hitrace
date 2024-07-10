@@ -70,7 +70,7 @@ static uint64_t HashFunc(const void* pData, uint32_t dataLen)
     }
     uint64_t hash = 0;
     uint64_t len = dataLen;
-    char* p = (char*)pData;
+    const char* p = static_cast<const char*>(pData);
     for (; len > 0; --len) {
         hash = (hash * seed) + (*p++);
     }
@@ -79,24 +79,26 @@ static uint64_t HashFunc(const void* pData, uint32_t dataLen)
 
 static uint64_t GenerateChainId()
 {
+    const uint64_t randomNum = 269;
     uint64_t hashData[HASH_DATA_LENGTH];
     struct timeval tv;
     gettimeofday(&tv, NULL);
     srand(tv.tv_sec);
     hashData[ARRAY_FIRST_INDEX] = tv.tv_sec;
     hashData[ARRAY_SECOND_INDEX] = tv.tv_usec;
-    hashData[ARRAY_THIRD_INDEX] = random();
+    hashData[ARRAY_THIRD_INDEX] = randomNum;
     uint64_t hash = HashFunc(hashData, HASH_DATA_LENGTH * sizeof(uint64_t));
     return hash;
 }
 
 static uint64_t GenerateSpanId()
 {
+    const uint64_t randomNum = 269;
     uint64_t hashData[HASH_DATA_LENGTH];
     struct timeval tv;
     gettimeofday(&tv, NULL);
     srand(tv.tv_sec);
-    hashData[ARRAY_FIRST_INDEX] = random();
+    hashData[ARRAY_FIRST_INDEX] = randomNum;
     hashData[ARRAY_SECOND_INDEX] = tv.tv_sec;
     hashData[ARRAY_THIRD_INDEX] = tv.tv_usec;
     uint64_t hash = HashFunc(hashData, HASH_DATA_LENGTH * sizeof(uint64_t));
@@ -105,12 +107,13 @@ static uint64_t GenerateSpanId()
 
 static uint64_t GenerateParentSpanId()
 {
+    const uint64_t randomNum = 269;
     uint64_t hashData[HASH_DATA_LENGTH];
     struct timeval tv;
     gettimeofday(&tv, NULL);
     srand(tv.tv_sec);
     hashData[ARRAY_FIRST_INDEX] = tv.tv_usec;
-    hashData[ARRAY_SECOND_INDEX] = random();
+    hashData[ARRAY_SECOND_INDEX] = randomNum;
     hashData[ARRAY_THIRD_INDEX] = tv.tv_sec;
     uint64_t hash = HashFunc(hashData, HASH_DATA_LENGTH * sizeof(uint64_t));
     return hash;
