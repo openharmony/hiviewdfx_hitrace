@@ -18,11 +18,22 @@
 #include <cstdint>
 #include <cstdio>
 #include <gtest/gtest.h>
+#include <sys/time.h>
 
 #include "gtest/gtest-message.h"
 #include "gtest/gtest-test-part.h"
 #include "gtest/gtest_pred_impl.h"
 #include "gtest/hwext/gtest-tag.h"
+
+#define ARRAY_FIRST_INDEX 0
+#define ARRAY_SECOND_INDEX 1
+#define ARRAY_THIRD_INDEX 2
+#define HASH_DATA_LENGTH 3
+
+#define DEVICE_CLIENT_SEND 12
+#define PROCESS_CLIENT_SEND 22
+#define THREAD_CLIENT_SEND 32
+#define DEFAULT_CLIENT_SEND 42
 
 namespace OHOS {
 namespace HiviewDFX {
@@ -54,6 +65,63 @@ static void HiTraceChainTracepointWithArgsWrapper(HiTraceTracepointType type, co
     va_start(vaList, fmt);
     HiTraceChainTracepointWithArgs(type, pId, fmt, vaList);
     va_end(vaList);
+}
+
+static uint64_t HashFunc(const void* pData, uint32_t dataLen)
+{
+    const uint64_t seed = 131;
+    if ((!pData) || dataLen == 0) {
+        return 0;
+    }
+    uint64_t hash = 0;
+    uint64_t len = dataLen;
+    const char* p = static_cast<const char*>(pData);
+    for (; len > 0; --len) {
+        hash = (hash * seed) + (*p++);
+    }
+    return hash;
+}
+
+static uint64_t GenerateChainId()
+{
+    const uint64_t randomNum = 269;
+    uint64_t hashData[HASH_DATA_LENGTH];
+    struct timeval tv;
+    gettimeofday(&tv, nullptr);
+    srand(tv.tv_sec);
+    hashData[ARRAY_FIRST_INDEX] = tv.tv_sec;
+    hashData[ARRAY_SECOND_INDEX] = tv.tv_usec;
+    hashData[ARRAY_THIRD_INDEX] = randomNum;
+    uint64_t hash = HashFunc(hashData, HASH_DATA_LENGTH * sizeof(uint64_t));
+    return hash;
+}
+
+static uint64_t GenerateSpanId()
+{
+    const uint64_t randomNum = 269;
+    uint64_t hashData[HASH_DATA_LENGTH];
+    struct timeval tv;
+    gettimeofday(&tv, nullptr);
+    srand(tv.tv_sec);
+    hashData[ARRAY_FIRST_INDEX] = randomNum;
+    hashData[ARRAY_SECOND_INDEX] = tv.tv_sec;
+    hashData[ARRAY_THIRD_INDEX] = tv.tv_usec;
+    uint64_t hash = HashFunc(hashData, HASH_DATA_LENGTH * sizeof(uint64_t));
+    return hash;
+}
+
+static uint64_t GenerateParentSpanId()
+{
+    const uint64_t randomNum = 269;
+    uint64_t hashData[HASH_DATA_LENGTH];
+    struct timeval tv;
+    gettimeofday(&tv, nullptr);
+    srand(tv.tv_sec);
+    hashData[ARRAY_FIRST_INDEX] = tv.tv_usec;
+    hashData[ARRAY_SECOND_INDEX] = randomNum;
+    hashData[ARRAY_THIRD_INDEX] = tv.tv_sec;
+    uint64_t hash = HashFunc(hashData, HASH_DATA_LENGTH * sizeof(uint64_t));
+    return hash;
 }
 
 class HiTraceChainCTest : public testing::Test {
@@ -611,6 +679,341 @@ HWTEST_F(HiTraceChainCTest, SyncAsyncTest_001, TestSize.Level1)
     HiTraceChainTracepoint(HITRACE_TP_CS, &asyncId, "client send msg: %s", "async");
 
     HiTraceChainEnd(&asyncId);
+}
+
+/**
+ * @tc.name: Dfx_HiTraceChainCTest_RestoreTest_001
+ * @tc.desc: Start normal trace.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HiTraceChainCTest, RestoreTest_001, TestSize.Level1)
+{
+    /**
+     * @tc.steps: step1. start trace without any flag.
+     * @tc.expected: step1. no flag is enabled.
+     * @tc.steps: step2. generate a temporary trace id.
+     * @tc.expected: step2. a trace id is generated.
+     * @tc.steps: step3. set new trace id and save old trace id.
+     * @tc.expected: step3. new trace id get into TLS.
+     * @tc.steps: step4. store old trace id.
+     * @tc.expected: step4. old trace id get into TLS.
+     * @tc.steps: step5. end trace.
+     * @tc.expected: step5. trace terminate.
+     */
+
+    // begin trace
+    HiTraceIdStruct id = HiTraceChainBegin("RestoreTest_001", HITRACE_FLAG_TP_INFO);
+    PRINT_ID(&id);
+
+    //generate new trace id
+    HiTraceIdStruct newId{0};
+    HiTraceChainInitId(&newId);
+    newId.valid=HITRACE_ID_VALID;
+    uint64_t chainId = GenerateChainId();
+    uint64_t spanId = GenerateSpanId();
+    uint64_t parentSpanId = GenerateParentSpanId();
+    HiTraceChainSetChainId(&newId, chainId);
+    HiTraceChainSetSpanId(&newId, spanId);
+    HiTraceChainSetParentSpanId(&newId, parentSpanId);
+    PRINT_ID(&newId);
+
+    // set new id and save old id
+    HiTraceIdStruct oldId = HiTraceChainSaveAndSetId(&newId);
+    PRINT_ID(&oldId);
+    HiTraceIdStruct currentId = HiTraceChainGetId();
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", DEVICE_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", PROCESS_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", THREAD_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", DEFAULT_CLIENT_SEND);
+
+    // restore old id
+    HiTraceChainRestoreId(&oldId);
+    HiTraceIdStruct currentId2 = HiTraceChainGetId();
+    EXPECT_EQ(HiTraceChainGetChainId(&id), HiTraceChainGetChainId(&currentId2));
+    EXPECT_EQ(HiTraceChainGetSpanId(&id), HiTraceChainGetParentSpanId(&currentId2));
+    EXPECT_EQ(HiTraceChainGetParentSpanId(&id), HiTraceChainGetParentSpanId(&currentId2));
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", DEVICE_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", PROCESS_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", THREAD_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", DEFAULT_CLIENT_SEND);
+
+    // end trace
+    HiTraceChainEnd(&id);
+}
+
+/**
+ * @tc.name: Dfx_HiTraceChainCTest_RestoreTest_002
+ * @tc.desc: Start trace with HITRACE_FLAG_INCLUDE_ASYNC.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HiTraceChainCTest, RestoreTest_002, TestSize.Level1)
+{
+    /**
+     * @tc.steps: step1. start trace with flag HITRACE_FLAG_INCLUDE_ASYNC.
+     * @tc.expected: step1. flag HITRACE_FLAG_INCLUDE_ASYNC is enabled.
+     * @tc.steps: step2. generate a temporary trace id.
+     * @tc.expected: step2. a trace id is generated.
+     * @tc.steps: step3. set new trace id and save old trace id.
+     * @tc.expected: step3. new trace id get into TLS.
+     * @tc.steps: step4. store old trace id.
+     * @tc.expected: step4. old trace id get into TLS.
+     * @tc.steps: step5. end trace.
+     * @tc.expected: step5. trace terminate.
+     */
+
+    // begin trace
+    HiTraceIdStruct id = HiTraceChainBegin("RestoreTest_002", HITRACE_FLAG_TP_INFO | HITRACE_FLAG_INCLUDE_ASYNC);
+    PRINT_ID(&id);
+
+    //generate new trace id
+    HiTraceIdStruct newId{0};
+    HiTraceChainInitId(&newId);
+    newId.valid=HITRACE_ID_VALID;
+    uint64_t chainId = GenerateChainId();
+    uint64_t spanId = GenerateSpanId();
+    uint64_t parentSpanId = GenerateParentSpanId();
+    HiTraceChainSetChainId(&newId, chainId);
+    HiTraceChainSetSpanId(&newId, spanId);
+    HiTraceChainSetParentSpanId(&newId, parentSpanId);
+    PRINT_ID(&newId);
+
+    // set new id and save old id
+    HiTraceIdStruct oldId = HiTraceChainSaveAndSetId(&newId);
+    PRINT_ID(&oldId);
+    HiTraceIdStruct currentId = HiTraceChainGetId();
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", DEVICE_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", PROCESS_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", THREAD_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", DEFAULT_CLIENT_SEND);
+
+    // restore old id
+    HiTraceChainRestoreId(&oldId);
+    HiTraceIdStruct currentId2 = HiTraceChainGetId();
+    EXPECT_EQ(1, HiTraceChainIsFlagEnabled(&currentId2, HITRACE_FLAG_INCLUDE_ASYNC));
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", DEVICE_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", PROCESS_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", THREAD_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", DEFAULT_CLIENT_SEND);
+
+    // end trace
+    HiTraceChainEnd(&id);
+}
+
+/**
+ * @tc.name: Dfx_HiTraceChainCTest_RestoreTest_003
+ * @tc.desc: Start normal trace.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HiTraceChainCTest, RestoreTest_003, TestSize.Level1)
+{
+    /**
+     * @tc.steps: step1. start trace with version HITRACE_VER_1.
+     * @tc.expected: step1. flag HITRACE_VER_1 is enabled.
+     * @tc.steps: step2. generate a temporary trace id.
+     * @tc.expected: step2. a trace id is generated.
+     * @tc.steps: step3. set new trace id and save old trace id.
+     * @tc.expected: step3. new trace id get into TLS.
+     * @tc.steps: step4. store old trace id.
+     * @tc.expected: step4. old trace id get into TLS.
+     * @tc.steps: step5. end trace.
+     * @tc.expected: step5. trace terminate.
+     */
+    // begin trace
+    HiTraceIdStruct id = HiTraceChainBegin("RestoreTest_003", HITRACE_FLAG_TP_INFO);
+    PRINT_ID(&id);
+
+    //generate new trace id
+    HiTraceIdStruct newId{0};
+    HiTraceChainInitId(&newId);
+    newId.valid=HITRACE_ID_VALID;
+    uint64_t chainId = GenerateChainId();
+    uint64_t spanId = GenerateSpanId();
+    uint64_t parentSpanId = GenerateParentSpanId();
+    HiTraceChainSetChainId(&newId, chainId);
+    HiTraceChainSetSpanId(&newId, spanId);
+    HiTraceChainSetParentSpanId(&newId, parentSpanId);
+    PRINT_ID(&newId);
+
+    // set new id and save old id
+    HiTraceIdStruct oldId = HiTraceChainSaveAndSetId(&newId);
+    PRINT_ID(&oldId);
+    HiTraceIdStruct currentId = HiTraceChainGetId();
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", DEVICE_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", PROCESS_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", THREAD_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", DEFAULT_CLIENT_SEND);
+
+    // restore old id
+    HiTraceChainRestoreId(&oldId);
+    HiTraceIdStruct currentId2 = HiTraceChainGetId();
+    EXPECT_EQ(HITRACE_VER_1, currentId2.ver);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", DEVICE_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", PROCESS_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", THREAD_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", DEFAULT_CLIENT_SEND);
+
+    // end trace
+    HiTraceChainEnd(&id);
+}
+/**
+ * @tc.name: Dfx_HiTraceChainCTest_RestoreTest_004
+ * @tc.desc: Start normal trace and create span.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HiTraceChainCTest, RestoreTest_004, TestSize.Level1)
+{
+    /**
+     * @tc.steps: step1. start trace without any flag, then create span.
+     * @tc.expected: step1. no flag is enabled.
+     * @tc.steps: step2. generate a temporary trace id.
+     * @tc.expected: step2. a trace id is generated.
+     * @tc.steps: step3. set new trace id and save old trace id.
+     * @tc.expected: step3. new trace id get into TLS.
+     * @tc.steps: step4. store old trace id.
+     * @tc.expected: step4. old trace id get into TLS.
+     * @tc.steps: step5. end trace.
+     * @tc.expected: step5. trace terminate.
+     */
+    // begin trace
+    HiTraceIdStruct id = HiTraceChainBegin("RestoreTest_004", HITRACE_FLAG_TP_INFO);
+    HiTraceChainCreateSpan();
+    PRINT_ID(&id);
+
+    //generate new trace id
+    HiTraceIdStruct newId{0};
+    HiTraceChainInitId(&newId);
+    newId.valid=HITRACE_ID_VALID;
+    uint64_t chainId = GenerateChainId();
+    uint64_t spanId = GenerateSpanId();
+    uint64_t parentSpanId = GenerateParentSpanId();
+    HiTraceChainSetChainId(&newId, chainId);
+    HiTraceChainSetSpanId(&newId, spanId);
+    HiTraceChainSetParentSpanId(&newId, parentSpanId);
+    PRINT_ID(&newId);
+
+    // set new id and save old id
+    HiTraceIdStruct oldId = HiTraceChainSaveAndSetId(&newId);
+    HiTraceChainCreateSpan();
+    PRINT_ID(&oldId);
+    HiTraceIdStruct currentId = HiTraceChainGetId();
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", DEVICE_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", PROCESS_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", THREAD_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", DEFAULT_CLIENT_SEND);
+
+    // restore old id
+    HiTraceChainRestoreId(&oldId);
+    HiTraceIdStruct currentId2 = HiTraceChainGetId();
+    EXPECT_EQ(HiTraceChainGetChainId(&id), HiTraceChainGetChainId(&currentId2));
+    EXPECT_EQ(HiTraceChainGetSpanId(&id), HiTraceChainGetParentSpanId(&currentId2));
+    EXPECT_EQ(HiTraceChainGetParentSpanId(&id), HiTraceChainGetParentSpanId(&currentId2));
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", DEVICE_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", PROCESS_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", THREAD_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", DEFAULT_CLIENT_SEND);
+
+    // end trace
+    HiTraceChainEnd(&id);
+}
+
+/**
+ * @tc.name: Dfx_HiTraceChainCTest_RestoreTest_005
+ * @tc.desc: Start normal trace.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HiTraceChainCTest, RestoreTest_005, TestSize.Level1)
+{
+    /**
+     * @tc.steps: step1. start trace without any flag.
+     * @tc.expected: step1. no flag is enabled.
+     * @tc.steps: step2. generate a temporary trace id with HITRACE_ID_INVALID flag.
+     * @tc.expected: step2. a trace id is generated.
+     * @tc.steps: step3. set new trace id and save old trace id.
+     * @tc.expected: step3. new trace is invalid.
+     * @tc.steps: step4. store old trace id.
+     * @tc.expected: step4. old trace id get into TLS.
+     * @tc.steps: step5. end trace.
+     * @tc.expected: step5. trace terminate.
+     */
+
+    // begin trace
+    HiTraceIdStruct id = HiTraceChainBegin("RestoreTest_005", HITRACE_FLAG_TP_INFO);
+    PRINT_ID(&id);
+
+    //generate new trace id
+    HiTraceIdStruct newId{0};
+    HiTraceChainInitId(&newId);
+    newId.valid=HITRACE_ID_INVALID;
+    uint64_t chainId = GenerateChainId();
+    uint64_t spanId = GenerateSpanId();
+    uint64_t parentSpanId = GenerateParentSpanId();
+    HiTraceChainSetChainId(&newId, chainId);
+    HiTraceChainSetSpanId(&newId, spanId);
+    HiTraceChainSetParentSpanId(&newId, parentSpanId);
+    PRINT_ID(&newId);
+
+    // set new id and save old id
+    HiTraceIdStruct oldId = HiTraceChainSaveAndSetId(&newId);
+    PRINT_ID(&oldId);
+    HiTraceIdStruct currentId = HiTraceChainGetId();
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", DEVICE_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", PROCESS_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", THREAD_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", DEFAULT_CLIENT_SEND);
+
+    // restore old id
+    HiTraceChainRestoreId(&oldId);
+    HiTraceIdStruct currentId2 = HiTraceChainGetId();
+    EXPECT_EQ(HiTraceChainGetChainId(&id), HiTraceChainGetChainId(&currentId2));
+    EXPECT_EQ(HiTraceChainGetSpanId(&id), HiTraceChainGetParentSpanId(&currentId2));
+    EXPECT_EQ(HiTraceChainGetParentSpanId(&id), HiTraceChainGetParentSpanId(&currentId2));
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", DEVICE_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", PROCESS_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", THREAD_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", DEFAULT_CLIENT_SEND);
+
+    // end trace
+    HiTraceChainEnd(&id);
 }
 }  // namespace HiviewDFX
 }  // namespace OHOS
