@@ -28,6 +28,11 @@
 #include "hitrace_meter.h"
 #include "hitrace_meter_c.h"
 
+#define ARRAY_FIRST_INDEX 0
+#define ARRAY_SECOND_INDEX 1
+#define ARRAY_THIRD_INDEX 2
+#define HASH_DATA_LENGTH 3
+
 static uint64_t HashFunc(const void* pData, uint32_t dataLen)
 {
     const uint64_t seed = 131;
@@ -45,41 +50,41 @@ static uint64_t HashFunc(const void* pData, uint32_t dataLen)
 
 static uint64_t GenerateChainId()
 {
-    uint64_t hashData[3];
+    uint64_t hashData[HASH_DATA_LENGTH];
     struct timeval tv;
     gettimeofday(&tv, NULL);
     srand(tv.tv_sec);
-    hashData[0] = tv.tv_sec;
-    hashData[1] = tv.tv_usec;
-    hashData[2] = random();
-    uint64_t hash = HashFunc(hashData, 3 * sizeof(uint64_t));
+    hashData[ARRAY_FIRST_INDEX] = tv.tv_sec;
+    hashData[ARRAY_SECOND_INDEX] = tv.tv_usec;
+    hashData[ARRAY_THIRD_INDEX] = random();
+    uint64_t hash = HashFunc(hashData, HASH_DATA_LENGTH * sizeof(uint64_t));
     return hash;
 }
 
 
 static uint64_t GenerateSpanId()
 {
-    uint64_t hashData[3];
+    uint64_t hashData[HASH_DATA_LENGTH];
     struct timeval tv;
     gettimeofday(&tv, NULL);
     srand(tv.tv_sec);
-    hashData[0] = random();
-    hashData[1] = tv.tv_sec;
-    hashData[2] = tv.tv_usec;
-    uint64_t hash = HashFunc(hashData, 3 * sizeof(uint64_t));
+    hashData[ARRAY_FIRST_INDEX] = random();
+    hashData[ARRAY_SECOND_INDEX] = tv.tv_sec;
+    hashData[ARRAY_THIRD_INDEX] = tv.tv_usec;
+    uint64_t hash = HashFunc(hashData, HASH_DATA_LENGTH * sizeof(uint64_t));
     return hash;
 }
 
 static uint64_t GenerateParentSpanId()
 {
-    uint64_t hashData[3];
+    uint64_t hashData[HASH_DATA_LENGTH];
     struct timeval tv;
     gettimeofday(&tv, NULL);
     srand(tv.tv_sec);
-    hashData[0] = tv.tv_usec;
-    hashData[1] = random();
-    hashData[2] = tv.tv_sec;
-    uint64_t hash = HashFunc(hashData, 3 * sizeof(uint64_t));
+    hashData[ARRAY_FIRST_INDEX] = tv.tv_usec;
+    hashData[ARRAY_SECOND_INDEX] = random();
+    hashData[ARRAY_THIRD_INDEX] = tv.tv_sec;
+    uint64_t hash = HashFunc(hashData, HASH_DATA_LENGTH * sizeof(uint64_t));
     return hash;
 }
 
@@ -766,10 +771,10 @@ HWTEST_F(HiTraceChainCppTest, RestoreTest_001, TestSize.Level1)
     // set new id and save old id
     HiTraceId oldId = HiTraceChain::SaveAndSet(newId);
     HiTraceId currentId = HiTraceChain::GetId();
-    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId, "client send msg content %d", 12);
-    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId, "client send msg content %d", 22);
-    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId, "client send msg content %d", 32);
-    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId, "client send msg content %d", 42);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId, "client send msg %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId, "client send msg %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId, "client send msg %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId, "client send msg %d", 42);
 
     // restore old id
     HiTraceChain::Restore(oldId);
@@ -777,10 +782,10 @@ HWTEST_F(HiTraceChainCppTest, RestoreTest_001, TestSize.Level1)
     EXPECT_EQ(id.GetChainId(), currentId2.GetChainId());
     EXPECT_EQ(id.GetSpanId(), currentId2.GetSpanId());
     EXPECT_EQ(id.GetParentSpanId(), currentId2.GetParentSpanId());
-    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId2, "client send msg content %d", 12);
-    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId2, "client send msg content %d", 22);
-    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId2, "client send msg content %d", 32);
-    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId2, "client send msg content %d", 42);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId2, "client send msg %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId2, "client send msg %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId2, "client send msg %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId2, "client send msg %d", 42);
 
     // end trace
     HiTraceChain::End(id);
@@ -824,19 +829,19 @@ HWTEST_F(HiTraceChainCppTest, RestoreTest_002, TestSize.Level1)
     // set new id and save old id
     HiTraceId oldId = HiTraceChain::SaveAndSet(newId);
     HiTraceId currentId = HiTraceChain::GetId();
-    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId, "client send msg content %d", 12);
-    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId, "client send msg content %d", 22);
-    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId, "client send msg content %d", 32);
-    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId, "client send msg content %d", 42);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId, "client send msg %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId, "client send msg %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId, "client send msg %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId, "client send msg %d", 42);
 
     // restore old id
     HiTraceChain::Restore(oldId);
     HiTraceId currentId2 = HiTraceChain::GetId();
     ASSERT_TRUE(currentId2.IsFlagEnabled(HITRACE_FLAG_INCLUDE_ASYNC));
-    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId2, "client send msg content %d", 12);
-    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId2, "client send msg content %d", 22);
-    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId2, "client send msg content %d", 32);
-    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId2, "client send msg content %d", 42);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId2, "client send msg %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId2, "client send msg %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId2, "client send msg %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId2, "client send msg %d", 42);
 
     // end trace
     HiTraceChain::End(id);
@@ -882,10 +887,10 @@ HWTEST_F(HiTraceChainCppTest, RestoreTest_003, TestSize.Level1)
     HiTraceId oldId = HiTraceChain::SaveAndSet(newId);
     HiTraceChain::CreateSpan();
     HiTraceId currentId = HiTraceChain::GetId();
-    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId, "client send msg content %d", 12);
-    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId, "client send msg content %d", 22);
-    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId, "client send msg content %d", 32);
-    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId, "client send msg content %d", 42);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId, "client send msg %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId, "client send msg %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId, "client send msg %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId, "client send msg %d", 42);
 
     // restore old id
     HiTraceChain::Restore(oldId);
@@ -893,10 +898,10 @@ HWTEST_F(HiTraceChainCppTest, RestoreTest_003, TestSize.Level1)
     EXPECT_EQ(id.GetChainId(), currentId2.GetChainId());
     EXPECT_EQ(id.GetSpanId(), currentId2.GetSpanId());
     EXPECT_EQ(id.GetParentSpanId(), currentId2.GetParentSpanId());
-    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId2, "client send msg content %d", 12);
-    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId2, "client send msg content %d", 22);
-    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId2, "client send msg content %d", 32);
-    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId2, "client send msg content %d", 42);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId2, "client send msg %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId2, "client send msg %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId2, "client send msg %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId2, "client send msg %d", 42);
 
     // end trace
     HiTraceChain::End(id);
@@ -940,10 +945,10 @@ HWTEST_F(HiTraceChainCppTest, RestoreTest_004, TestSize.Level1)
     // set new id and save old id
     HiTraceId oldId = HiTraceChain::SaveAndSet(newId);
     HiTraceId currentId = HiTraceChain::GetId();
-    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId, "client send msg content %d", 12);
-    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId, "client send msg content %d", 22);
-    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId, "client send msg content %d", 32);
-    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId, "client send msg content %d", 42);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId, "client send msg %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId, "client send msg %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId, "client send msg %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId, "client send msg %d", 42);
 
     // restore old id
     HiTraceChain::Restore(oldId);
@@ -951,10 +956,10 @@ HWTEST_F(HiTraceChainCppTest, RestoreTest_004, TestSize.Level1)
     EXPECT_EQ(id.GetChainId(), currentId2.GetChainId());
     EXPECT_EQ(id.GetSpanId(), currentId2.GetSpanId());
     EXPECT_EQ(id.GetParentSpanId(), currentId2.GetParentSpanId());
-    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId2, "client send msg content %d", 12);
-    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId2, "client send msg content %d", 22);
-    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId2, "client send msg content %d", 32);
-    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId2, "client send msg content %d", 42);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId2, "client send msg %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId2, "client send msg %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId2, "client send msg %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId2, "client send msg %d", 42);
 
     // end trace
     HiTraceChain::End(id);
