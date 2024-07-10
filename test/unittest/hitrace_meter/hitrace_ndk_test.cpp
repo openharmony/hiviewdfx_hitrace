@@ -837,15 +837,12 @@ HWTEST_F(HitraceNDKTest, StartTrace_012, TestSize.Level1)
  */
 HWTEST_F(HitraceNDKTest, StartTrace_013, TestSize.Level1)
 {
-    const char* traceName = "StartTrace013";
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
     StartAsyncTraceDebug(true, TAG, "asyncTraceTest013", 123);
     FinishAsyncTraceDebug(true, TAG, "asyncTraceTest013", 123);
     StartAsyncTraceDebug(false, TAG, "asyncTraceTest013", 123);
     FinishAsyncTraceDebug(false, TAG, "asyncTraceTest013", 123);
-
-    StartTraceChain(TAG, nullptr, traceName);
 }
 
 /**
@@ -1042,7 +1039,6 @@ HWTEST_F(HitraceNDKTest, StartTrace_021, TestSize.Level1)
  */
 HWTEST_F(HitraceNDKTest, StartTrace_022, TestSize.Level1)
 {
-    std::string traceName = "StartTrace022";
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
     ASSERT_TRUE(SetProperty(TRACE_PROPERTY, "0"));
@@ -1267,7 +1263,6 @@ HWTEST_F(HitraceNDKTest, StartCaptureAppTrace_001, TestSize.Level1)
  */
 HWTEST_F(HitraceNDKTest, StartCaptureAppTrace_002, TestSize.Level1)
 {
-    std::string traceName = "StartCaptureAppTrace002";
     string fileName;
     int fileSize = 100 * 1024 * 1024; // 100M
     ASSERT_TRUE(CleanTrace());
@@ -1294,7 +1289,6 @@ HWTEST_F(HitraceNDKTest, StartCaptureAppTrace_002, TestSize.Level1)
  */
 HWTEST_F(HitraceNDKTest, StartCaptureAppTrace_003, TestSize.Level1)
 {
-    std::string traceName = "StartCaptureAppTrace003";
     const char* filePath = "";
     ASSERT_TRUE(CleanTrace());
     SetGetProcData(filePath);
