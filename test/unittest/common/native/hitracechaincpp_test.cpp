@@ -17,6 +17,7 @@
 
 #include <cstdint>
 #include <gtest/gtest.h>
+#include <sys/time.h>
 
 #include "gtest/gtest-message.h"
 #include "gtest/gtest-test-part.h"
@@ -26,6 +27,61 @@
 #include "hitrace/hitraceid.h"
 #include "hitrace_meter.h"
 #include "hitrace_meter_c.h"
+
+static uint64_t HashFunc(const void* pData, uint32_t dataLen)
+{
+    const uint64_t seed = 131;
+    if ((!pData) || dataLen == 0) {
+        return 0;
+    }
+    uint64_t hash = 0;
+    uint64_t len = dataLen;
+    char* p = (char*)pData;
+    for (; len > 0; --len) {
+        hash = (hash * seed) + (*p++);
+    }
+    return hash;
+}
+
+static uint64_t GenerateChainId()
+{
+    uint64_t hashData[3];
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    srand(tv.tv_sec);
+    hashData[0] = tv.tv_sec;
+    hashData[1] = tv.tv_usec;
+    hashData[2] = random();
+    uint64_t hash = HashFunc(hashData, 3 * sizeof(uint64_t));
+    return hash;
+}
+
+
+static uint64_t GenerateSpanId()
+{
+    uint64_t hashData[3];
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    srand(tv.tv_sec);
+    hashData[0] = random();
+    hashData[1] = tv.tv_sec;
+    hashData[2] = tv.tv_usec;
+    uint64_t hash = HashFunc(hashData, 3 * sizeof(uint64_t));
+    return hash;
+}
+
+static uint64_t GenerateParentSpanId()
+{
+    uint64_t hashData[3];
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    srand(tv.tv_sec);
+    hashData[0] = tv.tv_usec;
+    hashData[1] = random();
+    hashData[2] = tv.tv_sec;
+    uint64_t hash = HashFunc(hashData, 3 * sizeof(uint64_t));
+    return hash;
+}
 
 namespace OHOS {
 namespace HiviewDFX {
@@ -669,6 +725,238 @@ HWTEST_F(HiTraceChainCppTest, HiTraceTest_002, TestSize.Level1)
     EXPECT_EQ(grandChildId.GetParentSpanId(), childId.GetSpanId());
 
     /* end */
+    HiTraceChain::End(id);
+}
+
+/**
+ * @tc.name: Dfx_HiTraceChainCppTest_RestoreTest_001
+ * @tc.desc: Start normal trace.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HiTraceChainCppTest, RestoreTest_001, TestSize.Level1)
+{
+    /**
+     * @tc.steps: step1. start trace without any flag.
+     * @tc.expected: step1. no flag is enabled.
+     * @tc.steps: step2. generate a temporary trace id.
+     * @tc.expected: step2. a trace id is generated.
+     * @tc.steps: step3. set new trace id and save old trace id.
+     * @tc.expected: step3. new trace id get into TLS.
+     * @tc.steps: step4. store old trace id.
+     * @tc.expected: step4. old trace id get into TLS.
+     * @tc.steps: step5. end trace.
+     * @tc.expected: step5. trace terminate.
+     */
+
+    // begin trace
+    HiTraceId id = HiTraceChain::Begin("RestoreTest_001", HITRACE_FLAG_TP_INFO);
+
+    // generate new trace id
+    HiTraceIdStruct tempId{0};
+    HiTraceChainInitId(&tempId);
+    tempId.valid=HITRACE_ID_VALID;
+    HiTraceId newId(tempId);
+    uint64_t chainId = GenerateChainId();
+    uint64_t spanId = GenerateSpanId();
+    uint64_t parentSpanId = GenerateParentSpanId();
+    newId.SetChainId(chainId);
+    newId.SetSpanId(spanId);
+    newId.SetParentSpanId(parentSpanId);
+
+    // set new id and save old id
+    HiTraceId oldId = HiTraceChain::SaveAndSet(newId);
+    HiTraceId currentId = HiTraceChain::GetId();
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId, "client send msg content %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId, "client send msg content %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId, "client send msg content %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId, "client send msg content %d", 42);
+
+    // restore old id
+    HiTraceChain::Restore(oldId);
+    HiTraceId currentId2 = HiTraceChain::GetId();
+    EXPECT_EQ(id.GetChainId(), currentId2.GetChainId());
+    EXPECT_EQ(id.GetSpanId(), currentId2.GetSpanId());
+    EXPECT_EQ(id.GetParentSpanId(), currentId2.GetParentSpanId());
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId2, "client send msg content %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId2, "client send msg content %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId2, "client send msg content %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId2, "client send msg content %d", 42);
+
+    // end trace
+    HiTraceChain::End(id);
+}
+
+/**
+ * @tc.name: Dfx_HiTraceChainCppTest_RestoreTest_002
+ * @tc.desc: Start normal with HITRACE_FLAG_INCLUDE_ASYNC flag.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HiTraceChainCppTest, RestoreTest_002, TestSize.Level1)
+{
+    /**
+     * @tc.steps: step1. start trace with flag HITRACE_FLAG_INCLUDE_ASYNC.
+     * @tc.expected: step1. HITRACE_FLAG_INCLUDE_ASYNC flag is enabled.
+     * @tc.steps: step2. generate a temporary trace id.
+     * @tc.expected: step2. a trace id is generated.
+     * @tc.steps: step3. set new trace id and save old trace id.
+     * @tc.expected: step3. new trace id get into TLS.
+     * @tc.steps: step4. store old trace id.
+     * @tc.expected: step4. old trace id get into TLS.
+     * @tc.steps: step5. end trace.
+     * @tc.expected: step5. trace terminate.
+     */
+
+    // begin trace
+    HiTraceId id = HiTraceChain::Begin("RestoreTest_002", HITRACE_FLAG_TP_INFO | HITRACE_FLAG_INCLUDE_ASYNC);
+
+    // generate new trace id
+    HiTraceIdStruct tempId{0};
+    HiTraceChainInitId(&tempId);
+    tempId.valid=HITRACE_ID_VALID;
+    HiTraceId newId(tempId);
+    uint64_t chainId = GenerateChainId();
+    uint64_t spanId = GenerateSpanId();
+    uint64_t parentSpanId = GenerateParentSpanId();
+    newId.SetChainId(chainId);
+    newId.SetSpanId(spanId);
+    newId.SetParentSpanId(parentSpanId);
+
+    // set new id and save old id
+    HiTraceId oldId = HiTraceChain::SaveAndSet(newId);
+    HiTraceId currentId = HiTraceChain::GetId();
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId, "client send msg content %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId, "client send msg content %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId, "client send msg content %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId, "client send msg content %d", 42);
+
+    // restore old id
+    HiTraceChain::Restore(oldId);
+    HiTraceId currentId2 = HiTraceChain::GetId();
+    ASSERT_TRUE(currentId2.IsFlagEnabled(HITRACE_FLAG_INCLUDE_ASYNC));
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId2, "client send msg content %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId2, "client send msg content %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId2, "client send msg content %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId2, "client send msg content %d", 42);
+
+    // end trace
+    HiTraceChain::End(id);
+}
+
+/**
+ * @tc.name: Dfx_HiTraceChainCppTest_RestoreTest_003
+ * @tc.desc: Start normal trace and create span.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HiTraceChainCppTest, RestoreTest_003, TestSize.Level1)
+{
+    /**
+     * @tc.steps: step1. start trace without any flag, then create span.
+     * @tc.expected: step1. no flag is enabled.
+     * @tc.steps: step2. generate a temporary trace id.
+     * @tc.expected: step2. a trace id is generated.
+     * @tc.steps: step3. set new trace id and save old trace id.
+     * @tc.expected: step3. new trace id get into TLS.
+     * @tc.steps: step4. store old trace id.
+     * @tc.expected: step4. old trace id get into TLS.
+     * @tc.steps: step5. end trace.
+     * @tc.expected: step5. trace terminate.
+     */
+
+    // begin trace
+    HiTraceId id = HiTraceChain::Begin("RestoreTest_003", HITRACE_FLAG_TP_INFO);
+    HiTraceChain::CreateSpan();
+
+    // generate new trace id
+    HiTraceIdStruct tempId{0};
+    HiTraceChainInitId(&tempId);
+    tempId.valid=HITRACE_ID_VALID;
+    HiTraceId newId(tempId);
+    uint64_t chainId = GenerateChainId();
+    uint64_t spanId = GenerateSpanId();
+    uint64_t parentSpanId = GenerateParentSpanId();
+    newId.SetChainId(chainId);
+    newId.SetSpanId(spanId);
+    newId.SetParentSpanId(parentSpanId);
+
+    // set new id and save old id
+    HiTraceId oldId = HiTraceChain::SaveAndSet(newId);
+    HiTraceChain::CreateSpan();
+    HiTraceId currentId = HiTraceChain::GetId();
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId, "client send msg content %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId, "client send msg content %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId, "client send msg content %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId, "client send msg content %d", 42);
+
+    // restore old id
+    HiTraceChain::Restore(oldId);
+    HiTraceId currentId2 = HiTraceChain::GetId();
+    EXPECT_EQ(id.GetChainId(), currentId2.GetChainId());
+    EXPECT_EQ(id.GetSpanId(), currentId2.GetSpanId());
+    EXPECT_EQ(id.GetParentSpanId(), currentId2.GetParentSpanId());
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId2, "client send msg content %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId2, "client send msg content %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId2, "client send msg content %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId2, "client send msg content %d", 42);
+
+    // end trace
+    HiTraceChain::End(id);
+}
+
+/**
+ * @tc.name: Dfx_HiTraceChainCppTest_RestoreTest_004
+ * @tc.desc: Start normal trace.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HiTraceChainCppTest, RestoreTest_004, TestSize.Level1)
+{
+    /**
+     * @tc.steps: step1. start trace without any flag.
+     * @tc.expected: step1. no flag is enabled.
+     * @tc.steps: step2. generate a temporary trace id with HITRACE_ID_INVALID flag.
+     * @tc.expected: step2. a trace id is generated.
+     * @tc.steps: step3. set new trace id and save old trace id.
+     * @tc.expected: step3. new trace id get into TLS.
+     * @tc.steps: step4. store old trace id.
+     * @tc.expected: step4. old trace id get into TLS.
+     * @tc.steps: step5. end trace.
+     * @tc.expected: step5. trace terminate.
+     */
+
+    // begin trace
+    HiTraceId id = HiTraceChain::Begin("RestoreTest_004", HITRACE_FLAG_TP_INFO);
+
+    // generate new trace id
+    HiTraceIdStruct tempId{0};
+    HiTraceChainInitId(&tempId);
+    tempId.valid=HITRACE_ID_INVALID;
+    HiTraceId newId(tempId);
+    uint64_t chainId = GenerateChainId();
+    uint64_t spanId = GenerateSpanId();
+    uint64_t parentSpanId = GenerateParentSpanId();
+    newId.SetChainId(chainId);
+    newId.SetSpanId(spanId);
+    newId.SetParentSpanId(parentSpanId);
+
+    // set new id and save old id
+    HiTraceId oldId = HiTraceChain::SaveAndSet(newId);
+    HiTraceId currentId = HiTraceChain::GetId();
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId, "client send msg content %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId, "client send msg content %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId, "client send msg content %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId, "client send msg content %d", 42);
+
+    // restore old id
+    HiTraceChain::Restore(oldId);
+    HiTraceId currentId2 = HiTraceChain::GetId();
+    EXPECT_EQ(id.GetChainId(), currentId2.GetChainId());
+    EXPECT_EQ(id.GetSpanId(), currentId2.GetSpanId());
+    EXPECT_EQ(id.GetParentSpanId(), currentId2.GetParentSpanId());
+    HiTraceChain::Tracepoint(HITRACE_CM_DEVICE, HITRACE_TP_CS, currentId2, "client send msg content %d", 12);
+    HiTraceChain::Tracepoint(HITRACE_CM_PROCESS, HITRACE_TP_CS, currentId2, "client send msg content %d", 22);
+    HiTraceChain::Tracepoint(HITRACE_CM_THREAD, HITRACE_TP_CS, currentId2, "client send msg content %d", 32);
+    HiTraceChain::Tracepoint(HITRACE_CM_DEFAULT, HITRACE_TP_CS, currentId2, "client send msg content %d", 42);
+
+    // end trace
     HiTraceChain::End(id);
 }
 }  // namespace HiviewDFX
