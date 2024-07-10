@@ -16,9 +16,15 @@
 #
 
 def parse_bytes_to_str(data):
-    if data.find(b'\x00') != -1:
-        return data[:data.index(b'\x00')].decode('utf-8')
-    return ""
+    decoded_str = ""
+
+    if data[:data.index(b'\x00')]:
+        try:
+            decoded_str = data[:data.index(b'\x00')].decode('utf-8')
+        except UnicodeDecodeError as e:
+            pass
+
+    return decoded_str
 
 
 def parse_int_field(one_event, name, int_signed):
@@ -648,7 +654,7 @@ def parse_print(data, one_event):
 def parse_tracing_mark_write(data, one_event):
     data_pos = parse_int_field(one_event, "buffer", False) & 0xffff
     result_str = parse_bytes_to_str(data[data_pos:])
-    if result_str == None：
+    if result_str == None:
         return ""
 
     if result_str != None:
