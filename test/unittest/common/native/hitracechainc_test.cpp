@@ -30,6 +30,11 @@
 #define ARRAY_THIRD_INDEX 2
 #define HASH_DATA_LENGTH 3
 
+#define DEVICE_CLIENT_SEND 12
+#define PROCESS_CLIENT_SEND 22
+#define THREAD_CLIENT_SEND 32
+#define DEFAULT_CLIENT_SEND 42
+
 namespace OHOS {
 namespace HiviewDFX {
 using namespace testing::ext;
@@ -82,7 +87,7 @@ static uint64_t GenerateChainId()
     const uint64_t randomNum = 269;
     uint64_t hashData[HASH_DATA_LENGTH];
     struct timeval tv;
-    gettimeofday(&tv, NULL);
+    gettimeofday(&tv, nullptr);
     srand(tv.tv_sec);
     hashData[ARRAY_FIRST_INDEX] = tv.tv_sec;
     hashData[ARRAY_SECOND_INDEX] = tv.tv_usec;
@@ -96,7 +101,7 @@ static uint64_t GenerateSpanId()
     const uint64_t randomNum = 269;
     uint64_t hashData[HASH_DATA_LENGTH];
     struct timeval tv;
-    gettimeofday(&tv, NULL);
+    gettimeofday(&tv, nullptr);
     srand(tv.tv_sec);
     hashData[ARRAY_FIRST_INDEX] = randomNum;
     hashData[ARRAY_SECOND_INDEX] = tv.tv_sec;
@@ -110,7 +115,7 @@ static uint64_t GenerateParentSpanId()
     const uint64_t randomNum = 269;
     uint64_t hashData[HASH_DATA_LENGTH];
     struct timeval tv;
-    gettimeofday(&tv, NULL);
+    gettimeofday(&tv, nullptr);
     srand(tv.tv_sec);
     hashData[ARRAY_FIRST_INDEX] = tv.tv_usec;
     hashData[ARRAY_SECOND_INDEX] = randomNum;
@@ -716,10 +721,14 @@ HWTEST_F(HiTraceChainCTest, RestoreTest_001, TestSize.Level1)
     HiTraceIdStruct oldId = HiTraceChainSaveAndSetId(&newId);
     PRINT_ID(&oldId);
     HiTraceIdStruct currentId = HiTraceChainGetId();
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", 12);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", 22);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", 32);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", 42);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", DEVICE_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", PROCESS_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", THREAD_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", DEFAULT_CLIENT_SEND);
 
     // restore old id
     HiTraceChainRestoreId(&oldId);
@@ -727,10 +736,14 @@ HWTEST_F(HiTraceChainCTest, RestoreTest_001, TestSize.Level1)
     EXPECT_EQ(HiTraceChainGetChainId(&id), HiTraceChainGetChainId(&currentId2));
     EXPECT_EQ(HiTraceChainGetSpanId(&id), HiTraceChainGetParentSpanId(&currentId2));
     EXPECT_EQ(HiTraceChainGetParentSpanId(&id), HiTraceChainGetParentSpanId(&currentId2));
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", 12);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", 22);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", 32);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", 42);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", DEVICE_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", PROCESS_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", THREAD_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", DEFAULT_CLIENT_SEND);
 
     // end trace
     HiTraceChainEnd(&id);
@@ -776,19 +789,27 @@ HWTEST_F(HiTraceChainCTest, RestoreTest_002, TestSize.Level1)
     HiTraceIdStruct oldId = HiTraceChainSaveAndSetId(&newId);
     PRINT_ID(&oldId);
     HiTraceIdStruct currentId = HiTraceChainGetId();
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", 12);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", 22);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", 32);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", 42);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", DEVICE_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", PROCESS_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", THREAD_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", DEFAULT_CLIENT_SEND);
 
     // restore old id
     HiTraceChainRestoreId(&oldId);
     HiTraceIdStruct currentId2 = HiTraceChainGetId();
     EXPECT_EQ(1, HiTraceChainIsFlagEnabled(&currentId2, HITRACE_FLAG_INCLUDE_ASYNC));
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", 12);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", 22);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", 32);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", 42);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", DEVICE_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", PROCESS_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", THREAD_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", DEFAULT_CLIENT_SEND);
 
     // end trace
     HiTraceChainEnd(&id);
@@ -833,19 +854,27 @@ HWTEST_F(HiTraceChainCTest, RestoreTest_003, TestSize.Level1)
     HiTraceIdStruct oldId = HiTraceChainSaveAndSetId(&newId);
     PRINT_ID(&oldId);
     HiTraceIdStruct currentId = HiTraceChainGetId();
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", 12);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", 22);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", 32);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", 42);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", DEVICE_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", PROCESS_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", THREAD_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", DEFAULT_CLIENT_SEND);
 
     // restore old id
     HiTraceChainRestoreId(&oldId);
     HiTraceIdStruct currentId2 = HiTraceChainGetId();
     EXPECT_EQ(HITRACE_VER_1, currentId2.ver);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", 12);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", 22);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", 32);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", 42);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", DEVICE_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", PROCESS_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", THREAD_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", DEFAULT_CLIENT_SEND);
 
     // end trace
     HiTraceChainEnd(&id);
@@ -891,10 +920,14 @@ HWTEST_F(HiTraceChainCTest, RestoreTest_004, TestSize.Level1)
     HiTraceChainCreateSpan();
     PRINT_ID(&oldId);
     HiTraceIdStruct currentId = HiTraceChainGetId();
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", 12);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", 22);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", 32);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", 42);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", DEVICE_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", PROCESS_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", THREAD_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", DEFAULT_CLIENT_SEND);
 
     // restore old id
     HiTraceChainRestoreId(&oldId);
@@ -902,10 +935,14 @@ HWTEST_F(HiTraceChainCTest, RestoreTest_004, TestSize.Level1)
     EXPECT_EQ(HiTraceChainGetChainId(&id), HiTraceChainGetChainId(&currentId2));
     EXPECT_EQ(HiTraceChainGetSpanId(&id), HiTraceChainGetParentSpanId(&currentId2));
     EXPECT_EQ(HiTraceChainGetParentSpanId(&id), HiTraceChainGetParentSpanId(&currentId2));
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", 12);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", 22);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", 32);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", 42);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", DEVICE_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", PROCESS_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", THREAD_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", DEFAULT_CLIENT_SEND);
 
     // end trace
     HiTraceChainEnd(&id);
@@ -951,10 +988,14 @@ HWTEST_F(HiTraceChainCTest, RestoreTest_005, TestSize.Level1)
     HiTraceIdStruct oldId = HiTraceChainSaveAndSetId(&newId);
     PRINT_ID(&oldId);
     HiTraceIdStruct currentId = HiTraceChainGetId();
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", 12);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", 22);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", 32);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", 42);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", DEVICE_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", PROCESS_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", THREAD_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", DEFAULT_CLIENT_SEND);
 
     // restore old id
     HiTraceChainRestoreId(&oldId);
@@ -962,10 +1003,14 @@ HWTEST_F(HiTraceChainCTest, RestoreTest_005, TestSize.Level1)
     EXPECT_EQ(HiTraceChainGetChainId(&id), HiTraceChainGetChainId(&currentId2));
     EXPECT_EQ(HiTraceChainGetSpanId(&id), HiTraceChainGetParentSpanId(&currentId2));
     EXPECT_EQ(HiTraceChainGetParentSpanId(&id), HiTraceChainGetParentSpanId(&currentId2));
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", 12);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", 22);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", 32);
-    HiTraceChainTracepointExWithArgsWrapper(HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", 42);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEVICE, HITRACE_TP_CS, &currentId, "client send msg %d", DEVICE_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_PROCESS, HITRACE_TP_CS, &currentId, "client send msg %d", PROCESS_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_THREAD, HITRACE_TP_CS, &currentId, "client send msg %d", THREAD_CLIENT_SEND);
+    HiTraceChainTracepointExWithArgsWrapper(
+            HITRACE_CM_DEFAULT, HITRACE_TP_CS, &currentId, "client send msg %d", DEFAULT_CLIENT_SEND);
 
     // end trace
     HiTraceChainEnd(&id);
