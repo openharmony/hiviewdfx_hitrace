@@ -1517,6 +1517,7 @@ TraceRetInfo DumpTraceOff()
         ret.outputFiles = g_outputFilesForCmd;
         return ret;
     }
+
     g_dumpFlag = false;
     while (!g_dumpEnd) {
         usleep(UNIT_TIME);
