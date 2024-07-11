@@ -16,7 +16,8 @@
       "SystemCapability.HiviewDFX.HiTrace"
     ],
     "features": [
-      "hitrace_support_executable_file"
+      "hitrace_support_executable_file",
+      "hitrace_double_tracebuffer_size"
     ],
     "adapted_system_type": [
       "small",
