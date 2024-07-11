@@ -22,13 +22,13 @@
 #include <fcntl.h>
 #include <fstream>
 #include <linux/perf_event.h>
+#include <memory>
 #include <mutex>
 #include <sched.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
-#include <memory>
 
 #include "securec.h"
 #include "hilog/log.h"
