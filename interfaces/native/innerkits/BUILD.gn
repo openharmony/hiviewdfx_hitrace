@@ -106,6 +106,10 @@ ohos_shared_library("hitrace_dump") {
     "src/hitrace_dump.cpp",
   ]
 
+  if (hitrace_double_tracebuffer_size) {
+    defines = [ "DOUBLE_TRACEBUFFER_ENABLE" ]
+  }
+
   deps = [ "$hitrace_config_path:hitrace_utils" ]
 
   external_deps = [

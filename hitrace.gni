@@ -19,4 +19,5 @@ hitrace_interfaces_path = "$hitrace_path/interfaces"
 
 declare_args() {
   hitrace_support_executable_file = true
+  hitrace_double_tracebuffer_size = false
 }
