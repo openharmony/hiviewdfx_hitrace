@@ -78,7 +78,11 @@ constexpr int ALIGNMENT_COEFFICIENT = 4;
 
 const int DEFAULT_BUFFER_SIZE = 12 * 1024;
 const int DEFAULT_FILE_SIZE = 100 * 1024;
+#ifdef DOUBLE_TRACEBUFFER_ENABLE
+const int HM_DEFAULT_BUFFER_SIZE = 288 * 1024;
+#else
 const int HM_DEFAULT_BUFFER_SIZE = 144 * 1024;
+#endif
 const int SAVED_CMDLINES_SIZE = 3072; // 3M
 const int KB_PER_MB = 1024;
 const int S_TO_NS = 1000000000;
