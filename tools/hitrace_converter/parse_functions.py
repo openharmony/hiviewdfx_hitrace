@@ -654,10 +654,10 @@ def parse_print(data, one_event):
 def parse_tracing_mark_write(data, one_event):
     data_pos = parse_int_field(one_event, "buffer", False) & 0xffff
     result_str = parse_bytes_to_str(data[data_pos:])
-    if result_str == None:
+    if result_str is None:
         return ""
 
-    if result_str != None:
+    if result_str is not None:
         if result_str.startswith("E|") and result_str[-1] == "|":
             result_str = result_str[:-1]
         elif result_str.startswith("S|") or result_str.startswith("F|") or result_str.startswith("C|"):
