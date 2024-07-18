@@ -538,6 +538,6 @@
                     "hdf", "virse"],
         "scene_performance": ["net", "dsched", "graphic", "multimodalinput", "dinput", "ark", "ace", "window",
                               "zaudio", "daudio", "zmedia", "dcamera", "zcamera", "dhfwk", "app", "gresource", "ability",
-                              "power", "samgr", "ffrt", "ufs"]
+                              "power", "samgr", "ffrt", "ufs", "nweb"]
     }
 }
