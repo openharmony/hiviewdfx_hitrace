@@ -1466,7 +1466,7 @@ TraceRetInfo DumpTrace()
 
 TraceRetInfo DumpTrace(int timeLimit)
 {
-    HILOG_INFO(LOG_CORE, "DumpTrace with time limit start, time limit is %d.", timeLimit);
+    HILOG_INFO(LOG_CORE, "DumpTrace with time limit start, time limit is %{public}d.", timeLimit);
     TraceRetInfo ret;
     if (timeLimit <= 0) {
         HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input.");
