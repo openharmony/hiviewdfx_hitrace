@@ -13,6 +13,7 @@
 
 import("//base/hiviewdfx/hitrace/hitrace.gni")
 import("//build/test.gni")
+import("//build/ohos.gni")
 
 module_output_path = "hiviewdfx/hitrace"
 
@@ -164,5 +165,7 @@ group("unittest") {
   if (support_jsapi) {
     deps += [ "unittest/common/napi:unittest" ]
   }
-  deps += [ "unittest/rust/hitracechain:rust_hitracechain_test" ]
+  if (!use_clang_coverage){
+    deps += [ "unittest/rust/hitracechain:rust_hitracechain_test" ]
+  }
 }
