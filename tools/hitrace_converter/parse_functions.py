@@ -18,11 +18,14 @@
 def parse_bytes_to_str(data):
     decoded_str = ""
 
-    if data[:data.index(b'\x00')]:
-        try:
-            decoded_str = data[:data.index(b'\x00')].decode('utf-8')
-        except UnicodeDecodeError as e:
-            pass
+    if data is None or data.strip() == "":
+        return decoded_str
+
+    if data.find(b'\x00') == -1:
+        decoded_str = data[:].decode('utf-8', errors = "ignore")
+        return decoded_str
+
+    decoded_str = data[:data.index(b'\x00')].decode('utf-8', errors = "ignore")
 
     return decoded_str
 
@@ -103,12 +106,15 @@ def parse_sched_switch(data, one_event):
 
 def parse_sched_blocked_reason_hm(data, one_event):
     pid = parse_int_field(one_event, "pid", True)
-    caller = parse_int_field(one_event, "caller", False)
     iowait = parse_int_field(one_event, "iowait", False)
+    func_name = parse_bytes_to_str(one_event["fields"]["func_name[16]"])
+    offset = parse_int_field(one_event, "offset", False)
+    size = parse_int_field(one_event, "size", False)
+    mod_name = parse_bytes_to_str(one_event["fields"]["mod_name[16]"])
     delay = parse_int_field(one_event, "delay", False)
-    cnode_idx = parse_int_field(one_event, "cnode_idx", False)
 
-    return "pid=%d iowait=%d caller=0x%x cnode_idx=%d delay=%d" % (pid, iowait, caller, cnode_idx, delay >> 10)
+    return "pid=%d iowait=%d caller=%s+0x%lx/0x%lx[%s] delay=%d" \
+    % (pid, iowait, func_name, offset, size, mod_name, delay >> 10)
 
 
 def parse_sched_blocked_reason(data, one_event):
@@ -683,7 +689,7 @@ PRINT_FMT_SCHED_WAKEUP_HM = '"comm=%s pid=%d prio=%d target_cpu=%03d", REC->pnam
 PRINT_FMT_SCHED_WAKEUP = '"comm=%s pid=%d prio=%d target_cpu=%03d", REC->comm, REC->pid, REC->prio, REC->target_cpu'
 PRINT_FMT_SCHED_SWITCH_HM = '"prev_comm=%s prev_pid=%d prev_prio=%d prev_state=%s" " ==> next_comm=%s next_pid=%d next_prio=%d", REC->pname, REC->prev_tid, REC->pprio, hm_trace_tcb_state2str(REC->pstate), REC->nname, REC->next_tid, REC->nprio'
 PRINT_FMT_SCHED_SWITCH = '"prev_comm=%s prev_pid=%d prev_prio=%d prev_state=%s%s ==> next_comm=%s next_pid=%d next_prio=%d expeller_type=%u", REC->prev_comm, REC->prev_pid, REC->prev_prio, (REC->prev_state & ((((0x0000 | 0x0001 | 0x0002 | 0x0004 | 0x0008 | 0x0010 | 0x0020 | 0x0040) + 1) << 1) - 1)) ? __print_flags(REC->prev_state & ((((0x0000 | 0x0001 | 0x0002 | 0x0004 | 0x0008 | 0x0010 | 0x0020 | 0x0040) + 1) << 1) - 1), "|", { 0x0001, "S" }, { 0x0002, "D" }, { 0x0004, "T" }, { 0x0008, "t" }, { 0x0010, "X" }, { 0x0020, "Z" }, { 0x0040, "P" }, { 0x0080, "I" }) : "R", REC->prev_state & (((0x0000 | 0x0001 | 0x0002 | 0x0004 | 0x0008 | 0x0010 | 0x0020 | 0x0040) + 1) << 1) ? "+" : "", REC->next_comm, REC->next_pid, REC->next_prio, REC->expeller_type'
-PRINT_FMT_SCHED_BLOCKED_REASON_HM = '"pid=%d iowait=%d caller=%s delay=%llu", REC->pid, REC->iowait, hmtrace_sched_blocked_reason_of(REC->cnode_idx, REC->caller), REC->delay >> 10'
+PRINT_FMT_SCHED_BLOCKED_REASON_HM = '"pid=%d iowait=%d caller=%s+0x%lx/0x%lx[%s] delay=%llu", REC->pid, REC->iowait, REC->func_name, REC->offset, REC->size, REC->mod_name, REC->delay >> 10'
 PRINT_FMT_SCHED_BLOCKED_REASON = '"pid=%d iowait=%d caller=%pS delay=%lu", REC->pid, REC->io_wait, REC->caller, REC->delay>>10'
 PRINT_FMT_CPU_FREQUENCY_HM = '"state=%u cpu_id=%u", REC->state, REC->cpu_id'
 PRINT_FMT_CPU_FREQUENCY = '"state=%lu cpu_id=%lu", (unsigned long)REC->state, (unsigned long)REC->cpu_id'
