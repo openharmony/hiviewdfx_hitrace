@@ -918,11 +918,9 @@ void ClearOldTraceFile()
         access(g_outputFilesForCmd[0].c_str(), F_OK) == 0) {
         if (remove(g_outputFilesForCmd[0].c_str()) == 0) {
             g_outputFilesForCmd.erase(g_outputFilesForCmd.begin());
-            HILOG_INFO(LOG_CORE, "ClearOldTraceFile: delete first: %{public}s success.",
-                g_outputFilesForCmd[0].c_str());
+            HILOG_INFO(LOG_CORE, "ClearOldTraceFile: delete first success.");
         } else {
-            HILOG_ERROR(LOG_CORE, "ClearOldTraceFile: delete first: %{public}s failed, errno: %{public}d.",
-                g_outputFilesForCmd[0].c_str(), errno);
+            HILOG_ERROR(LOG_CORE, "ClearOldTraceFile: delete first failed, errno: %{public}d.", errno);
         }
     }
 }
