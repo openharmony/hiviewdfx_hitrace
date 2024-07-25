@@ -17,6 +17,7 @@
 #define HITRACECHAIN_FFI_H
 
 #include "hitraceid.h"
+#include "cj_ffi/cj_common_ffi.h"
 #include <cstdint>
 
 extern "C" {
@@ -47,16 +48,16 @@ extern "C" {
         return traceId;
     }
 
-    CHiTraceId FfiOHOSHiTraceChainBegin(const char* name, int flag);
-    void FfiOHOSHiTraceChainEnd(CHiTraceId id);
-    CHiTraceId FfiOHOSHiTraceChainGetId();
-    void FfiOHOSHiTraceChainSetId(CHiTraceId id);
-    void FfiOHOSHiTraceChainClearId();
-    CHiTraceId FfiOHOSHiTraceChainCreateSpan();
-    void FfiOHOSHiTraceChainTracepoint(uint32_t mode, uint32_t type, CHiTraceId id, const char* str);
-    bool FfiOHOSHiTraceChainIsValid(CHiTraceId id);
-    bool FfiOHOSHiTraceChainIsFlagEnabled(CHiTraceId id, int32_t flag);
-    void FfiOHOSHiTraceChainEnableFlag(CHiTraceId id, int32_t flag);
+    FFI_EXPORT CHiTraceId FfiOHOSHiTraceChainBegin(const char* name, int flag);
+    FFI_EXPORT void FfiOHOSHiTraceChainEnd(CHiTraceId id);
+    FFI_EXPORT CHiTraceId FfiOHOSHiTraceChainGetId();
+    FFI_EXPORT void FfiOHOSHiTraceChainSetId(CHiTraceId id);
+    FFI_EXPORT void FfiOHOSHiTraceChainClearId();
+    FFI_EXPORT CHiTraceId FfiOHOSHiTraceChainCreateSpan();
+    FFI_EXPORT void FfiOHOSHiTraceChainTracepoint(uint32_t mode, uint32_t type, CHiTraceId id, const char* str);
+    FFI_EXPORT bool FfiOHOSHiTraceChainIsValid(CHiTraceId id);
+    FFI_EXPORT bool FfiOHOSHiTraceChainIsFlagEnabled(CHiTraceId id, int32_t flag);
+    FFI_EXPORT void FfiOHOSHiTraceChainEnableFlag(CHiTraceId id, int32_t flag);
 }
 
 #endif
