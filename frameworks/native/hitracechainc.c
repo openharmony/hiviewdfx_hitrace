@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -28,7 +28,7 @@
 
 #undef LOG_DOMAIN
 #undef LOG_TAG
-static const unsigned int LOG_DOMAIN = 0xD002D03;
+static const unsigned int LOG_DOMAIN = 0xD002D33;
 static const char* LOG_TAG = "HiTraceC";
 static const int BUFF_ZERO_NUMBER = 0;
 static const int BUFF_ONE_NUMBER = 1;

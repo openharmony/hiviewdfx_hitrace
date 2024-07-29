@@ -314,11 +314,11 @@ void TraceInit(const std::map<std::string, TagCategory> &allTags)
     // close all user tags
     SetProperty("debug.hitrace.tags.enableflags", std::to_string(0));
 
-    // set buffer_size_kb 1
-    WriteStrToFile("buffer_size_kb", "1");
-
     // close tracing_on
     SetTraceNodeStatus("tracing_on", false);
+
+    // set buffer_size_kb 1
+    WriteStrToFile("buffer_size_kb", "1");
 }
 
 // Open specific trace node

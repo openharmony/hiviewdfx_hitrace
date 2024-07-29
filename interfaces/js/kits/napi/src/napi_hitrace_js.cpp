@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,7 +23,7 @@ using namespace OHOS::HiviewDFX;
 
 namespace {
 #undef LOG_DOMAIN
-#define LOG_DOMAIN 0xD002D03
+#define LOG_DOMAIN 0xD002D33
 
 #undef LOG_TAG
 #define LOG_TAG "HITRACE_JS_NAPI"
