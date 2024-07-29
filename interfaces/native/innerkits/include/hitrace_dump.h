@@ -32,6 +32,10 @@ enum TraceErrorCode : uint8_t {
     FILE_ERROR = 4,
     WRITE_TRACE_INFO_ERROR = 5,
     CALL_ERROR = 6,
+    OUT_OF_TIME = 7,
+    INVALID_PARAM = 8,
+    UNKNOWN_ERROR = 254,
+    UNSET = 255,
 };
 
 enum TraceMode : uint8_t {
@@ -79,6 +83,16 @@ TraceRetInfo DumpTrace();
  * timeLimit: the maximum time(s) allowed for the trace task.
 */
 TraceRetInfo DumpTrace(int timeLimit);
+
+/**
+ * Reading trace data once from ftrace ringbuffer in the kernel.
+ * Using child processes to process trace tasks.
+ * retroStartTime: the retrospective starting time stamp of target trace.
+ * ----If retroStartTime <= 0, it is not set.
+ * ----If retroStartTime > current time stamp, TraceErrorCode::OUT_OF_TIME is returned.
+ * timeLimit: the maximum time(s) allowed for the trace task.
+*/
+TraceRetInfo DumpTrace(uint64_t retroStartTime, int timeLimit = 0);
 
 /**
  * Enable sub threads to periodically drop disk trace data.
