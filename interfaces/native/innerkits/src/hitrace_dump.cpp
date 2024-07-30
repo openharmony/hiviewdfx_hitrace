@@ -134,6 +134,7 @@ const int BUFFER_SIZE = 256 * PAGE_SIZE; // 1M
 std::atomic<bool> g_dumpFlag(false);
 std::atomic<bool> g_dumpEnd(true);
 std::mutex g_traceMutex;
+std::mutex g_processMutex;
 
 bool g_serviceThreadIsStart = false;
 uint64_t g_sysInitParamTags = 0;
@@ -934,6 +935,7 @@ void ClearOldTraceFile()
 */
 void ProcessDumpTask()
 {
+    std::lock_guard<std::mutex> lock(g_processMutex);
     g_dumpFlag = true;
     g_dumpEnd = false;
     g_outputFilesForCmd = {};
