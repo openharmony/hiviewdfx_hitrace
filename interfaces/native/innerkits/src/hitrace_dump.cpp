@@ -934,6 +934,7 @@ void ClearOldTraceFile()
 */
 void ProcessDumpTask()
 {
+    std::lock_guard<std::mutex> lock(g_traceMutex);
     g_dumpFlag = true;
     g_dumpEnd = false;
     g_outputFilesForCmd = {};
@@ -1158,6 +1159,7 @@ bool CheckServiceRunning()
 
 void MonitorServiceTask()
 {
+    std::lock_guard<std::mutex> lock(g_traceMutex);
     g_serviceThreadIsStart = true;
     const std::string threadName = "TraceMonitor";
     prctl(PR_SET_NAME, threadName.c_str());
