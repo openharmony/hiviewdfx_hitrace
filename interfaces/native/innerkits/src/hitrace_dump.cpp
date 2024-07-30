@@ -150,7 +150,7 @@ int g_newTraceFileLimit = 0;
 int g_writeFileLimit = 0;
 bool g_needGenerateNewTraceFile = false;
 u_int64_t g_retroStartTime = 0; // in nano seconds
-std::atomic<int> g_dumpStatus(TraceErrorCode::UNSET);
+std::atomic<uint8_t> g_dumpStatus(TraceErrorCode::UNSET);
 
 TraceParams g_currentTraceParams = {};
 
@@ -627,7 +627,9 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
     write(outFd, reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
     lseek(outFd, pos, SEEK_SET);
     close(srcFd);
-    g_dumpStatus = TraceErrorCode::SUCCESS;
+    if (contentType == CONTENT_TYPE_CPU_RAW){
+        g_dumpStatus = TraceErrorCode::SUCCESS;
+    }
     g_outputFileSize += static_cast<int>(offset);
     g_needGenerateNewTraceFile = false;
     HILOG_INFO(LOG_CORE, "WriteFile end, path: %{public}s, byte: %{public}d. g_writeFileLimit: %{public}d",
@@ -780,7 +782,7 @@ bool WriteCpuRawInner(int outFd, const std::string &outputFile)
         }
     }
     if (g_dumpStatus){
-        HILOG_ERROR(LOG_CORE, "WriteCpuRawInner failed, errno: %{public}d.", g_dumpStatus);
+        HILOG_ERROR(LOG_CORE, "WriteCpuRawInner failed, errno: %{public}d.", g_dumpStatus.load());
         return false;
     }
     return true;
@@ -1105,6 +1107,15 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
     } else {
         const int timeoutUsec = 10000000; // 10s
         bool isTrue = WaitPidTimeout(pid, timeoutUsec);
+        // constexpr int waitInterval = 100000; // 100ms
+        // int waitTime = 10000000; // 10s
+        // while (waitTime > 0) {
+        //     usleep(UNIT_TIME);
+        //     waitInterval -= UNIT_TIME;
+        //     if (g_dumpStatus != TraceErrorCode::UNSET) {
+        //         break;
+        //     }
+        // }
         g_dumpEnd = true;
         if (g_dumpStatus == TraceErrorCode::OUT_OF_TIME) {
             HILOG_ERROR(LOG_CORE, "DumpTraceInner: out of time.");
@@ -1130,6 +1141,7 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
         return TraceErrorCode::WRITE_TRACE_INFO_ERROR;
     }
     return TraceErrorCode::SUCCESS;
+    // return static_cast<TraceErrorCode>(g_dumpStatus.load());
 }
 
 uint64_t GetSysParamTags()
@@ -1522,7 +1534,6 @@ TraceRetInfo DumpTrace(uint64_t retroStartTime, int timeLimit)
     }
     {
         std::lock_guard<std::mutex> lock(g_traceMutex);
-        g_timeLimit = timeLimit;
         if (retroStartTime > 0) {
             std::time_t now = std::time(nullptr);
             if (retroStartTime > static_cast<uint64_t>(now)) {
@@ -1537,7 +1548,7 @@ TraceRetInfo DumpTrace(uint64_t retroStartTime, int timeLimit)
                 return ret;
             }
             std::time_t boot_time = now - info.uptime;
-            if (retroStartTime > boot_time) {
+            if (retroStartTime > static_cast<uint64_t>(boot_time)) {
                 // beware of input precision of seconds: add extra tolerance if necessary
                 g_retroStartTime = (retroStartTime - boot_time + 1) * S_TO_NS;
             } else {
@@ -1546,6 +1557,7 @@ TraceRetInfo DumpTrace(uint64_t retroStartTime, int timeLimit)
                 return ret;
             }
         }
+        g_timeLimit = timeLimit;
     }
     ret = DumpTrace();
     {
