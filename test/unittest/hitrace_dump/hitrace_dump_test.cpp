@@ -241,21 +241,18 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
 {
     const std::vector<std::string> tagGroups = {"scene_performance"};
 
-    // retroStartTime < sys boot time
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     uint64_t retroStartTime = 1;
     TraceRetInfo ret = DumpTrace(retroStartTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_PARAM);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
-    // retroStartTime > current time
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     retroStartTime = static_cast<uint64_t>(std::time(nullptr)) + 10;
     ret = DumpTrace(retroStartTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_PARAM);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
-    // retroStartTime < sys boot time and timeLimit < 0
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     retroStartTime = 10; // 1970-01-01 08:00:10
     int timeLimit = -1;
@@ -263,7 +260,6 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_PARAM);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
-    // retroStartTime > current time and timeLimit < 0
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     retroStartTime = static_cast<uint64_t>(std::time(nullptr)) + 10;
     timeLimit = -1;
@@ -271,15 +267,13 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_PARAM);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
-    // retroStartTime < sys boot time and timeLimit > 0
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    retroStartTime = 10; // 1970-01-01 08:00:10
+    retroStartTime = 10;
     timeLimit = 10;
     ret = DumpTrace(retroStartTime, timeLimit);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_PARAM);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
-    // retroStartTime > current time and timeLimit > 0
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     retroStartTime = static_cast<uint64_t>(std::time(nullptr)) + 10;
     timeLimit = 10;
