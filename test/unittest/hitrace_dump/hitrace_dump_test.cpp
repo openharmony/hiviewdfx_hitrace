@@ -174,17 +174,17 @@ HWTEST_F(HitraceDumpTest, GetTraceModeTest_002, TestSize.Level0)
 
 /**
  * @tc.name: DumpTraceTest_001
- * @tc.desc: Test DumpTrace(int timeLimit) for valid input.
+ * @tc.desc: Test DumpTrace(int maxDuration) for valid input.
  * The no arg version DumpTrace() is implicitly tested in other tests.
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceDumpTest, DumpTraceTest_001, TestSize.Level0)
 {
-    const std::vector<std::string> tagGroups = {"scene_performance"};
+    const std::vector<std::string> tagGroups = {"default"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
 
-    int timeLimit = 1;
-    TraceRetInfo ret = DumpTrace(timeLimit);
+    int maxDuration = 1;
+    TraceRetInfo ret = DumpTrace(maxDuration);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(ret.outputFiles.size() > 0);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
@@ -192,41 +192,41 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_001, TestSize.Level0)
 
 /**
  * @tc.name: DumpTraceTest_002
- * @tc.desc: Test DumpTrace(int timeLimit) for invalid input.
+ * @tc.desc: Test DumpTrace(int maxDuration) for invalid input.
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceDumpTest, DumpTraceTest_002, TestSize.Level0)
 {
-    const std::vector<std::string> tagGroups = {"scene_performance"};
+    const std::vector<std::string> tagGroups = {"default"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
 
-    int timeLimit = -1;
-    TraceRetInfo ret = DumpTrace(timeLimit);
+    int maxDuration = -1;
+    TraceRetInfo ret = DumpTrace(maxDuration);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_PARAM);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
 /**
  * @tc.name: DumpTraceTest_003
- * @tc.desc: Test DumpTrace(uint64_t retroStartTime, int timeLimit) for valid input.
+ * @tc.desc: Test DumpTrace(uint64_t traceEndTime, int maxDuration) for valid input.
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceDumpTest, DumpTraceTest_003, TestSize.Level0)
 {
-    const std::vector<std::string> tagGroups = {"scene_performance"};
+    const std::vector<std::string> tagGroups = {"default"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    sleep(2);
-    uint64_t retroStartTime = static_cast<uint64_t>(std::time(nullptr));
-    TraceRetInfo ret = DumpTrace(retroStartTime);
+    sleep(2); // need at least one second of trace in cpu due to the input unit of 1 second to avoid OUT_OF_TIME.
+    uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr));
+    TraceRetInfo ret = DumpTrace(traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(ret.outputFiles.size() > 0);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     sleep(2);
-    retroStartTime = static_cast<uint64_t>(std::time(nullptr));
-    int timeLimit = 10;
-    ret = DumpTrace(retroStartTime, timeLimit);
+    traceEndTime = static_cast<uint64_t>(std::time(nullptr));
+    int maxDuration = 10;
+    ret = DumpTrace(traceEndTime, maxDuration);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(ret.outputFiles.size() > 0);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
@@ -234,74 +234,74 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_003, TestSize.Level0)
 
 /**
  * @tc.name: DumpTraceTest_004
- * @tc.desc: Test DumpTrace(uint64_t retroStartTime, int timeLimit) for invalid input.
+ * @tc.desc: Test DumpTrace(uint64_t traceEndTime, int maxDuration) for invalid input.
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
 {
-    const std::vector<std::string> tagGroups = {"scene_performance"};
+    const std::vector<std::string> tagGroups = {"default"};
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    uint64_t retroStartTime = 1;
-    TraceRetInfo ret = DumpTrace(retroStartTime);
+    uint64_t traceEndTime = 1;
+    TraceRetInfo ret = DumpTrace(traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_PARAM);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    retroStartTime = static_cast<uint64_t>(std::time(nullptr)) + 10;
-    ret = DumpTrace(retroStartTime);
+    traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 10;
+    ret = DumpTrace(traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_PARAM);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    retroStartTime = 10; // 1970-01-01 08:00:10
-    int timeLimit = -1;
-    ret = DumpTrace(retroStartTime, timeLimit);
+    traceEndTime = 10; // 1970-01-01 08:00:10
+    int maxDuration = -1;
+    ret = DumpTrace(traceEndTime, maxDuration);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_PARAM);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    retroStartTime = static_cast<uint64_t>(std::time(nullptr)) + 10;
-    timeLimit = -1;
-    ret = DumpTrace(retroStartTime, timeLimit);
+    traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 10;
+    maxDuration = -1;
+    ret = DumpTrace(traceEndTime, maxDuration);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_PARAM);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    retroStartTime = 10;
-    timeLimit = 10;
-    ret = DumpTrace(retroStartTime, timeLimit);
+    traceEndTime = 10;
+    maxDuration = 10;
+    ret = DumpTrace(traceEndTime, maxDuration);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_PARAM);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    retroStartTime = static_cast<uint64_t>(std::time(nullptr)) + 10;
-    timeLimit = 10;
-    ret = DumpTrace(retroStartTime, timeLimit);
+    traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 10;
+    maxDuration = 10;
+    ret = DumpTrace(traceEndTime, maxDuration);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_PARAM);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
 /**
  * @tc.name: DumpTraceTest_005
- * @tc.desc: Test DumpTrace(uint64_t retroStartTime, int timeLimit) for OUT_OF_TIME.
+ * @tc.desc: Test DumpTrace(uint64_t traceEndTime, int maxDuration) for OUT_OF_TIME.
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceDumpTest, DumpTraceTest_005, TestSize.Level0)
 {
-    const std::vector<std::string> tagGroups = {"scene_performance"};
+    const std::vector<std::string> tagGroups = {"default"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     sleep(2);
-    uint64_t retroStartTime = static_cast<uint64_t>(std::time(nullptr)) - 20;
-    TraceRetInfo ret = DumpTrace(retroStartTime);
+    uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr)) - 20; // 20 seconds ago
+    TraceRetInfo ret = DumpTrace(traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     sleep(2);
-    retroStartTime = static_cast<uint64_t>(std::time(nullptr)) - 20;
-    int timeLimit = 10;
-    ret = DumpTrace(retroStartTime, timeLimit);
+    traceEndTime = static_cast<uint64_t>(std::time(nullptr)) - 20;
+    int maxDuration = 10;
+    ret = DumpTrace(traceEndTime, maxDuration);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
