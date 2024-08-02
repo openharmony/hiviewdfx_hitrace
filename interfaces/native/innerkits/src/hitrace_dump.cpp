@@ -1594,8 +1594,10 @@ TraceRetInfo DumpTrace(uint64_t traceEndTime, int maxDuration)
                 ret.errorCode = INVALID_PARAM;
                 return ret;
             }
+            g_maxDuration = maxDuration ? maxDuration + 1 : 0; // for precision tolerance
+        } else {
+            g_maxDuration = maxDuration;
         }
-        g_maxDuration = maxDuration ? maxDuration + 1 : 0; // for precision tolerance
     }
     ret = DumpTrace();
     {
