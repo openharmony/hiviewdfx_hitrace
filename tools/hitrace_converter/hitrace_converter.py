@@ -454,7 +454,7 @@ def parse_binary_trace_file():
 
     outfile_flags = os.O_RDWR | os.O_CREAT
     outfile_mode = stat.S_IRUSR | stat.S_IWUSR
-    outfile = os.fdopen(os.open(out_file, outfile_flags, outfile_mode), 'w')
+    outfile = os.fdopen(os.open(out_file, outfile_flags, outfile_mode), 'w', encoding="utf-8")
 
     trace_header = parse_trace_header(infile)
     cpu_nums = (trace_header.get("reserved", 0) >> 1) & 0xf
