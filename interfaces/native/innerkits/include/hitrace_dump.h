@@ -90,7 +90,7 @@ TraceRetInfo DumpTrace(int maxDuration);
  * Using child processes to process trace tasks.
  * happenTime: the retrospective starting time stamp of target trace.
  * ----If happenTime = 0, it is not set.
- * return TraceErrorCode::SUCCESS if any trace is captured between the designated interval, 
+ * return TraceErrorCode::SUCCESS if any trace is captured between the designated interval
  * return TraceErrorCode::OUT_OF_TIME otherwise.
  * maxDuration: the maximum time(s) allowed for the trace task.
 */

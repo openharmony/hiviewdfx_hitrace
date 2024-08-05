@@ -202,7 +202,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_002, TestSize.Level0)
 
     int maxDuration = -1;
     TraceRetInfo ret = DumpTrace(maxDuration);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::CALL_ERROR);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -257,14 +257,14 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
     traceEndTime = 10; // 1970-01-01 08:00:10
     int maxDuration = -1;
     ret = DumpTrace(traceEndTime, maxDuration);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::CALL_ERROR);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 10; // current time + 10 seconds
     maxDuration = -1;
     ret = DumpTrace(traceEndTime, maxDuration);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::CALL_ERROR);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);

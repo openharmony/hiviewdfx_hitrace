@@ -1105,6 +1105,7 @@ bool EpollWaitforChildProcess(pid_t &pid, int &pipefd)
     if (numEvents == -1) {
         HILOG_ERROR(LOG_CORE, "epoll_wait error.");
         close(pipefd);
+        close(epollfd);
         return false;
     } else if (numEvents == 0) {
         HILOG_ERROR(LOG_CORE, "epoll_wait timeout.");
@@ -1115,9 +1116,8 @@ bool EpollWaitforChildProcess(pid_t &pid, int &pipefd)
         close(pipefd);
         close(epollfd);
         return false;
-    } else {
-        read(pipefd, &g_dumpStatus, sizeof(g_dumpStatus));
     }
+    read(pipefd, &g_dumpStatus, sizeof(g_dumpStatus));
     close(pipefd);
     close(epollfd);
     return true;
