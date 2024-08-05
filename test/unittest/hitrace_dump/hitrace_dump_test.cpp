@@ -202,7 +202,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_002, TestSize.Level0)
 
     int maxDuration = -1;
     TraceRetInfo ret = DumpTrace(maxDuration);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_PARAM);
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -244,41 +244,41 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     uint64_t traceEndTime = 1;
     TraceRetInfo ret = DumpTrace(traceEndTime);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_PARAM);
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 10;
+    traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 10; // current time + 10 seconds
     ret = DumpTrace(traceEndTime);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_PARAM);
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     traceEndTime = 10; // 1970-01-01 08:00:10
     int maxDuration = -1;
     ret = DumpTrace(traceEndTime, maxDuration);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_PARAM);
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 10;
+    traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 10; // current time + 10 seconds
     maxDuration = -1;
     ret = DumpTrace(traceEndTime, maxDuration);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_PARAM);
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     traceEndTime = 10;
     maxDuration = 10;
     ret = DumpTrace(traceEndTime, maxDuration);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_PARAM);
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 10;
+    traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 10; // current time + 10 seconds
     maxDuration = 10;
     ret = DumpTrace(traceEndTime, maxDuration);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_PARAM);
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -292,14 +292,14 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_005, TestSize.Level0)
     const std::vector<std::string> tagGroups = {"default"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     sleep(2);
-    uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr)) - 20; // 20 seconds ago
+    uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr)) - 20; // current time - 20 seconds
     TraceRetInfo ret = DumpTrace(traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     sleep(2);
-    traceEndTime = static_cast<uint64_t>(std::time(nullptr)) - 20;
+    traceEndTime = static_cast<uint64_t>(std::time(nullptr)) - 20; // current time - 20 seconds
     int maxDuration = 10;
     ret = DumpTrace(traceEndTime, maxDuration);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);

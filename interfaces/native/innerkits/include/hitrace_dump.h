@@ -88,12 +88,13 @@ TraceRetInfo DumpTrace(int maxDuration);
 /**
  * Reading trace data once from ftrace ringbuffer in the kernel.
  * Using child processes to process trace tasks.
- * traceEndTime: the retrospective starting time stamp of target trace.
- * ----If traceEndTime <= 0, it is not set.
- * ----If traceEndTime > current time stamp, TraceErrorCode::OUT_OF_TIME is returned.
+ * happenTime: the retrospective starting time stamp of target trace.
+ * ----If happenTime = 0, it is not set.
+ * return TraceErrorCode::SUCCESS if any trace is captured between the designated interval, 
+ * return TraceErrorCode::OUT_OF_TIME otherwise.
  * maxDuration: the maximum time(s) allowed for the trace task.
 */
-TraceRetInfo DumpTrace(uint64_t traceEndTime, int maxDuration = 0);
+TraceRetInfo DumpTrace(uint64_t happenTime, int maxDuration = 0);
 
 /**
  * Enable sub threads to periodically drop disk trace data.

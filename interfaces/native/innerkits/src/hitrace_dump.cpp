@@ -1545,7 +1545,7 @@ TraceRetInfo DumpTrace(int maxDuration)
     TraceRetInfo ret;
     if (maxDuration <= 0) {
         HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input.");
-        ret.errorCode = INVALID_PARAM;
+        ret.errorCode = CALL_ERROR;
         return ret;
     }
     {
@@ -1567,7 +1567,7 @@ TraceRetInfo DumpTrace(uint64_t traceEndTime, int maxDuration)
     TraceRetInfo ret;
     if (maxDuration < 0) {
         HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input.");
-        ret.errorCode = INVALID_PARAM;
+        ret.errorCode = CALL_ERROR;
         return ret;
     }
     {
@@ -1576,7 +1576,7 @@ TraceRetInfo DumpTrace(uint64_t traceEndTime, int maxDuration)
             std::time_t now = std::time(nullptr);
             if (traceEndTime > static_cast<uint64_t>(now)) {
                 HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input: traceEndTime is later than current time.");
-                ret.errorCode = INVALID_PARAM;
+                ret.errorCode = OUT_OF_TIME;
                 return ret;
             }
             struct sysinfo info;
@@ -1591,7 +1591,7 @@ TraceRetInfo DumpTrace(uint64_t traceEndTime, int maxDuration)
                 g_traceEndTime = (traceEndTime - boot_time + 1) * S_TO_NS;
             } else {
                 HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input: traceEndTime is earlier than system boot time.");
-                ret.errorCode = INVALID_PARAM;
+                ret.errorCode = OUT_OF_TIME;
                 return ret;
             }
             g_maxDuration = maxDuration ? maxDuration + 1 : 0; // for precision tolerance
