@@ -291,7 +291,6 @@ def generate_one_event_str(data, cpu_id, time_stamp, one_event):
         print("Error: function parse_" + str(one_event["name"]) + " not found")
     else:
         event_str += str(one_event["name"]) + ": " + parse_result
-        print("function parse_" + str(one_event["name"]))
 
     return event_str
 
@@ -454,7 +453,7 @@ def parse_binary_trace_file():
 
     outfile_flags = os.O_RDWR | os.O_CREAT
     outfile_mode = stat.S_IRUSR | stat.S_IWUSR
-    outfile = os.fdopen(os.open(out_file, outfile_flags, outfile_mode), 'w')
+    outfile = os.fdopen(os.open(out_file, outfile_flags, outfile_mode), 'w', encoding="utf-8")
 
     trace_header = parse_trace_header(infile)
     cpu_nums = (trace_header.get("reserved", 0) >> 1) & 0xf
