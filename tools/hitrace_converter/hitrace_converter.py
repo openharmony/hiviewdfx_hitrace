@@ -291,7 +291,6 @@ def generate_one_event_str(data, cpu_id, time_stamp, one_event):
         print("Error: function parse_" + str(one_event["name"]) + " not found")
     else:
         event_str += str(one_event["name"]) + ": " + parse_result
-        print("function parse_" + str(one_event["name"]))
 
     return event_str
 
