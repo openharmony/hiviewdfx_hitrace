@@ -15,6 +15,7 @@
 
 #include "hitrace/hitracechainc.h"
 #include <sched.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -110,7 +111,7 @@ void HiTraceChainClearId(void)
 static inline int HiTraceChainGetDeviceId(void)
 {
     // save device id and use it later
-    static int deviceId = 0;
+    static atomic_int deviceId = 0;
 
     if (deviceId == 0) {
         struct timeval tv;
@@ -124,7 +125,7 @@ static inline int HiTraceChainGetDeviceId(void)
 static inline unsigned int HiTraceChainGetCpuId(void)
 {
     // Using vdso call will make get_cpu_id faster: sched_getcpu()
-    static unsigned int cpuId = 0;
+    static atomic_uint cpuId = 0;
     cpuId++;
 
     return cpuId;

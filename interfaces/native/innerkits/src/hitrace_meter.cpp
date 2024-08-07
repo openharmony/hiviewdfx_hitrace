@@ -50,8 +50,8 @@ int g_markerFd = -1;
 int g_appFd = -1;
 std::once_flag g_onceFlag;
 std::once_flag g_onceWriteMarkerFailedFlag;
-CachedHandle g_cachedHandle;
-CachedHandle g_appPidCachedHandle;
+std::atomic<CachedHandle> g_cachedHandle;
+std::atomic<CachedHandle> g_appPidCachedHandle;
 
 std::atomic<bool> g_isHitraceMeterDisabled(false);
 std::atomic<bool> g_isHitraceMeterInit(false);
