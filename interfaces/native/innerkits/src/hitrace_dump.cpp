@@ -549,7 +549,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
     struct TraceFileContentHeader contentHeader;
     contentHeader.type = contentType;
     write(outFd, reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
-    int readLen = 0;
+    ssize_t writeLen = 0;
     int count = 0;
     const int maxCount = 2;
 
@@ -595,13 +595,18 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
             }
         }
 
-        write(outFd, g_buffer, bytes);
-        readLen += bytes;
+        ssize_t writeRet = TEMP_FAILURE_RETRY(write(outFd, g_buffer, bytes));
+        if (writeRet <= 0) {
+            HILOG_WARN(LOG_CORE, "WriteFile Fail, errno: %{public}d.", errno);
+        } else if (writeRet != bytes) {
+            HILOG_WARN(LOG_CORE, "WriteFile Full Info, errno: %{public}d.", errno);
+        }
+        writeLen += bytes;
         if (endFlag == true) {
             break;
         }
     }
-    contentHeader.length = static_cast<uint32_t>(readLen);
+    contentHeader.length = static_cast<uint32_t>(writeLen);
     uint32_t offset = contentHeader.length + sizeof(contentHeader);
     off_t pos = lseek(outFd, 0, SEEK_CUR);
     lseek(outFd, pos - offset, SEEK_SET);
@@ -610,8 +615,8 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
     close(srcFd);
     g_outputFileSize += static_cast<int>(offset);
     g_needGenerateNewTraceFile = false;
-    HILOG_INFO(LOG_CORE, "WriteFile end, path: %{public}s, byte: %{public}d. g_writeFileLimit: %{public}d",
-        src.c_str(), readLen, g_writeFileLimit);
+    HILOG_INFO(LOG_CORE, "WriteFile end, path: %{public}s, byte: %{public}zd. g_writeFileLimit: %{public}d",
+        src.c_str(), writeLen, g_writeFileLimit);
     return true;
 }
 
