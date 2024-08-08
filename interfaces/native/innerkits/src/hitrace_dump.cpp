@@ -18,29 +18,33 @@
 #include "common_utils.h"
 #include "dynamic_buffer.h"
 
-#include <map>
 #include <atomic>
-#include <fstream>
-#include <set>
-#include <thread>
-#include <mutex>
-#include <vector>
-#include <string>
-#include <memory>
-#include <filesystem>
-#include <unistd.h>
+#include <cinttypes>
+#include <csignal>
 #include <cstdio>
 #include <cstdlib>
-#include <sys/file.h>
-#include <sys/time.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#include <sys/prctl.h>
-#include <sys/wait.h>
-#include <cinttypes>
-#include <utility>
+#include <ctime>
 #include <dirent.h>
+#include <fcntl.h>
+#include <filesystem>
+#include <fstream>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <set>
+#include <string>
+#include <sys/epoll.h>
+#include <sys/file.h>
+#include <sys/prctl.h>
+#include <sys/stat.h>
+#include <sys/sysinfo.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <thread>
+#include <unistd.h>
+#include <utility>
+#include <vector>
 
 #include "cJSON.h"
 #include "parameters.h"
@@ -85,7 +89,7 @@ const int HM_DEFAULT_BUFFER_SIZE = 144 * 1024;
 #endif
 const int SAVED_CMDLINES_SIZE = 3072; // 3M
 const int KB_PER_MB = 1024;
-const int S_TO_NS = 1000000000;
+const uint64_t S_TO_NS = 1000000000;
 const int MAX_NEW_TRACE_FILE_LIMIT = 5;
 const int JUDGE_FILE_EXIST = 10;  // Check whether the trace file exists every 10 times.
 
@@ -144,10 +148,13 @@ uint8_t g_buffer[BUFFER_SIZE] = {0};
 std::vector<std::pair<std::string, int>> g_traceFilesTable;
 std::vector<std::string> g_outputFilesForCmd;
 int g_outputFileSize = 0;
-int g_timeLimit = 0;
+int g_maxDuration = 0;
 int g_newTraceFileLimit = 0;
 int g_writeFileLimit = 0;
 bool g_needGenerateNewTraceFile = false;
+uint64_t g_traceStartTime = 0;
+uint64_t g_traceEndTime = 0; // in nano seconds
+std::atomic<uint8_t> g_dumpStatus(TraceErrorCode::UNSET);
 
 TraceParams g_currentTraceParams = {};
 
@@ -534,6 +541,26 @@ bool CheckFileExist(const std::string &outputFile)
     return true;
 }
 
+void SetTimeIntervalBoundary()
+{
+    if (g_maxDuration > 0) {
+        if (g_traceEndTime) {
+            g_traceStartTime = g_traceEndTime - static_cast<uint64_t>(g_maxDuration) * S_TO_NS;
+        } else {
+            struct timespec bts = {0, 0};
+            clock_gettime(CLOCK_BOOTTIME, &bts);
+            g_traceStartTime = bts.tv_sec * S_TO_NS + bts.tv_nsec - static_cast<uint64_t>(g_maxDuration) * S_TO_NS;
+            g_traceEndTime = std::numeric_limits<uint64_t>::max();
+        }
+    } else {
+        g_traceStartTime = 0;
+        if (!g_traceEndTime) {
+            g_traceEndTime = std::numeric_limits<uint64_t>::max();
+        }
+    }
+    return;
+}
+
 bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std::string &outputFile)
 {
     std::string srcPath = CanonicalizeSpecPath(src.c_str());
@@ -553,13 +580,14 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
     int count = 0;
     const int maxCount = 2;
 
-    struct timespec bts = {0, 0};
-    int64_t traceStartTime = 0;
-
-    if ((contentType == CONTENT_TYPE_CPU_RAW) && (g_timeLimit > 0)) {
-        clock_gettime(CLOCK_BOOTTIME, &bts);
-        traceStartTime = bts.tv_sec * S_TO_NS + bts.tv_nsec - g_timeLimit * S_TO_NS;
+    uint64_t traceStartTime = 0;
+    uint64_t traceEndTime = std::numeric_limits<uint64_t>::max();
+    bool isCpuRaw = contentType >= CONTENT_TYPE_CPU_RAW && contentType < CONTENT_TYPE_HEADER_PAGE;
+    if (isCpuRaw) {
+        traceStartTime = g_traceStartTime;
+        traceEndTime = g_traceEndTime;
     }
+
     while (true) {
         int bytes = 0;
         bool endFlag = false;
@@ -570,21 +598,24 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
                 endFlag = true;
                 HILOG_DEBUG(LOG_CORE, "WriteFile: read %{public}s end.", src.c_str());
                 break;
-            }
-
-            if (readBytes < 0) {
+            } else if (readBytes < 0) {
                 endFlag = true;
                 HILOG_ERROR(LOG_CORE, "WriteFile: read %{public}s, data size: %{public}zd failed, errno: %{public}d.",
                     src.c_str(), readBytes, errno);
                 break;
             }
 
-            if (traceStartTime > 0) {
-                uint64_t traceTime = *(reinterpret_cast<uint64_t *>(g_buffer));
-                if (traceTime < static_cast<uint64_t>(traceStartTime)) {
-                    continue;
-                }
+            uint64_t pageTraceTime = *(reinterpret_cast<uint64_t *>(g_buffer + bytes));
+            if (traceEndTime < pageTraceTime) {
+                endFlag = true;
+                readBytes = 0;
+                break;
             }
+
+            if (pageTraceTime < traceStartTime) {
+                continue;
+            }
+
             if (CheckPage(contentType, g_buffer + bytes) == false) {
                 count++;
             }
@@ -613,6 +644,13 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
     write(outFd, reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
     lseek(outFd, pos, SEEK_SET);
     close(srcFd);
+    if (isCpuRaw) {
+        if (writeLen > 0) {
+            g_dumpStatus = TraceErrorCode::SUCCESS;
+        } else if (g_dumpStatus == TraceErrorCode::UNSET) {
+            g_dumpStatus = TraceErrorCode::OUT_OF_TIME;
+        }
+    }
     g_outputFileSize += static_cast<int>(offset);
     g_needGenerateNewTraceFile = false;
     HILOG_INFO(LOG_CORE, "WriteFile end, path: %{public}s, byte: %{public}zd. g_writeFileLimit: %{public}d",
@@ -757,16 +795,18 @@ bool HmWriteCpuRawInner(int outFd, const std::string &outputFile)
 bool WriteCpuRawInner(int outFd, const std::string &outputFile)
 {
     int cpuNums = GetCpuProcessors();
-    int ret = true;
     uint8_t type = CONTENT_TYPE_CPU_RAW;
     for (int i = 0; i < cpuNums; i++) {
         std::string src = g_traceRootPath + "per_cpu/cpu" + std::to_string(i) + "/trace_pipe_raw";
         if (!WriteFile(static_cast<uint8_t>(type + i), src, outFd, outputFile)) {
-            ret = false;
-            break;
+            return false;
         }
     }
-    return ret;
+    if (g_dumpStatus) {
+        HILOG_ERROR(LOG_CORE, "WriteCpuRawInner failed, errno: %{public}d.", static_cast<int>(g_dumpStatus.load()));
+        return false;
+    }
+    return true;
 }
 
 bool WriteCpuRaw(int outFd, const std::string &outputFile)
@@ -1024,27 +1064,6 @@ bool ReadRawTrace(std::string &outputFileName)
     return false;
 }
 
-bool WaitPidTimeout(pid_t pid, const int timeoutUsec)
-{
-    int delayTime = timeoutUsec;
-    while (delayTime > 0) {
-        usleep(UNIT_TIME);
-        delayTime -= UNIT_TIME;
-        int status = 0;
-        int ret = waitpid(pid, &status, WNOHANG);
-        if (ret == pid) {
-            HILOG_INFO(LOG_CORE, "wait pid(%{public}d) exit success.", pid);
-            return true;
-        } else if (ret < 0) {
-            HILOG_ERROR(LOG_CORE, "wait pid(%{public}d) exit failed, status: %{public}d.", pid, status);
-            return false;
-        }
-        HILOG_DEBUG(LOG_CORE, "grasping trace, pid(%{public}d), ret(%{public}d).", pid, ret);
-    }
-    HILOG_ERROR(LOG_CORE, "wait pid(%{public}d) %{public}d us timeout.", pid, timeoutUsec);
-    return false;
-}
-
 void SetProcessName(std::string& processName)
 {
     if (processName.size() <= 0) {
@@ -1063,53 +1082,109 @@ void SetProcessName(std::string& processName)
     HILOG_INFO(LOG_CORE, "New process: %{public}s.", setName.c_str());
 }
 
+void TimeoutSignalHandler(int signum)
+{
+    if (signum == SIGUSR1) {
+        HILOG_ERROR(LOG_CORE, "child process being terminated by parent process.");
+        _exit(EXIT_SUCCESS);
+    }
+}
+
+bool EpollWaitforChildProcess(pid_t &pid, int &pipefd)
+{
+    int epollfd = epoll_create1(0);
+    if (epollfd == -1) {
+        HILOG_ERROR(LOG_CORE, "epoll_create1 error.");
+        return false;
+    }
+
+    struct epoll_event event;
+    event.events = EPOLLIN;
+    event.data.fd = pipefd;
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, pipefd, &event) == -1) {
+        HILOG_ERROR(LOG_CORE, "epoll_ctl error.");
+        return false;
+    }
+
+    struct epoll_event events[1];
+    constexpr int waitTimeoutMs = 10000; // 10000ms = 10s
+    int numEvents = epoll_wait(epollfd, events, 1, waitTimeoutMs);
+    if (numEvents == -1) {
+        HILOG_ERROR(LOG_CORE, "epoll_wait error.");
+        close(pipefd);
+        close(epollfd);
+        return false;
+    } else if (numEvents == 0) {
+        HILOG_ERROR(LOG_CORE, "epoll_wait timeout.");
+        if (waitpid(pid, nullptr, WNOHANG) <= 0) {
+            HILOG_ERROR(LOG_CORE, "kill timeout child process.");
+            kill(pid, SIGUSR1);
+        }
+        close(pipefd);
+        close(epollfd);
+        return false;
+    }
+    read(pipefd, &g_dumpStatus, sizeof(g_dumpStatus));
+    close(pipefd);
+    close(epollfd);
+    return true;
+}
+
 TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
 {
-    g_dumpEnd = false;
+    int pipefd[2];
+    if (pipe(pipefd) == -1) {
+        HILOG_ERROR(LOG_CORE, "pipe creation error.");
+        return TraceErrorCode::SYSTEM_ERROR;
+    }
+
     std::string outputFileName = GenerateName();
     std::string reOutPath = CanonicalizeSpecPath(outputFileName.c_str());
-
     /*Child process handles task, Father process wait.*/
     pid_t pid = fork();
     if (pid < 0) {
         HILOG_ERROR(LOG_CORE, "fork error.");
-        g_dumpEnd = true;
         return TraceErrorCode::WRITE_TRACE_INFO_ERROR;
-    }
-    bool ret = false;
-    if (pid == 0) {
+    } else if (pid == 0) {
+        signal(SIGUSR1, TimeoutSignalHandler);
+        close(pipefd[0]);
         std::string processName = "HitraceDump";
         SetProcessName(processName);
         MarkClockSync(g_traceRootPath);
-        const int waitTime = 10000; // 10ms
+        constexpr int waitTime = 10000; // 10ms
         usleep(waitTime);
-        ReadRawTrace(reOutPath);
+        if (ReadRawTrace(reOutPath)) {
+            g_dumpStatus = TraceErrorCode::SUCCESS;
+        }
         HILOG_DEBUG(LOG_CORE, "%{public}s exit.", processName.c_str());
+        write(pipefd[1], &g_dumpStatus, sizeof(g_dumpStatus));
         _exit(EXIT_SUCCESS);
     } else {
-        const int timeoutUsec = 10000000; // 10s
-        bool isTrue = WaitPidTimeout(pid, timeoutUsec);
-        if (isTrue && access(reOutPath.c_str(), F_OK) == 0) {
-            HILOG_INFO(LOG_CORE, "Output: %{public}s.", reOutPath.c_str());
-            ret = true;
-        } else {
-            HILOG_ERROR(LOG_CORE, "Output error: %{public}s.", reOutPath.c_str());
-        }
+        close(pipefd[1]);
     }
 
-    struct timeval now = {0, 0};
-    gettimeofday(&now, nullptr);
-    int nowSec = now.tv_sec;
-    SearchFromTable(outputFiles, nowSec);
-    if (ret) {
+    if (!EpollWaitforChildProcess(pid, pipefd[0])) {
+        return TraceErrorCode::SYSTEM_ERROR;
+    }
+
+    if (g_dumpStatus) {
+        return static_cast<TraceErrorCode>(g_dumpStatus.load());
+    }
+
+    if (access(reOutPath.c_str(), F_OK) == 0) {
+        HILOG_INFO(LOG_CORE, "Output: %{public}s.", reOutPath.c_str());
+        struct timeval now = {0, 0};
+        gettimeofday(&now, nullptr);
+        int nowSec = now.tv_sec;
+        SearchFromTable(outputFiles, nowSec);
         outputFiles.push_back(outputFileName);
         g_traceFilesTable.push_back({outputFileName, nowSec});
     } else {
+        HILOG_ERROR(LOG_CORE, "Output error: %{public}s.", reOutPath.c_str());
         HILOG_ERROR(LOG_CORE, "DumpTraceInner: write %{public}s failed.", outputFileName.c_str());
-        g_dumpEnd = true;
         return TraceErrorCode::WRITE_TRACE_INFO_ERROR;
     }
-    g_dumpEnd = true;
+
     return TraceErrorCode::SUCCESS;
 }
 
@@ -1464,28 +1539,78 @@ TraceRetInfo DumpTrace()
         return ret;
     }
     std::lock_guard<std::mutex> lock(g_traceMutex);
+    g_dumpStatus = TraceErrorCode::UNSET;
+    SetTimeIntervalBoundary();
     ret.errorCode = DumpTraceInner(ret.outputFiles);
     HILOG_INFO(LOG_CORE, "DumpTrace done.");
     return ret;
 }
 
-TraceRetInfo DumpTrace(int timeLimit)
+TraceRetInfo DumpTrace(int maxDuration)
 {
-    HILOG_INFO(LOG_CORE, "DumpTrace with time limit start, time limit is %{public}d.", timeLimit);
+    HILOG_INFO(LOG_CORE, "DumpTrace with time limit start, time limit is %{public}d.", maxDuration);
     TraceRetInfo ret;
-    if (timeLimit <= 0) {
+    if (maxDuration <= 0) {
         HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input.");
         ret.errorCode = CALL_ERROR;
         return ret;
     }
     {
         std::lock_guard<std::mutex> lock(g_traceMutex);
-        g_timeLimit = timeLimit;
+        g_maxDuration = maxDuration;
     }
     ret = DumpTrace();
     {
         std::lock_guard<std::mutex> lock(g_traceMutex);
-        g_timeLimit = 0;
+        g_maxDuration = 0;
+    }
+    HILOG_INFO(LOG_CORE, "DumpTrace with time limit done.");
+    return ret;
+}
+
+TraceRetInfo DumpTrace(uint64_t traceEndTime, int maxDuration)
+{
+    HILOG_INFO(LOG_CORE, "DumpTrace with time limit start, time limit is %{public}d.", maxDuration);
+    TraceRetInfo ret;
+    if (maxDuration < 0) {
+        HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input.");
+        ret.errorCode = CALL_ERROR;
+        return ret;
+    }
+    {
+        std::lock_guard<std::mutex> lock(g_traceMutex);
+        if (traceEndTime > 0) {
+            std::time_t now = std::time(nullptr);
+            if (traceEndTime > static_cast<uint64_t>(now)) {
+                HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input: traceEndTime is later than current time.");
+                ret.errorCode = OUT_OF_TIME;
+                return ret;
+            }
+            struct sysinfo info;
+            if (sysinfo(&info) != 0) {
+                HILOG_ERROR(LOG_CORE, "Get system info failed.");
+                ret.errorCode = UNKNOWN_ERROR;
+                return ret;
+            }
+            std::time_t boot_time = now - info.uptime;
+            if (traceEndTime > static_cast<uint64_t>(boot_time)) {
+                // beware of input precision of seconds: add an extra second of tolerance
+                g_traceEndTime = (traceEndTime - boot_time + 1) * S_TO_NS;
+            } else {
+                HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input: traceEndTime is earlier than system boot time.");
+                ret.errorCode = OUT_OF_TIME;
+                return ret;
+            }
+            g_maxDuration = maxDuration ? maxDuration + 1 : 0; // for precision tolerance
+        } else {
+            g_maxDuration = maxDuration;
+        }
+    }
+    ret = DumpTrace();
+    {
+        std::lock_guard<std::mutex> lock(g_traceMutex);
+        g_maxDuration = 0;
+        g_traceEndTime = 0;
     }
     HILOG_INFO(LOG_CORE, "DumpTrace with time limit done.");
     return ret;
