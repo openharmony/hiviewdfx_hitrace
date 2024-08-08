@@ -639,7 +639,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
     lseek(outFd, pos, SEEK_SET);
     close(srcFd);
     if (isCpuRaw) {
-        if (readLen > 0) {
+        if (writeLen > 0) {
             g_dumpStatus = TraceErrorCode::SUCCESS;
         } else if (g_dumpStatus == TraceErrorCode::UNSET) {
             g_dumpStatus = TraceErrorCode::OUT_OF_TIME;
