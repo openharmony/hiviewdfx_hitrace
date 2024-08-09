@@ -627,12 +627,16 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
         }
 
         ssize_t writeRet = TEMP_FAILURE_RETRY(write(outFd, g_buffer, bytes));
-        if (writeRet <= 0) {
+        if (writeRet < 0) {
             HILOG_WARN(LOG_CORE, "WriteFile Fail, errno: %{public}d.", errno);
-        } else if (writeRet != bytes) {
-            HILOG_WARN(LOG_CORE, "WriteFile Full Info, errno: %{public}d.", errno);
+        } else {
+            if (writeRet != static_cast<ssize_t>(bytes)) {
+                HILOG_WARN(LOG_CORE, "Failed to write full info, writeLen: %{public}zd, FullLen: %{public}zd.",
+                    writeRet, bytes);
+            }
+            writeLen += writeRet;
         }
-        writeLen += bytes;
+
         if (endFlag == true) {
             break;
         }
@@ -789,7 +793,7 @@ bool HmWriteCpuRawInner(int outFd, const std::string &outputFile)
     uint8_t type = CONTENT_TYPE_CPU_RAW;
     std::string src = g_traceRootPath + "/trace_pipe_raw";
 
-    if (!WriteFile(type, src, outFd, outputFile)){
+    if (!WriteFile(type, src, outFd, outputFile)) {
         return false;
     }
 
