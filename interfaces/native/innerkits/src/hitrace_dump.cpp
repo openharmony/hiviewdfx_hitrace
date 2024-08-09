@@ -667,9 +667,9 @@ void WriteEventFile(std::string &srcPath, int outFd)
         HILOG_ERROR(LOG_CORE, "WriteEventFile: open %{public}s failed.", srcPath.c_str());
         return;
     }
-    ssize_t readLen = 0;
+    int64_t readLen = 0;
     do {
-        ssize_t len = read(srcFd, buffer, PAGE_SIZE);
+        int64_t len = read(srcFd, buffer, PAGE_SIZE);
         if (len <= 0) {
             break;
         }
