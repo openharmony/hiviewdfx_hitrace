@@ -677,7 +677,7 @@ void WriteEventFile(std::string &srcPath, int outFd)
         readLen += len;
     } while (true);
     close(srcFd);
-    HILOG_INFO(LOG_CORE, "WriteEventFile end, path: %{public}s, data size: %{public}zd.", srcPath.c_str(), readLen);
+    HILOG_INFO(LOG_CORE, "WriteEventFile end, path: %{public}s, data size: %{public}lld.", srcPath.c_str(), readLen);
 }
 
 bool WriteEventsFormat(int outFd, const std::string &outputFile)
