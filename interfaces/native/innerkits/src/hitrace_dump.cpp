@@ -270,14 +270,12 @@ bool WriteStrToFileInner(const std::string& filename, const std::string& str)
 
 bool WriteStrToFile(const std::string& filename, const std::string& str)
 {
-    bool ret = false;
-    if (access((g_traceRootPath + filename).c_str(), W_OK) == 0) {
-        if (WriteStrToFileInner(g_traceRootPath + filename, str)) {
-            ret = true;
-        }
+    if (access((g_traceRootPath + filename).c_str(), W_OK) < 0) {
+        HILOG_ERROR(LOG_CORE, "WriteStrToFile: Failed to access %{public}s, errno(%{public}d).",
+            (g_traceRootPath + filename).c_str(), errno);
+        return false;
     }
-
-    return ret;
+    return WriteStrToFileInner(g_traceRootPath + filename, str);
 }
 
 void SetTraceNodeStatus(const std::string &path, bool enabled)
