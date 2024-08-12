@@ -671,9 +671,9 @@ void WriteEventFile(std::string &srcPath, int outFd)
         HILOG_ERROR(LOG_CORE, "WriteEventFile: open %{public}s failed.", srcPath.c_str());
         return;
     }
-    ssize_t readLen = 0;
+    int64_t readLen = 0;
     do {
-        ssize_t len = read(srcFd, buffer, PAGE_SIZE);
+        int64_t len = read(srcFd, buffer, PAGE_SIZE);
         if (len <= 0) {
             break;
         }
@@ -681,7 +681,7 @@ void WriteEventFile(std::string &srcPath, int outFd)
         readLen += len;
     } while (true);
     close(srcFd);
-    HILOG_INFO(LOG_CORE, "WriteEventFile end, path: %{public}s, data size: %{public}zd.", srcPath.c_str(), readLen);
+    HILOG_INFO(LOG_CORE, "WriteEventFile end, path: %{public}s, data size: %{public}lld.", srcPath.c_str(), readLen);
 }
 
 bool WriteEventsFormat(int outFd, const std::string &outputFile)
