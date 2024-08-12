@@ -793,7 +793,16 @@ bool HmWriteCpuRawInner(int outFd, const std::string &outputFile)
     uint8_t type = CONTENT_TYPE_CPU_RAW;
     std::string src = g_traceRootPath + "/trace_pipe_raw";
 
-    return WriteFile(type, src, outFd, outputFile);
+    if (!WriteFile(type, src, outFd, outputFile)) {
+        return false;
+    }
+
+    if (g_dumpStatus) {
+        HILOG_ERROR(LOG_CORE, "HmWriteCpuRawInner failed, errno: %{public}d.", static_cast<int>(g_dumpStatus.load()));
+        return false;
+    }
+
+    return true;
 }
 
 bool WriteCpuRawInner(int outFd, const std::string &outputFile)
