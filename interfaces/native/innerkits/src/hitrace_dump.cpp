@@ -604,7 +604,9 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
             }
 
             uint64_t pageTraceTime = 0;
-            std::memcpy(&pageTraceTime, g_buffer + bytes, sizeof(uint64_t));
+            if (memcpy_s(&pageTraceTime, sizeof(uint64_t), g_buffer + bytes, sizeof(uint64_t)) != EOK) {
+                break;
+            }
             if (traceEndTime < pageTraceTime) {
                 endFlag = true;
                 readBytes = 0;
@@ -1140,6 +1142,9 @@ bool EpollWaitforChildProcess(pid_t &pid, int &pipefd)
     read(pipefd, &g_dumpStatus, sizeof(g_dumpStatus));
     close(pipefd);
     close(epollfd);
+    if (waitpid(pid, nullptr, 0) <= 0) {
+        HILOG_ERROR(LOG_CORE, "wait HitraceDump(%{public}d) exit failed, errno(%{public}d)", pid, errno);
+    }
     return true;
 }
 
