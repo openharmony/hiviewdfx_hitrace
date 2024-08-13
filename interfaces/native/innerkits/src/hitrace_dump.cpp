@@ -603,7 +603,8 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
                 break;
             }
 
-            uint64_t pageTraceTime = *(reinterpret_cast<uint64_t *>(g_buffer + bytes));
+            uint64_t pageTraceTime = 0;
+            std::memcpy(&pageTraceTime, g_buffer + bytes, sizeof(uint64_t));
             if (traceEndTime < pageTraceTime) {
                 endFlag = true;
                 readBytes = 0;
