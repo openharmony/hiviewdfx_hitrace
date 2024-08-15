@@ -208,7 +208,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_002, TestSize.Level0)
 
 /**
  * @tc.name: DumpTraceTest_003
- * @tc.desc: Test DumpTrace(uint64_t traceEndTime, int maxDuration) for valid input.
+ * @tc.desc: Test DumpTrace(int maxDuration, uint64_t happenTime) for valid input.
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceDumpTest, DumpTraceTest_003, TestSize.Level0)
@@ -217,7 +217,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_003, TestSize.Level0)
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     sleep(2); // need at least one second of trace in cpu due to the input unit of 1 second to avoid OUT_OF_TIME.
     uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr));
-    TraceRetInfo ret = DumpTrace(traceEndTime);
+    TraceRetInfo ret = DumpTrace(0, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(ret.outputFiles.size() > 0);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
@@ -226,7 +226,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_003, TestSize.Level0)
     sleep(2);
     traceEndTime = static_cast<uint64_t>(std::time(nullptr));
     int maxDuration = 10;
-    ret = DumpTrace(traceEndTime, maxDuration);
+    ret = DumpTrace(maxDuration, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(ret.outputFiles.size() > 0);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
@@ -234,7 +234,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_003, TestSize.Level0)
 
 /**
  * @tc.name: DumpTraceTest_004
- * @tc.desc: Test DumpTrace(uint64_t traceEndTime, int maxDuration) for invalid input.
+ * @tc.desc: Test DumpTrace(int maxDuration, uint64_t happenTime) for invalid input.
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
@@ -243,48 +243,55 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     uint64_t traceEndTime = 1;
-    TraceRetInfo ret = DumpTrace(traceEndTime);
+    TraceRetInfo ret = DumpTrace(0, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 10; // current time + 10 seconds
-    ret = DumpTrace(traceEndTime);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
+    ret = DumpTrace(0, traceEndTime);
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     traceEndTime = 10; // 1970-01-01 08:00:10
     int maxDuration = -1;
-    ret = DumpTrace(traceEndTime, maxDuration);
+    ret = DumpTrace(maxDuration, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::CALL_ERROR);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 10; // current time + 10 seconds
     maxDuration = -1;
-    ret = DumpTrace(traceEndTime, maxDuration);
+    ret = DumpTrace(maxDuration, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::CALL_ERROR);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     traceEndTime = 10;
     maxDuration = 10;
-    ret = DumpTrace(traceEndTime, maxDuration);
+    ret = DumpTrace(maxDuration, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 10; // current time + 10 seconds
+    traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 100; // current time + 100 seconds
     maxDuration = 10;
-    ret = DumpTrace(traceEndTime, maxDuration);
+    ret = DumpTrace(maxDuration, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 1; // current time + 1 seconds
+    maxDuration = 10;
+    ret = DumpTrace(maxDuration, traceEndTime);
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
 /**
  * @tc.name: DumpTraceTest_005
- * @tc.desc: Test DumpTrace(uint64_t traceEndTime, int maxDuration) for OUT_OF_TIME.
+ * @tc.desc: Test DumpTrace(int maxDuration, uint64_t happenTime) for OUT_OF_TIME.
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceDumpTest, DumpTraceTest_005, TestSize.Level0)
@@ -293,7 +300,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_005, TestSize.Level0)
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     sleep(2);
     uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr)) - 20; // current time - 20 seconds
-    TraceRetInfo ret = DumpTrace(traceEndTime);
+    TraceRetInfo ret = DumpTrace(0, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
@@ -301,7 +308,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_005, TestSize.Level0)
     sleep(2);
     traceEndTime = static_cast<uint64_t>(std::time(nullptr)) - 20; // current time - 20 seconds
     int maxDuration = 10;
-    ret = DumpTrace(traceEndTime, maxDuration);
+    ret = DumpTrace(maxDuration, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
@@ -334,7 +341,7 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_001, TestSize.Level0)
 
     ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::SUCCESS);
     sleep(1);
-    
+
     TraceRetInfo ret = DumpTraceOff();
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(ret.outputFiles.size() > 0);
@@ -357,10 +364,10 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_002, TestSize.Level0)
 
     TraceRetInfo ret = DumpTraceOff();
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
-    
+
     ASSERT_TRUE(TraverseFiles(ret.outputFiles, filePathName))
         << "unspport set outputfile, default generate file in /data/log/hitrace.";
-  
+
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -377,7 +384,7 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_003, TestSize.Level0)
 
     args = "tags:hdc clockType:boot bufferSize:1024 overwrite:1 descriptions:123";
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::TAG_ERROR);
-    
+
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -396,7 +403,7 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_004, TestSize.Level0)
 
     ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::SUCCESS);
     sleep(1);
-    
+
     TraceRetInfo ret = DumpTraceOff();
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(ret.outputFiles.size() > 0);
@@ -424,7 +431,7 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_005, TestSize.Level0)
     std::string args = "tags:sched clockType:boot bufferSize:1024 overwrite:1";
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::CALL_ERROR);
     ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::CALL_ERROR);
-    
+
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -562,7 +569,7 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_002, TestSize.Level0)
     ASSERT_TRUE(CreateFile(outputFileName)) << "create log file failed.";
     HILOG_INFO(LOG_CORE, "outputFileName: %{public}s", outputFileName.c_str());
     AddPair2Table(outputFileName, nowSec);
-    
+
     TraceRetInfo ret = DumpTrace();
     // Remove outputFileName in g_hitraceFilesTable
     EraseFile(outputFileName);
@@ -630,7 +637,7 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_005, TestSize.Level0)
 
     const std::vector<std::string> tagGroups = {"scene_performance"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::CALL_ERROR);
-    
+
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);

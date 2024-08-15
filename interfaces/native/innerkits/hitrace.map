@@ -2,7 +2,7 @@
   global:
     extern "C++" {
         UpdateTraceLabel;
-        SetTraceDisabled; 
+        SetTraceDisabled;
         StartTrace;
         StartTraceDebug;
         StartTraceArgs;
@@ -33,9 +33,8 @@
         "OHOS::HiviewDFX::Hitrace::OpenTrace(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
         "OHOS::HiviewDFX::Hitrace::OpenTrace(std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&)";
         "OHOS::HiviewDFX::Hitrace::DumpTrace()";
-        "OHOS::HiviewDFX::Hitrace::DumpTrace(int)";
-        "OHOS::HiviewDFX::Hitrace::DumpTrace(unsigned long, int)";
-        "OHOS::HiviewDFX::Hitrace::DumpTrace(unsigned long long, int)";
+        "OHOS::HiviewDFX::Hitrace::DumpTrace(int, unsigned long)";
+        "OHOS::HiviewDFX::Hitrace::DumpTrace(int, unsigned long long)";
         "OHOS::HiviewDFX::Hitrace::DumpTraceOn()";
         "OHOS::HiviewDFX::Hitrace::DumpTraceOff()";
         "OHOS::HiviewDFX::Hitrace::CloseTrace()";
