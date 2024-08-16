@@ -12,6 +12,12 @@
             "sysFiles": [],
             "type": 0
         },
+        "cloudfile": {
+            "description": "Cloud file system",
+            "tag_offset": 8,
+            "sysFiles": [],
+            "type": 0
+        },
         "animation": {
             "description": "Animation",
             "tag_offset": 9,
@@ -538,6 +544,6 @@
                     "hdf", "virse"],
         "scene_performance": ["net", "dsched", "graphic", "multimodalinput", "dinput", "ark", "ace", "window",
                               "zaudio", "daudio", "zmedia", "dcamera", "zcamera", "dhfwk", "app", "gresource", "ability",
-                              "power", "samgr", "ffrt", "ufs", "nweb"]
+                              "power", "samgr", "ffrt", "ufs", "nweb", "cloudfile"]
     }
 }
