@@ -635,7 +635,7 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
             }
             WriteToTraceMarker(buf, bytes);
         } else if (EXPECTANTLY(len > NAME_MAX_LEN)) {
-            AddTraceMarkerLarge(name.substr(0, 4000), type, value);
+            AddTraceMarkerLarge(name.substr(0, NAME_MAX_LEN), type, value);
         } else {
             AddTraceMarkerLarge(name, type, value);
         }
