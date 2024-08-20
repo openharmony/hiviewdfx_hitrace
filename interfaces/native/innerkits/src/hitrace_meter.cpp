@@ -74,6 +74,7 @@ constexpr int VAR_NAME_MAX_SIZE = 400;
 constexpr int NAME_NORMAL_LEN = 512;
 constexpr int BUFFER_LEN = 640;
 constexpr int HITRACEID_LEN = 64;
+constexpr int NAME_MAX_LEN = 4000;
 
 static const int PID_BUF_SIZE = 6;
 static char g_pid[PID_BUF_SIZE];
@@ -633,6 +634,8 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
                     "%c|%s|H:%s %lld", marktypestr, g_pid, name.c_str(), value);
             }
             WriteToTraceMarker(buf, bytes);
+        } else if (EXPECTANTLY(len > NAME_MAX_LEN)) {
+            AddTraceMarkerLarge(name.substr(0, 4000), type, value);
         } else {
             AddTraceMarkerLarge(name, type, value);
         }
