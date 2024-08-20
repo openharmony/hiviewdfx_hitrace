@@ -147,12 +147,13 @@ uint8_t g_buffer[BUFFER_SIZE] = {0};
 std::vector<std::pair<std::string, int>> g_traceFilesTable;
 std::vector<std::string> g_outputFilesForCmd;
 int g_outputFileSize = 0;
-int g_maxDuration = 0;
+int g_inputMaxDuration = 0;
+uint64_t g_inputTraceEndTime = 0; // in nano seconds
 int g_newTraceFileLimit = 0;
 int g_writeFileLimit = 0;
 bool g_needGenerateNewTraceFile = false;
 uint64_t g_traceStartTime = 0;
-uint64_t g_traceEndTime = 0; // in nano seconds
+uint64_t g_traceEndTime = std::numeric_limits<uint64_t>::max(); // in nano seconds
 std::atomic<uint8_t> g_dumpStatus(TraceErrorCode::UNSET);
 
 TraceParams g_currentTraceParams = {};
@@ -540,22 +541,27 @@ bool CheckFileExist(const std::string &outputFile)
 
 void SetTimeIntervalBoundary()
 {
-    if (g_maxDuration > 0) {
-        if (g_traceEndTime) {
-            g_traceStartTime = g_traceEndTime - static_cast<uint64_t>(g_maxDuration) * S_TO_NS;
+    if (g_inputMaxDuration > 0) {
+        if (g_inputTraceEndTime) {
+            g_traceStartTime = g_inputTraceEndTime - static_cast<uint64_t>(g_inputMaxDuration) * S_TO_NS;
+            g_traceEndTime = g_inputTraceEndTime;
         } else {
             struct timespec bts = {0, 0};
             clock_gettime(CLOCK_BOOTTIME, &bts);
-            g_traceStartTime = bts.tv_sec * S_TO_NS + bts.tv_nsec - static_cast<uint64_t>(g_maxDuration) * S_TO_NS;
+            g_traceStartTime = bts.tv_sec * S_TO_NS + bts.tv_nsec - static_cast<uint64_t>(g_inputMaxDuration) * S_TO_NS;
             g_traceEndTime = std::numeric_limits<uint64_t>::max();
         }
     } else {
         g_traceStartTime = 0;
-        if (!g_traceEndTime) {
-            g_traceEndTime = std::numeric_limits<uint64_t>::max();
-        }
+        g_traceEndTime = g_inputTraceEndTime > 0 ? g_inputTraceEndTime : std::numeric_limits<uint64_t>::max();
     }
     return;
+}
+
+void RestoreTimeIntervalBoundary()
+{
+    g_traceStartTime = 0;
+    g_traceEndTime = std::numeric_limits<uint64_t>::max();
 }
 
 bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std::string &outputFile)
@@ -610,6 +616,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
             if (traceEndTime < pageTraceTime) {
                 endFlag = true;
                 readBytes = 0;
+                HILOG_ERROR(LOG_CORE, "Current trace time is out of trace end time, stop to read trace info.");
                 break;
             }
 
@@ -1559,33 +1566,12 @@ TraceRetInfo DumpTrace()
     g_dumpStatus = TraceErrorCode::UNSET;
     SetTimeIntervalBoundary();
     ret.errorCode = DumpTraceInner(ret.outputFiles);
+    RestoreTimeIntervalBoundary();
     HILOG_INFO(LOG_CORE, "DumpTrace done.");
     return ret;
 }
 
-TraceRetInfo DumpTrace(int maxDuration)
-{
-    HILOG_INFO(LOG_CORE, "DumpTrace with time limit start, time limit is %{public}d.", maxDuration);
-    TraceRetInfo ret;
-    if (maxDuration <= 0) {
-        HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input.");
-        ret.errorCode = CALL_ERROR;
-        return ret;
-    }
-    {
-        std::lock_guard<std::mutex> lock(g_traceMutex);
-        g_maxDuration = maxDuration;
-    }
-    ret = DumpTrace();
-    {
-        std::lock_guard<std::mutex> lock(g_traceMutex);
-        g_maxDuration = 0;
-    }
-    HILOG_INFO(LOG_CORE, "DumpTrace with time limit done.");
-    return ret;
-}
-
-TraceRetInfo DumpTrace(uint64_t traceEndTime, int maxDuration)
+TraceRetInfo DumpTrace(int maxDuration, uint64_t traceEndTime)
 {
     HILOG_INFO(LOG_CORE, "DumpTrace with time limit start, time limit is %{public}d.", maxDuration);
     TraceRetInfo ret;
@@ -1599,9 +1585,7 @@ TraceRetInfo DumpTrace(uint64_t traceEndTime, int maxDuration)
         if (traceEndTime > 0) {
             std::time_t now = std::time(nullptr);
             if (traceEndTime > static_cast<uint64_t>(now)) {
-                HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input: traceEndTime is later than current time.");
-                ret.errorCode = OUT_OF_TIME;
-                return ret;
+                HILOG_WARN(LOG_CORE, "DumpTrace: Warning: traceEndTime is later than current time.");
             }
             struct sysinfo info;
             if (sysinfo(&info) != 0) {
@@ -1612,22 +1596,22 @@ TraceRetInfo DumpTrace(uint64_t traceEndTime, int maxDuration)
             std::time_t boot_time = now - info.uptime;
             if (traceEndTime > static_cast<uint64_t>(boot_time)) {
                 // beware of input precision of seconds: add an extra second of tolerance
-                g_traceEndTime = (traceEndTime - boot_time + 1) * S_TO_NS;
+                g_inputTraceEndTime = (traceEndTime - boot_time + 1) * S_TO_NS;
             } else {
                 HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input: traceEndTime is earlier than system boot time.");
                 ret.errorCode = OUT_OF_TIME;
                 return ret;
             }
-            g_maxDuration = maxDuration ? maxDuration + 1 : 0; // for precision tolerance
+            g_inputMaxDuration = maxDuration ? maxDuration + 1 : 0; // for precision tolerance
         } else {
-            g_maxDuration = maxDuration;
+            g_inputMaxDuration = maxDuration;
         }
     }
     ret = DumpTrace();
     {
         std::lock_guard<std::mutex> lock(g_traceMutex);
-        g_maxDuration = 0;
-        g_traceEndTime = 0;
+        g_inputMaxDuration = 0;
+        g_inputTraceEndTime = 0;
     }
     HILOG_INFO(LOG_CORE, "DumpTrace with time limit done.");
     return ret;
@@ -1719,7 +1703,6 @@ void SetTraceFilesTable(std::vector<std::pair<std::string, int>>& traceFilesTabl
 {
     g_traceFilesTable = traceFilesTable;
 }
-
 } // Hitrace
 } // HiviewDFX
 } // OHOS
