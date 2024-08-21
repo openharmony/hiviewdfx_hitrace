@@ -233,6 +233,7 @@ void WriteFailedLog()
 void WriteToTraceMarker(const char* buf, const int count)
 {
     if (UNEXPECTANTLY(count <= 0 || count >= BUFFER_LEN)) {
+        HILOG_INFO(LOG_CORE, "Write trace canceled, buf size is greater than the BUFFER_LEN");
         return;
     }
     if (write(g_markerFd, buf, count) < 0) {
@@ -633,7 +634,7 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
                     "%c|%s|H:%s %lld", marktypestr, g_pid, name.c_str(), value);
             }
             WriteToTraceMarker(buf, bytes);
-        } else {
+        } else if (EXPECTANTLY(len < BUFFER_LEN)) {
             AddTraceMarkerLarge(name, type, value);
         }
     }
