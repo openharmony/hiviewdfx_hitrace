@@ -74,7 +74,6 @@ constexpr int VAR_NAME_MAX_SIZE = 400;
 constexpr int NAME_NORMAL_LEN = 512;
 constexpr int BUFFER_LEN = 640;
 constexpr int HITRACEID_LEN = 64;
-constexpr int NAME_MAX_LEN = 4000;
 
 static const int PID_BUF_SIZE = 6;
 static char g_pid[PID_BUF_SIZE];
@@ -234,6 +233,7 @@ void WriteFailedLog()
 void WriteToTraceMarker(const char* buf, const int count)
 {
     if (UNEXPECTANTLY(count <= 0 || count >= BUFFER_LEN)) {
+        HILOG_INFO(LOG_CORE, "Write trace canceled, buf size is greater than the BUFFER_LEN");
         return;
     }
     if (write(g_markerFd, buf, count) < 0) {
@@ -634,9 +634,7 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
                     "%c|%s|H:%s %lld", marktypestr, g_pid, name.c_str(), value);
             }
             WriteToTraceMarker(buf, bytes);
-        } else if (EXPECTANTLY(len > NAME_MAX_LEN)) {
-            AddTraceMarkerLarge(name.substr(0, NAME_MAX_LEN), type, value);
-        } else {
+        } else if (EXPECTANTLY(len < BUFFER_LEN)) {
             AddTraceMarkerLarge(name, type, value);
         }
     }
