@@ -564,6 +564,32 @@ void RestoreTimeIntervalBoundary()
     g_traceEndTime = std::numeric_limits<uint64_t>::max();
 }
 
+void GetFileSizeThresholdAndTraceTime(bool &isCpuRaw, uint8_t contentType, uint64_t &traceStartTime,
+                                      uint64_t &traceEndTime, int &fileSizeThreshold)
+{
+    isCpuRaw = contentType >= CONTENT_TYPE_CPU_RAW && contentType < CONTENT_TYPE_HEADER_PAGE;
+    if (isCpuRaw) {
+        traceStartTime = g_traceStartTime;
+        traceEndTime = g_traceEndTime;
+    }
+    if (!g_currentTraceParams.fileSize.empty()) {
+        fileSizeThreshold = std::stoi(g_currentTraceParams.fileSize) * KB_PER_MB;
+    }
+}
+
+bool IsWriteFileOverflow(const int &outputFileSize, const ssize_t &writeLen, const int &fileSizeThreshold)
+{
+    if (outputFileSize + writeLen + sizeof(TraceFileContentHeader) >= fileSizeThreshold) {
+        HILOG_ERROR(LOG_CORE, "Failed to write, current round write file size exceeds the file size limit.");
+        return false;
+    }
+    if (writeLen > INT_MAX - BUFFER_SIZE) {
+        HILOG_ERROR(LOG_CORE, "Failed to write, write file length is nearly overflow.");
+        return false;
+    }
+    return true;
+}
+
 bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std::string &outputFile)
 {
     std::string srcPath = CanonicalizeSpecPath(src.c_str());
@@ -585,12 +611,9 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
 
     uint64_t traceStartTime = 0;
     uint64_t traceEndTime = std::numeric_limits<uint64_t>::max();
-    bool isCpuRaw = contentType >= CONTENT_TYPE_CPU_RAW && contentType < CONTENT_TYPE_HEADER_PAGE;
-    if (isCpuRaw) {
-        traceStartTime = g_traceStartTime;
-        traceEndTime = g_traceEndTime;
-    }
-
+    int fileSizeThreshold = DEFAULT_FILE_SIZE * KB_PER_MB;
+    bool isCpuRaw = false;
+    GetFileSizeThresholdAndTraceTime(isCpuRaw, contentType, traceStartTime, traceEndTime, fileSizeThreshold);
     while (true) {
         int bytes = 0;
         bool endFlag = false;
@@ -643,6 +666,10 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
                     writeRet, bytes);
             }
             writeLen += writeRet;
+        }
+
+        if (!IsWriteFileOverflow(g_outputFileSize, writeLen, fileSizeThreshold)) {
+            break;
         }
 
         if (endFlag == true) {
@@ -1581,9 +1608,12 @@ TraceRetInfo DumpTrace(int maxDuration, uint64_t traceEndTime)
         return ret;
     }
     {
+        std::time_t now = std::time(nullptr);
+        if (maxDuration > (now - 1)) {
+            maxDuration = 0;
+        }
         std::lock_guard<std::mutex> lock(g_traceMutex);
         if (traceEndTime > 0) {
-            std::time_t now = std::time(nullptr);
             if (traceEndTime > static_cast<uint64_t>(now)) {
                 HILOG_WARN(LOG_CORE, "DumpTrace: Warning: traceEndTime is later than current time.");
             }
