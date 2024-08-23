@@ -537,7 +537,7 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_009, TestSize.Level0)
 {
     std::string traceName = "HitraceStartTrace009";
     while (traceName.length() <= NAME_NORMAL_LEN) {
-        traceName += std::to_string(arc4random());
+        traceName += std::to_string(arc4random() % DIVISOR);
     }
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
