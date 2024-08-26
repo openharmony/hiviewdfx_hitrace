@@ -871,6 +871,10 @@ static void InterruptExit(int signo)
 
 int main(int argc, char **argv)
 {
+    if (argc < 0 || argc > 256) { // 256 : max input argument counts
+        ConsoleLog("error: the number of input arguments exceeds the upper limit.");
+        return -1;
+    }
     bool isSuccess = true;
     g_traceCollector = OHOS::HiviewDFX::UCollectClient::TraceCollector::Create();
     if (g_traceCollector == nullptr) {
