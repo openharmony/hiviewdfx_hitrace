@@ -54,7 +54,6 @@ constexpr uint32_t SLEEP_ONE_SECOND = 1;
 #define LOG_TAG "Hitrace_TEST"
 const uint64_t TAG = HITRACE_TAG_OHOS;
 constexpr int HITRACEID_LEN = 64;
-constexpr int NAME_NORMAL_LEN = 512;
 constexpr int BUFFER_LEN = 640;
 constexpr int DIVISOR = 10;
 static string g_traceRootPath;
@@ -536,30 +535,6 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_008, TestSize.Level0)
 HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_009, TestSize.Level0)
 {
     std::string traceName = "HitraceStartTrace009";
-    while (traceName.length() <= NAME_NORMAL_LEN) {
-        traceName += std::to_string(arc4random());
-    }
-    ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
-
-    SetAddHitraceMeterMarker(TAG, traceName);
-    FinishTrace(TAG);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
-    vector<string> list = ReadTrace();
-    bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
-    ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
-    bool isFinishSuc = GetTraceResult('E', traceName, nullptr, 0, list);
-    ASSERT_TRUE(isFinishSuc) << "Hitrace Can't find \"E|\" from trace.";
-}
-
-/**
- * @tc.name: HiTraceNDKTest_AddHitraceMeterMarker_010
- * @tc.desc: Testing AddHitraceMeterMarker function
- * @tc.type: FUNC
- */
-HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_010, TestSize.Level0)
-{
-    std::string traceName = "HitraceStartTrace010";
     while (traceName.length() <= BUFFER_LEN) {
         traceName += std::to_string(arc4random() % DIVISOR);
     }

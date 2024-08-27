@@ -581,13 +581,13 @@ bool IsWriteFileOverflow(const int &outputFileSize, const ssize_t &writeLen, con
 {
     if (outputFileSize + writeLen + sizeof(TraceFileContentHeader) >= fileSizeThreshold) {
         HILOG_ERROR(LOG_CORE, "Failed to write, current round write file size exceeds the file size limit.");
-        return false;
+        return true;
     }
     if (writeLen > INT_MAX - BUFFER_SIZE) {
         HILOG_ERROR(LOG_CORE, "Failed to write, write file length is nearly overflow.");
-        return false;
+        return true;
     }
-    return true;
+    return false;
 }
 
 bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std::string &outputFile)
@@ -668,7 +668,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
             writeLen += writeRet;
         }
 
-        if (!IsWriteFileOverflow(g_outputFileSize, writeLen, fileSizeThreshold)) {
+        if (IsWriteFileOverflow(g_outputFileSize, writeLen, fileSizeThreshold)) {
             break;
         }
 
