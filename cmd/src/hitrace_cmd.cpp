@@ -871,6 +871,11 @@ static void InterruptExit(int signo)
 
 int main(int argc, char **argv)
 {
+    if (!IsDeveloperMode()) {
+        ConsoleLog("error: not in developermode, exit");
+        return -1;
+    }
+
     if (argc < 0 || argc > 256) { // 256 : max input argument counts
         ConsoleLog("error: the number of input arguments exceeds the upper limit.");
         return -1;
