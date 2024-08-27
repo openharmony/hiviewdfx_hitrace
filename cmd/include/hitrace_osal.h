@@ -40,6 +40,7 @@ bool SetPropertyInner(const std::string& property, const std::string& value);
 bool RefreshBinderServices(void);
 bool RefreshHalServices(void);
 bool IsHmKernel();
+bool IsDeveloperMode();
 }
 }
 }
