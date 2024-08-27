@@ -540,7 +540,7 @@ bool IsWriteFileOverflow(const int &outputFileSize, const ssize_t &writeLen, con
     if (g_traceMode != TraceMode::CMD_MODE) {
         return false;
     }
-    if (outputFileSize + writeLen + sizeof(TraceFileContentHeader) >= fileSizeThreshold) {
+    if (outputFileSize + writeLen + static_cast<int>(sizeof(TraceFileContentHeader)) >= fileSizeThreshold) {
         HILOG_ERROR(LOG_CORE, "Failed to write, current round write file size exceeds the file size limit.");
         return true;
     }
@@ -1597,7 +1597,7 @@ std::vector<std::pair<std::string, int>> GetTraceFilesTable()
     return g_traceFilesTable;
 }
 
-void SetTraceFilesTable(std::vector<std::pair<std::string, int>>& traceFilesTable)
+void SetTraceFilesTable(const std::vector<std::pair<std::string, int>>& traceFilesTable)
 {
     g_traceFilesTable = traceFilesTable;
 }
