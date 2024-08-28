@@ -731,6 +731,30 @@ void SetWriteAppTrace(TraceFlag appFlag, const std::string& name, const int64_t 
     g_appFlag = appFlag;
     WriteAppTrace(MARKER_BEGIN, name, value);
 }
+
+void SetWriteOnceLog(LogLevel loglevel, const std::string& logStr, bool& isWrite)
+{
+    WriteOnceLog(loglevel, logStr, isWrite);
+}
+
+void SetappTracePrefix(const std::string& appTracePrefix)
+{
+    g_appTracePrefix = appTracePrefix;
+}
+
+void SetMarkerType(TraceFlag appFlag, const std::string& name, const int64_t value, bool tid)
+{
+    if (tid) {
+        g_tgid = getproctid();
+    }
+    g_appFlag = appFlag;
+    WriteAppTrace(MARKER_ASYNC_BEGIN, name, value);
+}
+
+void SetWriteAppTraceLong(const int len, const std::string& name, const int64_t value)
+{
+    WriteAppTraceLong(len, MARKER_BEGIN, name, value);
+}
 #endif
 void UpdateTraceLabel(void)
 {

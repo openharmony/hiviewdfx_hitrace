@@ -949,7 +949,6 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
     return true;
 }
 
-
 /**
  * When the raw trace is started, clear the saved_events_format files in the folder.
  */
