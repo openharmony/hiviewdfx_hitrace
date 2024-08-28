@@ -115,7 +115,7 @@ std::vector<std::pair<std::string, int>> GetTraceFilesTable();
 /**
  * Set g_traceFilesTable.
 */
-void SetTraceFilesTable(std::vector<std::pair<std::string, int>>& traceFilesTable);
+void SetTraceFilesTable(const std::vector<std::pair<std::string, int>>& traceFilesTable);
 } // Hitrace
 
 }

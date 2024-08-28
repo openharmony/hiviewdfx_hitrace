@@ -548,7 +548,8 @@ void SetTimeIntervalBoundary()
         } else {
             struct timespec bts = {0, 0};
             clock_gettime(CLOCK_BOOTTIME, &bts);
-            g_traceStartTime = bts.tv_sec * S_TO_NS + bts.tv_nsec - static_cast<uint64_t>(g_inputMaxDuration) * S_TO_NS;
+            g_traceStartTime = static_cast<uint64_t>(bts.tv_sec * S_TO_NS + bts.tv_nsec) -
+                static_cast<uint64_t>(g_inputMaxDuration) * S_TO_NS;
             g_traceEndTime = std::numeric_limits<uint64_t>::max();
         }
     } else {
@@ -579,7 +580,7 @@ void GetFileSizeThresholdAndTraceTime(bool &isCpuRaw, uint8_t contentType, uint6
 
 bool IsWriteFileOverflow(const int &outputFileSize, const ssize_t &writeLen, const int &fileSizeThreshold)
 {
-    if (outputFileSize + writeLen + sizeof(TraceFileContentHeader) >= fileSizeThreshold) {
+    if (outputFileSize + writeLen + static_cast<int>(sizeof(TraceFileContentHeader)) >= fileSizeThreshold) {
         HILOG_ERROR(LOG_CORE, "Failed to write, current round write file size exceeds the file size limit.");
         return true;
     }
@@ -1133,7 +1134,6 @@ void SetProcessName(std::string& processName)
 void TimeoutSignalHandler(int signum)
 {
     if (signum == SIGUSR1) {
-        HILOG_ERROR(LOG_CORE, "child process being terminated by parent process.");
         _exit(EXIT_SUCCESS);
     }
 }
@@ -1626,7 +1626,7 @@ TraceRetInfo DumpTrace(int maxDuration, uint64_t traceEndTime)
             std::time_t boot_time = now - info.uptime;
             if (traceEndTime > static_cast<uint64_t>(boot_time)) {
                 // beware of input precision of seconds: add an extra second of tolerance
-                g_inputTraceEndTime = (traceEndTime - boot_time + 1) * S_TO_NS;
+                g_inputTraceEndTime = (traceEndTime - static_cast<uint64_t>(boot_time) + 1) * S_TO_NS;
             } else {
                 HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input: traceEndTime is earlier than system boot time.");
                 ret.errorCode = OUT_OF_TIME;
@@ -1729,7 +1729,7 @@ std::vector<std::pair<std::string, int>> GetTraceFilesTable()
     return g_traceFilesTable;
 }
 
-void SetTraceFilesTable(std::vector<std::pair<std::string, int>>& traceFilesTable)
+void SetTraceFilesTable(const std::vector<std::pair<std::string, int>>& traceFilesTable)
 {
     g_traceFilesTable = traceFilesTable;
 }
