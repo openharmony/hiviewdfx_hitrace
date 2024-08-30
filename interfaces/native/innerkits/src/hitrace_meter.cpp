@@ -1057,8 +1057,7 @@ int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std:
     mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH; // 0644
     g_appFd = open(destFileName.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC, mode);
     if (g_appFd == -1) {
-        HILOG_ERROR(LOG_CORE, "open %{public}s failed: %{public}d(%{public}s)", destFileName.c_str(),
-            errno, strerror(errno));
+        HILOG_ERROR(LOG_CORE, "open destFileName failed: %{public}d(%{public}s)", errno, strerror(errno));
         if (errno == ENOENT) {
             return RET_FAIL_ENOENT;
         } else if (errno == EACCES) {
