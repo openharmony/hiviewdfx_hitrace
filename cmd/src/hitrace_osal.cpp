@@ -61,7 +61,7 @@ bool IsHmKernel()
 
 bool IsDeveloperMode()
 {
-    return OHOS::system::GetBoolParameter("const.security.developermode.state", true);
+    return OHOS::system::GetBoolParameter("const.security.developermode.state", false);
 }
 }
 }
