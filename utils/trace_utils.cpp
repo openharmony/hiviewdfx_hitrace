@@ -50,6 +50,7 @@ void RemoveFile(const std::string& fileName)
     }
     if (flock(fd, LOCK_EX | LOCK_NB) < 0) {
         HILOG_WARN(LOG_CORE, "RemoveFile :: get file lock failed, skip remove: %{public}s", fileName.c_str());
+        close(fd);
         return;
     }
     if (remove(fileName.c_str()) == 0) {

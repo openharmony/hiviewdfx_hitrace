@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -20,12 +20,17 @@
 #include <cstdio>
 #include <fstream>
 #include <fcntl.h>
+#include <sstream>
 #include "cJSON.h"
 #include "securec.h"
 
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
+namespace {
+const std::string CPUFREQ_PREFIX = "/sys/devices/system/cpu/cpu";
+const std::string CPUFREQ_AFTERFIX = "/cpufreq/scaling_cur_freq";
+}
 
 std::string CanonicalizeSpecPath(const char* src)
 {
@@ -233,6 +238,36 @@ bool IsNumber(const std::string &str)
     }
     return true;
 }
-} // Hitrace
-} // HiviewDFX
-} // OHOS
+
+int GetCpuProcessors()
+{
+    int processors = 0;
+    processors = sysconf(_SC_NPROCESSORS_CONF);
+    return (processors == 0) ? 1 : processors;
+}
+
+void ReadCurrentCpuFrequencies(std::string& freqs)
+{
+    int cpuNum = GetCpuProcessors();
+    std::ifstream file;
+    std::string line;
+    for (int i = 0; i < cpuNum; ++i) {
+        std::string freq = "0";
+        std::string cpuFreqPath = CPUFREQ_PREFIX + std::to_string(i) + CPUFREQ_AFTERFIX;
+        file.open(cpuFreqPath);
+        if (file.is_open()) {
+            if (std::getline(file, line)) {
+                std::istringstream iss(line);
+                iss >> freq;
+            }
+            file.close();
+        }
+        freqs += "cpu_id=" + std::to_string(i) + " state=" + freq;
+        if (i != cpuNum - 1) {
+            freqs += ",";
+        }
+    }
+}
+} // namespace Hitrace
+} // namespace HiviewDFX
+} // namespace OHOS

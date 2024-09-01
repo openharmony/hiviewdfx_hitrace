@@ -32,6 +32,7 @@
 
 #include "common_utils.h"
 #include "dynamic_buffer.h"
+#include "hitrace_meter.h"
 #include "hilog/log.h"
 #include "hitrace_osal.h"
 #include "parameters.h"
@@ -190,14 +191,6 @@ void GetArchWordSize(TraceFileHeader& header)
         header.reserved |= 1;
     }
     HILOG_INFO(LOG_CORE, "reserved with arch word info is %{public}d.", header.reserved);
-}
-
-
-int GetCpuProcessors()
-{
-    int processors = 0;
-    processors = sysconf(_SC_NPROCESSORS_CONF);
-    return (processors == 0) ? 1 : processors;
 }
 
 void GetCpuNums(TraceFileHeader& header)
@@ -1312,6 +1305,14 @@ bool ParseArgs(const std::string &args, TraceParams &cmdTraceParams, const std::
     }
     return false;
 }
+
+void WriteCpuFreqTrace()
+{
+    std::string freqsfmt = "cpu frequency: ";
+    ReadCurrentCpuFrequencies(freqsfmt);
+    HILOG_INFO(LOG_CORE, "hitracedump write trace(%{public}s)", freqsfmt.c_str());
+    HITRACE_METER_NAME(HITRACE_TAG_OHOS, freqsfmt);
+}
 } // namespace
 
 #ifdef HITRACE_UNITTEST
@@ -1506,6 +1507,7 @@ TraceErrorCode DumpTraceOn()
     };
     std::thread task(it);
     task.detach();
+    WriteCpuFreqTrace();
     HILOG_INFO(LOG_CORE, "Recording trace on.");
     return SUCCESS;
 }

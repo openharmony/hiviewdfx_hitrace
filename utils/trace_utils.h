@@ -35,5 +35,5 @@ void ClearOldTraceFile(std::vector<std::string>& fileLists, const std::string& f
 void DelSavedEventsFormat();
 } // namespace HiTrace
 } // namespace HiviewDFX
-} // namespace Hitrace
+} // namespace OHOS
 #endif // TRACE_UTILS_H

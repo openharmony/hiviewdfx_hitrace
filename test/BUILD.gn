@@ -140,7 +140,10 @@ ohos_unittest("HitraceDumpTest") {
     "$hitrace_utils_path",
   ]
 
-  deps = [ "$hitrace_utils_path:hitrace_utils" ]
+  deps = [
+    "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
+    "$hitrace_utils_path:hitrace_utils",
+  ]
 
   external_deps = [
     "bounds_checking_function:libsec_shared",

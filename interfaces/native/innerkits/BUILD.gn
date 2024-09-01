@@ -112,6 +112,7 @@ ohos_shared_library("hitrace_dump") {
   }
 
   deps = [
+    ":hitrace_meter",
     "$hitrace_config_path:hitrace_tags",
     "$hitrace_utils_path:hitrace_utils",
   ]
