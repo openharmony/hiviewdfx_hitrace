@@ -47,7 +47,7 @@ ohos_executable("hitrace") {
 
   deps = [
     ":hitrace_osal_inner",
-    "$hitrace_config_path:hitrace_utils",
+    "$hitrace_config_path:hitrace_tags",
   ]
 
   external_deps = [

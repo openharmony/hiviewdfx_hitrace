@@ -14,42 +14,30 @@
  */
 
 #include "hitrace_dump.h"
-#include "hitrace_osal.h"
-#include "common_utils.h"
-#include "dynamic_buffer.h"
 
 #include <atomic>
 #include <cinttypes>
 #include <csignal>
-#include <cstdio>
-#include <cstdlib>
-#include <ctime>
-#include <dirent.h>
-#include <fcntl.h>
-#include <filesystem>
 #include <fstream>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <set>
-#include <string>
 #include <sys/epoll.h>
-#include <sys/file.h>
 #include <sys/prctl.h>
-#include <sys/stat.h>
 #include <sys/sysinfo.h>
-#include <sys/time.h>
-#include <sys/types.h>
 #include <sys/wait.h>
 #include <thread>
 #include <unistd.h>
-#include <utility>
-#include <vector>
 
-#include "cJSON.h"
-#include "parameters.h"
+#include "common_utils.h"
+#include "dynamic_buffer.h"
+#include "hitrace_meter.h"
 #include "hilog/log.h"
+#include "hitrace_osal.h"
+#include "parameters.h"
 #include "securec.h"
+#include "trace_utils.h"
 
 using namespace std;
 using namespace OHOS::HiviewDFX::HitraceOsal;
@@ -92,10 +80,9 @@ const int KB_PER_MB = 1024;
 const uint64_t S_TO_NS = 1000000000;
 const int MAX_NEW_TRACE_FILE_LIMIT = 5;
 const int JUDGE_FILE_EXIST = 10;  // Check whether the trace file exists every 10 times.
+const int SNAPSHOT_FILE_MAX_COUNT = 20;
 
 const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
-const std::string SNAPSHOT_PREFIX = "trace_";
-const std::string RECORDING_PREFIX = "record_trace_";
 const std::string SAVED_EVENTS_FORMAT = "saved_events_format";
 
 struct alignas(ALIGNMENT_COEFFICIENT) TraceFileHeader {
@@ -204,14 +191,6 @@ void GetArchWordSize(TraceFileHeader& header)
         header.reserved |= 1;
     }
     HILOG_INFO(LOG_CORE, "reserved with arch word info is %{public}d.", header.reserved);
-}
-
-
-int GetCpuProcessors()
-{
-    int processors = 0;
-    processors = sysconf(_SC_NPROCESSORS_CONF);
-    return (processors == 0) ? 1 : processors;
 }
 
 void GetCpuNums(TraceFileHeader& header)
@@ -487,41 +466,6 @@ bool CheckPage(uint8_t contentType, uint8_t *page)
     }
 
     return true;
-}
-
-std::string GenerateName(bool isSnapshot = true)
-{
-    // eg: /data/log/hitrace/trace_localtime@boottime.sys
-    std::string name = DEFAULT_OUTPUT_DIR;
-
-    if (isSnapshot) {
-        name += SNAPSHOT_PREFIX;
-    } else {
-        name += RECORDING_PREFIX;
-    }
-
-    // get localtime
-    time_t currentTime;
-    time(&currentTime);
-    struct tm timeInfo = {};
-    const int bufferSize = 16;
-    char timeStr[bufferSize] = {0};
-    if (localtime_r(&currentTime, &timeInfo) == nullptr) {
-        HILOG_ERROR(LOG_CORE, "Get localtime failed.");
-        return "";
-    }
-    strftime(timeStr, bufferSize, "%Y%m%d%H%M%S", &timeInfo);
-    name += std::string(timeStr);
-    // get boottime
-    struct timespec bts = {0, 0};
-    clock_gettime(CLOCK_BOOTTIME, &bts);
-    name += "@" + std::to_string(bts.tv_sec) + "-" + std::to_string(bts.tv_nsec) + ".sys";
-
-    struct timespec mts = {0, 0};
-    clock_gettime(CLOCK_MONOTONIC, &mts);
-    HILOG_INFO(LOG_CORE, "output trace: %{public}s, boot_time(%{public}" PRId64 "), mono_time(%{public}" PRId64 ").",
-                name.c_str(), static_cast<int64_t>(bts.tv_sec), static_cast<int64_t>(mts.tv_sec));
-    return name;
 }
 
 bool CheckFileExist(const std::string &outputFile)
@@ -885,7 +829,7 @@ bool GenerateNewFile(int &outFd, std::string &outPath)
     if (access(outPath.c_str(), F_OK) == 0) {
         return true;
     }
-    std::string outputFileName = GenerateName(false);
+    std::string outputFileName = GenerateTraceFileName(false);
     outPath = CanonicalizeSpecPath(outputFileName.c_str());
     outFd = open(outPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644:-rw-r--r--
     if (outFd < 0) {
@@ -950,77 +894,6 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
 }
 
 /**
- * When the raw trace is started, clear the saved_events_format files in the folder.
- */
-void ClearSavedEventsFormat()
-{
-    const std::string savedEventsFormatPath = DEFAULT_OUTPUT_DIR + SAVED_EVENTS_FORMAT;
-    if (access(savedEventsFormatPath.c_str(), F_OK) != 0) {
-        // saved_events_format not exit
-        return;
-    }
-    // saved_events_format exit
-    if (remove(savedEventsFormatPath.c_str()) == 0) {
-        HILOG_INFO(LOG_CORE, "Delete saved_events_format success.");
-    } else {
-        HILOG_ERROR(LOG_CORE, "Delete saved_events_format failed.");
-    }
-}
-
-void GetFilesInDirectory(std::vector<std::string> &fileNames)
-{
-    for (const auto &entry : std::filesystem::directory_iterator(DEFAULT_OUTPUT_DIR)) {
-        if (entry.is_regular_file() &&
-            entry.path().filename().string().substr(0, RECORDING_PREFIX.size()) == RECORDING_PREFIX) {
-            fileNames.push_back(entry.path().filename().string());
-        }
-    }
-}
-
-/**
- * open trace file aging mechanism
- */
-void ClearOldTraceFileInDirectory()
-{
-    if (g_currentTraceParams.fileLimit.empty()) {
-        HILOG_INFO(LOG_CORE, "ClearOldTraceFileInDirectory: no activate aging mechanism.");
-        return;
-    }
-    std::vector<std::string> fileNames;
-    GetFilesInDirectory(fileNames);
-    if (fileNames.size() <= 0) {
-        HILOG_INFO(LOG_CORE, "no file need clear");
-    }
-    while (static_cast<int>(fileNames.size()) > std::stoi(g_currentTraceParams.fileLimit)) {
-        if (remove((DEFAULT_OUTPUT_DIR + fileNames[0]).c_str()) == 0) {
-            HILOG_INFO(LOG_CORE, "ClearOldTraceFileInDirectory: delete first: %{public}s success.",
-                fileNames[0].c_str());
-        } else {
-            HILOG_ERROR(LOG_CORE, "ClearOldTraceFileInDirectory: delete first: %{public}s failed, errno: %{public}d.",
-                fileNames[0].c_str(), errno);
-        }
-        fileNames.erase(fileNames.begin());
-    }
-}
-
-void ClearOldTraceFile()
-{
-    if (g_currentTraceParams.fileLimit.empty()) {
-        HILOG_INFO(LOG_CORE, "ClearOldTraceFile: no activate aging mechanism.");
-        return;
-    }
-    if (static_cast<int>(g_outputFilesForCmd.size()) > std::stoi(g_currentTraceParams.fileLimit) &&
-        access(g_outputFilesForCmd[0].c_str(), F_OK) == 0) {
-        if (remove(g_outputFilesForCmd[0].c_str()) == 0) {
-            g_outputFilesForCmd.erase(g_outputFilesForCmd.begin());
-            HILOG_INFO(LOG_CORE, "ClearOldTraceFile: delete first success.");
-        } else {
-            HILOG_ERROR(LOG_CORE, "ClearOldTraceFile: delete first failed, errno: %{public}d.", errno);
-        }
-    }
-}
-
-/**
  * read trace data loop
  * g_dumpFlag: true = open，false = close
  * g_dumpEnd: true = end，false = not end
@@ -1035,11 +908,14 @@ void ProcessDumpTask()
     const std::string threadName = "TraceDumpTask";
     prctl(PR_SET_NAME, threadName.c_str());
     HILOG_INFO(LOG_CORE, "ProcessDumpTask: trace dump thread start.");
-    ClearSavedEventsFormat();
-    ClearOldTraceFileInDirectory();
+
+    // clear old record file before record tracing start.
+    DelSavedEventsFormat();
+    DelOldRecordTraceFile(g_currentTraceParams.fileLimit);
+
     if (g_currentTraceParams.fileSize.empty()) {
         std::string outputFileName = g_currentTraceParams.outputFile.empty() ?
-                                     GenerateName(false) : g_currentTraceParams.outputFile;
+                                     GenerateTraceFileName(false) : g_currentTraceParams.outputFile;
         if (DumpTraceLoop(outputFileName, false)) {
             g_outputFilesForCmd.push_back(outputFileName);
         }
@@ -1048,9 +924,9 @@ void ProcessDumpTask()
     }
 
     while (g_dumpFlag) {
-        ClearOldTraceFile();
+        ClearOldTraceFile(g_outputFilesForCmd, g_currentTraceParams.fileLimit);
         // Generate file name
-        std::string outputFileName = GenerateName(false);
+        std::string outputFileName = GenerateTraceFileName(false);
         if (DumpTraceLoop(outputFileName, true)) {
             g_outputFilesForCmd.push_back(outputFileName);
         } else {
@@ -1188,7 +1064,7 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
         return TraceErrorCode::SYSTEM_ERROR;
     }
 
-    std::string outputFileName = GenerateName();
+    std::string outputFileName = GenerateTraceFileName();
     std::string reOutPath = CanonicalizeSpecPath(outputFileName.c_str());
     /*Child process handles task, Father process wait.*/
     pid_t pid = fork();
@@ -1206,6 +1082,7 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
         if (ReadRawTrace(reOutPath)) {
             g_dumpStatus = TraceErrorCode::SUCCESS;
         }
+        DelSnapshotTraceFile(false, SNAPSHOT_FILE_MAX_COUNT);
         HILOG_DEBUG(LOG_CORE, "%{public}s exit.", processName.c_str());
         write(pipefd[1], &g_dumpStatus, sizeof(g_dumpStatus));
         _exit(EXIT_SUCCESS);
@@ -1230,7 +1107,6 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
         outputFiles.push_back(outputFileName);
         g_traceFilesTable.push_back({outputFileName, nowSec});
     } else {
-        HILOG_ERROR(LOG_CORE, "Output error: %{public}s.", reOutPath.c_str());
         HILOG_ERROR(LOG_CORE, "DumpTraceInner: write %{public}s failed.", outputFileName.c_str());
         return TraceErrorCode::WRITE_TRACE_INFO_ERROR;
     }
@@ -1430,47 +1306,12 @@ bool ParseArgs(const std::string &args, TraceParams &cmdTraceParams, const std::
     return false;
 }
 
-/**
- * When the SERVICE_MODE is started, clear the remaining trace files in the folder.
-*/
-void ClearRemainingTrace()
+void WriteCpuFreqTrace()
 {
-    if (access(DEFAULT_OUTPUT_DIR.c_str(), F_OK) != 0) {
-        return;
-    }
-    DIR* dirPtr = opendir(DEFAULT_OUTPUT_DIR.c_str());
-    if (dirPtr == nullptr) {
-        HILOG_ERROR(LOG_CORE, "opendir failed.");
-        return;
-    }
-    struct dirent* ptr = nullptr;
-    while ((ptr = readdir(dirPtr)) != nullptr) {
-        if (ptr->d_type == DT_REG) {
-            std::string name = std::string(ptr->d_name);
-            if (name.compare(0, SNAPSHOT_PREFIX.size(), SNAPSHOT_PREFIX) != 0 &&
-                name.compare(0, SAVED_EVENTS_FORMAT.size(), SAVED_EVENTS_FORMAT) != 0) {
-                continue;
-            }
-            std::string subFileName = DEFAULT_OUTPUT_DIR + name;
-            int dataFile = open(subFileName.c_str(), O_RDONLY | O_NONBLOCK);
-            if (dataFile == -1) {
-                HILOG_INFO(LOG_CORE, "open old trace file failed:  %{public}s", subFileName.c_str());
-                continue;
-            }
-            if (flock(dataFile, LOCK_EX | LOCK_NB) < 0) {
-                HILOG_INFO(LOG_CORE, "get old trace file lock failed, skip remove: %{public}s", subFileName.c_str());
-                continue;
-            }
-            if (remove(subFileName.c_str()) == 0) {
-                HILOG_INFO(LOG_CORE, "Delete old trace file: %{public}s success.", subFileName.c_str());
-            } else {
-                HILOG_ERROR(LOG_CORE, "Delete old trace file: %{public}s failed.", subFileName.c_str());
-            }
-            flock(dataFile, LOCK_UN);
-            close(dataFile);
-        }
-    }
-    closedir(dirPtr);
+    std::string freqsfmt = "cpu frequency: ";
+    ReadCurrentCpuFrequencies(freqsfmt);
+    HILOG_INFO(LOG_CORE, "hitracedump write trace(%{public}s)", freqsfmt.c_str());
+    HITRACE_METER_NAME(HITRACE_TAG_OHOS, freqsfmt);
 }
 } // namespace
 
@@ -1523,7 +1364,7 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
     }
     g_traceMode = SERVICE_MODE;
 
-    ClearRemainingTrace();
+    DelSnapshotTraceFile();
     if (!IsHmKernel() && !g_serviceThreadIsStart) {
         // open SERVICE_MODE monitor thread
         auto it = []() {
@@ -1666,6 +1507,7 @@ TraceErrorCode DumpTraceOn()
     };
     std::thread task(it);
     task.detach();
+    WriteCpuFreqTrace();
     HILOG_INFO(LOG_CORE, "Recording trace on.");
     return SUCCESS;
 }

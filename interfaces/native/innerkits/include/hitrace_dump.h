@@ -21,7 +21,6 @@
 
 namespace OHOS {
 namespace HiviewDFX {
-
 namespace Hitrace {
 
 enum TraceErrorCode : uint8_t {
