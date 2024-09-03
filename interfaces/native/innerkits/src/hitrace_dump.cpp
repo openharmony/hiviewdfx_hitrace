@@ -524,6 +524,10 @@ void GetFileSizeThresholdAndTraceTime(bool &isCpuRaw, uint8_t contentType, uint6
 
 bool IsWriteFileOverflow(const int &outputFileSize, const ssize_t &writeLen, const int &fileSizeThreshold)
 {
+    // attention: we only check file size threshold in CMD_MODE
+    if (g_traceMode != TraceMode::CMD_MODE) {
+        return false;
+    }
     if (outputFileSize + writeLen + static_cast<int>(sizeof(TraceFileContentHeader)) >= fileSizeThreshold) {
         HILOG_ERROR(LOG_CORE, "Failed to write, current round write file size exceeds the file size limit.");
         return true;

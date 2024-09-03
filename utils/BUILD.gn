@@ -14,7 +14,7 @@
 import("//base/hiviewdfx/hitrace/hitrace.gni")
 import("//build/ohos.gni")
 
-ohos_static_library("hitrace_utils") {
+ohos_source_set("hitrace_utils") {
   include_dirs = [ "." ]
   sources = [ "trace_utils.cpp" ]
   if (defined(ohos_lite)) {
