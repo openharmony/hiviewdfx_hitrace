@@ -104,23 +104,13 @@ def parse_sched_switch(data, one_event):
     % (prev_comm, prev_pid, prev_prio, pstate, next_comm, next_pid, next_prio, expeller_type)
 
 
-def parse_sched_blocked_reason_hm_old(data, one_event):
-    pid = parse_int_field(one_event, "pid", True)
-    caller = parse_int_field(one_event, "caller", False)
-    iowait = parse_int_field(one_event, "iowait", False)
-    delay = parse_int_field(one_event, "delay", False)
-    cnode_idx = parse_int_field(one_event, "cnode_idx", False)
-
-    return "pid=%d iowait=%d caller=0x%x cnode_idx=%d delay=%d" % (pid, iowait, caller, cnode_idx, delay >> 10)
-
-
 def parse_sched_blocked_reason_hm(data, one_event):
     pid = parse_int_field(one_event, "pid", True)
     iowait = parse_int_field(one_event, "iowait", False)
-    func_name = parse_bytes_to_str(one_event["fields"]["func_name[20]"])
+    func_name = parse_bytes_to_str(one_event["fields"]["func_name[16]"])
     offset = parse_int_field(one_event, "offset", False)
     size = parse_int_field(one_event, "size", False)
-    mod_name = parse_bytes_to_str(one_event["fields"]["mod_name[12]"])
+    mod_name = parse_bytes_to_str(one_event["fields"]["mod_name[16]"])
     delay = parse_int_field(one_event, "delay", False)
 
     return "pid=%d iowait=%d caller=%s+0x%lx/0x%lx[%s] delay=%d" \
