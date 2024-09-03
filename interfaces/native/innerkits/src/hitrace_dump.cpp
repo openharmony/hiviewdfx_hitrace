@@ -536,6 +536,10 @@ bool CheckFileExist(const std::string &outputFile)
 
 bool IsWriteFileOverflow(const int &outputFileSize, const ssize_t &writeLen, const int &fileSizeThreshold)
 {
+    // attention: we only check file size threshold in CMD_MODE
+    if (g_traceMode != TraceMode::CMD_MODE) {
+        return false;
+    }
     if (outputFileSize + writeLen + sizeof(TraceFileContentHeader) >= fileSizeThreshold) {
         HILOG_ERROR(LOG_CORE, "Failed to write, current round write file size exceeds the file size limit.");
         return true;
@@ -623,7 +627,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
             writeLen += writeRet;
         }
 
-        if (IsWriteFileOverflow(g_outputFileSize, writeLen, fileSizeThreshold)) {
+        if (contentType == CONTENT_TYPE_CPU_RAW && IsWriteFileOverflow(g_outputFileSize, writeLen, fileSizeThreshold)) {
             break;
         }
 
@@ -1504,38 +1508,8 @@ TraceRetInfo DumpTrace(int timeLimit)
         return ret;
     }
     {
-        std::time_t now = std::time(nullptr);
-        if (maxDuration > (now - 1)) {
-            maxDuration = 0;
-        }
         std::lock_guard<std::mutex> lock(g_traceMutex);
-<<<<<<< HEAD
         g_timeLimit = timeLimit;
-=======
-        if (traceEndTime > 0) {
-            if (traceEndTime > static_cast<uint64_t>(now)) {
-                HILOG_WARN(LOG_CORE, "DumpTrace: Warning: traceEndTime is later than current time.");
-            }
-            struct sysinfo info;
-            if (sysinfo(&info) != 0) {
-                HILOG_ERROR(LOG_CORE, "Get system info failed.");
-                ret.errorCode = UNKNOWN_ERROR;
-                return ret;
-            }
-            std::time_t boot_time = now - info.uptime;
-            if (traceEndTime > static_cast<uint64_t>(boot_time)) {
-                // beware of input precision of seconds: add an extra second of tolerance
-                g_inputTraceEndTime = (traceEndTime - boot_time + 1) * S_TO_NS;
-            } else {
-                HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input: traceEndTime is earlier than system boot time.");
-                ret.errorCode = OUT_OF_TIME;
-                return ret;
-            }
-            g_inputMaxDuration = maxDuration ? maxDuration + 1 : 0; // for precision tolerance
-        } else {
-            g_inputMaxDuration = maxDuration;
-        }
->>>>>>> 3db5cf5... fix: 1.对hitrace_ndk_test魔鬼变量添加声明;2.对WriteFile函数添加写入量的限制，防止g_outputFileSize变量溢出造成trace信息写入同一个文件内
     }
     ret = DumpTrace();
     {
