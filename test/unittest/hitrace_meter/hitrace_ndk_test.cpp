@@ -47,6 +47,46 @@ const string VERTICAL_LINE = "|";
 
 constexpr uint64_t TRACE_INVALIDATE_TAG = 0x1000000;
 constexpr uint32_t SLEEP_ONE_SECOND = 1;
+const uint64_t HITRACE_BASELINE_SIZE = 706 * 1024;
+const uint64_t BYTRACE_BASELINE_SIZE = 18 * 1024;
+
+const vector<string> HITRACE_OUTPUT_PATH = {
+    "/system/lib/chipset-pub-sdk/libhitracechain.so",
+    "/system/lib/chipset-pub-sdk/libhitrace_meter.so",
+    "/system/lib/libhitrace_meter_rust.dylib.so",
+    "/system/lib/libhitracechain.dylib.so",
+    "/system/lib/libhitracechain_c_wrapper.so",
+    "/system/lib/module/libhitracechain_napi.z.so",
+    "/system/lib/module/libhitracemeter_napi.z.so",
+    "/system/lib/ndk/libhitrace_ndk.z.so",
+    "/system/lib/platformsdk/libcj_hitracechain_ffi.z.so",
+    "/system/lib/platformsdk/libcj_hitracemeter_ffi.z.so",
+    "/system/lib/platformsdk/libhitrace_dump.z.so",
+    "/system/lib64/chipset-pub-sdk/libhitracechain.so",
+    "/system/lib64/chipset-pub-sdk/libhitrace_meter.so",
+    "/system/lib64/libhitrace_meter_rust.dylib.so",
+    "/system/lib64/libhitracechain.dylib.so",
+    "/system/lib64/libhitracechain_c_wrapper.so",
+    "/system/lib64/module/libhitracechain_napi.z.so",
+    "/system/lib64/module/libhitracemeter_napi.z.so",
+    "/system/lib64/ndk/libhitrace_ndk.z.so",
+    "/system/lib64/platformsdk/libcj_hitracechain_ffi.z.so",
+    "/system/lib64/platformsdk/libcj_hitracemeter_ffi.z.so",
+    "/system/lib64/platformsdk/libhitrace_dump.z.so",
+    "/system/etc/hiview/hitrace_utils.json",
+    "/system/etc/init/hitrace.cfg",
+    "/system/etc/param/hitrace.para",
+    "/system/etc/param/hitrace.para.dac",
+    "/system/bin/hitrace"
+};
+
+const char* BYTRACE_LINK_PATH = "/system/bin/bytrace";
+const vector<string> BYTRACE_OUTPUT_PATH = {
+    "/system/lib/module/libbytrace.z.so",
+    "/system/lib64/module/libbytrace.z.so",
+    "/system/bin/bytrace"
+};
+
 #undef LOG_DOMAIN
 #define LOG_DOMAIN 0xD002D33
 
@@ -1544,6 +1584,47 @@ HWTEST_F(HitraceNDKTest, HitraceOsal_002, TestSize.Level1)
     GetPropertyInner(TRACE_PROPERTY, "0");
     RefreshBinderServices();
     RefreshHalServices();
+}
+
+/**
+ * @tc.name: HiTraceNDKTest_HitraceRomTest001
+ * @tc.desc: Testing Hitrace Rom
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, HitraceRomTest001, TestSize.Level1)
+{
+    uint64_t realSize = 0;
+    for (int i = 0; i < HITRACE_OUTPUT_PATH.size(); i++) {
+        struct stat st = {0};
+        stat(HITRACE_OUTPUT_PATH[i].c_str(), &st);
+        realSize += static_cast<uint64_t>(st.st_size);
+    }
+
+    std::cout << "realSize: " << realSize << std::endl;
+    EXPECT_LT(realSize, HITRACE_BASELINE_SIZE);
+}
+
+/**
+ * @tc.name: HiTraceNDKTest_BytraceRomTest001
+ * @tc.desc: Testing Bytrace Rom
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, BytraceRomTest001, TestSize.Level1)
+{
+    uint64_t realSize = 0;
+    int bytes = 1024;
+    for (int i = 0; i < BYTRACE_OUTPUT_PATH.size(); i++) {
+        struct stat st = {0};
+        if (BYTRACE_OUTPUT_PATH[i].find(BYTRACE_LINK_PATH)) {
+            lstat(BYTRACE_LINK_PATH, &st);
+            realSize += static_cast<uint64_t>(st.st_size * bytes);
+        }
+        stat(BYTRACE_OUTPUT_PATH[i].c_str(), &st);
+        realSize += static_cast<uint64_t>(st.st_size);
+    }
+
+    std::cout << "realSize: " << realSize << std::endl;
+    EXPECT_LT(realSize, BYTRACE_BASELINE_SIZE);
 }
 } // namespace HitraceTest
 } // namespace HiviewDFX
