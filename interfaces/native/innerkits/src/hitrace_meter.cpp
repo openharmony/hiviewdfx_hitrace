@@ -164,7 +164,7 @@ bool IsAppspawnProcess()
         getline(cmdline, procName, '\0');
         cmdline.close();
     }
-    return procName == "appspawn";
+    return procName == "appspawn" || procName == "nwebspawn";
 }
 
 void InitPid()
@@ -181,7 +181,7 @@ void InitPid()
         g_needReloadPid = true;
     }
 
-    HILOG_ERROR(LOG_CORE, "pid[%{public}s] first get g_tagsProperty: %{public}s", pidStr.c_str(),
+    HILOG_INFO(LOG_CORE, "pid[%{public}s] first get g_tagsProperty: %{public}s", pidStr.c_str(),
         to_string(g_tagsProperty.load()).c_str());
 }
 

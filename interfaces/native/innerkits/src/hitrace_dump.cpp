@@ -522,10 +522,11 @@ void GetFileSizeThresholdAndTraceTime(bool &isCpuRaw, uint8_t contentType, uint6
     }
 }
 
-bool IsWriteFileOverflow(const int &outputFileSize, const ssize_t &writeLen, const int &fileSizeThreshold)
+bool IsWriteFileOverflow(bool isCpuRaw, const int &outputFileSize, const ssize_t &writeLen,
+                         const int &fileSizeThreshold)
 {
     // attention: we only check file size threshold in CMD_MODE
-    if (g_traceMode != TraceMode::CMD_MODE) {
+    if (!isCpuRaw || g_traceMode != TraceMode::CMD_MODE) {
         return false;
     }
     if (outputFileSize + writeLen + static_cast<int>(sizeof(TraceFileContentHeader)) >= fileSizeThreshold) {
@@ -617,7 +618,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
             writeLen += writeRet;
         }
 
-        if (IsWriteFileOverflow(g_outputFileSize, writeLen, fileSizeThreshold)) {
+        if (IsWriteFileOverflow(isCpuRaw, g_outputFileSize, writeLen, fileSizeThreshold)) {
             break;
         }
 
