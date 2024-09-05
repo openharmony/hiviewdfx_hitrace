@@ -534,6 +534,23 @@ bool CheckFileExist(const std::string &outputFile)
     return true;
 }
 
+bool IsWriteFileOverflow(const int &outputFileSize, const ssize_t &writeLen, const int &fileSizeThreshold)
+{
+    // attention: we only check file size threshold in CMD_MODE
+    if (g_traceMode != TraceMode::CMD_MODE) {
+        return false;
+    }
+    if (outputFileSize + writeLen + sizeof(TraceFileContentHeader) >= fileSizeThreshold) {
+        HILOG_ERROR(LOG_CORE, "Failed to write, current round write file size exceeds the file size limit.");
+        return true;
+    }
+    if (writeLen > INT_MAX - BUFFER_SIZE) {
+        HILOG_ERROR(LOG_CORE, "Failed to write, write file length is nearly overflow.");
+        return true;
+    }
+    return false;
+}
+
 bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std::string &outputFile)
 {
     std::string srcPath = CanonicalizeSpecPath(src.c_str());
@@ -549,10 +566,9 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
     struct TraceFileContentHeader contentHeader;
     contentHeader.type = contentType;
     write(outFd, reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
-    int readLen = 0;
+    ssize_t writeLen = 0;
     int count = 0;
     const int maxCount = 2;
-
     struct timespec bts = {0, 0};
     int64_t traceStartTime = 0;
 
@@ -560,6 +576,11 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
         clock_gettime(CLOCK_BOOTTIME, &bts);
         traceStartTime = bts.tv_sec * S_TO_NS + bts.tv_nsec - g_timeLimit * S_TO_NS;
     }
+    int fileSizeThreshold = DEFAULT_FILE_SIZE * KB_PER_MB;
+    if (!g_currentTraceParams.fileSize.empty()) {
+        fileSizeThreshold = std::stoi(g_currentTraceParams.fileSize) * KB_PER_MB;
+    }
+
     while (true) {
         int bytes = 0;
         bool endFlag = false;
@@ -595,13 +616,26 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
             }
         }
 
-        write(outFd, g_buffer, bytes);
-        readLen += bytes;
+        ssize_t writeRet = TEMP_FAILURE_RETRY(write(outFd, g_buffer, bytes));
+        if (writeRet < 0) {
+            HILOG_WARN(LOG_CORE, "WriteFile Fail, errno: %{public}d.", errno);
+        } else {
+            if (writeRet != static_cast<ssize_t>(bytes)) {
+                HILOG_WARN(LOG_CORE, "Failed to write full info, writeLen: %{public}zd, FullLen: %{public}zd.",
+                    writeRet, bytes);
+            }
+            writeLen += writeRet;
+        }
+
+        if (contentType == CONTENT_TYPE_CPU_RAW && IsWriteFileOverflow(g_outputFileSize, writeLen, fileSizeThreshold)) {
+            break;
+        }
+
         if (endFlag == true) {
             break;
         }
     }
-    contentHeader.length = static_cast<uint32_t>(readLen);
+    contentHeader.length = static_cast<uint32_t>(writeLen);
     uint32_t offset = contentHeader.length + sizeof(contentHeader);
     off_t pos = lseek(outFd, 0, SEEK_CUR);
     lseek(outFd, pos - offset, SEEK_SET);
@@ -610,8 +644,8 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
     close(srcFd);
     g_outputFileSize += static_cast<int>(offset);
     g_needGenerateNewTraceFile = false;
-    HILOG_INFO(LOG_CORE, "WriteFile end, path: %{public}s, byte: %{public}d. g_writeFileLimit: %{public}d",
-        src.c_str(), readLen, g_writeFileLimit);
+    HILOG_INFO(LOG_CORE, "WriteFile end, path: %{public}s, byte: %{public}zd. g_writeFileLimit: %{public}d",
+        src.c_str(), writeLen, g_writeFileLimit);
     return true;
 }
 
