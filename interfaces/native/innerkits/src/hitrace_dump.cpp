@@ -621,7 +621,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
             HILOG_WARN(LOG_CORE, "WriteFile Fail, errno: %{public}d.", errno);
         } else {
             if (writeRet != static_cast<ssize_t>(bytes)) {
-                HILOG_WARN(LOG_CORE, "Failed to write full info, writeLen: %{public}zd, FullLen: %{public}zd.",
+                HILOG_WARN(LOG_CORE, "Failed to write full info, writeLen: %{public}zd, FullLen: %{public}d.",
                     writeRet, bytes);
             }
             writeLen += writeRet;
