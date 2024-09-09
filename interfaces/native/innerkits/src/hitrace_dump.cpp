@@ -522,7 +522,7 @@ void GetFileSizeThresholdAndTraceTime(bool &isCpuRaw, uint8_t contentType, uint6
     }
 }
 
-bool IsWriteFileOverflow(bool isCpuRaw, const int &outputFileSize, const ssize_t &writeLen,
+bool IsWriteFileOverflow(const bool isCpuRaw, const int &outputFileSize, const ssize_t &writeLen,
                          const int &fileSizeThreshold)
 {
     // attention: we only check file size threshold in CMD_MODE
