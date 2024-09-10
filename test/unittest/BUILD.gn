@@ -1,0 +1,159 @@
+# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/hitrace/hitrace.gni")
+import("//build/ohos.gni")
+import("//build/test.gni")
+
+module_output_path = "hiviewdfx/hitrace"
+
+config("module_private_config") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    "$hitrace_interfaces_path/native/innerkits/include",
+    "$hitrace_frameworks_path/include",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace",
+  ]
+}
+
+ohos_unittest("HitraceCTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    "$hitrace_frameworks_path/native/hitracechain.cpp",
+    "$hitrace_frameworks_path/native/hitracechainc.c",
+    "$hitrace_frameworks_path/native/hitraceid.cpp",
+    "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter.cpp",
+    "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter_c.c",
+    "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter_wrapper.cpp",
+    "common/native/hitracechainc_test.cpp",
+  ]
+
+  configs = [ ":module_private_config" ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "googletest:gtest_main",
+    "init:libbegetutil",
+  ]
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+}
+
+ohos_unittest("HitraceCppTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    "$hitrace_frameworks_path/native/hitracechain.cpp",
+    "$hitrace_frameworks_path/native/hitracechainc.c",
+    "$hitrace_frameworks_path/native/hitraceid.cpp",
+    "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter.cpp",
+    "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter_c.c",
+    "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter_wrapper.cpp",
+    "common/native/hitracechaincpp_test.cpp",
+  ]
+
+  configs = [ ":module_private_config" ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "googletest:gtest_main",
+    "init:libbegetutil",
+  ]
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+}
+
+config("HitraceNDKTest_config") {
+  visibility = [ ":*" ]
+
+  include_dirs = [
+    "$hitrace_cmd_path/include",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
+  ]
+}
+
+ohos_unittest("HitraceNDKTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter.cpp",
+    "hitrace_meter/hitrace_ndk_test.cpp",
+  ]
+
+  configs = [ ":HitraceNDKTest_config" ]
+
+  cflags = [ "-DHITRACE_UNITTEST" ]
+
+  deps = [
+    "$hitrace_cmd_path:hitrace_osal_inner",
+    "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
+    "$hitrace_interfaces_path/native/innerkits:libhitracechain",
+  ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "googletest:gtest_main",
+    "init:libbegetutil",
+  ]
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+}
+
+ohos_unittest("HitraceDumpTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    "$hitrace_cmd_path/src/hitrace_osal.cpp",
+    "$hitrace_frameworks_path/native/common_utils.cpp",
+    "$hitrace_frameworks_path/native/dynamic_buffer.cpp",
+    "$hitrace_interfaces_path/native/innerkits/src/hitrace_dump.cpp",
+    "hitrace_dump/hitrace_dump_test.cpp",
+  ]
+
+  cflags = [ "-DHITRACE_UNITTEST" ]
+
+  include_dirs = [
+    "$hitrace_cmd_path/include",
+    "$hitrace_frameworks_path/include",
+    "$hitrace_interfaces_path/native/innerkits/include",
+    "$hitrace_utils_path",
+  ]
+
+  deps = [
+    "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
+    "$hitrace_utils_path:hitrace_utils",
+  ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "cJSON:cjson",
+    "googletest:gtest_main",
+    "init:libbegetutil",
+  ]
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+}

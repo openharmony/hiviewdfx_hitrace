@@ -15,156 +15,13 @@ import("//base/hiviewdfx/hitrace/hitrace.gni")
 import("//build/ohos.gni")
 import("//build/test.gni")
 
-module_output_path = "hiviewdfx/hitrace"
-
-config("module_private_config") {
-  visibility = [ ":*" ]
-  include_dirs = [
-    "$hitrace_interfaces_path/native/innerkits/include",
-    "$hitrace_frameworks_path/include",
-    "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
-    "$hitrace_interfaces_path/native/innerkits/include/hitrace",
-  ]
-}
-
-ohos_unittest("HitraceCTest") {
-  module_out_path = module_output_path
-
-  sources = [
-    "$hitrace_frameworks_path/native/hitracechain.cpp",
-    "$hitrace_frameworks_path/native/hitracechainc.c",
-    "$hitrace_frameworks_path/native/hitraceid.cpp",
-    "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter.cpp",
-    "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter_c.c",
-    "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter_wrapper.cpp",
-    "unittest/common/native/hitracechainc_test.cpp",
-  ]
-
-  configs = [ ":module_private_config" ]
-
-  external_deps = [
-    "bounds_checking_function:libsec_shared",
-    "googletest:gtest_main",
-    "init:libbegetutil",
-  ]
-  if (defined(ohos_lite)) {
-    external_deps += [ "hilog_lite:hilog_lite" ]
-  } else {
-    external_deps += [ "hilog:libhilog" ]
-  }
-}
-
-ohos_unittest("HitraceCppTest") {
-  module_out_path = module_output_path
-
-  sources = [
-    "$hitrace_frameworks_path/native/hitracechain.cpp",
-    "$hitrace_frameworks_path/native/hitracechainc.c",
-    "$hitrace_frameworks_path/native/hitraceid.cpp",
-    "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter.cpp",
-    "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter_c.c",
-    "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter_wrapper.cpp",
-    "unittest/common/native/hitracechaincpp_test.cpp",
-  ]
-
-  configs = [ ":module_private_config" ]
-
-  external_deps = [
-    "bounds_checking_function:libsec_shared",
-    "googletest:gtest_main",
-    "init:libbegetutil",
-  ]
-  if (defined(ohos_lite)) {
-    external_deps += [ "hilog_lite:hilog_lite" ]
-  } else {
-    external_deps += [ "hilog:libhilog" ]
-  }
-}
-
-config("HitraceNDKTest_config") {
-  visibility = [ ":*" ]
-
-  include_dirs = [
-    "$hitrace_cmd_path/include",
-    "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
-  ]
-}
-
-ohos_unittest("HitraceNDKTest") {
-  module_out_path = module_output_path
-
-  sources = [
-    "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter.cpp",
-    "unittest/hitrace_meter/hitrace_ndk_test.cpp",
-  ]
-
-  configs = [ ":HitraceNDKTest_config" ]
-
-  cflags = [ "-DHITRACE_UNITTEST" ]
-
-  deps = [
-    "$hitrace_cmd_path:hitrace_osal_inner",
-    "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
-    "$hitrace_interfaces_path/native/innerkits:libhitracechain",
-  ]
-
-  external_deps = [
-    "bounds_checking_function:libsec_shared",
-    "googletest:gtest_main",
-    "init:libbegetutil",
-  ]
-  if (defined(ohos_lite)) {
-    external_deps += [ "hilog_lite:hilog_lite" ]
-  } else {
-    external_deps += [ "hilog:libhilog" ]
-  }
-}
-
-ohos_unittest("HitraceDumpTest") {
-  module_out_path = module_output_path
-
-  sources = [
-    "$hitrace_cmd_path/src/hitrace_osal.cpp",
-    "$hitrace_frameworks_path/native/common_utils.cpp",
-    "$hitrace_frameworks_path/native/dynamic_buffer.cpp",
-    "$hitrace_interfaces_path/native/innerkits/src/hitrace_dump.cpp",
-    "unittest/hitrace_dump/hitrace_dump_test.cpp",
-  ]
-
-  cflags = [ "-DHITRACE_UNITTEST" ]
-
-  include_dirs = [
-    "$hitrace_cmd_path/include",
-    "$hitrace_frameworks_path/include",
-    "$hitrace_interfaces_path/native/innerkits/include",
-    "$hitrace_utils_path",
-  ]
-
-  deps = [
-    "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
-    "$hitrace_utils_path:hitrace_utils",
-  ]
-
-  external_deps = [
-    "bounds_checking_function:libsec_shared",
-    "cJSON:cjson",
-    "googletest:gtest_main",
-    "init:libbegetutil",
-  ]
-  if (defined(ohos_lite)) {
-    external_deps += [ "hilog_lite:hilog_lite" ]
-  } else {
-    external_deps += [ "hilog:libhilog" ]
-  }
-}
-
 group("hitrace_unittest") {
   testonly = true
   deps = [
-    ":HitraceCTest",
-    ":HitraceCppTest",
-    ":HitraceDumpTest",
-    ":HitraceNDKTest",
+    "unittest:HitraceCTest",
+    "unittest:HitraceCppTest",
+    "unittest:HitraceDumpTest",
+    "unittest:HitraceNDKTest",
   ]
   if (support_jsapi) {
     deps += [ "unittest/common/napi:unittest" ]
@@ -172,4 +29,12 @@ group("hitrace_unittest") {
   if (!use_clang_coverage) {
     deps += [ "unittest/rust/hitracechain:rust_hitracechain_test" ]
   }
+}
+
+group("hitrace_fuzztest") {
+  testonly = true
+  deps = [
+    "fuzztest:HitraceCmdFuzzTest",
+    "fuzztest:HitraceDumpFuzzTest",
+  ]
 }
