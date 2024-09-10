@@ -21,6 +21,7 @@ config("libhitrace_pub_config") {
 }
 
 ohos_shared_library("libhitracechain") {
+  branch_protector_ret = "pac_ret"
   public_configs = [ ":libhitrace_pub_config" ]
 
   deps = [ "$hitrace_frameworks_path/native:hitracechain_source" ]
@@ -62,6 +63,7 @@ config("hitrace_meter_config") {
 }
 
 ohos_static_library("hitrace_inner") {
+  branch_protector_ret = "pac_ret"
   include_dirs = [
     "include/hitrace_meter",
     "include",
@@ -133,6 +135,7 @@ ohos_shared_library("hitrace_dump") {
 }
 
 ohos_shared_library("hitrace_meter") {
+  branch_protector_ret = "pac_ret"
   public_configs = [ ":hitrace_meter_config" ]
   deps = [
     ":hitrace_etc",
