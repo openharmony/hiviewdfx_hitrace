@@ -153,8 +153,9 @@ void DelSnapshotTraceFile(const bool deleteSavedFmt, const int keepFileCount)
         return a.ctime < b.ctime;
     });
 
-    int deleteFileCnt = snapshotTraceFiles.size() - keepFileCount;
-    for (int i = 0; i < deleteFileCnt && i < snapshotTraceFiles.size(); i++) {
+    int snapshotTraceFilesSize = static_cast<int>(snapshotTraceFiles.size());
+    int deleteFileCnt = snapshotTraceFilesSize - keepFileCount;
+    for (int i = 0; i < deleteFileCnt && i < snapshotTraceFilesSize; i++) {
         RemoveFile(TRACE_DEFAULT_DIR + snapshotTraceFiles[i].filename);
     }
 }
@@ -179,7 +180,7 @@ void DelOldRecordTraceFile(const std::string& fileLimit)
     }
 
     size_t deleteNum = fileList.size() - traceFileLimit;
-    for (int i = 0; i < deleteNum; ++i) {
+    for (auto i = 0; i < deleteNum; ++i) {
         if (remove((TRACE_DEFAULT_DIR + fileList[i].filename).c_str()) == 0) {
             HILOG_INFO(LOG_CORE, "DelOldRecordTraceFile: delete first: %{public}s success.",
                 fileList[i].filename.c_str());
