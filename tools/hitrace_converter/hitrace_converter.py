@@ -127,7 +127,7 @@ def parse_text_trace_file():
         if trace_match_async:
             line = line.rstrip(' ')
             pos = line.rfind(' ')
-            line = "%s%s%s" % (line[:pos], '|', line[pos+1:])
+            line = "%s%s%s" % (line[:pos], '|', line[pos + 1:])
             match_num += 1
         elif trace_match_sync:
             line = "%s\n" % (line.rstrip()[:-1])

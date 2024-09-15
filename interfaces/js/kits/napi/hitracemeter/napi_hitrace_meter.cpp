@@ -172,7 +172,7 @@ bool ParseTagsParam(const napi_env& env, const napi_value& value, uint64_t& tags
 
 bool JsStrNumParamsFunc(napi_env& env, napi_callback_info& info, STR_NUM_PARAM_FUNC nativeCall)
 {
-    size_t argc = ARGC_NUMBER_TWO;
+    size_t argc = static_cast<size_t>(ARGC_NUMBER_TWO);
     napi_value argv[ARGC_NUMBER_TWO];
     ParseParams(env, info, argc, argv);
     if (argc != ARGC_NUMBER_TWO) {
