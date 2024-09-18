@@ -164,7 +164,7 @@ bool IsAppspawnProcess()
         getline(cmdline, procName, '\0');
         cmdline.close();
     }
-    return procName == "appspawn" || procName == "nwebspawn";
+    return procName == "appspawn" || procName == "nwebspawn" || procName == "cjappspawn";
 }
 
 void InitPid()
