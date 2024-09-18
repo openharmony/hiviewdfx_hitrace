@@ -916,7 +916,9 @@ void ProcessDumpTask()
 
     // clear old record file before record tracing start.
     DelSavedEventsFormat();
-    DelOldRecordTraceFile(g_currentTraceParams.fileLimit);
+    if (!IsRootVersion()) {
+        DelOldRecordTraceFile(g_currentTraceParams.fileLimit);
+    }
 
     if (g_currentTraceParams.fileSize.empty()) {
         std::string outputFileName = g_currentTraceParams.outputFile.empty() ?
@@ -929,7 +931,9 @@ void ProcessDumpTask()
     }
 
     while (g_dumpFlag) {
-        ClearOldTraceFile(g_outputFilesForCmd, g_currentTraceParams.fileLimit);
+        if (!IsRootVersion()) {
+            ClearOldTraceFile(g_outputFilesForCmd, g_currentTraceParams.fileLimit);
+        }
         // Generate file name
         std::string outputFileName = GenerateTraceFileName(false);
         if (DumpTraceLoop(outputFileName, true)) {
@@ -1087,7 +1091,9 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
         if (ReadRawTrace(reOutPath)) {
             g_dumpStatus = TraceErrorCode::SUCCESS;
         }
-        DelSnapshotTraceFile(false, SNAPSHOT_FILE_MAX_COUNT);
+        if (!IsRootVersion()) {
+            DelSnapshotTraceFile(false, SNAPSHOT_FILE_MAX_COUNT);
+        }
         HILOG_DEBUG(LOG_CORE, "%{public}s exit.", processName.c_str());
         write(pipefd[1], &g_dumpStatus, sizeof(g_dumpStatus));
         _exit(EXIT_SUCCESS);
