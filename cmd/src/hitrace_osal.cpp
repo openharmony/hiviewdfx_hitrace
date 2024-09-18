@@ -63,6 +63,11 @@ bool IsDeveloperMode()
 {
     return OHOS::system::GetBoolParameter("const.security.developermode.state", false);
 }
+
+bool IsRootVersion()
+{
+    return OHOS::system::GetBoolParameter("const.debuggable", false);
+}
 }
 }
 }
