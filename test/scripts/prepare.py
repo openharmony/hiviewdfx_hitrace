@@ -14,7 +14,8 @@
 # limitations under the License.
 
 import subprocess
- 
+
+
 # 自动安装依赖
 def install_dependencies(requirements_file):
     try:
@@ -22,14 +23,6 @@ def install_dependencies(requirements_file):
         print(f"install requirements.txt success")
     except subprocess.CalledProcessError as e:
         print(f"install dependence fail: {str(e)}")
- 
-# # 自动生成依赖文件
-# def generate_requirements_file(output_file):
-#     try:
-#         subprocess.check_call(["pip", "freeze"], text=True, stdout=open(output_file, 'w'))
-#     except subprocess.CalledProcessError as e:
-#         print(f"生成requirements.txt失败: {str(e)}")
- 
-# 使用方法
-# generate_requirements_file("requirements.txt")
+
+
 install_dependencies("requirements.txt")

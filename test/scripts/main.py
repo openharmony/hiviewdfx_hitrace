@@ -19,10 +19,6 @@ import pytest
 import os
 import time
 
-""" Global Parameters
-customize here !!!
-"""
-get_version = "V1.0.0"
 
 def check_library_installation(library_name):
     try:
@@ -34,7 +30,7 @@ def check_library_installation(library_name):
         print(f"pip install {library_name}")
         return 1
 
- 
+
 if __name__  == '__main__':
     if check_library_installation("pytest"):
         subprocess.check_call(["pip", "install", "-r", "requirements.txt"])
@@ -52,6 +48,3 @@ if __name__  == '__main__':
         f"=======>{report_file} is saved. \n"
     )
     input("=======>press [Enter] key to Show logs.")
-
-
-    # os.system("allure generate temp -o reports")

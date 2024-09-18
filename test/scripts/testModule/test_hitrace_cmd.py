@@ -16,12 +16,14 @@
 import subprocess
 import pytest
 
+
 def get_shell_result(cmd, words=''):
     print(f"\nexecuting command: {cmd}")
     output = subprocess.check_output(cmd.split()).decode()
     print(f"\noutput: {output}")
     if len(words) > 0:
         assert words in output
+
 
 class TestHitraceCmd:
     def prepare_steps(self):
