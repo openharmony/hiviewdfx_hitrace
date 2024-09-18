@@ -916,9 +916,7 @@ void ProcessDumpTask()
 
     // clear old record file before record tracing start.
     DelSavedEventsFormat();
-    if (!IsRootVersion()) {
-        DelOldRecordTraceFile(g_currentTraceParams.fileLimit);
-    }
+    DelOldRecordTraceFile(g_currentTraceParams.fileLimit);
 
     if (g_currentTraceParams.fileSize.empty()) {
         std::string outputFileName = g_currentTraceParams.outputFile.empty() ?
