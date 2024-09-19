@@ -31,7 +31,7 @@ def check_library_installation(library_name):
         return 1
 
 
-if __name__  == '__main__':
+if __name__ == '__main__':
     if check_library_installation("pytest"):
         subprocess.check_call(["pip", "install", "-r", "requirements.txt"])
         if check_library_installation("pytest"):
