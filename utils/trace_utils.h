@@ -30,8 +30,8 @@ namespace Hitrace {
 
 std::string GenerateTraceFileName(bool isSnapshot = true);
 void DelSnapshotTraceFile(const bool deleteSavedFmt = true, const int keepFileCount = 0);
-void DelOldRecordTraceFile(const std::string& fileLimit);
-void ClearOldTraceFile(std::vector<std::string>& fileLists, const std::string& fileLimit);
+void DelOldRecordTraceFile(const int& fileLimit);
+void ClearOldTraceFile(std::vector<std::string>& fileLists, const int& fileLimit);
 void DelSavedEventsFormat();
 } // namespace HiTrace
 } // namespace HiviewDFX

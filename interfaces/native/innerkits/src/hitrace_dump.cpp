@@ -56,9 +56,9 @@ struct TraceParams {
     std::string clockType;
     std::string isOverWrite;
     std::string outputFile;
-    std::string fileSize;
-    std::string fileLimit;
-    std::string appPid;
+    int fileLimit;
+    int fileSize;
+    int appPid;
 };
 
 constexpr uint16_t MAGIC_NUMBER = 57161;
@@ -517,8 +517,8 @@ void GetFileSizeThresholdAndTraceTime(bool &isCpuRaw, uint8_t contentType, uint6
         traceStartTime = g_traceStartTime;
         traceEndTime = g_traceEndTime;
     }
-    if (!g_currentTraceParams.fileSize.empty()) {
-        fileSizeThreshold = std::stoi(g_currentTraceParams.fileSize) * KB_PER_MB;
+    if (g_currentTraceParams.fileSize != 0) {
+        fileSizeThreshold = g_currentTraceParams.fileSize * KB_PER_MB;
     }
 }
 
@@ -853,8 +853,8 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
 {
     const int sleepTime = 1;
     int fileSizeThreshold = DEFAULT_FILE_SIZE * KB_PER_MB;
-    if (!g_currentTraceParams.fileSize.empty()) {
-        fileSizeThreshold = std::stoi(g_currentTraceParams.fileSize) * KB_PER_MB;
+    if (g_currentTraceParams.fileSize != 0) {
+        fileSizeThreshold = g_currentTraceParams.fileSize * KB_PER_MB;
     }
     g_outputFileSize = 0;
     std::string outPath = CanonicalizeSpecPath(outputFileName.c_str());
@@ -918,7 +918,7 @@ void ProcessDumpTask()
     DelSavedEventsFormat();
     DelOldRecordTraceFile(g_currentTraceParams.fileLimit);
 
-    if (g_currentTraceParams.fileSize.empty()) {
+    if (g_currentTraceParams.fileSize == 0) {
         std::string outputFileName = g_currentTraceParams.outputFile.empty() ?
                                      GenerateTraceFileName(false) : g_currentTraceParams.outputFile;
         if (DumpTraceLoop(outputFileName, false)) {
@@ -1234,7 +1234,7 @@ TraceErrorCode HandleServiceTraceOpen(const std::vector<std::string> &tagGroups,
     }
     serviceTraceParams.clockType = "boot";
     serviceTraceParams.isOverWrite = "1";
-    serviceTraceParams.fileSize = std::to_string(DEFAULT_FILE_SIZE);
+    serviceTraceParams.fileSize = DEFAULT_FILE_SIZE;
     return HandleTraceOpen(serviceTraceParams, allTags, tagGroupTable);
 }
 
@@ -1252,6 +1252,21 @@ void RemoveUnSpace(std::string str, std::string& args)
         } else {
             break;
         }
+    }
+}
+
+void SetCmdTraceIntParams(const std::string &traceParamsStr, int &traceParams)
+{
+    if (traceParamsStr.empty() || !IsNumber(traceParamsStr)) {
+        HILOG_WARN(LOG_CORE, "Illegal input, traceParams initialized to null.");
+        traceParams = 0;
+        return;
+    }
+    traceParams = std::stoi(traceParamsStr);
+    if (traceParams <= 0) {
+        HILOG_WARN(LOG_CORE, "Illegal input, traceParams initialized to null.");
+        traceParams = 0;
+        return;
     }
 }
 
@@ -1288,18 +1303,17 @@ bool ParseArgs(const std::string &args, TraceParams &cmdTraceParams, const std::
         } else if (itemName == "output") {
             cmdTraceParams.outputFile = item.substr(pos + 1);
         } else if (itemName == "fileSize") {
-            cmdTraceParams.fileSize = item.substr(pos + 1);
+            std::string fileSizeStr = item.substr(pos + 1);
+            SetCmdTraceIntParams(fileSizeStr, cmdTraceParams.fileSize);
         } else if (itemName == "fileLimit") {
-            cmdTraceParams.fileLimit = item.substr(pos + 1);
+            std::string fileLimitStr = item.substr(pos + 1);
+            SetCmdTraceIntParams(fileLimitStr, cmdTraceParams.fileLimit);
         } else if (itemName == "appPid") {
             std::string pidStr = item.substr(pos + 1);
-            if (!IsNumber(pidStr)) {
-                HILOG_ERROR(LOG_CORE, "Illegal input, appPid(%{public}s) must be number.", pidStr.c_str());
-                return false;
-            }
-            int appPid = std::stoi(pidStr);
-            if (appPid <= 0) {
-                HILOG_ERROR(LOG_CORE, "Illegal input, appPid(%{public}d) must be greater than 0.", appPid);
+            SetCmdTraceIntParams(pidStr, cmdTraceParams.appPid);
+            if (cmdTraceParams.appPid == 0) {
+                HILOG_ERROR(LOG_CORE, "Illegal input, appPid(%{public}s) must be number and greater than 0.",
+                    pidStr.c_str());
                 return false;
             }
             OHOS::system::SetParameter("debug.hitrace.app_pid", pidStr);
