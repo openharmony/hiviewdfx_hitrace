@@ -153,9 +153,8 @@ void DelSnapshotTraceFile(const bool deleteSavedFmt, const int keepFileCount)
         return a.ctime < b.ctime;
     });
 
-    int snapshotTraceFilesSize = static_cast<int>(snapshotTraceFiles.size());
-    int deleteFileCnt = snapshotTraceFilesSize - keepFileCount;
-    for (int i = 0; i < deleteFileCnt && i < snapshotTraceFilesSize; i++) {
+    int deleteFileCnt = snapshotTraceFiles.size() - keepFileCount;
+    for (int i = 0; i < deleteFileCnt && i < snapshotTraceFiles.size(); i++) {
         RemoveFile(TRACE_DEFAULT_DIR + snapshotTraceFiles[i].filename);
     }
 }
@@ -163,11 +162,11 @@ void DelSnapshotTraceFile(const bool deleteSavedFmt, const int keepFileCount)
 /**
  * open trace file aging mechanism
  */
-void DelOldRecordTraceFile(const std::string& fileLimit)
+void DelOldRecordTraceFile(const int& fileLimit)
 {
     size_t traceFileLimit = DEFAULT_TRACE_FILE_LIMIT;
-    if (!fileLimit.empty()) {
-        traceFileLimit = static_cast<size_t>(std::stoi(fileLimit));
+    if (fileLimit != 0) {
+        traceFileLimit = static_cast<size_t>(fileLimit);
     }
     HILOG_INFO(LOG_CORE, "DelOldRecordTraceFile: activate aging mechanism with file limit %{public}zu", traceFileLimit);
 
@@ -180,7 +179,7 @@ void DelOldRecordTraceFile(const std::string& fileLimit)
     }
 
     size_t deleteNum = fileList.size() - traceFileLimit;
-    for (auto i = 0; i < deleteNum; ++i) {
+    for (int i = 0; i < deleteNum; ++i) {
         if (remove((TRACE_DEFAULT_DIR + fileList[i].filename).c_str()) == 0) {
             HILOG_INFO(LOG_CORE, "DelOldRecordTraceFile: delete first: %{public}s success.",
                 fileList[i].filename.c_str());
@@ -191,15 +190,15 @@ void DelOldRecordTraceFile(const std::string& fileLimit)
     }
 }
 
-void ClearOldTraceFile(std::vector<std::string>& fileLists, const std::string& fileLimit)
+void ClearOldTraceFile(std::vector<std::string>& fileLists, const int& fileLimit)
 {
     if (fileLists.size() <= 0) {
         return;
     }
 
     size_t traceFileLimit = DEFAULT_TRACE_FILE_LIMIT;
-    if (!fileLimit.empty()) {
-        traceFileLimit = static_cast<size_t>(std::stoi(fileLimit));
+    if (fileLimit != 0) {
+        traceFileLimit = static_cast<size_t>(fileLimit);
     }
     HILOG_INFO(LOG_CORE, "ClearOldTraceFile: activate aging mechanism with file limit %{public}zu", traceFileLimit);
 
