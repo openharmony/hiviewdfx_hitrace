@@ -452,7 +452,7 @@ def parse_smbus_result(data, one_event):
 
     protocol_map = {0: "QUICK", 1: "BYTE", 2: "BYTE_DATA", 3: "WORD_DATA", \
         4: "PROC_CALL", 5: "BLOCK_DATA", 6: "I2C_BLOCK_BROKEN", 7: "BLOCK_PROC_CALL", 8: "I2C_BLOCK_DATA"}
-        read_write = "wr" if read_write_value == 0 else "rd"
+    read_write = "wr" if read_write_value == 0 else "rd"
 
     return "i2c-%d a=%03x f=%04x c=%x %s %s res=%d" \
         % (adapter_nr, addr, flags, command, protocol_map.get(protocol, ''), read_write, res)
