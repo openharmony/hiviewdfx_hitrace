@@ -37,7 +37,7 @@
 
 #include "hitrace_meter.h"
 #include "common_utils.h"
-#include "trace_collector.h"
+#include "trace_collector_client.h"
 #include "hitrace_osal.h"
 #include "securec.h"
 
