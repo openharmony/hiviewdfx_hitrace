@@ -1040,7 +1040,7 @@ bool EpollWaitforChildProcess(pid_t &pid, int &pipefd)
     constexpr int waitTimeoutMs = 10000; // 10000ms = 10s
     int numEvents = epoll_wait(epollfd, events, 1, waitTimeoutMs);
     if (numEvents == -1) {
-        HILOG_ERROR(LOG_CORE, "epoll_wait error.");
+        HILOG_ERROR(LOG_CORE, "epoll_wait error, error: (%{public}s).", strerror(errno));
         close(pipefd);
         close(epollfd);
         return false;
@@ -1058,7 +1058,7 @@ bool EpollWaitforChildProcess(pid_t &pid, int &pipefd)
     close(pipefd);
     close(epollfd);
     if (waitpid(pid, nullptr, 0) <= 0) {
-        HILOG_ERROR(LOG_CORE, "wait HitraceDump(%{public}d) exit failed, errno(%{public}d)", pid, errno);
+        HILOG_ERROR(LOG_CORE, "wait HitraceDump(%{public}d) exit failed, errno: (%{public}d)", pid, errno);
     }
     return true;
 }
@@ -1463,7 +1463,8 @@ TraceRetInfo DumpTrace()
 
 TraceRetInfo DumpTrace(int maxDuration, uint64_t traceEndTime)
 {
-    HILOG_INFO(LOG_CORE, "DumpTrace with time limit start, time limit is %{public}d.", maxDuration);
+    HILOG_INFO(LOG_CORE, "DumpTrace with timelimit start, timelimit is %{public}d, endtime is (%{public}" PRId64 ").",
+        maxDuration, traceEndTime);
     TraceRetInfo ret;
     if (maxDuration < 0) {
         HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input.");
