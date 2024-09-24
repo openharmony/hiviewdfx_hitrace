@@ -179,7 +179,7 @@ void DelOldRecordTraceFile(const int& fileLimit)
     }
 
     size_t deleteNum = fileList.size() - traceFileLimit;
-    for (int i = 0; i < deleteNum; ++i) {
+    for (size_t i = 0; i < deleteNum; ++i) {
         if (remove((TRACE_DEFAULT_DIR + fileList[i].filename).c_str()) == 0) {
             HILOG_INFO(LOG_CORE, "DelOldRecordTraceFile: delete first: %{public}s success.",
                 fileList[i].filename.c_str());
@@ -192,7 +192,7 @@ void DelOldRecordTraceFile(const int& fileLimit)
 
 void ClearOldTraceFile(std::vector<std::string>& fileLists, const int& fileLimit)
 {
-    if (fileLists.size() <= 0) {
+    if (fileLists.size() == 0) {
         return;
     }
 
