@@ -27,7 +27,6 @@ ohos_shared_library("libhitracechain") {
   deps = [ "$hitrace_frameworks_path/native:hitracechain_source" ]
 
   cflags = [ "-fstack-protector-strong" ]
-  ldflags = [ "-Wl,-Bsymbolic" ]
 
   if (defined(ohos_lite)) {
     external_deps = [ "hilog_lite:hilog_lite" ]
