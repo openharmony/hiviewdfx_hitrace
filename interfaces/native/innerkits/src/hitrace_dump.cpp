@@ -1266,7 +1266,6 @@ void SetCmdTraceIntParams(const std::string &traceParamsStr, int &traceParams)
     if (traceParams <= 0) {
         HILOG_WARN(LOG_CORE, "Illegal input, traceParams initialized to null.");
         traceParams = 0;
-        return;
     }
 }
 

@@ -153,8 +153,9 @@ void DelSnapshotTraceFile(const bool deleteSavedFmt, const int keepFileCount)
         return a.ctime < b.ctime;
     });
 
-    int deleteFileCnt = snapshotTraceFiles.size() - keepFileCount;
-    for (int i = 0; i < deleteFileCnt && i < snapshotTraceFiles.size(); i++) {
+    int snapshotTraceFilesSize = static_cast<int>(snapshotTraceFiles.size());
+    int deleteFileCnt = snapshotTraceFilesSize - keepFileCount;
+    for (int i = 0; i < deleteFileCnt && i < snapshotTraceFilesSize; i++) {
         RemoveFile(TRACE_DEFAULT_DIR + snapshotTraceFiles[i].filename);
     }
 }
