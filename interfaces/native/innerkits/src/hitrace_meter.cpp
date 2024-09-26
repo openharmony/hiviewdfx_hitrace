@@ -50,8 +50,8 @@ int g_markerFd = -1;
 int g_appFd = -1;
 std::once_flag g_onceFlag;
 std::once_flag g_onceWriteMarkerFailedFlag;
-CachedHandle g_cachedHandle;
-CachedHandle g_appPidCachedHandle;
+std::atomic<CachedHandle> g_cachedHandle;
+std::atomic<CachedHandle> g_appPidCachedHandle;
 
 std::atomic<bool> g_isHitraceMeterDisabled(false);
 std::atomic<bool> g_isHitraceMeterInit(false);
@@ -233,6 +233,7 @@ void WriteFailedLog()
 void WriteToTraceMarker(const char* buf, const int count)
 {
     if (UNEXPECTANTLY(count <= 0 || count >= BUFFER_LEN)) {
+        HILOG_INFO(LOG_CORE, "Write trace canceled, buf size is greater than the BUFFER_LEN");
         return;
     }
     if (write(g_markerFd, buf, count) < 0) {
@@ -633,7 +634,7 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
                     "%c|%s|H:%s %lld", marktypestr, g_pid, name.c_str(), value);
             }
             WriteToTraceMarker(buf, bytes);
-        } else {
+        } else if (EXPECTANTLY(len < BUFFER_LEN)) {
             AddTraceMarkerLarge(name, type, value);
         }
     }
@@ -729,6 +730,30 @@ void SetWriteAppTrace(TraceFlag appFlag, const std::string& name, const int64_t 
     }
     g_appFlag = appFlag;
     WriteAppTrace(MARKER_BEGIN, name, value);
+}
+
+void SetWriteOnceLog(LogLevel loglevel, const std::string& logStr, bool& isWrite)
+{
+    WriteOnceLog(loglevel, logStr, isWrite);
+}
+
+void SetappTracePrefix(const std::string& appTracePrefix)
+{
+    g_appTracePrefix = appTracePrefix;
+}
+
+void SetMarkerType(TraceFlag appFlag, const std::string& name, const int64_t value, bool tid)
+{
+    if (tid) {
+        g_tgid = getproctid();
+    }
+    g_appFlag = appFlag;
+    WriteAppTrace(MARKER_ASYNC_BEGIN, name, value);
+}
+
+void SetWriteAppTraceLong(const int len, const std::string& name, const int64_t value)
+{
+    WriteAppTraceLong(len, MARKER_BEGIN, name, value);
 }
 #endif
 void UpdateTraceLabel(void)

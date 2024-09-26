@@ -196,6 +196,10 @@ void SetGetProcData(const char* file);
 void GetSetMainThreadInfo();
 void GetSetCommStr();
 void SetTraceBuffer(int size);
+void SetWriteOnceLog(LogLevel loglevel, const std::string& logStr, bool& isWrite);
+void SetappTracePrefix(const std::string& appTracePrefix);
+void SetMarkerType(TraceFlag appFlag, const std::string& name, const int64_t value, bool tid);
+void SetWriteAppTraceLong(const int len, const std::string& name, const int64_t value);
 #endif
 
 int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std::string& fileName);

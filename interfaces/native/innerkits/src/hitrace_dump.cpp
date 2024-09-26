@@ -134,7 +134,6 @@ const int BUFFER_SIZE = 256 * PAGE_SIZE; // 1M
 std::atomic<bool> g_dumpFlag(false);
 std::atomic<bool> g_dumpEnd(true);
 std::mutex g_traceMutex;
-std::mutex g_processMutex;
 
 bool g_serviceThreadIsStart = false;
 uint64_t g_sysInitParamTags = 0;
@@ -263,14 +262,12 @@ bool WriteStrToFileInner(const std::string& filename, const std::string& str)
 
 bool WriteStrToFile(const std::string& filename, const std::string& str)
 {
-    bool ret = false;
-    if (access((g_traceRootPath + filename).c_str(), W_OK) == 0) {
-        if (WriteStrToFileInner(g_traceRootPath + filename, str)) {
-            ret = true;
-        }
+    if (access((g_traceRootPath + filename).c_str(), W_OK) < 0) {
+        HILOG_ERROR(LOG_CORE, "WriteStrToFile: Failed to access %{public}s, errno(%{public}d).",
+            (g_traceRootPath + filename).c_str(), errno);
+        return false;
     }
-
-    return ret;
+    return WriteStrToFileInner(g_traceRootPath + filename, str);
 }
 
 void SetTraceNodeStatus(const std::string &path, bool enabled)
@@ -540,7 +537,7 @@ bool IsWriteFileOverflow(const int &outputFileSize, const ssize_t &writeLen, con
     if (g_traceMode != TraceMode::CMD_MODE) {
         return false;
     }
-    if (outputFileSize + writeLen + sizeof(TraceFileContentHeader) >= fileSizeThreshold) {
+    if (outputFileSize + writeLen + static_cast<int>(sizeof(TraceFileContentHeader)) >= fileSizeThreshold) {
         HILOG_ERROR(LOG_CORE, "Failed to write, current round write file size exceeds the file size limit.");
         return true;
     }
@@ -888,7 +885,6 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
     return true;
 }
 
-
 /**
  * When the raw trace is started, clear the saved_events_format files in the folder.
  */
@@ -932,7 +928,7 @@ void ClearOldTraceFileInDirectory()
         HILOG_INFO(LOG_CORE, "no file need clear");
     }
     while (static_cast<int>(fileNames.size()) > std::stoi(g_currentTraceParams.fileLimit)) {
-        if (remove((DEFAULT_OUTPUT_DIR+fileNames[0]).c_str()) == 0) {
+        if (remove((DEFAULT_OUTPUT_DIR + fileNames[0]).c_str()) == 0) {
             HILOG_INFO(LOG_CORE, "ClearOldTraceFileInDirectory: delete first: %{public}s success.",
                 fileNames[0].c_str());
         } else {
@@ -969,7 +965,6 @@ void ClearOldTraceFile()
 */
 void ProcessDumpTask()
 {
-    std::lock_guard<std::mutex> lock(g_processMutex);
     g_dumpFlag = true;
     g_dumpEnd = false;
     g_outputFilesForCmd = {};
@@ -1529,6 +1524,11 @@ TraceErrorCode DumpTraceOn()
         return CALL_ERROR;
     }
 
+    if (!g_dumpEnd) {
+        HILOG_ERROR(LOG_CORE, "DumpTraceOn: CALL_ERROR, record trace is dumping now.");
+        return CALL_ERROR;
+    }
+
     // start task thread
     auto it = []() {
         ProcessDumpTask();
@@ -1597,7 +1597,7 @@ std::vector<std::pair<std::string, int>> GetTraceFilesTable()
     return g_traceFilesTable;
 }
 
-void SetTraceFilesTable(std::vector<std::pair<std::string, int>>& traceFilesTable)
+void SetTraceFilesTable(const std::vector<std::pair<std::string, int>>& traceFilesTable)
 {
     g_traceFilesTable = traceFilesTable;
 }
