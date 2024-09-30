@@ -22,10 +22,10 @@ def parse_bytes_to_str(data):
         return decoded_str
 
     if data.find(b'\x00') == -1:
-        decoded_str = data[:].decode('utf-8', errors = "ignore")
+        decoded_str = data[:].decode('utf-8', errors ="ignore")
         return decoded_str
 
-    decoded_str = data[:data.index(b'\x00')].decode('utf-8', errors = "ignore")
+    decoded_str = data[:data.index(b'\x00')].decode('utf-8', errors ="ignore")
 
     return decoded_str
 
@@ -82,7 +82,7 @@ def parse_sched_switch_hm(data, one_event):
     prev_state = pstate_map.get(pstate, '?')
 
     return "prev_comm=%s prev_pid=%d prev_prio=%d prev_state=%s ==> next_comm=%s next_pid=%d next_prio=%d" \
-    % (pname, prev_tid, pprio, prev_state, nname, next_tid, nprio)
+        % (pname, prev_tid, pprio, prev_state, nname, next_tid, nprio)
 
 
 def parse_sched_switch(data, one_event):
@@ -104,17 +104,27 @@ def parse_sched_switch(data, one_event):
     % (prev_comm, prev_pid, prev_prio, pstate, next_comm, next_pid, next_prio, expeller_type)
 
 
+def parse_sched_blocked_reason_hm_old(data, one_event):
+    pid = parse_int_field(one_event, "pid", True)
+    caller = parse_int_field(one_event, "caller", False)
+    iowait = parse_int_field(one_event, "iowait", False)
+    delay = parse_int_field(one_event, "delay", False)
+    cnode_idx = parse_int_field(one_event, "cnode_idx", False)
+
+    return "pid=%d iowait=%d caller=0x%x cnode_idx=%d delay=%d" % (pid, iowait, caller, cnode_idx, delay >> 10)
+
+
 def parse_sched_blocked_reason_hm(data, one_event):
     pid = parse_int_field(one_event, "pid", True)
     iowait = parse_int_field(one_event, "iowait", False)
-    func_name = parse_bytes_to_str(one_event["fields"]["func_name[16]"])
+    func_name = parse_bytes_to_str(one_event["fields"]["func_name[20]"])
     offset = parse_int_field(one_event, "offset", False)
     size = parse_int_field(one_event, "size", False)
-    mod_name = parse_bytes_to_str(one_event["fields"]["mod_name[16]"])
+    mod_name = parse_bytes_to_str(one_event["fields"]["mod_name[12]"])
     delay = parse_int_field(one_event, "delay", False)
 
     return "pid=%d iowait=%d caller=%s+0x%lx/0x%lx[%s] delay=%d" \
-    % (pid, iowait, func_name, offset, size, mod_name, delay >> 10)
+        % (pid, iowait, func_name, offset, size, mod_name, delay >> 10)
 
 
 def parse_sched_blocked_reason(data, one_event):
@@ -172,7 +182,7 @@ def parse_ext4_da_write_begin(data, one_event):
     flags = parse_int_field(one_event, "flags", False)
 
     return "dev %d,%d ino %d pos %d len %d flags %d" \
-    % (dev >> 20, dev & 0xfffff, ino, pos, len_write, flags)
+        % (dev >> 20, dev & 0xfffff, ino, pos, len_write, flags)
 
 
 def parse_ext4_da_write_end(data, one_event):
@@ -183,7 +193,7 @@ def parse_ext4_da_write_end(data, one_event):
     copied = parse_int_field(one_event, "copied", False)
 
     return "dev %d,%d ino %d pos %d len %d copied %d" \
-    % (dev >> 20, dev & 0xfffff, ino, pos, len_write, copied)
+        % (dev >> 20, dev & 0xfffff, ino, pos, len_write, copied)
 
 
 def parse_ext4_sync_file_enter(data, one_event):
@@ -193,7 +203,7 @@ def parse_ext4_sync_file_enter(data, one_event):
     datasync = parse_int_field(one_event, "datasync", True)
 
     return "dev %d,%d ino %d parent %d datasync %d " \
-    % (dev >> 20, dev & 0xfffff, ino, parent, datasync)
+        % (dev >> 20, dev & 0xfffff, ino, parent, datasync)
 
 
 def parse_ext4_sync_file_exit(data, one_event):
@@ -212,7 +222,7 @@ def parse_block_bio_remap(data, one_event):
     rwbs = parse_bytes_to_str(one_event["fields"]["rwbs[8]"])
 
     return "%d,%d %s %d + %d <- (%d,%d) %d" \
-    % (dev >> 20, dev & 0xfffff, rwbs, sector, nr_sector, old_dev >> 20, old_dev & 0xfffff, old_sector)
+        % (dev >> 20, dev & 0xfffff, rwbs, sector, nr_sector, old_dev >> 20, old_dev & 0xfffff, old_sector)
 
 
 def parse_block_rq_issue_hm(data, one_event):
@@ -225,7 +235,7 @@ def parse_block_rq_issue_hm(data, one_event):
     cmd = parse_bytes_to_str(one_event["fields"]["cmd[16]"])
 
     return "%d,%d %s %d (%s) %d + %d [%s]" \
-    % (dev >> 20, dev & 0xfffff, rwbs, bytes_num, cmd, sector, nr_sector, comm)
+        % (dev >> 20, dev & 0xfffff, rwbs, bytes_num, cmd, sector, nr_sector, comm)
 
 
 def parse_block_rq_issue_or_insert(data, one_event):
@@ -238,7 +248,7 @@ def parse_block_rq_issue_or_insert(data, one_event):
     cmd_pos = parse_int_field(one_event, "cmd", False) & 0xffff
 
     return "%d,%d %s %d (%s) %d + %d [%s]" \
-    % (dev >> 20, dev & 0xfffff, rwbs, bytes_num, parse_bytes_to_str(data[cmd_pos:]), sector, nr_sector, comm)
+        % (dev >> 20, dev & 0xfffff, rwbs, bytes_num, parse_bytes_to_str(data[cmd_pos:]), sector, nr_sector, comm)
 
 
 def parse_block_rq_complete_hm(data, one_event):
@@ -250,7 +260,7 @@ def parse_block_rq_complete_hm(data, one_event):
     cmd = parse_bytes_to_str(one_event["fields"]["cmd[16]"])
 
     return "%d,%d %s (%s) %d + %d [%d]" \
-    % (dev >> 20, dev & 0xfffff, rwbs, cmd, sector, nr_sector, error)
+        % (dev >> 20, dev & 0xfffff, rwbs, cmd, sector, nr_sector, error)
 
 
 def parse_block_rq_complete(data, one_event):
@@ -262,7 +272,7 @@ def parse_block_rq_complete(data, one_event):
     cmd_pos = parse_int_field(one_event, "cmd", False) & 0xffff
 
     return "%d,%d %s (%s) %d + %d [%d]" \
-    % (dev >> 20, dev & 0xfffff, rwbs, parse_bytes_to_str(data[cmd_pos:]), sector, nr_sector, error)
+        % (dev >> 20, dev & 0xfffff, rwbs, parse_bytes_to_str(data[cmd_pos:]), sector, nr_sector, error)
 
 
 def parse_ufshcd_command_hm(data, one_event):
@@ -276,7 +286,7 @@ def parse_ufshcd_command_hm(data, one_event):
     opcode = parse_int_field(one_event, "opcode", False)
 
     return "%s: %s: tag: %d, DB: 0x%x, size: %d, IS: %d, LBA: %d, opcode: 0x%x" \
-    % (command_str, dev_name, tag, doorbell, transfer_len, intr, lba, opcode)
+        % (command_str, dev_name, tag, doorbell, transfer_len, intr, lba, opcode)
 
 
 def parse_ufshcd_command(data, one_event):
@@ -294,8 +304,8 @@ def parse_ufshcd_command(data, one_event):
     0x28: "READ_10", 0x35: "SYNC", 0x42: "UNMAP"}
 
     return "%s: %s: tag: %d, DB: 0x%x, size: %d, IS: %d, LBA: %d, opcode: 0x%x (%s), group_id: 0x%x" \
-    % (parse_bytes_to_str(data[str_pos:]), parse_bytes_to_str(data[dev_name_pos:]), tag, doorbell, \
-    transfer_len, intr, lba, opcode, opcode_map.get(opcode, ""), group_id)
+        % (parse_bytes_to_str(data[str_pos:]), parse_bytes_to_str(data[dev_name_pos:]), tag, doorbell, \
+        transfer_len, intr, lba, opcode, opcode_map.get(opcode, ""), group_id)
 
 
 def parse_ufshcd_upiu(data, one_event):
@@ -305,7 +315,7 @@ def parse_ufshcd_upiu(data, one_event):
     tsf = parse_int_field(one_event, "tsf[16]", False)
 
     return "%s: %s: HDR:0x%x, CDB:0x%x" % (parse_bytes_to_str(data[str_pos:]), \
-    parse_bytes_to_str(data[dev_name_pos:]), hdr, tsf)
+        parse_bytes_to_str(data[dev_name_pos:]), hdr, tsf)
 
 
 def parse_ufshcd_uic_command(data, one_event):
@@ -317,7 +327,7 @@ def parse_ufshcd_uic_command(data, one_event):
     arg3 = parse_int_field(one_event, "arg3", False)
 
     return "%s: %s: cmd: 0x%x, arg1: 0x%x, arg2: 0x%x, arg3: 0x%x" \
-    % (parse_bytes_to_str(data[str_pos:]), parse_bytes_to_str(data[dev_name_pos:]), cmd, arg1, arg2, arg3)
+        % (parse_bytes_to_str(data[str_pos:]), parse_bytes_to_str(data[dev_name_pos:]), cmd, arg1, arg2, arg3)
 
 
 def parse_ufshcd_funcs(data, one_event):
@@ -331,8 +341,8 @@ def parse_ufshcd_funcs(data, one_event):
     link_state_map = {0: "UIC_LINK_OFF_STATE", 1: "UIC_LINK_ACTIVE_STATE", 2: "UIC_LINK_HIBERN8_STATE"}
 
     return "%s: took %d usecs, dev_state: %s, link_state: %s, err %d" \
-    % (parse_bytes_to_str(data[dev_name_pos:]), usecs, dev_state_map.get(dev_state, ""), \
-    link_state_map.get(link_state, ""), err)
+        % (parse_bytes_to_str(data[dev_name_pos:]), usecs, dev_state_map.get(dev_state, ""), \
+        link_state_map.get(link_state, ""), err)
 
 
 def parse_ufshcd_profile_funcs(data, one_event):
@@ -360,7 +370,7 @@ def parse_ufshcd_clk_scaling(data, one_event):
     curr_state = parse_int_field(one_event, "curr_state", False)
 
     return "%s: %s %s from %d to %d Hz" % (parse_bytes_to_str(data[dev_name_pos:]), \
-    parse_bytes_to_str(data[state_pos:]), parse_bytes_to_str(data[clk_pos:]), prev_state, curr_state)
+        parse_bytes_to_str(data[state_pos:]), parse_bytes_to_str(data[clk_pos:]), prev_state, curr_state)
 
 
 def parse_ufshcd_clk_gating(data, one_event):
@@ -390,7 +400,7 @@ def parse_i2c_write_or_reply(data, one_event):
     len_write = parse_int_field(one_event, "len", False)
     buf_pos = parse_int_field(one_event, "buf", False) & 0xffff
     return ("i2c-%d #%d a=%03x f=%04x l=%d " % (adapter_nr, msg_nr, addr, flags, len_write)) \
-    + "{:{width}d}".format(int(parse_bytes_to_str(data[buf_pos:])), width=len_write)
+        + "{:{width}d}".format(int(parse_bytes_to_str(data[buf_pos:])), width=len_write)
 
 
 def parse_i2c_result(data, one_event):
@@ -409,7 +419,7 @@ def parse_smbus_read(data, one_event):
     protocol = parse_int_field(one_event, "protocol", False)
 
     protocol_map = {0: "QUICK", 1: "BYTE", 2: "BYTE_DATA", 3: "WORD_DATA", \
-    4: "PROC_CALL", 5: "BLOCK_DATA", 6: "I2C_BLOCK_BROKEN", 7: "BLOCK_PROC_CALL", 8: "I2C_BLOCK_DATA"}
+        4: "PROC_CALL", 5: "BLOCK_DATA", 6: "I2C_BLOCK_BROKEN", 7: "BLOCK_PROC_CALL", 8: "I2C_BLOCK_DATA"}
 
     return "i2c-%d a=%03x f=%04x c=%x %s" % (adapter_nr, addr, flags, command, protocol_map.get(protocol, ''))
 
@@ -424,11 +434,11 @@ def parse_smbus_write_or_reply(data, one_event):
     buf = parse_bytes_to_str(one_event["fields"]["buf[32 + 2]"])
 
     protocol_map = {0: "QUICK", 1: "BYTE", 2: "BYTE_DATA", 3: "WORD_DATA", \
-    4: "PROC_CALL", 5: "BLOCK_DATA", 6: "I2C_BLOCK_BROKEN", 7: "BLOCK_PROC_CALL", 8: "I2C_BLOCK_DATA"}
+        4: "PROC_CALL", 5: "BLOCK_DATA", 6: "I2C_BLOCK_BROKEN", 7: "BLOCK_PROC_CALL", 8: "I2C_BLOCK_DATA"}
 
     return ("i2c-%d a=%03x f=%04x c=%x %s l=%d" \
-    % (adapter_nr, addr, flags, command, protocol_map.get(protocol, ''), \
-    len_write)) + "{:{width}d}".format(int(buf), width=len_write)
+        % (adapter_nr, addr, flags, command, protocol_map.get(protocol, ''), \
+        len_write)) + "{:{width}d}".format(int(buf), width=len_write)
 
 
 def parse_smbus_result(data, one_event):
@@ -441,11 +451,11 @@ def parse_smbus_result(data, one_event):
     protocol = parse_int_field(one_event, "protocol", False)
 
     protocol_map = {0: "QUICK", 1: "BYTE", 2: "BYTE_DATA", 3: "WORD_DATA", \
-    4: "PROC_CALL", 5: "BLOCK_DATA", 6: "I2C_BLOCK_BROKEN", 7: "BLOCK_PROC_CALL", 8: "I2C_BLOCK_DATA"}
-    read_write = "wr" if read_write_value == 0 else "rd"
+        4: "PROC_CALL", 5: "BLOCK_DATA", 6: "I2C_BLOCK_BROKEN", 7: "BLOCK_PROC_CALL", 8: "I2C_BLOCK_DATA"}
+        read_write = "wr" if read_write_value == 0 else "rd"
 
     return "i2c-%d a=%03x f=%04x c=%x %s %s res=%d" \
-    % (adapter_nr, addr, flags, command, protocol_map.get(protocol, ''), read_write, res)
+        % (adapter_nr, addr, flags, command, protocol_map.get(protocol, ''), read_write, res)
 
 
 def parse_regulator_set_voltage_complete(data, one_event):
@@ -476,7 +486,7 @@ def parse_dma_fence_funcs(data, one_event):
     seqno = parse_int_field(one_event, "seqno", False)
 
     return "driver=%s timeline=%s context=%d seqno=%d" \
-    % (parse_bytes_to_str(data[driver_pos:]), parse_bytes_to_str(data[timeline_pos:]), context, seqno)
+        % (parse_bytes_to_str(data[driver_pos:]), parse_bytes_to_str(data[timeline_pos:]), context, seqno)
 
 
 def parse_binder_transaction(data, one_event):
@@ -489,7 +499,7 @@ def parse_binder_transaction(data, one_event):
     flags = parse_int_field(one_event, "flags", False)
 
     return "transaction=%d dest_node=%d dest_proc=%d dest_thread=%d reply=%d flags=0x%x code=0x%x" \
-    % (debug_id, target_node, to_proc, to_thread, reply, flags, code)
+        % (debug_id, target_node, to_proc, to_thread, reply, flags, code)
 
 
 def parse_binder_transaction_received(data, one_event):
@@ -526,12 +536,12 @@ def parse_mmc_request_start(data, one_event):
     name = parse_bytes_to_str(one_event["fields"]["name"])
 
     return "%s: start struct mmc_request[0x%x]: cmd_opcode=%d cmd_arg=0x%x cmd_flags=0x%x \
-    cmd_retries=%d stop_opcode=%d stop_arg=0x%x stop_flags=0x%x stop_retries=%d sbc_opcode=%d \
-    sbc_arg=0x%x sbc_flags=0x%x sbc_retires=%d blocks=%d block_size=%d blk_addr=%d data_flags=0x%x \
-    tag=%d can_retune=%d doing_retune=%d retune_now=%d need_retune=%d hold_retune=%d retune_period=%d" \
-    % (name, mrq, cmd_opcode, cmd_arg, cmd_flags, cmd_retries, stop_opcode, stop_arg, stop_flags, \
-    stop_retries, sbc_opcode, sbc_arg, sbc_flags, sbc_retries, blocks, blksz, blk_addr, data_flags, \
-    tag, can_retune, doing_retune, retune_now, need_retune, hold_retune, retune_period)
+        cmd_retries=%d stop_opcode=%d stop_arg=0x%x stop_flags=0x%x stop_retries=%d sbc_opcode=%d \
+        sbc_arg=0x%x sbc_flags=0x%x sbc_retires=%d blocks=%d block_size=%d blk_addr=%d data_flags=0x%x \
+        tag=%d can_retune=%d doing_retune=%d retune_now=%d need_retune=%d hold_retune=%d retune_period=%d" \
+        % (name, mrq, cmd_opcode, cmd_arg, cmd_flags, cmd_retries, stop_opcode, stop_arg, stop_flags, \
+        stop_retries, sbc_opcode, sbc_arg, sbc_flags, sbc_retries, blocks, blksz, blk_addr, data_flags, \
+        tag, can_retune, doing_retune, retune_now, need_retune, hold_retune, retune_period)
 
 
 def parse_mmc_request_done(data, one_event):
@@ -560,13 +570,13 @@ def parse_mmc_request_done(data, one_event):
     name = parse_bytes_to_str(one_event["fields"]["name"])
 
     return "%s: end struct mmc_request[0x%x]: cmd_opcode=%d cmd_err=%d cmd_resp=0x%x 0x%x 0x%x 0x%x \
-    cmd_retries=%d stop_opcode=%d stop_err=%d stop_resp=0x%x 0x%x 0x%x 0x%x stop_retries=%d sbc_opcode=%d \
-    sbc_err=%d sbc_resp=0x%x 0x%x 0x%x 0x%x sbc_retries=%d bytes_xfered=%d data_err=%d tag=%d can_retune=%d \
-    doing_retune=%d retune_now=%d need_retune=%d hold_retune=%d retune_period=%d" \
-    % (name, mrq, cmd_opcode, cmd_err, cmd_resp[0], cmd_resp[1], cmd_resp[2], cmd_resp[3], cmd_retries, \
-    stop_opcode, stop_err, stop_resp[0], stop_resp[1], stop_resp[2], stop_resp[3], stop_retries, sbc_opcode, \
-    sbc_err, sbc_resp[0], sbc_resp[1], sbc_resp[2], sbc_resp[3], sbc_retries, bytes_xfered, data_err, tag, \
-    can_retune, doing_retune, retune_now, need_retune, hold_retune, retune_period)
+        cmd_retries=%d stop_opcode=%d stop_err=%d stop_resp=0x%x 0x%x 0x%x 0x%x stop_retries=%d sbc_opcode=%d \
+        sbc_err=%d sbc_resp=0x%x 0x%x 0x%x 0x%x sbc_retries=%d bytes_xfered=%d data_err=%d tag=%d can_retune=%d \
+        doing_retune=%d retune_now=%d need_retune=%d hold_retune=%d retune_period=%d" \
+        % (name, mrq, cmd_opcode, cmd_err, cmd_resp[0], cmd_resp[1], cmd_resp[2], cmd_resp[3], cmd_retries, \
+        stop_opcode, stop_err, stop_resp[0], stop_resp[1], stop_resp[2], stop_resp[3], stop_retries, sbc_opcode, \
+        sbc_err, sbc_resp[0], sbc_resp[1], sbc_resp[2], sbc_resp[3], sbc_retries, bytes_xfered, data_err, tag, \
+        can_retune, doing_retune, retune_now, need_retune, hold_retune, retune_period)
 
 
 def parse_file_check_and_advance_wb_err(data, one_event):
@@ -577,7 +587,7 @@ def parse_file_check_and_advance_wb_err(data, one_event):
     new = parse_int_field(one_event, "new", False)
 
     return "file=0x%x dev=%d:%d ino=0x%x old=0x%x new=0x%x" \
-    % (file, s_dev >> 20, s_dev & 0xfffff, i_ino, old, new)
+        % (file, s_dev >> 20, s_dev & 0xfffff, i_ino, old, new)
 
 
 def parse_filemap_set_wb_err(data, one_event):
@@ -586,7 +596,7 @@ def parse_filemap_set_wb_err(data, one_event):
     errseq = parse_int_field(one_event, "errseq", False)
 
     return "dev=%d:%d ino=0x%x errseq=0x%x" \
-    % (s_dev >> 20, s_dev & 0xfffff, i_ino, errseq)
+        % (s_dev >> 20, s_dev & 0xfffff, i_ino, errseq)
 
 
 def parse_mm_filemap_add_or_delete_page_cache(data, one_event):
@@ -597,7 +607,7 @@ def parse_mm_filemap_add_or_delete_page_cache(data, one_event):
     pg = parse_int_field(one_event, "pg", False)
 
     return "dev %d:%d ino 0x%x page=0x%x pfn=%d ofs=%d" \
-    % (s_dev >> 20, s_dev & 0xfffff, i_ino, pg, pfn, index << 12)
+        % (s_dev >> 20, s_dev & 0xfffff, i_ino, pg, pfn, index << 12)
 
 
 def parse_rss_stat(data, one_event):
@@ -629,12 +639,13 @@ def parse_thermal_power_allocator(data, one_event):
     delta_temp = parse_int_field(one_event, "delta_temp", True)
 
     req_power = "{" + ", ".join(str(x) for x in list(data[req_power_pos:req_power_pos + num_actors * 4])) + "}"
-    granted_power = "{" + ", ".join(str(x) for x in list(data[granted_power_pos:granted_power_pos + num_actors * 4])) + "}"
+    granted_power = "{" + \
+        ", ".join(str(x) for x in list(data[granted_power_pos:granted_power_pos + num_actors * 4])) + "}"
 
     return "thermal_zone_id=%d req_power=%s total_req_power=%d granted_power=%s total_granted_power=%d \
-    power_range=%d max_allocatable_power=%d current_temperature=%d delta_temperature=%d" \
-    % (tz_id, req_power, total_req_power, granted_power, total_granted_power, power_range, \
-    max_allocatable_power, current_temp, delta_temp)
+        power_range=%d max_allocatable_power=%d current_temperature=%d delta_temperature=%d" \
+        % (tz_id, req_power, total_req_power, granted_power, total_granted_power, power_range, \
+        max_allocatable_power, current_temp, delta_temp)
 
 
 def parse_thermal_power_allocator_pid(data, one_event):
@@ -647,7 +658,7 @@ def parse_thermal_power_allocator_pid(data, one_event):
     output = parse_int_field(one_event, "output", True)
 
     return "thermal_zone_id=%d err=%d err_integral=%d p=%d i=%d d=%d output=%d" \
-    % (tz_id, err, err_integral, p, i, d, output)
+        % (tz_id, err, err_integral, p, i, d, output)
 
 
 def parse_print(data, one_event):
@@ -689,6 +700,7 @@ PRINT_FMT_SCHED_WAKEUP_HM = '"comm=%s pid=%d prio=%d target_cpu=%03d", REC->pnam
 PRINT_FMT_SCHED_WAKEUP = '"comm=%s pid=%d prio=%d target_cpu=%03d", REC->comm, REC->pid, REC->prio, REC->target_cpu'
 PRINT_FMT_SCHED_SWITCH_HM = '"prev_comm=%s prev_pid=%d prev_prio=%d prev_state=%s" " ==> next_comm=%s next_pid=%d next_prio=%d", REC->pname, REC->prev_tid, REC->pprio, hm_trace_tcb_state2str(REC->pstate), REC->nname, REC->next_tid, REC->nprio'
 PRINT_FMT_SCHED_SWITCH = '"prev_comm=%s prev_pid=%d prev_prio=%d prev_state=%s%s ==> next_comm=%s next_pid=%d next_prio=%d expeller_type=%u", REC->prev_comm, REC->prev_pid, REC->prev_prio, (REC->prev_state & ((((0x0000 | 0x0001 | 0x0002 | 0x0004 | 0x0008 | 0x0010 | 0x0020 | 0x0040) + 1) << 1) - 1)) ? __print_flags(REC->prev_state & ((((0x0000 | 0x0001 | 0x0002 | 0x0004 | 0x0008 | 0x0010 | 0x0020 | 0x0040) + 1) << 1) - 1), "|", { 0x0001, "S" }, { 0x0002, "D" }, { 0x0004, "T" }, { 0x0008, "t" }, { 0x0010, "X" }, { 0x0020, "Z" }, { 0x0040, "P" }, { 0x0080, "I" }) : "R", REC->prev_state & (((0x0000 | 0x0001 | 0x0002 | 0x0004 | 0x0008 | 0x0010 | 0x0020 | 0x0040) + 1) << 1) ? "+" : "", REC->next_comm, REC->next_pid, REC->next_prio, REC->expeller_type'
+PRINT_FMT_SCHED_BLOCKED_REASON_HM_OLD = '"pid=%d iowait=%d caller=%s delay=%llu", REC->pid, REC->iowait, hm_trace_sched_blocked_reason_of(REC->cnode_idx, REC->caller), REC->delay >> 10'
 PRINT_FMT_SCHED_BLOCKED_REASON_HM = '"pid=%d iowait=%d caller=%s+0x%lx/0x%lx[%s] delay=%llu", REC->pid, REC->iowait, REC->func_name, REC->offset, REC->size, REC->mod_name, REC->delay >> 10'
 PRINT_FMT_SCHED_BLOCKED_REASON = '"pid=%d iowait=%d caller=%pS delay=%lu", REC->pid, REC->io_wait, REC->caller, REC->delay>>10'
 PRINT_FMT_CPU_FREQUENCY_HM = '"state=%u cpu_id=%u", REC->state, REC->cpu_id'
@@ -748,6 +760,7 @@ PRINT_FMT_SCHED_WAKEUP_HM: parse_sched_wakeup_hm,
 PRINT_FMT_SCHED_WAKEUP: parse_sched_wakeup,
 PRINT_FMT_SCHED_SWITCH_HM: parse_sched_switch_hm,
 PRINT_FMT_SCHED_SWITCH: parse_sched_switch,
+PRINT_FMT_SCHED_BLOCKED_REASON_HM_OLD: parse_sched_blocked_reason_hm_old,
 PRINT_FMT_SCHED_BLOCKED_REASON_HM: parse_sched_blocked_reason_hm,
 PRINT_FMT_SCHED_BLOCKED_REASON: parse_sched_blocked_reason,
 PRINT_FMT_CPU_FREQUENCY_HM: parse_cpu_frequency,

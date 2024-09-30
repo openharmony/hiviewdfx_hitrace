@@ -109,7 +109,7 @@ void InitHiTraceCommunicationModeEnum(napi_env env,
     commuicationModeMap["DEVICE"] = deviceMode;
 }
 
-void InitConstClassByName(napi_env env, napi_value exports, std::string name)
+void InitConstClassByName(napi_env env, napi_value exports, const std::string name)
 {
     std::map<const char*, napi_value> propertyMap;
     if (name == HITRACE_FLAG_ENUM_NAME) {
