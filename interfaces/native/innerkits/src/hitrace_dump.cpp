@@ -589,7 +589,8 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
             if (traceEndTime < pageTraceTime) {
                 endFlag = true;
                 readBytes = 0;
-                HILOG_ERROR(LOG_CORE, "Current pageTraceTime:(%{public}" PRId64 ") is larger than traceEndTime:(%{public}" PRId64 "), stop to read trace info.",
+                HILOG_INFO(LOG_CORE,
+                    "Current pageTraceTime:(%{public}" PRId64 ") is larger than traceEndTime:(%{public}" PRId64 ")",
                     pageTraceTime, traceEndTime);
                 break;
             }
@@ -1105,7 +1106,11 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
     }
 
     if (g_dumpStatus) {
-        remove(reOutPath.c_str());
+        if (remove(reOutPath.c_str()) == 0) {
+            HILOG_INFO(LOG_CORE, "Delete outpath:%{public}s success.", reOutPath.c_str());
+        } else {
+            HILOG_INFO(LOG_CORE, "Delete outpath:%{public}s failed.", reOutPath.c_str());
+        }
         return static_cast<TraceErrorCode>(g_dumpStatus.load());
     }
 
@@ -1492,7 +1497,8 @@ TraceRetInfo DumpTrace(int maxDuration, uint64_t traceEndTime)
                 // beware of input precision of seconds: add an extra second of tolerance
                 g_inputTraceEndTime = (traceEndTime - static_cast<uint64_t>(boot_time) + 1) * S_TO_NS;
             } else {
-                HILOG_ERROR(LOG_CORE, "DumpTrace: traceEndTime:(%{public}" PRId64 ") is earlier than boot_time:(%{public}" PRId64 ").",
+                HILOG_ERROR(LOG_CORE,
+                    "DumpTrace: traceEndTime:(%{public}" PRId64 ") is earlier than boot_time:(%{public}" PRId64 ").",
                     traceEndTime, static_cast<uint64_t>(boot_time));
                 ret.errorCode = OUT_OF_TIME;
                 return ret;
