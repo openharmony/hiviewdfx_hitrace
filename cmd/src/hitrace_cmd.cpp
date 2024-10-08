@@ -123,7 +123,6 @@ constexpr struct option LONG_OPTIONS[] = {
     { nullptr,             0,                 nullptr, 0 },
 };
 const unsigned int CHUNK_SIZE = 65536;
-const int SHELL_UID = 2000;
 
 constexpr const char *TRACE_TAG_PROPERTY = "debug.hitrace.tags.enableflags";
 
@@ -882,7 +881,6 @@ int main(int argc, char **argv)
         return -1;
     }
     bool isSuccess = true;
-    setgid(SHELL_UID);
     g_traceCollector = OHOS::HiviewDFX::UCollectClient::TraceCollector::Create();
     if (g_traceCollector == nullptr) {
         ConsoleLog("error: traceCollector create failed, exit.");
