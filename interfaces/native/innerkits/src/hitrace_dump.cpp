@@ -991,6 +991,7 @@ bool ReadRawTrace(std::string &outputFileName)
         return true;
     }
     HILOG_ERROR(LOG_CORE, "ReadRawTrace failed.");
+    fsync(outFd);
     close(outFd);
     return false;
 }
