@@ -576,7 +576,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
                 break;
             } else if (readBytes < 0) {
                 endFlag = true;
-                HILOG_ERROR(LOG_CORE, "WriteFile: read %{public}s, data size: %{public}zd failed, errno: %{public}d.",
+                HILOG_DEBUG(LOG_CORE, "WriteFile: read %{public}s, data size: %{public}zd failed, errno: %{public}d.",
                     src.c_str(), readBytes, errno);
                 break;
             }

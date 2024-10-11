@@ -145,11 +145,13 @@ TRACE_HEADER_SIZE = 12
 def parse_trace_header(infile):
     trace_header = {}
     trace_header_data = infile.read(TRACE_HEADER_SIZE)
-    trace_header_tuple = struct.unpack('HBHL', trace_header_data)
-    trace_header["magic_number"] = trace_header_tuple[0]
-    trace_header["file_type"] = trace_header_tuple[1]
-    trace_header["version_number"] = trace_header_tuple[2]
-    trace_header["reserved"] = trace_header_tuple[3]
+    trace_header_data_len = len(trace_header_data)
+    if trace_header_data_len == 12:
+        trace_header_tuple = struct.unpack('HBHL', trace_header_data)
+        trace_header["magic_number"] = trace_header_tuple[0]
+        trace_header["file_type"] = trace_header_tuple[1]
+        trace_header["version_number"] = trace_header_tuple[2]
+        trace_header["reserved"] = trace_header_tuple[3]
     return trace_header
 
 
