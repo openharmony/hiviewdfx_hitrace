@@ -245,6 +245,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
     uint64_t traceEndTime = 1;
     TraceRetInfo ret = DumpTrace(0, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
+    ASSERT_TRUE(ret.outputFiles.empty());
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
@@ -272,6 +273,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
     maxDuration = 10;
     ret = DumpTrace(maxDuration, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
+    ASSERT_TRUE(ret.outputFiles.empty());
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
@@ -279,6 +281,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
     maxDuration = 10;
     ret = DumpTrace(maxDuration, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
+    ASSERT_TRUE(ret.outputFiles.empty());
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
@@ -302,6 +305,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_005, TestSize.Level0)
     uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr)) - 20; // current time - 20 seconds
     TraceRetInfo ret = DumpTrace(0, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
+    ASSERT_TRUE(ret.outputFiles.empty());
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
@@ -310,6 +314,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_005, TestSize.Level0)
     int maxDuration = 10;
     ret = DumpTrace(maxDuration, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
+    ASSERT_TRUE(ret.outputFiles.empty());
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 

@@ -589,7 +589,9 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
             if (traceEndTime < pageTraceTime) {
                 endFlag = true;
                 readBytes = 0;
-                HILOG_ERROR(LOG_CORE, "Current trace time is out of trace end time, stop to read trace info.");
+                HILOG_INFO(LOG_CORE,
+                    "Current pageTraceTime:(%{public}" PRId64 ") is larger than traceEndTime:(%{public}" PRId64 ")",
+                    pageTraceTime, traceEndTime);
                 break;
             }
 
@@ -1105,22 +1107,26 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
     }
 
     if (g_dumpStatus) {
+        if (remove(reOutPath.c_str()) == 0) {
+            HILOG_INFO(LOG_CORE, "Delete outpath:%{public}s success.", reOutPath.c_str());
+        } else {
+            HILOG_INFO(LOG_CORE, "Delete outpath:%{public}s failed.", reOutPath.c_str());
+        }
         return static_cast<TraceErrorCode>(g_dumpStatus.load());
     }
 
-    if (access(reOutPath.c_str(), F_OK) == 0) {
-        HILOG_INFO(LOG_CORE, "Output: %{public}s.", reOutPath.c_str());
-        struct timeval now = {0, 0};
-        gettimeofday(&now, nullptr);
-        int nowSec = now.tv_sec;
-        SearchFromTable(outputFiles, nowSec);
-        outputFiles.push_back(outputFileName);
-        g_traceFilesTable.push_back({outputFileName, nowSec});
-    } else {
+    if (access(reOutPath.c_str(), F_OK) != 0) {
         HILOG_ERROR(LOG_CORE, "DumpTraceInner: write %{public}s failed.", outputFileName.c_str());
         return TraceErrorCode::WRITE_TRACE_INFO_ERROR;
     }
 
+    HILOG_INFO(LOG_CORE, "Output: %{public}s.", reOutPath.c_str());
+    struct timeval now = {0, 0};
+    gettimeofday(&now, nullptr);
+    int nowSec = now.tv_sec;
+    SearchFromTable(outputFiles, nowSec);
+    outputFiles.push_back(outputFileName);
+    g_traceFilesTable.push_back({outputFileName, nowSec});
     return TraceErrorCode::SUCCESS;
 }
 
@@ -1492,7 +1498,9 @@ TraceRetInfo DumpTrace(int maxDuration, uint64_t traceEndTime)
                 // beware of input precision of seconds: add an extra second of tolerance
                 g_inputTraceEndTime = (traceEndTime - static_cast<uint64_t>(boot_time) + 1) * S_TO_NS;
             } else {
-                HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input: traceEndTime is earlier than system boot time.");
+                HILOG_ERROR(LOG_CORE,
+                    "DumpTrace: traceEndTime:(%{public}" PRId64 ") is earlier than boot_time:(%{public}" PRId64 ").",
+                    traceEndTime, static_cast<uint64_t>(boot_time));
                 ret.errorCode = OUT_OF_TIME;
                 return ret;
             }
