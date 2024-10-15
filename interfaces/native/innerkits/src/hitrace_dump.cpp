@@ -989,6 +989,7 @@ bool ReadRawTrace(std::string &outputFileName)
         WriteCmdlines(outFd, outPath) && WriteTgids(outFd, outPath) &&
         WriteHeaderPage(outFd, outPath) && WritePrintkFormats(outFd, outPath) &&
         WriteKallsyms(outFd)) {
+        fsync(outFd);
         close(outFd);
         return true;
     }
