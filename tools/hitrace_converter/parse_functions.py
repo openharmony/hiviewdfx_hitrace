@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import re
 
 def parse_bytes_to_str(data):
     decoded_str = ""
@@ -67,6 +68,34 @@ def parse_sched_wakeup(data, one_event):
     target_cpu = parse_int_field(one_event, "target_cpu", True)
 
     return "comm=%s pid=%d prio=%d target_cpu=%03d" % (comm, pid, prio, target_cpu)
+
+
+def parse_sched_switch_hm_new(data, one_event):
+    pname = parse_bytes_to_str(one_event["fields"]["pname[16]"])
+    prev_tid = parse_int_field(one_event, "prev_tid", True)
+    pprio = parse_int_field(one_event, "pprio", True)
+    pstate = parse_int_field(one_event, "pstate", True)
+    nname = parse_bytes_to_str(one_event["fields"]["nname[16]"])
+    next_tid = parse_int_field(one_event, "next_tid", True)
+    nprio = parse_int_field(one_event, "nprio", True)
+    ninfo = one_event["fields"]["ninfo[8]"]
+
+    affinity = [hex(int.from_bytes(ninfo[value : value + 1], byteorder='big')) for value in range(len(ninfo))]
+    affinity = affinity[:4]
+    affinity = ''.join(value[2:] for value in affinity)
+    affinity = re.sub("0+", "", affinity)
+
+    load = (((ninfo[4] << 8) | ninfo[5]) >> 6) << 1
+    group = (ninfo[5] & 0b00110000) >> 4
+    restricted = (ninfo[5] & 0b00001000) >> 3
+    expel = ninfo[5] & 0b00000111
+    next_info = affinity + ',' + str(load) + ',' + str(group) + ',' + str(restricted) + ',' + str(expel)
+
+    pstate_map = {0x0: 'R', 0x1: 'S', 0x2: 'D', 0x10: 'X', 0x100: 'R+'}
+    prev_state = pstate_map.get(pstate, '?')
+
+    return "prev_comm=%s prev_pid=%d prev_prio=%d prev_state=%s ==> next_comm=%s next_pid=%d next_prio=%d next_info=%s" \
+        % (pname, prev_tid, pprio, prev_state, nname, next_tid, nprio, next_info)
 
 
 def parse_sched_switch_hm(data, one_event):
@@ -699,6 +728,7 @@ PRINT_FMT_IRQ_HANDLER_ENTRY = '"irq=%d name=%s", REC->irq, ((char *)((void *)((c
 PRINT_FMT_SCHED_WAKEUP_HM = '"comm=%s pid=%d prio=%d target_cpu=%03d", REC->pname, REC->pid, REC->prio, REC->target_cpu'
 PRINT_FMT_SCHED_WAKEUP = '"comm=%s pid=%d prio=%d target_cpu=%03d", REC->comm, REC->pid, REC->prio, REC->target_cpu'
 PRINT_FMT_SCHED_SWITCH_HM = '"prev_comm=%s prev_pid=%d prev_prio=%d prev_state=%s" " ==> next_comm=%s next_pid=%d next_prio=%d", REC->pname, REC->prev_tid, REC->pprio, hm_trace_tcb_state2str(REC->pstate), REC->nname, REC->next_tid, REC->nprio'
+PRINT_FMT_SCHED_SWITCH_HM_NEW = '"prev_comm=%s prev_pid=%d prev_prio=%d prev_state=%s" " ==> next_comm=%s next_pid=%d next_prio=%d next_info=%s", REC->pname, REC->prev_tid, REC->pprio, hm_trace_tcb_state2str(REC->pstate), REC->nname, REC->next_tid, REC->nprio, hm_trace_tcb_unpack_schedinfo(REC->ninfo, sizeof(REC->ninfo))'
 PRINT_FMT_SCHED_SWITCH = '"prev_comm=%s prev_pid=%d prev_prio=%d prev_state=%s%s ==> next_comm=%s next_pid=%d next_prio=%d expeller_type=%u", REC->prev_comm, REC->prev_pid, REC->prev_prio, (REC->prev_state & ((((0x0000 | 0x0001 | 0x0002 | 0x0004 | 0x0008 | 0x0010 | 0x0020 | 0x0040) + 1) << 1) - 1)) ? __print_flags(REC->prev_state & ((((0x0000 | 0x0001 | 0x0002 | 0x0004 | 0x0008 | 0x0010 | 0x0020 | 0x0040) + 1) << 1) - 1), "|", { 0x0001, "S" }, { 0x0002, "D" }, { 0x0004, "T" }, { 0x0008, "t" }, { 0x0010, "X" }, { 0x0020, "Z" }, { 0x0040, "P" }, { 0x0080, "I" }) : "R", REC->prev_state & (((0x0000 | 0x0001 | 0x0002 | 0x0004 | 0x0008 | 0x0010 | 0x0020 | 0x0040) + 1) << 1) ? "+" : "", REC->next_comm, REC->next_pid, REC->next_prio, REC->expeller_type'
 PRINT_FMT_SCHED_BLOCKED_REASON_HM_OLD = '"pid=%d iowait=%d caller=%s delay=%llu", REC->pid, REC->iowait, hm_trace_sched_blocked_reason_of(REC->cnode_idx, REC->caller), REC->delay >> 10'
 PRINT_FMT_SCHED_BLOCKED_REASON_HM = '"pid=%d iowait=%d caller=%s+0x%lx/0x%lx[%s] delay=%llu", REC->pid, REC->iowait, REC->func_name, REC->offset, REC->size, REC->mod_name, REC->delay >> 10'
@@ -759,6 +789,7 @@ PRINT_FMT_IRQ_HANDLER_ENTRY: parse_irq_handler_entry,
 PRINT_FMT_SCHED_WAKEUP_HM: parse_sched_wakeup_hm,
 PRINT_FMT_SCHED_WAKEUP: parse_sched_wakeup,
 PRINT_FMT_SCHED_SWITCH_HM: parse_sched_switch_hm,
+PRINT_FMT_SCHED_SWITCH_HM_NEW: parse_sched_switch_hm_new,
 PRINT_FMT_SCHED_SWITCH: parse_sched_switch,
 PRINT_FMT_SCHED_BLOCKED_REASON_HM_OLD: parse_sched_blocked_reason_hm_old,
 PRINT_FMT_SCHED_BLOCKED_REASON_HM: parse_sched_blocked_reason_hm,
