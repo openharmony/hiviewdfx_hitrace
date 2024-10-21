@@ -240,7 +240,7 @@ static void ShowHelp(const string& cmd)
     printf("usage: %s [options] [categories...]\n", cmd.c_str());
     printf("options include:\n"
            "  -b N               Sets the size of the buffer (KB) for storing and reading traces. The default \n"
-           "                     buffer size is 2048 KB.\n"
+           "                     buffer size is 18432 KB.\n"
            "  --buffer_size N    Like \"-b N\".\n"
            "  -l                 Lists available hitrace categories.\n"
            "  --list_categories  Like \"-l\".\n"
@@ -314,11 +314,11 @@ static bool ParseLongOpt(const string& cmd, int optionIndex)
             maxBufferSizeKB = HM_MAX_BUFFER_SIZE;
         }
         if (!StrToNum(optarg, bufferSizeKB)) {
-            ConsoleLog("error: buffer size is illegal input. eg: \"--buffer_size 1024\".");
+            ConsoleLog("error: buffer size is illegal input. eg: \"--buffer_size 18432\".");
             isTrue = false;
         } else if (bufferSizeKB < MIN_BUFFER_SIZE || bufferSizeKB > maxBufferSizeKB) {
             ConsoleLog("error: buffer size must be from 256 KB to " + std::to_string(maxBufferSizeKB / KB_PER_MB) +
-                " MB. eg: \"--buffer_size 1024\".");
+                " MB. eg: \"--buffer_size 18432\".");
             isTrue = false;
         }
         g_traceArgs.bufferSize = bufferSizeKB / PAGE_SIZE_KB * PAGE_SIZE_KB;
@@ -377,7 +377,7 @@ static bool ParseLongOpt(const string& cmd, int optionIndex)
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "file_size")) {
         int fileSizeKB = 0;
         if (!StrToNum(optarg, fileSizeKB)) {
-            ConsoleLog("error: file size is illegal input. eg: \"--file_size 1024\".");
+            ConsoleLog("error: file size is illegal input. eg: \"--file_size 102400\".");
             isTrue = false;
         } else if (fileSizeKB < MIN_FILE_SIZE || fileSizeKB > MAX_FILE_SIZE) {
             ConsoleLog("error: file size must be from 50 MB to 500 MB. eg: \"--file_size 102400\".");
@@ -400,11 +400,11 @@ static bool ParseOpt(int opt, char** argv, int optIndex)
                 maxBufferSizeKB = HM_MAX_BUFFER_SIZE;
             }
             if (!StrToNum(optarg, bufferSizeKB)) {
-                ConsoleLog("error: buffer size is illegal input. eg: \"--buffer_size 1024\".");
+                ConsoleLog("error: buffer size is illegal input. eg: \"--buffer_size 18432\".");
                 isTrue = false;
             } else if (bufferSizeKB < MIN_BUFFER_SIZE || bufferSizeKB > maxBufferSizeKB) {
                 ConsoleLog("error: buffer size must be from 256 KB to " + std::to_string(maxBufferSizeKB / KB_PER_MB) +
-                " MB. eg: \"--buffer_size 1024\".");
+                " MB. eg: \"--buffer_size 18432\".");
                 isTrue = false;
             }
             g_traceArgs.bufferSize = bufferSizeKB / PAGE_SIZE_KB * PAGE_SIZE_KB;
