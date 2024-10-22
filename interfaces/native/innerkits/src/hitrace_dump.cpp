@@ -1042,7 +1042,10 @@ bool EpollWaitforChildProcess(pid_t &pid, int &pipefd)
 
     struct epoll_event events[1];
     constexpr int waitTimeoutMs = 10000; // 10000ms = 10s
-    int numEvents = epoll_wait(epollfd, events, 1, waitTimeoutMs);
+    int numEvents = 0;
+    do {
+        numEvents = epoll_wait(epollfd, events, 1, waitTimeoutMs);
+    } while (numEvents == -1 && errno == EINTR);
     if (numEvents == -1) {
         HILOG_ERROR(LOG_CORE, "epoll_wait error, error: (%{public}s).", strerror(errno));
         close(pipefd);
