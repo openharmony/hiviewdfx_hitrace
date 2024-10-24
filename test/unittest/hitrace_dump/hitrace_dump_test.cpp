@@ -319,6 +319,24 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_005, TestSize.Level0)
 }
 
 /**
+ * @tc.name: DumpTraceTest_006
+ * @tc.desc: Test DumpTrace(int maxDuration, uint64_t happenTime) for maxDuration is bigger than boot_time
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpTraceTest_006, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"default"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    sleep(2);
+    uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr)); // current time
+    
+    TraceRetInfo ret = DumpTrace(INT_MAX, traceEndTime);
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(!ret.outputFiles.empty());
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
  * @tc.name: DumpForServiceMode_001
  * @tc.desc: The correct usage of grasping trace in SERVICE_MODE.
  * @tc.type: FUNC
