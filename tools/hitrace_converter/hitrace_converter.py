@@ -458,7 +458,7 @@ def parse_binary_trace_file():
     outfile = os.fdopen(os.open(out_file, outfile_flags, outfile_mode), 'w', encoding="utf-8")
 
     trace_header = parse_trace_header(infile)
-    cpu_nums = (trace_header.get("reserved", 0) >> 1) & 0xf
+    cpu_nums = (trace_header.get("reserved", 0) >> 1) & 0b00011111
 
     outfile.write(TRACE_TXT_HEADER_FORMAT)
     trace_file_size = os.path.getsize(binary_file)
