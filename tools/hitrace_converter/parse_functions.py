@@ -254,6 +254,17 @@ def parse_block_bio_remap(data, one_event):
         % (dev >> 20, dev & 0xfffff, rwbs, sector, nr_sector, old_dev >> 20, old_dev & 0xfffff, old_sector)
 
 
+def parse_block_bio_remap_new(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    sector = parse_int_field(one_event, "sector", False)
+    nr_sector = parse_int_field(one_event, "nr_sector", False)
+    old_dev = parse_int_field(one_event, "old_dev", False)
+    old_sector = parse_int_field(one_event, "old_sector", False)
+
+    return "%d,%d %d + %d <- (%d,%d) %d" \
+        % (dev >> 20, dev & 0xfffff, sector, nr_sector, old_dev >> 20, old_dev & 0xfffff, old_sector)
+
+
 def parse_block_rq_issue_hm(data, one_event):
     dev = parse_int_field(one_event, "dev", False)
     sector = parse_int_field(one_event, "sector", False)
@@ -639,6 +650,17 @@ def parse_mm_filemap_add_or_delete_page_cache(data, one_event):
         % (s_dev >> 20, s_dev & 0xfffff, i_ino, pg, pfn, index << 12)
 
 
+def parse_mm_filemap_add_or_delete_page_cache_new(data, one_event):
+    pfn = parse_int_field(one_event, "pfn", False)
+    i_ino = parse_int_field(one_event, "i_ino", False)
+    index = parse_int_field(one_event, "index", False)
+    s_dev = parse_int_field(one_event, "s_dev", False)
+    pg = parse_int_field(one_event, "pg", False)
+
+    return "dev %d:%d ino 0x%x page=0x%x pfn=%d ofs=%d" \
+        % (s_dev >> 20, s_dev & 0xfffff, i_ino, pg, pfn, index << 12)
+
+
 def parse_rss_stat(data, one_event):
     mm_id = parse_int_field(one_event, "mm_id", False)
     curr = parse_int_field(one_event, "curr", False)
@@ -746,6 +768,7 @@ PRINT_FMT_EXT4_DA_WRITE_END = '"dev %d,%d ino %lu pos %lld len %u copied %u", ((
 PRINT_FMT_EXT4_SYNC_FILE_ENTER = '"dev %d,%d ino %lu parent %lu datasync %d ", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), (unsigned long) REC->ino, (unsigned long) REC->parent, REC->datasync'
 PRINT_FMT_EXT4_SYNC_FILE_EXIT = '"dev %d,%d ino %lu ret %d", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), (unsigned long) REC->ino, REC->ret'
 PRINT_FMT_BLOCK_BIO_REMAP = '"%d,%d %s %llu + %u <- (%d,%d) %llu", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->rwbs, (unsigned long long)REC->sector, REC->nr_sector, ((unsigned int) ((REC->old_dev) >> 20)), ((unsigned int) ((REC->old_dev) & ((1U << 20) - 1))), (unsigned long long)REC->old_sector'
+PRINT_FMT_BLOCK_BIO_REMAP_NEW = '"%d,%d %llu + %u <- (%d,%d) %llu", ((unsigned int) ((REC->dev) >> 20U)), ((unsigned int) ((REC->dev) & ((1U << 20U) - 1U))), (unsigned long long)REC->sector, REC->nr_sector, ((unsigned int) ((REC->old_dev) >> 20U)), ((unsigned int) ((REC->old_dev) & ((1U << 20U) - 1U))), (unsigned long long)REC->old_sector'
 PRINT_FMT_BLOCK_RQ_ISSUE_HM = '"%d,%d %s %u (%s) %llu + %u [%s]", ((unsigned int) ((REC->dev) >> 20U)), ((unsigned int) ((REC->dev) & ((1U << 20U) - 1U))), REC->rwbs, REC->bytes, REC->cmd, (unsigned long long)REC->sector, REC->nr_sector, REC->comm'
 PRINT_FMT_BLOCK_RQ_ISSUE_OR_INSERT = '"%d,%d %s %u (%s) %llu + %u [%s]", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->rwbs, REC->bytes, __get_str(cmd), (unsigned long long)REC->sector, REC->nr_sector, REC->comm'
 PRINT_FMT_BLOCK_RQ_COMPLETE_HM = '"%d,%d %s (%s) %llu + %u [%d]", ((unsigned int) ((REC->dev) >> 20U)), ((unsigned int) ((REC->dev) & ((1U << 20U) - 1U))), REC->rwbs, REC->cmd, (unsigned long long)REC->sector, REC->nr_sector, REC->error'
@@ -776,6 +799,7 @@ PRINT_FMT_MMC_REQUEST_DONE = '"%s: end struct mmc_request[%p]: cmd_opcode=%u cmd
 PRINT_FMT_FILE_CHECK_AND_ADVANCE_WB_ERR = '"file=%p dev=%d:%d ino=0x%lx old=0x%x new=0x%x", REC->file, ((unsigned int)((REC->s_dev) >> 20)), ((unsigned int)((REC->s_dev) & ((1U << 20) - 1))), REC->i_ino, REC->old, REC->new'
 PRINT_FMT_FILEMAP_SET_WB_ERR = '"dev=%d:%d ino=0x%lx errseq=0x%x", ((unsigned int)((REC->s_dev) >> 20)), ((unsigned int)((REC->s_dev) & ((1U << 20) - 1))), REC->i_ino, REC->errseq'
 PRINT_FMT_MM_FILEMAP_ADD_OR_DELETE_PAGE_CACHE = '"dev %d:%d ino %lx page=%px pfn=%lu ofs=%lu", ((unsigned int)((REC->s_dev) >> 20)), ((unsigned int)((REC->s_dev) & ((1U << 20) - 1))), REC->i_ino, REC->pg, REC->pfn, REC->index << 12'
+PRINT_FMT_MM_FILEMAP_ADD_OR_DELETE_PAGE_CACHE_NEW = '"dev %d:%d ino %lx page=%p pfn=%lu ofs=%lu", ((unsigned int)((REC->s_dev) >> 20)), ((unsigned int)((REC->s_dev) & ((1U << 20) - 1))), REC->i_ino, REC->pg, REC->pfn, REC->index << 12'
 PRINT_FMT_RSS_STAT_HM = '"mm_id=%u curr=%d member=%d size=%ldB", REC->mm_id, REC->curr, REC->member, REC->size'
 PRINT_FMT_WORKQUEUE_EXECUTE_START_OR_END = '"work struct %p: function %ps", REC->work, REC->function'
 PRINT_FMT_THERMAL_POWER_ALLOCATOR_PID = '"thermal_zone_id=%d err=%d err_integral=%d p=%lld i=%lld d=%lld output=%d", REC->tz_id, REC->err, REC->err_integral, REC->p, REC->i, REC->d, REC->output'
@@ -807,6 +831,7 @@ PRINT_FMT_EXT4_DA_WRITE_END: parse_ext4_da_write_end,
 PRINT_FMT_EXT4_SYNC_FILE_ENTER: parse_ext4_sync_file_enter,
 PRINT_FMT_EXT4_SYNC_FILE_EXIT: parse_ext4_sync_file_exit,
 PRINT_FMT_BLOCK_BIO_REMAP: parse_block_bio_remap,
+PRINT_FMT_BLOCK_BIO_REMAP_NEW: parse_block_bio_remap_new,
 PRINT_FMT_BLOCK_RQ_ISSUE_HM: parse_block_rq_issue_hm,
 PRINT_FMT_BLOCK_RQ_ISSUE_OR_INSERT: parse_block_rq_issue_or_insert,
 PRINT_FMT_BLOCK_RQ_COMPLETE_HM: parse_block_rq_complete_hm,
@@ -837,6 +862,7 @@ PRINT_FMT_MMC_REQUEST_DONE: parse_mmc_request_done,
 PRINT_FMT_FILE_CHECK_AND_ADVANCE_WB_ERR: parse_file_check_and_advance_wb_err,
 PRINT_FMT_FILEMAP_SET_WB_ERR: parse_filemap_set_wb_err,
 PRINT_FMT_MM_FILEMAP_ADD_OR_DELETE_PAGE_CACHE: parse_mm_filemap_add_or_delete_page_cache,
+PRINT_FMT_MM_FILEMAP_ADD_OR_DELETE_PAGE_CACHE_NEW: parse_mm_filemap_add_or_delete_page_cache_new,
 PRINT_FMT_RSS_STAT_HM: parse_rss_stat,
 PRINT_FMT_WORKQUEUE_EXECUTE_START_OR_END: parse_workqueue_execute_start_or_end,
 PRINT_FMT_THERMAL_POWER_ALLOCATOR_PID: parse_thermal_power_allocator_pid,
