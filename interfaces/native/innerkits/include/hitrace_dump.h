@@ -30,11 +30,13 @@ enum TraceErrorCode : uint8_t {
     TAG_ERROR = 3,
     FILE_ERROR = 4,
     WRITE_TRACE_INFO_ERROR = 5,
-    CALL_ERROR = 6,
+    WRONG_TRACE_MODE = 6,
     OUT_OF_TIME = 7,
-    INVALID_PARAM = 8,
-    SYSTEM_ERROR = 253,
-    UNKNOWN_ERROR = 254,
+    FORK_ERROR = 8,
+    INVALID_MAX_DURATION = 9,
+    EPOLL_WAIT_ERROR = 10,
+    PIPE_CREATE_ERROR = 11,
+    SYSINFO_READ_FAILURE = 12,
     UNSET = 255,
 };
 

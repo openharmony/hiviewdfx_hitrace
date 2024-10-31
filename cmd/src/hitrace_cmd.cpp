@@ -667,7 +667,7 @@ static bool HandleRecordingShortRaw()
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
         if (openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_IS_OCCUPIED ||
-            openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_CALL_ERROR) {
+            openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_WRONG_MODE) {
             return false;
         } else {
             g_traceCollector->Recover();
@@ -705,7 +705,7 @@ static bool HandleRecordingShortText()
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
         if (openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_IS_OCCUPIED ||
-            openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_CALL_ERROR) {
+            openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_WRONG_MODE) {
             return false;
         } else {
             g_traceCollector->Recover();
@@ -737,7 +737,7 @@ static bool HandleRecordingLongBegin()
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
         if (openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_IS_OCCUPIED ||
-            openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_CALL_ERROR) {
+            openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_WRONG_MODE) {
             return false;
         } else {
             g_traceCollector->Recover();
@@ -820,7 +820,7 @@ static bool HandleOpenSnapshot()
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenSnapshot failed, errorCode(" + std::to_string(openRet.retCode) +")");
         if (openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_IS_OCCUPIED ||
-            openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_CALL_ERROR) {
+            openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_WRONG_MODE) {
             return false;
         } else {
             g_traceCollector->Recover();
