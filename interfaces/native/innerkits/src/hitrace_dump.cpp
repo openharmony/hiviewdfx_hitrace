@@ -43,6 +43,8 @@ using namespace std;
 using namespace OHOS::HiviewDFX::HitraceOsal;
 using OHOS::HiviewDFX::HiLog;
 
+#define UNEXPECTANTLY(exp) (__builtin_expect(!!(exp), false))
+
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
@@ -516,6 +518,8 @@ void GetFileSizeThresholdAndTraceTime(bool &isCpuRaw, uint8_t contentType, uint6
     if (isCpuRaw) {
         traceStartTime = g_traceStartTime;
         traceEndTime = g_traceEndTime;
+        HILOG_INFO(LOG_CORE, "traceStartTime:(%{public}" PRIu64 "), traceEndTime:(%{public}" PRIu64 ").",
+            traceStartTime, traceEndTime);
     }
     if (g_currentTraceParams.fileSize != 0) {
         fileSizeThreshold = g_currentTraceParams.fileSize * KB_PER_MB;
@@ -564,6 +568,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
     int fileSizeThreshold = DEFAULT_FILE_SIZE * KB_PER_MB;
     bool isCpuRaw = false;
     GetFileSizeThresholdAndTraceTime(isCpuRaw, contentType, traceStartTime, traceEndTime, fileSizeThreshold);
+    bool printFirstPageTime = false;
     while (true) {
         int bytes = 0;
         bool endFlag = false;
@@ -590,12 +595,16 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
                 endFlag = true;
                 readBytes = 0;
                 HILOG_INFO(LOG_CORE,
-                    "Current pageTraceTime:(%{public}" PRId64 ") is larger than traceEndTime:(%{public}" PRId64 ")",
+                    "Current pageTraceTime:(%{public}" PRIu64 ") is larger than traceEndTime:(%{public}" PRIu64 ")",
                     pageTraceTime, traceEndTime);
                 break;
             }
 
             if (pageTraceTime < traceStartTime) {
+                if (UNEXPECTANTLY(!printFirstPageTime)) {
+                    HILOG_DEBUG(LOG_CORE, "First page trace time:(%{public}" PRIu64 ")", pageTraceTime);
+                    printFirstPageTime = true;
+                }
                 continue;
             }
 
@@ -668,7 +677,7 @@ void WriteEventFile(std::string &srcPath, int outFd)
         readLen += len;
     } while (true);
     close(srcFd);
-    HILOG_INFO(LOG_CORE, "WriteEventFile end, path: %{public}s, data size: (%{public}" PRId64 ").",
+    HILOG_INFO(LOG_CORE, "WriteEventFile end, path: %{public}s, data size: (%{public}" PRIu64 ").",
         srcPath.c_str(), static_cast<uint64_t>(readLen));
 }
 
@@ -1042,17 +1051,13 @@ bool EpollWaitforChildProcess(pid_t &pid, int &pipefd)
 
     struct epoll_event events[1];
     constexpr int waitTimeoutMs = 10000; // 10000ms = 10s
-    int numEvents = 0;
-    do {
-        numEvents = epoll_wait(epollfd, events, 1, waitTimeoutMs);
-    } while (numEvents == -1 && errno == EINTR);
-    if (numEvents == -1) {
-        HILOG_ERROR(LOG_CORE, "epoll_wait error, error: (%{public}s).", strerror(errno));
-        close(pipefd);
-        close(epollfd);
-        return false;
-    } else if (numEvents == 0) {
-        HILOG_ERROR(LOG_CORE, "epoll_wait timeout.");
+    int numEvents = TEMP_FAILURE_RETRY(epoll_wait(epollfd, events, 1, waitTimeoutMs));
+    if (numEvents <= 0) {
+        if (numEvents == -1) {
+            HILOG_ERROR(LOG_CORE, "epoll_wait error, error: (%{public}s).", strerror(errno));
+        } else {
+            HILOG_ERROR(LOG_CORE, "epoll_wait timeout.");
+        }
         if (waitpid(pid, nullptr, WNOHANG) <= 0) {
             HILOG_ERROR(LOG_CORE, "kill timeout child process.");
             kill(pid, SIGUSR1);
@@ -1473,7 +1478,7 @@ TraceRetInfo DumpTrace()
 
 TraceRetInfo DumpTrace(int maxDuration, uint64_t traceEndTime)
 {
-    HILOG_INFO(LOG_CORE, "DumpTrace with timelimit start, timelimit is %{public}d, endtime is (%{public}" PRId64 ").",
+    HILOG_INFO(LOG_CORE, "DumpTrace with timelimit start, timelimit is %{public}d, endtime is (%{public}" PRIu64 ").",
         maxDuration, traceEndTime);
     TraceRetInfo ret;
     if (maxDuration < 0) {
@@ -1486,24 +1491,24 @@ TraceRetInfo DumpTrace(int maxDuration, uint64_t traceEndTime)
         if (maxDuration > (now - 1)) {
             maxDuration = 0;
         }
+        struct sysinfo info;
+        if (sysinfo(&info) != 0) {
+            HILOG_ERROR(LOG_CORE, "Get system info failed.");
+            ret.errorCode = UNKNOWN_ERROR;
+            return ret;
+        }
+        std::time_t boot_time = now - info.uptime;
         std::lock_guard<std::mutex> lock(g_traceMutex);
         if (traceEndTime > 0) {
             if (traceEndTime > static_cast<uint64_t>(now)) {
                 HILOG_WARN(LOG_CORE, "DumpTrace: Warning: traceEndTime is later than current time.");
             }
-            struct sysinfo info;
-            if (sysinfo(&info) != 0) {
-                HILOG_ERROR(LOG_CORE, "Get system info failed.");
-                ret.errorCode = UNKNOWN_ERROR;
-                return ret;
-            }
-            std::time_t boot_time = now - info.uptime;
             if (traceEndTime > static_cast<uint64_t>(boot_time)) {
                 // beware of input precision of seconds: add an extra second of tolerance
                 g_inputTraceEndTime = (traceEndTime - static_cast<uint64_t>(boot_time) + 1) * S_TO_NS;
             } else {
                 HILOG_ERROR(LOG_CORE,
-                    "DumpTrace: traceEndTime:(%{public}" PRId64 ") is earlier than boot_time:(%{public}" PRId64 ").",
+                    "DumpTrace: traceEndTime:(%{public}" PRIu64 ") is earlier than boot_time:(%{public}" PRIu64 ").",
                     traceEndTime, static_cast<uint64_t>(boot_time));
                 ret.errorCode = OUT_OF_TIME;
                 return ret;
@@ -1511,6 +1516,10 @@ TraceRetInfo DumpTrace(int maxDuration, uint64_t traceEndTime)
             g_inputMaxDuration = maxDuration ? maxDuration + 1 : 0; // for precision tolerance
         } else {
             g_inputMaxDuration = maxDuration;
+        }
+        if (boot_time <= g_inputMaxDuration) {
+            HILOG_WARN(LOG_CORE, "g_inputMaxDuration is larger than boot_time.");
+            g_inputMaxDuration = 0;
         }
     }
     ret = DumpTrace();
