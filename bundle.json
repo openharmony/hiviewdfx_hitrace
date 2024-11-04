@@ -34,9 +34,13 @@
         "hiview",
         "init",
         "napi",
-        "zlib"
+        "zlib",
+        "hisysevent"
       ]
     },
+    "hisysevent_config": [
+      "//base/hiviewdfx/hitrace/hisysevent.yaml"
+    ],
     "build": {
       "sub_component": [
         "//base/hiviewdfx/hitrace/interfaces/native/innerkits:hitrace_dump",
