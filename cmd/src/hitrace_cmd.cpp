@@ -35,11 +35,13 @@
 #include <iostream>
 #include <zlib.h>
 
-#include "hitrace_meter.h"
 #include "common_utils.h"
-#include "trace_collector_client.h"
+#include "hilog/log.h"
+#include "hisysevent.h"
 #include "hitrace_osal.h"
+#include "hitrace_meter.h"
 #include "securec.h"
+#include "trace_collector_client.h"
 
 using namespace std;
 using namespace OHOS::HiviewDFX::HitraceOsal;
@@ -57,6 +59,22 @@ struct TraceArgs {
 
     int duration = 0;
     bool isCompress = false;
+};
+
+struct TraceSysEventParams {
+    std::string opt;
+    std::string caller;
+    std::string tags;
+    int duration = 0;
+    int bufferSize = 0;
+    int fileSize = 0;
+    int fileLimit = 0;
+    std::string clockType;
+    bool isCompress = false;
+    bool isRaw = false;
+    bool isOverwrite = true;
+    int errorCode = 0;
+    std::string errorMessage;
 };
 
 enum RunningState {
@@ -147,6 +165,8 @@ string g_traceRootPath;
 std::shared_ptr<OHOS::HiviewDFX::UCollectClient::TraceCollector> g_traceCollector;
 
 TraceArgs g_traceArgs;
+TraceSysEventParams g_traceSysEventParams;
+bool g_needSysEvent = true;
 std::map<std::string, OHOS::HiviewDFX::Hitrace::TagCategory> g_allTags;
 std::map<std::string, std::vector<std::string>> g_allTagGroups;
 RunningState g_runningState = STATE_NULL;
@@ -229,6 +249,7 @@ static bool SetTraceTagsEnabled(uint64_t tags)
 
 static void ShowListCategory()
 {
+    g_traceSysEventParams.opt = "ShowListCategory";
     printf("  %18s   description:\n", "tagName:");
     for (auto it = g_allTags.begin(); it != g_allTags.end(); ++it) {
         printf("  %18s - %s\n", it->first.c_str(), it->second.description.c_str());
@@ -237,6 +258,7 @@ static void ShowListCategory()
 
 static void ShowHelp(const string& cmd)
 {
+    g_traceSysEventParams.opt = "ShowHelp";
     printf("usage: %s [options] [categories...]\n", cmd.c_str());
     printf("options include:\n"
            "  -b N               Sets the size of the buffer (KB) for storing and reading traces. The default \n"
@@ -658,12 +680,15 @@ static std::string ReloadTraceArgs()
 
 static bool HandleRecordingShortRaw()
 {
+    g_traceSysEventParams.opt = "RecordingShortRaw";
+    g_traceSysEventParams.isRaw = true;
     std::string args = ReloadTraceArgs();
     if (g_traceArgs.output.size() > 0) {
         ConsoleLog("warning: The current state does not support specifying the output file path, " +
                    g_traceArgs.output + " is invalid.");
     }
     auto openRet = g_traceCollector->OpenRecording(args);
+    g_traceSysEventParams.errorCode = openRet.retCode;
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
         if (openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_IS_OCCUPIED ||
@@ -676,6 +701,7 @@ static bool HandleRecordingShortRaw()
     }
 
     auto recOnRet = g_traceCollector->RecordingOn();
+    g_traceSysEventParams.errorCode = recOnRet.retCode;
     if (recOnRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: RecordingOn failed, errorCode(" + std::to_string(recOnRet.retCode) +")");
         g_traceCollector->Recover();
@@ -685,6 +711,7 @@ static bool HandleRecordingShortRaw()
     sleep(g_traceArgs.duration);
 
     auto recOffRet = g_traceCollector->RecordingOff();
+    g_traceSysEventParams.errorCode = recOffRet.retCode;
     if (recOffRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: RecordingOff failed, errorCode(" + std::to_string(recOffRet.retCode) +")");
         g_traceCollector->Recover();
@@ -700,8 +727,10 @@ static bool HandleRecordingShortRaw()
 
 static bool HandleRecordingShortText()
 {
+    g_traceSysEventParams.opt = "RecordingShortText";
     std::string args = ReloadTraceArgs();
     auto openRet = g_traceCollector->OpenRecording(args);
+    g_traceSysEventParams.errorCode = openRet.retCode;
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
         if (openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_IS_OCCUPIED ||
@@ -728,12 +757,14 @@ static bool HandleRecordingShortText()
 
 static bool HandleRecordingLongBegin()
 {
+    g_traceSysEventParams.opt = "RecordingLongBegin";
     std::string args = ReloadTraceArgs();
     if (g_traceArgs.output.size() > 0) {
         ConsoleLog("warning: The current state does not support specifying the output file path, " +
                    g_traceArgs.output + " is invalid.");
     }
     auto openRet = g_traceCollector->OpenRecording(args);
+    g_traceSysEventParams.errorCode = openRet.retCode;
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
         if (openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_IS_OCCUPIED ||
@@ -750,6 +781,7 @@ static bool HandleRecordingLongBegin()
 
 static bool HandleRecordingLongDump()
 {
+    g_traceSysEventParams.opt = "RecordingLongDump";
     OHOS::HiviewDFX::Hitrace::MarkClockSync(g_traceRootPath);
     ConsoleLog("start to read trace.");
     DumpTrace();
@@ -758,6 +790,7 @@ static bool HandleRecordingLongDump()
 
 static bool HandleRecordingLongFinish()
 {
+    g_traceSysEventParams.opt = "RecordingLongFinish";
     OHOS::HiviewDFX::Hitrace::MarkClockSync(g_traceRootPath);
     StopTrace();
     ConsoleLog("start to read trace.");
@@ -768,6 +801,7 @@ static bool HandleRecordingLongFinish()
 
 static bool HandleRecordingLongFinishNodump()
 {
+    g_traceSysEventParams.opt = "RecordingLongFinishNodump";
     g_traceCollector->Recover();
     ConsoleLog("end capture trace.");
     return true;
@@ -775,12 +809,14 @@ static bool HandleRecordingLongFinishNodump()
 
 static bool HandleRecordingLongBeginRecord()
 {
+    g_traceSysEventParams.opt = "RecordingLongBeginRecord";
     std::string args = ReloadTraceArgs();
     if (g_traceArgs.output.size() > 0) {
         ConsoleLog("warning: The current state does not support specifying the output file path, " +
                    g_traceArgs.output + " is invalid.");
     }
     auto openRet = g_traceCollector->OpenRecording(args);
+    g_traceSysEventParams.errorCode = openRet.retCode;
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
         g_traceCollector->Recover();
@@ -788,6 +824,7 @@ static bool HandleRecordingLongBeginRecord()
     }
 
     auto recOnRet = g_traceCollector->RecordingOn();
+    g_traceSysEventParams.errorCode = recOnRet.retCode;
     if (recOnRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: RecordingOn failed, errorCode(" + std::to_string(recOnRet.retCode) +")");
         g_traceCollector->Recover();
@@ -799,7 +836,10 @@ static bool HandleRecordingLongBeginRecord()
 
 static bool HandleRecordingLongFinishRecord()
 {
+    g_traceSysEventParams.opt = "RecordingLongFinishRecord";
+    g_traceSysEventParams.isRaw = true;
     auto recOffRet = g_traceCollector->RecordingOff();
+    g_traceSysEventParams.errorCode = recOffRet.retCode;
     if (recOffRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: RecordingOff failed, errorCode(" + std::to_string(recOffRet.retCode) +")");
         g_traceCollector->Recover();
@@ -815,6 +855,7 @@ static bool HandleRecordingLongFinishRecord()
 
 static bool HandleOpenSnapshot()
 {
+    g_needSysEvent = false;
     std::vector<std::string> tagGroups = { "scene_performance" };
     auto openRet = g_traceCollector->OpenSnapshot(tagGroups);
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
@@ -833,6 +874,7 @@ static bool HandleOpenSnapshot()
 
 static bool HandleDumpSnapshot()
 {
+    g_needSysEvent = false;
     bool isSuccess = true;
     auto dumpRet = g_traceCollector->DumpSnapshot(OHOS::HiviewDFX::UCollect::TraceCaller::DEVELOP);
     if (dumpRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
@@ -849,6 +891,7 @@ static bool HandleDumpSnapshot()
 
 static bool HandleCloseSnapshot()
 {
+    g_needSysEvent = false;
     bool isSuccess = true;
     auto closeRet = g_traceCollector->Close();
     if (closeRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
@@ -867,6 +910,53 @@ static void InterruptExit(int signo)
     */
     g_traceCollector->Recover();
     _exit(-1);
+}
+
+static void SetTraceSysEventParams()
+{
+    g_traceSysEventParams.caller = "CMD";
+    g_traceSysEventParams.tags = g_traceArgs.tags;
+    if (g_traceArgs.clockType.empty()) {
+        g_traceSysEventParams.clockType = "boot";
+    } else {
+        g_traceSysEventParams.clockType = g_traceArgs.clockType;
+    }
+    if (!g_traceArgs.bufferSize) {
+        g_traceSysEventParams.bufferSize = DEFAULT_BUFFER_SIZE;
+    } else {
+        g_traceSysEventParams.bufferSize = g_traceArgs.bufferSize;
+    }
+    if (g_traceArgs.fileSize) {
+        g_traceSysEventParams.fileSize = g_traceArgs.fileSize;
+    }
+    g_traceSysEventParams.duration = g_traceArgs.duration;
+    g_traceSysEventParams.isCompress = g_traceArgs.isCompress;
+    g_traceSysEventParams.isOverwrite = g_traceArgs.overwrite;
+}
+
+static void RecordSysEvent()
+{
+    if (!g_needSysEvent) {
+        return;
+    }
+    int ret = HiSysEventWrite(OHOS::HiviewDFX::HiSysEvent::Domain::PROFILER, "HITRACE_USAGE",
+        OHOS::HiviewDFX::HiSysEvent::EventType::BEHAVIOR,
+        "OPT", g_traceSysEventParams.opt,
+        "CALLER", g_traceSysEventParams.caller,
+        "TRACE_TAG", g_traceSysEventParams.tags,
+        "DURATION", g_traceSysEventParams.duration,
+        "BUFFER_SIZE", g_traceSysEventParams.bufferSize,
+        "FILE_LIMIT", g_traceSysEventParams.fileLimit,
+        "FILE_SIZE", g_traceSysEventParams.fileSize,
+        "CLOCK_TYPE", g_traceSysEventParams.clockType,
+        "IS_COMPRESSED", g_traceSysEventParams.isCompress,
+        "IS_RAW", g_traceSysEventParams.isRaw,
+        "IS_OVERWRITE", g_traceSysEventParams.isOverwrite,
+        "ERROR_CODE", g_traceSysEventParams.errorCode,
+        "ERROR_MESSAGE", g_traceSysEventParams.errorMessage);
+    if (ret != 0) {
+        HILOG_ERROR(LOG_CORE, "HiSysEventWrite failed, ret is %{public}d", ret);
+    }
 }
 
 int main(int argc, char **argv)
@@ -911,6 +1001,7 @@ int main(int argc, char **argv)
         g_runningState != RECORDING_LONG_FINISH) {
         ConsoleLog(std::string(argv[0]) + " enter, running_state is " + GetStateInfo(g_runningState));
     }
+    SetTraceSysEventParams();
 
     switch (g_runningState) {
         case RECORDING_SHORT_RAW:
@@ -957,5 +1048,6 @@ int main(int argc, char **argv)
             isSuccess = false;
             break;
     }
+    RecordSysEvent();
     return isSuccess ? 0 : -1;
 }
