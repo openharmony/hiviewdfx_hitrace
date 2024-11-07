@@ -602,7 +602,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
 
             if (pageTraceTime < traceStartTime) {
                 if (UNEXPECTANTLY(!printFirstPageTime)) {
-                    HILOG_DEBUG(LOG_CORE, "First page trace time:(%{public}" PRIu64 ")", pageTraceTime);
+                    HILOG_INFO(LOG_CORE, "First page trace time:(%{public}" PRIu64 ")", pageTraceTime);
                     printFirstPageTime = true;
                 }
                 continue;
@@ -1080,7 +1080,7 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
     int pipefd[2];
     if (pipe(pipefd) == -1) {
         HILOG_ERROR(LOG_CORE, "pipe creation error.");
-        return TraceErrorCode::SYSTEM_ERROR;
+        return TraceErrorCode::PIPE_CREATE_ERROR;
     }
 
     std::string outputFileName = GenerateTraceFileName();
@@ -1089,7 +1089,7 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
     pid_t pid = fork();
     if (pid < 0) {
         HILOG_ERROR(LOG_CORE, "fork error.");
-        return TraceErrorCode::WRITE_TRACE_INFO_ERROR;
+        return TraceErrorCode::FORK_ERROR;
     } else if (pid == 0) {
         signal(SIGUSR1, TimeoutSignalHandler);
         close(pipefd[0]);
@@ -1112,7 +1112,7 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
     }
 
     if (!EpollWaitforChildProcess(pid, pipefd[0])) {
-        return TraceErrorCode::SYSTEM_ERROR;
+        return TraceErrorCode::EPOLL_WAIT_ERROR;
     }
 
     if (g_dumpStatus) {
@@ -1374,8 +1374,8 @@ TraceMode GetTraceMode()
 TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
 {
     if (g_traceMode != CLOSE) {
-        HILOG_ERROR(LOG_CORE, "OpenTrace: CALL_ERROR, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
-        return CALL_ERROR;
+        HILOG_ERROR(LOG_CORE, "OpenTrace: WRONG_TRACE_MODE, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
+        return WRONG_TRACE_MODE;
     }
     std::lock_guard<std::mutex> lock(g_traceMutex);
     if (!IsTraceMounted()) {
@@ -1420,8 +1420,8 @@ TraceErrorCode OpenTrace(const std::string &args)
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
     if (g_traceMode != CLOSE) {
-        HILOG_ERROR(LOG_CORE, "OpenTrace: CALL_ERROR, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
-        return CALL_ERROR;
+        HILOG_ERROR(LOG_CORE, "OpenTrace: WRONG_TRACE_MODE, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
+        return WRONG_TRACE_MODE;
     }
 
     if (!IsTraceMounted()) {
@@ -1457,8 +1457,8 @@ TraceRetInfo DumpTrace()
     TraceRetInfo ret;
     HILOG_INFO(LOG_CORE, "DumpTrace start.");
     if (g_traceMode != SERVICE_MODE) {
-        HILOG_ERROR(LOG_CORE, "DumpTrace: CALL_ERROR, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
-        ret.errorCode = CALL_ERROR;
+        HILOG_ERROR(LOG_CORE, "DumpTrace: WRONG_TRACE_MODE, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
+        ret.errorCode = WRONG_TRACE_MODE;
         return ret;
     }
 
@@ -1483,7 +1483,7 @@ TraceRetInfo DumpTrace(int maxDuration, uint64_t traceEndTime)
     TraceRetInfo ret;
     if (maxDuration < 0) {
         HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input.");
-        ret.errorCode = CALL_ERROR;
+        ret.errorCode = INVALID_MAX_DURATION;
         return ret;
     }
     {
@@ -1494,7 +1494,7 @@ TraceRetInfo DumpTrace(int maxDuration, uint64_t traceEndTime)
         struct sysinfo info;
         if (sysinfo(&info) != 0) {
             HILOG_ERROR(LOG_CORE, "Get system info failed.");
-            ret.errorCode = UNKNOWN_ERROR;
+            ret.errorCode = SYSINFO_READ_FAILURE;
             return ret;
         }
         std::time_t boot_time = now - info.uptime;
@@ -1537,13 +1537,13 @@ TraceErrorCode DumpTraceOn()
     std::lock_guard<std::mutex> lock(g_traceMutex);
     // check current trace status
     if (g_traceMode != CMD_MODE) {
-        HILOG_ERROR(LOG_CORE, "DumpTraceOn: CALL_ERROR, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
-        return CALL_ERROR;
+        HILOG_ERROR(LOG_CORE, "DumpTraceOn: WRONG_TRACE_MODE, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
+        return WRONG_TRACE_MODE;
     }
 
     if (!g_dumpEnd) {
-        HILOG_ERROR(LOG_CORE, "DumpTraceOn: CALL_ERROR, record trace is dumping now.");
-        return CALL_ERROR;
+        HILOG_ERROR(LOG_CORE, "DumpTraceOn: WRONG_TRACE_MODE, record trace is dumping now.");
+        return WRONG_TRACE_MODE;
     }
 
     // start task thread
@@ -1565,7 +1565,7 @@ TraceRetInfo DumpTraceOff()
     if (g_traceMode != CMD_MODE) {
         HILOG_ERROR(LOG_CORE, "DumpTraceOff: The current state is %{public}d, data exception.",
             static_cast<int>(g_traceMode));
-        ret.errorCode = CALL_ERROR;
+        ret.errorCode = WRONG_TRACE_MODE;
         ret.outputFiles = g_outputFilesForCmd;
         return ret;
     }

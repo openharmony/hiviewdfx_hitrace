@@ -202,7 +202,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_002, TestSize.Level0)
 
     int maxDuration = -1;
     TraceRetInfo ret = DumpTrace(maxDuration);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::CALL_ERROR);
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_MAX_DURATION);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -258,14 +258,14 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
     traceEndTime = 10; // 1970-01-01 08:00:10
     int maxDuration = -1;
     ret = DumpTrace(maxDuration, traceEndTime);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::CALL_ERROR);
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_MAX_DURATION);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 10; // current time + 10 seconds
     maxDuration = -1;
     ret = DumpTrace(maxDuration, traceEndTime);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::CALL_ERROR);
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_MAX_DURATION);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
@@ -337,6 +337,23 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_006, TestSize.Level0)
 }
 
 /**
+ * @tc.name: DumpTraceTest_007
+ * @tc.desc: Test DumpTrace(int maxDuration, uint64_t happenTime) for INVALID_MAX_DURATION.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpTraceTest_007, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"default"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    sleep(2);
+    uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr));
+    TraceRetInfo ret = DumpTrace(-1, traceEndTime);
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_MAX_DURATION);
+    ASSERT_TRUE(ret.outputFiles.empty());
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
  * @tc.name: DumpForServiceMode_001
  * @tc.desc: The correct usage of grasping trace in SERVICE_MODE.
  * @tc.type: FUNC
@@ -349,6 +366,122 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_001, TestSize.Level0)
     TraceRetInfo ret = DumpTrace();
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(ret.outputFiles.size() > 0);
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpForServiceMode_002
+ * @tc.desc: Verify if files can be returned as expected in Service_MODE.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForServiceMode_002, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(access(DEFAULT_OUTPUT_DIR.c_str(), F_OK) == 0) << "/data/log/hitrace not exists.";
+
+    struct timeval now = {0, 0};
+    gettimeofday(&now, nullptr);
+    int nowSec = now.tv_sec;
+    int nowUsec = now.tv_usec;
+    nowSec--;
+    std::string outputFileName = DEFAULT_OUTPUT_DIR + "trace_" + std::to_string(nowSec)
+        + "_" + std::to_string(nowUsec) + ".sys";
+    ASSERT_TRUE(CreateFile(outputFileName)) << "create log file failed.";
+    HILOG_INFO(LOG_CORE, "outputFileName: %{public}s", outputFileName.c_str());
+    AddPair2Table(outputFileName, nowSec);
+
+    TraceRetInfo ret = DumpTrace();
+    // Remove outputFileName in g_hitraceFilesTable
+    EraseFile(outputFileName);
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(TraverseFiles(ret.outputFiles, outputFileName)) << "file created by user is not exists.";
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpForServiceMode_003
+ * @tc.desc: Verify if files can be deleted in Service_MODE.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForServiceMode_003, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(access(DEFAULT_OUTPUT_DIR.c_str(), F_OK) == 0) << "/data/log/hitrace not exists.";
+
+    struct timeval now = {0, 0};
+    gettimeofday(&now, nullptr);
+    int nowSec = now.tv_sec;
+    int nowUsec = now.tv_usec;
+    nowSec = nowSec - 1900;
+    std::string outputFileName = DEFAULT_OUTPUT_DIR + "trace_" + std::to_string(nowSec)
+        + "_" + std::to_string(nowUsec) + ".sys";
+    ASSERT_TRUE(CreateFile(outputFileName)) << "create log file failed.";
+    HILOG_INFO(LOG_CORE, "outputFileName: %{public}s", outputFileName.c_str());
+    AddPair2Table(outputFileName, nowSec);
+
+    TraceRetInfo ret = DumpTrace();
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
+    ASSERT_FALSE(TraverseFiles(ret.outputFiles, outputFileName))
+        << "Returned files that should have been deleted half an hour ago.";
+    ASSERT_TRUE(access(outputFileName.c_str(), F_OK) < 0) << "The file was not deleted half an hour ago";
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpForServiceMode_004
+ * @tc.desc: Invalid parameter verification in CMD_MODE.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForServiceMode_004, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups;
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::TAG_ERROR);
+
+    const std::vector<std::string> tagGroups1 = {"scene_performance1"};
+    ASSERT_TRUE(OpenTrace(tagGroups1) == TraceErrorCode::TAG_ERROR);
+    ASSERT_TRUE(DumpTrace().errorCode == TraceErrorCode::WRONG_TRACE_MODE);
+
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpForServiceMode_005
+ * @tc.desc: Enable the service mode in CMD_MODE.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForServiceMode_005, TestSize.Level0)
+{
+    std::string args = "tags:sched clockType:boot bufferSize:1024 overwrite:1";
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
+
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::WRONG_TRACE_MODE);
+
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::WRONG_TRACE_MODE);
+
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpForServiceMode_006
+ * @tc.desc: Invalid parameter verification in CMD_MODE.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForServiceMode_006, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(access(DEFAULT_OUTPUT_DIR.c_str(), F_OK) == 0) << "/data/log/hitrace not exists.";
+
+    SetSysInitParamTags(123);
+    ASSERT_TRUE(SetCheckParam() == false);
+
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -422,7 +555,7 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_004, TestSize.Level0)
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
 
     const std::vector<std::string> tagGroups = {"scene_performance"};
-    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::CALL_ERROR);
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::WRONG_TRACE_MODE);
 
     ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::SUCCESS);
     sleep(1);
@@ -452,8 +585,8 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_005, TestSize.Level0)
     const std::vector<std::string> tagGroups = {"scene_performance"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     std::string args = "tags:sched clockType:boot bufferSize:1024 overwrite:1";
-    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::CALL_ERROR);
-    ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::CALL_ERROR);
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::WRONG_TRACE_MODE);
+    ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::WRONG_TRACE_MODE);
 
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
@@ -569,122 +702,6 @@ HWTEST_F(HitraceDumpTest, ParammeterCheck_001, TestSize.Level0)
     // ckeck Property("debug.hitrace.tags.enableflags")
     uint64_t closeTags = OHOS::system::GetUintParameter<uint64_t>(TAG_PROP, 0);
     ASSERT_TRUE(closeTags == 0);
-}
-
-/**
- * @tc.name: DumpForServiceMode_002
- * @tc.desc: Verify if files can be returned as expected in Service_MODE.
- * @tc.type: FUNC
- */
-HWTEST_F(HitraceDumpTest, DumpForServiceMode_002, TestSize.Level0)
-{
-    const std::vector<std::string> tagGroups = {"scene_performance"};
-    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    ASSERT_TRUE(access(DEFAULT_OUTPUT_DIR.c_str(), F_OK) == 0) << "/data/log/hitrace not exists.";
-
-    struct timeval now = {0, 0};
-    gettimeofday(&now, nullptr);
-    int nowSec = now.tv_sec;
-    int nowUsec = now.tv_usec;
-    nowSec--;
-    std::string outputFileName = DEFAULT_OUTPUT_DIR + "trace_" + std::to_string(nowSec)
-        + "_" + std::to_string(nowUsec) + ".sys";
-    ASSERT_TRUE(CreateFile(outputFileName)) << "create log file failed.";
-    HILOG_INFO(LOG_CORE, "outputFileName: %{public}s", outputFileName.c_str());
-    AddPair2Table(outputFileName, nowSec);
-
-    TraceRetInfo ret = DumpTrace();
-    // Remove outputFileName in g_hitraceFilesTable
-    EraseFile(outputFileName);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
-    ASSERT_TRUE(TraverseFiles(ret.outputFiles, outputFileName)) << "file created by user is not exists.";
-    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
-}
-
-/**
- * @tc.name: DumpForServiceMode_003
- * @tc.desc: Verify if files can be deleted in Service_MODE.
- * @tc.type: FUNC
- */
-HWTEST_F(HitraceDumpTest, DumpForServiceMode_003, TestSize.Level0)
-{
-    const std::vector<std::string> tagGroups = {"scene_performance"};
-    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    ASSERT_TRUE(access(DEFAULT_OUTPUT_DIR.c_str(), F_OK) == 0) << "/data/log/hitrace not exists.";
-
-    struct timeval now = {0, 0};
-    gettimeofday(&now, nullptr);
-    int nowSec = now.tv_sec;
-    int nowUsec = now.tv_usec;
-    nowSec = nowSec - 1900;
-    std::string outputFileName = DEFAULT_OUTPUT_DIR + "trace_" + std::to_string(nowSec)
-        + "_" + std::to_string(nowUsec) + ".sys";
-    ASSERT_TRUE(CreateFile(outputFileName)) << "create log file failed.";
-    HILOG_INFO(LOG_CORE, "outputFileName: %{public}s", outputFileName.c_str());
-    AddPair2Table(outputFileName, nowSec);
-
-    TraceRetInfo ret = DumpTrace();
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
-    ASSERT_FALSE(TraverseFiles(ret.outputFiles, outputFileName))
-        << "Returned files that should have been deleted half an hour ago.";
-    ASSERT_TRUE(access(outputFileName.c_str(), F_OK) < 0) << "The file was not deleted half an hour ago";
-    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
-}
-
-/**
- * @tc.name: DumpForServiceMode_004
- * @tc.desc: Invalid parameter verification in CMD_MODE.
- * @tc.type: FUNC
- */
-HWTEST_F(HitraceDumpTest, DumpForServiceMode_004, TestSize.Level0)
-{
-    const std::vector<std::string> tagGroups;
-    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::TAG_ERROR);
-
-    const std::vector<std::string> tagGroups1 = {"scene_performance1"};
-    ASSERT_TRUE(OpenTrace(tagGroups1) == TraceErrorCode::TAG_ERROR);
-    ASSERT_TRUE(DumpTrace().errorCode == TraceErrorCode::CALL_ERROR);
-
-    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
-}
-
-/**
- * @tc.name: DumpForServiceMode_005
- * @tc.desc: Enable the service mode in CMD_MODE.
- * @tc.type: FUNC
- */
-HWTEST_F(HitraceDumpTest, DumpForServiceMode_005, TestSize.Level0)
-{
-    std::string args = "tags:sched clockType:boot bufferSize:1024 overwrite:1";
-    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
-
-    const std::vector<std::string> tagGroups = {"scene_performance"};
-    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::CALL_ERROR);
-
-    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
-
-    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-
-    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::CALL_ERROR);
-
-    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
-}
-
-/**
- * @tc.name: DumpForServiceMode_006
- * @tc.desc: Invalid parameter verification in CMD_MODE.
- * @tc.type: FUNC
- */
-HWTEST_F(HitraceDumpTest, DumpForServiceMode_006, TestSize.Level0)
-{
-    const std::vector<std::string> tagGroups = {"scene_performance"};
-    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    ASSERT_TRUE(access(DEFAULT_OUTPUT_DIR.c_str(), F_OK) == 0) << "/data/log/hitrace not exists.";
-
-    SetSysInitParamTags(123);
-    ASSERT_TRUE(SetCheckParam() == false);
-
-    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
 /**
