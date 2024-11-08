@@ -684,6 +684,61 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_009, TestSize.Level0)
 }
 
 /**
+ * @tc.name: DumpForCmdMode_010
+ * @tc.desc: Test the multi-process task CMD_MODE when set fileLimit in args.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForCmdMode_010, TestSize.Level0)
+{
+    std::string args = "tags:sched,ace,app,disk,distributeddatamgr,freq,graphic,idle,irq,load,mdfs,mmc,";
+    args += "notification,ohos,pagecache,regulators,sync,ufs,workq,zaudio,zcamera,zimage,zmedia ";
+    args += "clockType: boot bufferSize:1024 overwrite: 1 fileLimit: 2";
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        HILOG_ERROR(LOG_CORE, "fork error.");
+    } else if (pid == 0) {
+        ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::WRONG_TRACE_MODE);
+        _exit(EXIT_SUCCESS);
+    }
+
+    ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::SUCCESS);
+    sleep(1);
+
+    TraceRetInfo ret = DumpTraceOff();
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(ret.outputFiles.size() > 0);
+
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpForCmdMode_011
+ * @tc.desc: Test the multi-process task SERVICE_MODE and Enable the cmd mode in non-close mode.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForCmdMode_011, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        HILOG_ERROR(LOG_CORE, "fork error.");
+    } else if (pid == 0) {
+        ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::WRONG_TRACE_MODE);
+        _exit(EXIT_SUCCESS);
+    }
+
+    std::string args = "tags:sched clockType:boot bufferSize:1024 overwrite:1";
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::WRONG_TRACE_MODE);
+    ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::WRONG_TRACE_MODE);
+
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
  * @tc.name: ParammeterCheck_001
  * @tc.desc: Check parameter after interface call.
  * @tc.type: FUNC
