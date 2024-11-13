@@ -296,10 +296,16 @@ def generate_one_event_str(data, cpu_id, time_stamp, one_event):
 
     return event_str
 
+format_miss_cnt = 0
+format_miss_set = set()
 
 def parse_one_event(data, event_id, cpu_id, time_stamp):
+    global format_miss_cnt
+    global format_miss_set
     event_format = events_format.get(event_id, "")
     if event_format == "":
+        format_miss_cnt += 1
+        format_miss_set.add(event_id)
         return ""
 
     fields = event_format["fields"]
@@ -473,6 +479,11 @@ def parse_binary_trace_file():
 
     outfile.close()
     infile.close()
+
+    print("Trace format miss count: %d" % format_miss_cnt)
+    print("Trace format id missed set:")
+    for miss_format_id in format_miss_set:
+        print("%d" % miss_format_id)
 
     for name in get_not_found_foramt:
         print("Error: function parse_" + name + " not found")
