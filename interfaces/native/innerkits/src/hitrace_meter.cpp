@@ -29,6 +29,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
+#include <string>
 
 #include "securec.h"
 #include "hilog/log.h"
@@ -38,7 +39,6 @@
 #include "hitrace_meter.h"
 #include "hitrace/tracechain.h"
 
-using namespace std;
 using namespace OHOS::HiviewDFX;
 
 #define EXPECTANTLY(exp) (__builtin_expect(!!(exp), true))
@@ -158,8 +158,8 @@ inline void UpdateSysParamTags()
 
 bool IsAppspawnProcess()
 {
-    string procName;
-    ifstream cmdline("/proc/self/cmdline");
+    std::string procName;
+    std::ifstream cmdline("/proc/self/cmdline");
     if (cmdline.is_open()) {
         getline(cmdline, procName, '\0');
         cmdline.close();
@@ -182,7 +182,7 @@ void InitPid()
     }
 
     HILOG_INFO(LOG_CORE, "pid[%{public}s] first get g_tagsProperty: %{public}s", pidStr.c_str(),
-        to_string(g_tagsProperty.load()).c_str());
+        std::to_string(g_tagsProperty.load()).c_str());
 }
 
 void ReloadPid()
@@ -290,7 +290,7 @@ bool GetProcData(const char* file, char* buffer, const size_t bufferSize)
     FILE* fp = fopen(file, "r");
     if (fp == nullptr) {
         static bool isWriteLog = false;
-        std::string errLogStr = std::string(__func__) + ": open " + std::string(file) + " falied";
+        std::string errLogStr = std::string(__func__) + ": open " + std::string(file) + " failed";
         WriteOnceLog(LOG_ERROR, errLogStr, isWriteLog);
         return false;
     }
@@ -298,14 +298,14 @@ bool GetProcData(const char* file, char* buffer, const size_t bufferSize)
     if (fgets(buffer, bufferSize, fp) == nullptr) {
         (void)fclose(fp);
         static bool isWriteLog = false;
-        std::string errLogStr = std::string(__func__) + ": fgets " + std::string(file) + " falied";
+        std::string errLogStr = std::string(__func__) + ": fgets " + std::string(file) + " failed";
         WriteOnceLog(LOG_ERROR, errLogStr, isWriteLog);
         return false;
     }
 
     if (fclose(fp) != 0) {
         static bool isWriteLog = false;
-        std::string errLogStr = std::string(__func__) + ": fclose " + std::string(file) + " falied";
+        std::string errLogStr = std::string(__func__) + ": fclose " + std::string(file) + " failed";
         WriteOnceLog(LOG_ERROR, errLogStr, isWriteLog);
         return false;
     }
@@ -684,7 +684,7 @@ void SetAddTraceMarkerLarge(const std::string& name, const int64_t value)
     AddTraceMarkerLarge(name, MARKER_BEGIN, value);
 }
 
-void SetAddHitraceMeterMarker(uint64_t label, const string& value)
+void SetAddHitraceMeterMarker(uint64_t label, const std::string& value)
 {
     AddHitraceMeterMarker(MARKER_BEGIN, label, value, 0);
 }
@@ -775,12 +775,12 @@ void StartTraceWrapper(uint64_t label, const char *value)
     StartTrace(label, traceValue);
 }
 
-void StartTrace(uint64_t label, const string& value, float limit UNUSED_PARAM)
+void StartTrace(uint64_t label, const std::string& value, float limit UNUSED_PARAM)
 {
     AddHitraceMeterMarker(MARKER_BEGIN, label, value, 0);
 }
 
-void StartTraceDebug(bool isDebug, uint64_t label, const string& value, float limit UNUSED_PARAM)
+void StartTraceDebug(bool isDebug, uint64_t label, const std::string& value, float limit UNUSED_PARAM)
 {
     if (!isDebug) {
         return;
@@ -838,7 +838,7 @@ void FinishTraceDebug(bool isDebug, uint64_t label)
     AddHitraceMeterMarker(MARKER_END, label, EMPTY_TRACE_NAME, 0);
 }
 
-void StartAsyncTrace(uint64_t label, const string& value, int32_t taskId, float limit UNUSED_PARAM)
+void StartAsyncTrace(uint64_t label, const std::string& value, int32_t taskId, float limit UNUSED_PARAM)
 {
     AddHitraceMeterMarker(MARKER_ASYNC_BEGIN, label, value, taskId);
 }
@@ -854,7 +854,7 @@ void StartTraceChain(uint64_t label, const struct HiTraceIdStruct* hiTraceId, co
     AddHitraceMeterMarker(MARKER_BEGIN, label, value, 0, hiTraceId);
 }
 
-void StartAsyncTraceDebug(bool isDebug, uint64_t label, const string& value, int32_t taskId, float limit UNUSED_PARAM)
+void StartAsyncTraceDebug(bool isDebug, uint64_t label, const std::string& value, int32_t taskId, float limit UNUSED_PARAM)
 {
     if (!isDebug) {
         return;
@@ -900,7 +900,7 @@ void StartAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, cons
     AddHitraceMeterMarker(MARKER_ASYNC_BEGIN, label, name, taskId);
 }
 
-void FinishAsyncTrace(uint64_t label, const string& value, int32_t taskId)
+void FinishAsyncTrace(uint64_t label, const std::string& value, int32_t taskId)
 {
     AddHitraceMeterMarker(MARKER_ASYNC_END, label, value, taskId);
 }
@@ -911,7 +911,7 @@ void FinishAsyncTraceWrapper(uint64_t label, const char *value, int32_t taskId)
     FinishAsyncTrace(label, traceValue, taskId);
 }
 
-void FinishAsyncTraceDebug(bool isDebug, uint64_t label, const string& value, int32_t taskId)
+void FinishAsyncTraceDebug(bool isDebug, uint64_t label, const std::string& value, int32_t taskId)
 {
     if (!isDebug) {
         return;
@@ -957,13 +957,13 @@ void FinishAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, con
     AddHitraceMeterMarker(MARKER_ASYNC_END, label, name, taskId);
 }
 
-void MiddleTrace(uint64_t label, const string& beforeValue UNUSED_PARAM, const std::string& afterValue)
+void MiddleTrace(uint64_t label, const std::string& beforeValue UNUSED_PARAM, const std::string& afterValue)
 {
     AddHitraceMeterMarker(MARKER_END, label, EMPTY_TRACE_NAME, 0);
     AddHitraceMeterMarker(MARKER_BEGIN, label, afterValue, 0);
 }
 
-void MiddleTraceDebug(bool isDebug, uint64_t label, const string& beforeValue UNUSED_PARAM,
+void MiddleTraceDebug(bool isDebug, uint64_t label, const std::string& beforeValue UNUSED_PARAM,
     const std::string& afterValue)
 {
     if (!isDebug) {
@@ -973,12 +973,12 @@ void MiddleTraceDebug(bool isDebug, uint64_t label, const string& beforeValue UN
     AddHitraceMeterMarker(MARKER_BEGIN, label, afterValue, 0);
 }
 
-void CountTrace(uint64_t label, const string& name, int64_t count)
+void CountTrace(uint64_t label, const std::string& name, int64_t count)
 {
     AddHitraceMeterMarker(MARKER_INT, label, name, count);
 }
 
-void CountTraceDebug(bool isDebug, uint64_t label, const string& name, int64_t count)
+void CountTraceDebug(bool isDebug, uint64_t label, const std::string& name, int64_t count)
 {
     if (!isDebug) {
         return;

@@ -43,7 +43,6 @@
 #include "securec.h"
 #include "trace_collector_client.h"
 
-using namespace std;
 using namespace OHOS::HiviewDFX::HitraceOsal;
 
 namespace {
@@ -160,7 +159,7 @@ const int PAGE_SIZE_KB = 4; // 4 KB
 const int MIN_FILE_SIZE = 51200; // 50 MB
 const int MAX_FILE_SIZE = 512000; // 500 MB
 
-string g_traceRootPath;
+std::string g_traceRootPath;
 
 std::shared_ptr<OHOS::HiviewDFX::UCollectClient::TraceCollector> g_traceCollector;
 
@@ -196,8 +195,8 @@ static std::string GetStateInfo(const RunningState state)
 
 static bool IsTraceMounted()
 {
-    const string debugfsPath = "/sys/kernel/debug/tracing/";
-    const string tracefsPath = "/sys/kernel/tracing/";
+    const std::string debugfsPath = "/sys/kernel/debug/tracing/";
+    const std::string tracefsPath = "/sys/kernel/tracing/";
 
     if (access((debugfsPath + TRACE_MARKER_PATH).c_str(), F_OK) != -1) {
         g_traceRootPath = debugfsPath;
@@ -210,12 +209,12 @@ static bool IsTraceMounted()
     return false;
 }
 
-static bool WriteStrToFile(const string& filename, const std::string& str)
+static bool WriteStrToFile(const std::string& filename, const std::string& str)
 {
-    ofstream out;
+    std::ofstream out;
     std::string inSpecPath =
         OHOS::HiviewDFX::Hitrace::CanonicalizeSpecPath((g_traceRootPath + filename).c_str());
-    out.open(inSpecPath, ios::out);
+    out.open(inSpecPath, std::ios::out);
     if (out.fail()) {
         ConsoleLog("error: open " + inSpecPath + " failed.");
         return false;
@@ -231,19 +230,19 @@ static bool WriteStrToFile(const string& filename, const std::string& str)
     return true;
 }
 
-static bool SetFtraceEnabled(const string& path, bool enabled)
+static bool SetFtraceEnabled(const std::string& path, bool enabled)
 {
     return WriteStrToFile(path, enabled ? "1" : "0");
 }
 
-static bool SetProperty(const string& property, const string& value)
+static bool SetProperty(const std::string& property, const std::string& value)
 {
     return SetPropertyInner(property, value);
 }
 
 static bool SetTraceTagsEnabled(uint64_t tags)
 {
-    string value = std::to_string(tags);
+    std::string value = std::to_string(tags);
     return SetProperty(TRACE_TAG_PROPERTY, value);
 }
 
@@ -256,7 +255,7 @@ static void ShowListCategory()
     }
 }
 
-static void ShowHelp(const string& cmd)
+static void ShowHelp(const std::string& cmd)
 {
     g_traceSysEventParams.opt = "ShowHelp";
     printf("usage: %s [options] [categories...]\n", cmd.c_str());
@@ -326,7 +325,7 @@ static bool CheckOutputFile(const char* path)
     return true;
 }
 
-static bool ParseLongOpt(const string& cmd, int optionIndex)
+static bool ParseLongOpt(const std::string& cmd, int optionIndex)
 {
     bool isTrue = true;
     if (!strcmp(LONG_OPTIONS[optionIndex].name, "buffer_size")) {
@@ -345,7 +344,7 @@ static bool ParseLongOpt(const string& cmd, int optionIndex)
         }
         g_traceArgs.bufferSize = bufferSizeKB / PAGE_SIZE_KB * PAGE_SIZE_KB;
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_clock")) {
-        regex re("[a-zA-Z]{4,6}");
+        std::regex re("[a-zA-Z]{4,6}");
         if (regex_match(optarg, re)) {
             g_traceArgs.clockType = optarg;
         } else {
@@ -491,7 +490,7 @@ static bool HandleOpt(int argc, char** argv)
     bool isTrue = true;
     int opt = 0;
     int optionIndex = 0;
-    string shortOption = "b:c:hlo:t:z";
+    std::string shortOption = "b:c:hlo:t:z";
     int argcSize = argc;
     while (isTrue && argcSize-- > 0) {
         opt = getopt_long(argc, argv, shortOption.c_str(), LONG_OPTIONS, &optionIndex);
@@ -586,7 +585,7 @@ static void DumpCompressedTrace(int traceFd, int outFd)
 static void DumpTrace()
 {
     std::string tracePath = g_traceRootPath + TRACE_PATH;
-    string traceSpecPath = OHOS::HiviewDFX::Hitrace::CanonicalizeSpecPath(tracePath.c_str());
+    std::string traceSpecPath = OHOS::HiviewDFX::Hitrace::CanonicalizeSpecPath(tracePath.c_str());
     int traceFd = open(traceSpecPath.c_str(), O_RDONLY);
     if (traceFd == -1) {
         ConsoleLog("error: opening " + tracePath + ", errno: " + std::to_string(errno));
@@ -595,7 +594,7 @@ static void DumpTrace()
 
     int outFd = STDOUT_FILENO;
     if (g_traceArgs.output.size() > 0) {
-        string outSpecPath = OHOS::HiviewDFX::Hitrace::CanonicalizeSpecPath(g_traceArgs.output.c_str());
+        std::string outSpecPath = OHOS::HiviewDFX::Hitrace::CanonicalizeSpecPath(g_traceArgs.output.c_str());
         outFd = open(outSpecPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     }
 

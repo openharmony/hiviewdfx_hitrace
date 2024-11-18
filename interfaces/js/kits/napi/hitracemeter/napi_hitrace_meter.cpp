@@ -34,7 +34,7 @@ constexpr int ARGC_NUMBER_THREE = 3;
 #define LOG_TAG "HITRACE_METER_JS"
 
 using STR_NUM_PARAM_FUNC = std::function<bool(std::string, napi_value&)>;
-std::map<std::string, uint64_t> g_tagsMap = {
+std::unordered_map<std::string, uint64_t> g_tagsMap = {
     {"ohos", HITRACE_TAG_OHOS}, {"ability", HITRACE_TAG_ABILITY_MANAGER}, {"camera", HITRACE_TAG_ZCAMERA},
     {"media", HITRACE_TAG_ZMEDIA}, {"image", HITRACE_TAG_ZIMAGE}, {"audio", HITRACE_TAG_ZAUDIO},
     {"distributeddatamgr", HITRACE_TAG_DISTRIBUTEDDATA}, {"graphic", HITRACE_TAG_GRAPHIC_AGP},
