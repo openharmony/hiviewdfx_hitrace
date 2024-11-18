@@ -28,7 +28,7 @@ bool SetPropertyInner(const std::string& property, const std::string& value)
 {
     bool result = OHOS::system::SetParameter(property, value);
     if (!result) {
-        fprintf(stderr, "Error: Failed to set %s property.\n", value.c_str());
+        fprintf(stderr, "Error: Failed to set %s property.\n", property.c_str());
     }
     return result;
 }

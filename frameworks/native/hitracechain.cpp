@@ -16,12 +16,10 @@
 #include "hitrace/hitracechain.h"
 #include "hitracechain_inner.h"
 
-using namespace std;
-
 namespace OHOS {
 namespace HiviewDFX {
 
-HiTraceId HiTraceChain::Begin(const string& name, int flags)
+HiTraceId HiTraceChain::Begin(const std::string& name, int flags)
 {
     return HiTraceId(::HiTraceChainBegin(name.c_str(), flags));
 }
