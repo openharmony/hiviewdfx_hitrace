@@ -706,7 +706,7 @@ static bool HandleRecordingShortRaw()
         g_traceCollector->Recover();
         return false;
     }
-    ConsoleLog("start capture, please wait " + std::to_string(g_traceArgs.duration) +"s ...");
+    ConsoleLog("start capture, please wait " + std::to_string(g_traceArgs.duration) + "s ...");
     sleep(g_traceArgs.duration);
 
     auto recOffRet = g_traceCollector->RecordingOff();
@@ -740,7 +740,7 @@ static bool HandleRecordingShortText()
             return false;
         }
     }
-    ConsoleLog("start capture, please wait " + std::to_string(g_traceArgs.duration) +"s ...");
+    ConsoleLog("start capture, please wait " + std::to_string(g_traceArgs.duration) + "s ...");
     sleep(g_traceArgs.duration);
 
     OHOS::HiviewDFX::Hitrace::MarkClockSync(g_traceRootPath);
