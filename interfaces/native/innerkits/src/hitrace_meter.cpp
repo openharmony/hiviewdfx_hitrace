@@ -854,7 +854,8 @@ void StartTraceChain(uint64_t label, const struct HiTraceIdStruct* hiTraceId, co
     AddHitraceMeterMarker(MARKER_BEGIN, label, value, 0, hiTraceId);
 }
 
-void StartAsyncTraceDebug(bool isDebug, uint64_t label, const std::string& value, int32_t taskId, float limit UNUSED_PARAM)
+void StartAsyncTraceDebug(bool isDebug, uint64_t label, const std::string& value, int32_t taskId,
+    float limit UNUSED_PARAM)
 {
     if (!isDebug) {
         return;
