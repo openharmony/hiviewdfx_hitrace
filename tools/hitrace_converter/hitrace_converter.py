@@ -296,8 +296,10 @@ def generate_one_event_str(data, cpu_id, time_stamp, one_event):
 
     return event_str
 
+
 format_miss_cnt = 0
 format_miss_set = set()
+
 
 def parse_one_event(data, event_id, cpu_id, time_stamp):
     global format_miss_cnt
@@ -486,7 +488,7 @@ def parse_binary_trace_file():
         print("%d" % miss_format_id)
 
     for name in get_not_found_foramt:
-        print("Error: function parse_" + name + " not found")
+        print("Error: function parse_%s not found" % name)
 
 
 def main():
