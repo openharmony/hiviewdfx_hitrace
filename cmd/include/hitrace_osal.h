@@ -41,6 +41,7 @@ bool RefreshBinderServices(void);
 bool RefreshHalServices(void);
 bool IsHmKernel();
 bool IsDeveloperMode();
+bool IsRootVersion();
 }
 }
 }

@@ -137,9 +137,10 @@ ohos_unittest("HitraceDumpTest") {
     "$hitrace_cmd_path/include",
     "$hitrace_frameworks_path/include",
     "$hitrace_interfaces_path/native/innerkits/include",
+    "$hitrace_utils_path",
   ]
 
-  deps = [ "$hitrace_interfaces_path/native/innerkits:hitrace_dump" ]
+  deps = [ "$hitrace_utils_path:hitrace_utils" ]
 
   external_deps = [
     "bounds_checking_function:libsec_shared",
@@ -154,7 +155,7 @@ ohos_unittest("HitraceDumpTest") {
   }
 }
 
-group("unittest") {
+group("hitrace_unittest") {
   testonly = true
   deps = [
     ":HitraceCTest",
