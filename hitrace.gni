@@ -16,7 +16,6 @@ hitrace_cmd_path = "$hitrace_path/cmd"
 hitrace_config_path = "$hitrace_path/config"
 hitrace_frameworks_path = "$hitrace_path/frameworks"
 hitrace_interfaces_path = "$hitrace_path/interfaces"
-hitrace_utils_path = "$hitrace_path/utils"
 
 declare_args() {
   hitrace_support_executable_file = true
