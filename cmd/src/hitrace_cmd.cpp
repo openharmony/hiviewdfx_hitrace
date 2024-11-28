@@ -299,7 +299,8 @@ template <typename T>
 inline bool StrToNum(const std::string& sString, T &tX)
 {
     std::istringstream iStream(sString);
-    return (iStream >> tX) ? true : false;
+    iStream >> tX;
+    return !iStream.fail();
 }
 
 static bool SetRunningState(const RunningState& setValue)

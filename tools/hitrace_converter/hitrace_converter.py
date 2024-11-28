@@ -296,7 +296,6 @@ def generate_one_event_str(data, cpu_id, time_stamp, one_event):
 
     return event_str
 
-
 format_miss_cnt = 0
 format_miss_set = set()
 
