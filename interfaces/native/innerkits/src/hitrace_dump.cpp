@@ -140,6 +140,7 @@ uint64_t g_inputTraceEndTime = 0; // in nano seconds
 int g_newTraceFileLimit = 0;
 int g_writeFileLimit = 0;
 bool g_needGenerateNewTraceFile = false;
+bool g_needLimitFileSize = true;
 uint64_t g_traceStartTime = 0;
 uint64_t g_traceEndTime = std::numeric_limits<uint64_t>::max(); // in nano seconds
 std::atomic<uint8_t> g_dumpStatus(TraceErrorCode::UNSET);
@@ -529,7 +530,7 @@ bool IsWriteFileOverflow(const bool isCpuRaw, const int &outputFileSize, const s
                          const int &fileSizeThreshold)
 {
     // attention: we only check file size threshold in CMD_MODE
-    if (!isCpuRaw || g_traceMode != TraceMode::CMD_MODE) {
+    if (!isCpuRaw || g_traceMode != TraceMode::CMD_MODE || !g_needLimitFileSize) {
         return false;
     }
     if (outputFileSize + writeLen + static_cast<int>(sizeof(TraceFileContentHeader)) >= fileSizeThreshold) {
@@ -929,13 +930,16 @@ void ProcessDumpTask()
     DelSavedEventsFormat();
     DelOldRecordTraceFile(g_currentTraceParams.fileLimit);
 
-    if (g_currentTraceParams.fileSize == 0) {
+    // if input filesize = 0, trace file should not be cut in root version.
+    if (g_currentTraceParams.fileSize == 0 && IsRootVersion()) {
+        g_needLimitFileSize = false;
         std::string outputFileName = g_currentTraceParams.outputFile.empty() ?
                                      GenerateTraceFileName(false) : g_currentTraceParams.outputFile;
-        if (DumpTraceLoop(outputFileName, false)) {
+        if (DumpTraceLoop(outputFileName, g_needLimitFileSize)) {
             g_outputFilesForCmd.push_back(outputFileName);
         }
         g_dumpEnd = true;
+        g_needLimitFileSize = true;
         return;
     }
 
