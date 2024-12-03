@@ -111,8 +111,9 @@ ohos_shared_library("hitrace_dump") {
     "src/hitrace_dump.cpp",
   ]
 
-  if (hitrace_double_tracebuffer_size) {
-    defines = [ "DOUBLE_TRACEBUFFER_ENABLE" ]
+  if (hitrace_snapshot_tracebuffer_size != 0) {
+    defines =
+        [ "SNAPSHOT_TRACEBUFFER_SIZE=${hitrace_snapshot_tracebuffer_size}" ]
   }
 
   deps = [
