@@ -37,6 +37,7 @@ enum TraceErrorCode : uint8_t {
     EPOLL_WAIT_ERROR = 10,
     PIPE_CREATE_ERROR = 11,
     SYSINFO_READ_FAILURE = 12,
+    INVALID_END_TIME = 13,
     UNSET = 255,
 };
 
@@ -76,12 +77,6 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups);
 /**
  * Reading trace data once from ftrace ringbuffer in the kernel.
  * Using child processes to process trace tasks.
-*/
-TraceRetInfo DumpTrace();
-
-/**
- * Reading trace data once from ftrace ringbuffer in the kernel.
- * Using child processes to process trace tasks.
  * happenTime: the retrospective starting time stamp of target trace.
  * ----If happenTime = 0, it is not set.
  * return TraceErrorCode::SUCCESS if any trace is captured between the designated interval
@@ -90,7 +85,7 @@ TraceRetInfo DumpTrace();
  * ---- If maxDuration is 0, means that is no limit for the trace task.
  * ---- If maxDuration is less than 0, it is illegal input parameter.
 */
-TraceRetInfo DumpTrace(int maxDuration, uint64_t happenTime = 0);
+TraceRetInfo DumpTrace(int maxDuration = 0, uint64_t happenTime = 0);
 
 /**
  * Enable sub threads to periodically drop disk trace data.
