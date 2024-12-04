@@ -20,7 +20,7 @@ hitrace_utils_path = "$hitrace_path/utils"
 
 declare_args() {
   hitrace_support_executable_file = true
-  hitrace_double_tracebuffer_size = false
+  hitrace_snapshot_tracebuffer_size = 0
   hiview_enable = false
   if (defined(global_parts_info) &&
       defined(global_parts_info.hiviewdfx_hiview)) {

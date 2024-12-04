@@ -17,7 +17,7 @@
     ],
     "features": [
       "hitrace_support_executable_file",
-      "hitrace_double_tracebuffer_size"
+      "hitrace_snapshot_tracebuffer_size"
     ],
     "adapted_system_type": [
       "small",
