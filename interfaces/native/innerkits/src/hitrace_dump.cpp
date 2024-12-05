@@ -996,7 +996,17 @@ bool ReadRawTrace(std::string &outputFileName)
     if (IsHmKernel()) {
         header.fileType = HM_FILE_RAW_TRACE;
     }
-    write(outFd, reinterpret_cast<char*>(&header), sizeof(header));
+    ssize_t writeRet = TEMP_FAILURE_RETRY(write(outFd, reinterpret_cast<char*>(&header), sizeof(header)));
+    if (writeRet < 0) {
+        HILOG_WARN(LOG_CORE, "WriteFile Fail, errno: %{public}d.", errno);
+        return false;
+    } else {
+        if (writeRet != static_cast<ssize_t>(sizeof(header))) {
+            HILOG_WARN(LOG_CORE, "Failed to write full info, writeLen: %{public}zd, FullLen: %{public}d.",
+                writeRet, sizeof(header));
+            return false;
+        }
+    }
 
     if (WriteEventsFormat(outFd, outPath) && WriteCpuRaw(outFd, outPath) &&
         WriteCmdlines(outFd, outPath) && WriteTgids(outFd, outPath) &&
