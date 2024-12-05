@@ -31,24 +31,27 @@
 #include <thread>
 #include <unistd.h>
 
+#include "common_define.h"
 #include "common_utils.h"
 #include "dynamic_buffer.h"
 #include "hitrace_meter.h"
 #include "hilog/log.h"
-#include "hitrace_osal.h"
 #include "parameters.h"
 #include "securec.h"
-#include "trace_utils.h"
-
-using namespace OHOS::HiviewDFX::HitraceOsal;
-using OHOS::HiviewDFX::HiLog;
-
-#define UNEXPECTANTLY(exp) (__builtin_expect(!!(exp), false))
+#include "trace_file_utils.h"
+#include "trace_json_parser.h"
 
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
-
+#ifdef LOG_DOMAIN
+#undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD002D33
+#endif
+#ifdef LOG_TAG
+#undef LOG_TAG
+#define LOG_TAG "HitraceDump"
+#endif
 namespace {
 
 struct TraceParams {
@@ -85,9 +88,6 @@ const int MAX_NEW_TRACE_FILE_LIMIT = 5;
 const int JUDGE_FILE_EXIST = 10;  // Check whether the trace file exists every 10 times.
 const int SNAPSHOT_FILE_MAX_COUNT = 20;
 constexpr int DEFAULT_FULL_TRACE_LENGTH = 30;
-
-const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
-const std::string SAVED_EVENTS_FORMAT = "saved_events_format";
 
 struct alignas(ALIGNMENT_COEFFICIENT) TraceFileHeader {
     uint16_t magicNumber {MAGIC_NUMBER};
@@ -154,6 +154,7 @@ std::atomic<uint8_t> g_dumpStatus(TraceErrorCode::UNSET);
 std::string g_tagGroup("UNSET");
 
 TraceParams g_currentTraceParams = {};
+std::shared_ptr<TraceJsonParser> g_traceJsonParser = nullptr;
 
 std::string GetFilePath(const std::string &fileName)
 {
@@ -178,14 +179,12 @@ std::vector<std::string> Split(const std::string &str, char delimiter)
 
 bool IsTraceMounted()
 {
-    const std::string debugfsPath = "/sys/kernel/debug/tracing/";
-    const std::string tracefsPath = "/sys/kernel/tracing/";
-    if (access((debugfsPath + "trace_marker").c_str(), F_OK) != -1) {
-        g_traceRootPath = debugfsPath;
+    if (access((DEBUGFS_TRACING_DIR + TRACE_MARKER_NODE).c_str(), F_OK) != -1) {
+        g_traceRootPath = DEBUGFS_TRACING_DIR;
         return true;
     }
-    if (access((tracefsPath + "trace_marker").c_str(), F_OK) != -1) {
-        g_traceRootPath = tracefsPath;
+    if (access((TRACEFS_DIR + TRACE_MARKER_NODE).c_str(), F_OK) != -1) {
+        g_traceRootPath = TRACEFS_DIR;
         return true;
     }
     HILOG_ERROR(LOG_CORE, "IsTraceMounted: Did not find trace folder");
@@ -215,7 +214,7 @@ void GetCpuNums(TraceFileHeader& header)
     HILOG_INFO(LOG_CORE, "reserved with cpu number info is %{public}d.", header.reserved);
 }
 
-bool CheckTags(const std::vector<std::string> &tags, const std::map<std::string, TagCategory> &allTags)
+bool CheckTags(const std::vector<std::string> &tags, const std::map<std::string, TraceTag> &allTags)
 {
     for (const auto &tag : tags) {
         if (allTags.find(tag) == allTags.end()) {
@@ -274,7 +273,7 @@ void SetTraceNodeStatus(const std::string &path, bool enabled)
 
 void TruncateFile()
 {
-    int fd = creat((g_traceRootPath + "trace").c_str(), 0);
+    int fd = creat((g_traceRootPath + TRACE_NODE).c_str(), 0);
     if (fd == -1) {
         HILOG_ERROR(LOG_CORE, "TruncateFile: clear old trace failed.");
         return;
@@ -295,30 +294,31 @@ bool SetProperty(const std::string& property, const std::string& value)
 }
 
 // close all trace node
-void TraceInit(const std::map<std::string, TagCategory> &allTags)
+void TraceInit(const std::map<std::string, TraceTag> &allTags)
 {
     // close all ftrace events
     for (auto it = allTags.begin(); it != allTags.end(); it++) {
         if (it->second.type != 1) {
             continue;
         }
-        for (size_t i = 0; i < it->second.sysFiles.size(); i++) {
-            SetTraceNodeStatus(it->second.sysFiles[i], false);
+        for (size_t i = 0; i < it->second.enablePath.size(); i++) {
+            SetTraceNodeStatus(it->second.enablePath[i], false);
         }
     }
     // close all user tags
-    SetProperty("debug.hitrace.tags.enableflags", std::to_string(0));
+    SetProperty(TRACE_TAG_ENABLE_FLAGS, std::to_string(0));
 
     // set buffer_size_kb 1
     WriteStrToFile("buffer_size_kb", "1");
 
     // close tracing_on
-    SetTraceNodeStatus("tracing_on", false);
+    SetTraceNodeStatus(TRACING_ON_NODE, false);
 }
 
 // Open specific trace node
-void SetAllTags(const TraceParams &traceParams, const std::map<std::string, TagCategory> &allTags,
-                const std::map<std::string, std::vector<std::string>> &tagGroupTable)
+void SetAllTags(const TraceParams &traceParams, const std::map<std::string, TraceTag> &allTags,
+                const std::map<std::string, std::vector<std::string>> &tagGroupTable,
+                std::vector<std::string> &tagFmts)
 {
     std::set<std::string> readyEnableTagList;
     for (std::string tagName : traceParams.tags) {
@@ -360,12 +360,16 @@ void SetAllTags(const TraceParams &traceParams, const std::map<std::string, TagC
         }
 
         if (iter->second.type == 1) {
-            for (const auto& path : iter->second.sysFiles) {
+            for (const auto& path : iter->second.enablePath) {
                 SetTraceNodeStatus(path, true);
+            }
+            for (const auto& format : iter->second.formatPath) {
+                HILOG_INFO(LOG_CORE, "push %{public}s", format.c_str());
+                tagFmts.emplace_back(format);
             }
         }
     }
-    SetProperty("debug.hitrace.tags.enableflags", std::to_string(enabledUserTags));
+    SetProperty(TRACE_TAG_ENABLE_FLAGS, std::to_string(enabledUserTags));
 }
 
 std::string ReadFileInner(const std::string& filename)
@@ -437,14 +441,15 @@ void SetClock(const std::string& clockType)
     return;
 }
 
-bool SetTraceSetting(const TraceParams &traceParams, const std::map<std::string, TagCategory> &allTags,
-                     const std::map<std::string, std::vector<std::string>> &tagGroupTable)
+bool SetTraceSetting(const TraceParams &traceParams, const std::map<std::string, TraceTag> &allTags,
+                     const std::map<std::string, std::vector<std::string>> &tagGroupTable,
+                     std::vector<std::string> &tagFmts)
 {
     TraceInit(allTags);
 
     TruncateFile();
 
-    SetAllTags(traceParams, allTags, tagGroupTable);
+    SetAllTags(traceParams, allTags, tagGroupTable, tagFmts);
 
     WriteStrToFile("current_tracer", "nop");
     WriteStrToFile("buffer_size_kb", traceParams.bufferSize);
@@ -719,78 +724,40 @@ void WriteEventFile(std::string &srcPath, int outFd)
 
 bool WriteEventsFormat(int outFd, const std::string &outputFile)
 {
-    const std::string savedEventsFormatPath = DEFAULT_OUTPUT_DIR + SAVED_EVENTS_FORMAT;
+    const std::string savedEventsFormatPath = TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT;
     if (access(savedEventsFormatPath.c_str(), F_OK) != -1) {
         return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, savedEventsFormatPath, outFd, outputFile);
     }
-    std::string filePath = CanonicalizeSpecPath(savedEventsFormatPath.c_str());
-    int fd = open(filePath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644:-rw-r--r--
+
+    // write all trace formats into TRACE_SAVED_EVENTS_FORMAT file.
+    int fd = open(savedEventsFormatPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644:-rw-r--r--
     if (fd < 0) {
         HILOG_ERROR(LOG_CORE, "WriteEventsFormat: open %{public}s failed.", savedEventsFormatPath.c_str());
         return false;
     }
-    const std::vector<std::string> priorityTracingCategory = {
-        "events/sched/sched_wakeup/format",
-        "events/sched/sched_switch/format",
-        "events/sched/sched_blocked_reason/format",
-        "events/power/cpu_frequency/format",
-        "events/power/clock_set_rate/format",
-        "events/power/cpu_frequency_limits/format",
-        "events/f2fs/f2fs_sync_file_enter/format",
-        "events/f2fs/f2fs_sync_file_exit/format",
-        "events/f2fs/f2fs_readpage/format",
-        "events/f2fs/f2fs_readpages/format",
-        "events/f2fs/f2fs_sync_fs/format",
-        "events/hmdfs/hmdfs_syncfs_enter/format",
-        "events/hmdfs/hmdfs_syncfs_exit/format",
-        "events/erofs/erofs_readpage/format",
-        "events/erofs/erofs_readpages/format",
-        "events/ext4/ext4_da_write_begin/format",
-        "events/ext4/ext4_da_write_end/format",
-        "events/ext4/ext4_sync_file_enter/format",
-        "events/ext4/ext4_sync_file_exit/format",
-        "events/block/block_bio_remap/format",
-        "events/block/block_rq_issue/format",
-        "events/block/block_rq_complete/format",
-        "events/block/block_rq_insert/format",
-        "events/dma_fence/dma_fence_emit/format",
-        "events/dma_fence/dma_fence_destroy/format",
-        "events/dma_fence/dma_fence_enable_signal/format",
-        "events/dma_fence/dma_fence_signaled/format",
-        "events/dma_fence/dma_fence_wait_end/format",
-        "events/dma_fence/dma_fence_wait_start/format",
-        "events/dma_fence/dma_fence_init/format",
-        "events/binder/binder_transaction/format",
-        "events/binder/binder_transaction_received/format",
-        "events/mmc/mmc_request_start/format",
-        "events/mmc/mmc_request_done/format",
-        "events/memory_bus/format",
-        "events/cpufreq_interactive/format",
-        "events/filemap/file_check_and_advance_wb_err/format",
-        "events/filemap/filemap_set_wb_err/format",
-        "events/filemap/mm_filemap_add_to_page_cache/format",
-        "events/filemap/mm_filemap_delete_from_page_cache/format",
-        "events/workqueue/workqueue_execute_end/format",
-        "events/workqueue/workqueue_execute_start/format",
-        "events/thermal_power_allocator/thermal_power_allocator/format",
-        "events/thermal_power_allocator/thermal_power_allocator_pid/format",
-        "events/ftrace/print/format",
-        "events/tracing_mark_write/tracing_mark_write/format",
-        "events/power/cpu_idle/format",
-        "events/power_kernel/cpu_idle/format",
-        "events/xacct/tracing_mark_write/format",
-        "events/ufs/ufshcd_command/format",
-        "events/irq/irq_handler_entry/format"
-    };
-    for (size_t i = 0; i < priorityTracingCategory.size(); i++) {
-        std::string srcPath = g_traceRootPath + priorityTracingCategory[i];
+    if (g_traceJsonParser == nullptr) {
+        g_traceJsonParser = std::make_shared<TraceJsonParser>(PARSE_TRACE_FORMAT_INFO);
+    }
+    if (g_traceJsonParser->GetParserState() == PARSE_NONE) {
+        HILOG_ERROR(LOG_CORE, "WriteEventsFormat: parse hitrace json file error.");
+        return false;
+    }
+    auto allTags = g_traceJsonParser->GetAllTagInfos();
+    auto traceFormats = g_traceJsonParser->GetBaseFmtPath();
+    for (auto& tag : allTags) {
+        for (auto& fmt : tag.second.formatPath) {
+            traceFormats.emplace_back(fmt);
+        }
+    }
+    for (auto& traceFmt : traceFormats) {
+        std::string srcPath = g_traceRootPath + traceFmt;
         if (access(srcPath.c_str(), R_OK) != -1) {
             WriteEventFile(srcPath, fd);
         }
     }
     close(fd);
-    HILOG_INFO(LOG_CORE, "WriteEventsFormat end. path: %{public}s.", filePath.c_str());
-    return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, filePath, outFd, outputFile);
+    HILOG_INFO(LOG_CORE, "WriteEventsFormat end. path: %{public}s.", savedEventsFormatPath.c_str());
+    return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, savedEventsFormatPath, outFd, outputFile);
 }
 
 bool WriteHeaderPage(int outFd, const std::string &outputFile)
@@ -963,7 +930,6 @@ void ProcessDumpTask()
     HILOG_INFO(LOG_CORE, "ProcessDumpTask: trace dump thread start.");
 
     // clear old record file before record tracing start.
-    DelSavedEventsFormat();
     DelOldRecordTraceFile(g_currentTraceParams.fileLimit);
 
     // if input filesize = 0, trace file should not be cut in root version.
@@ -1194,7 +1160,7 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
 
 uint64_t GetSysParamTags()
 {
-    return OHOS::system::GetUintParameter<uint64_t>("debug.hitrace.tags.enableflags", 0);
+    return OHOS::system::GetUintParameter<uint64_t>(TRACE_TAG_ENABLE_FLAGS, 0);
 }
 
 void RestartService()
@@ -1222,7 +1188,7 @@ bool CheckParam()
 bool CheckTraceFile()
 {
     const std::string enable = "1";
-    if (ReadFile("tracing_on").substr(0, enable.size()) == enable) {
+    if (ReadFile(TRACING_ON_NODE).substr(0, enable.size()) == enable) {
         return true;
     }
     HILOG_ERROR(LOG_CORE, "tracing_on is 0, restart it.");
@@ -1279,31 +1245,36 @@ void MonitorServiceTask()
 }
 
 TraceErrorCode HandleTraceOpen(const TraceParams &traceParams,
-                               const std::map<std::string, TagCategory> &allTags,
-                               const std::map<std::string, std::vector<std::string>> &tagGroupTable)
+                               const std::map<std::string, TraceTag> &allTags,
+                               const std::map<std::string, std::vector<std::string>> &tagGroupTable,
+                               std::vector<std::string> &tagFmts)
 {
-    if (!SetTraceSetting(traceParams, allTags, tagGroupTable)) {
+    if (!SetTraceSetting(traceParams, allTags, tagGroupTable, tagFmts)) {
         return TraceErrorCode::FILE_ERROR;
     }
-    SetTraceNodeStatus("tracing_on", true);
+    SetTraceNodeStatus(TRACING_ON_NODE, true);
     g_currentTraceParams = traceParams;
     return TraceErrorCode::SUCCESS;
 }
 
 TraceErrorCode HandleServiceTraceOpen(const std::vector<std::string> &tagGroups,
-                                      const std::map<std::string, TagCategory> &allTags,
-                                      const std::map<std::string, std::vector<std::string>> &tagGroupTable)
+                                      const std::map<std::string, TraceTag> &allTags,
+                                      const std::map<std::string, std::vector<std::string>> &tagGroupTable,
+                                      std::vector<std::string> &tagFmts, const int custBufSz)
 {
     TraceParams serviceTraceParams;
     serviceTraceParams.tagGroups = tagGroups;
-    serviceTraceParams.bufferSize = std::to_string(DEFAULT_BUFFER_SIZE);
-    if (IsHmKernel()) {
-        serviceTraceParams.bufferSize = std::to_string(HM_DEFAULT_BUFFER_SIZE);
+    // attention: the buffer size value in the configuration file is preferred to set.
+    if (custBufSz > 0) {
+        serviceTraceParams.bufferSize = std::to_string(custBufSz);
+    } else {
+        int traceBufSz = IsHmKernel() ? HM_DEFAULT_BUFFER_SIZE : DEFAULT_BUFFER_SIZE;
+        serviceTraceParams.bufferSize = std::to_string(traceBufSz);
     }
     serviceTraceParams.clockType = "boot";
     serviceTraceParams.isOverWrite = "1";
     serviceTraceParams.fileSize = DEFAULT_FILE_SIZE;
-    return HandleTraceOpen(serviceTraceParams, allTags, tagGroupTable);
+    return HandleTraceOpen(serviceTraceParams, allTags, tagGroupTable, tagFmts);
 }
 
 void RemoveUnSpace(std::string str, std::string& args)
@@ -1341,7 +1312,7 @@ void SetCmdTraceIntParams(const std::string &traceParamsStr, int &traceParams)
  * args: tags:tag1,tags2... tagGroups:group1,group2... clockType:boot bufferSize:1024 overwrite:1 output:filename
  * cmdTraceParams:  Save the above parameters
 */
-bool ParseArgs(const std::string &args, TraceParams &cmdTraceParams, const std::map<std::string, TagCategory> &allTags,
+bool ParseArgs(const std::string &args, TraceParams &cmdTraceParams, const std::map<std::string, TraceTag> &allTags,
                const std::map<std::string, std::vector<std::string>> &tagGroupTable)
 {
     std::string userArgs = args;
@@ -1383,7 +1354,7 @@ bool ParseArgs(const std::string &args, TraceParams &cmdTraceParams, const std::
                     pidStr.c_str());
                 return false;
             }
-            OHOS::system::SetParameter("debug.hitrace.app_pid", pidStr);
+            OHOS::system::SetParameter(TRACE_KEY_APP_PID, pidStr);
         } else {
             HILOG_ERROR(LOG_CORE, "Extra trace command line options appear when ParseArgs: %{public}s, return false.",
                 itemName.c_str());
@@ -1423,6 +1394,26 @@ TraceMode GetTraceMode()
     return g_traceMode;
 }
 
+bool PreWriteEventsFormat(const std::vector<std::string>& eventFormats)
+{
+    DelSavedEventsFormat();
+    const std::string savedEventsFormatPath = TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT;
+    int fd = open(savedEventsFormatPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644:-rw-r--r--
+    if (fd < 0) {
+        HILOG_ERROR(LOG_CORE, "PreWriteEventsFormat: open %{public}s failed.", savedEventsFormatPath.c_str());
+        return false;
+    }
+    for (auto& format : eventFormats) {
+        std::string srcPath = g_traceRootPath + format;
+        if (access(srcPath.c_str(), R_OK) != -1) {
+            WriteEventFile(srcPath, fd);
+        }
+    }
+    close(fd);
+    HILOG_INFO(LOG_CORE, "PreWriteEventsFormat end.");
+    return true;
+}
+
 TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
 {
     if (g_traceMode != CLOSE) {
@@ -1435,26 +1426,31 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
         return TRACE_NOT_SUPPORTED;
     }
 
-    std::map<std::string, TagCategory> allTags;
-    std::map<std::string, std::vector<std::string>> tagGroupTable;
-    if (!ParseTagInfo(allTags, tagGroupTable)) {
-        HILOG_ERROR(LOG_CORE, "OpenTrace: ParseTagInfo TAG_ERROR.");
-        return TAG_ERROR;
+    if (g_traceJsonParser == nullptr) {
+        g_traceJsonParser = std::make_shared<TraceJsonParser>(PARSE_ALL_INFO);
     }
+    if (g_traceJsonParser->GetParserState() == PARSE_NONE) {
+        HILOG_ERROR(LOG_CORE, "OpenTrace: parse hitrace json file error.");
+        return FILE_ERROR;
+    }
+    auto allTags = g_traceJsonParser->GetAllTagInfos();
+    auto tagGroupTable = g_traceJsonParser->GetTagGroups();
+    auto traceFormats = g_traceJsonParser->GetBaseFmtPath();
+    auto customizedBufSz = g_traceJsonParser->GetSnapShotBufSzKb();
 
     if (tagGroups.size() == 0 || !CheckTagGroup(tagGroups, tagGroupTable)) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: TAG_ERROR.");
         return TAG_ERROR;
     }
 
-    TraceErrorCode ret = HandleServiceTraceOpen(tagGroups, allTags, tagGroupTable);
+    TraceErrorCode ret = HandleServiceTraceOpen(tagGroups, allTags, tagGroupTable, traceFormats, customizedBufSz);
     if (ret != SUCCESS) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: open fail.");
         return ret;
     }
     g_traceMode = SERVICE_MODE;
-
     DelSnapshotTraceFile();
+    PreWriteEventsFormat(traceFormats);
     if (!IsHmKernel() && !g_serviceThreadIsStart) {
         // open SERVICE_MODE monitor thread
         auto it = []() {
@@ -1486,9 +1482,18 @@ TraceErrorCode OpenTrace(const std::string &args)
         return TRACE_NOT_SUPPORTED;
     }
 
-    std::map<std::string, TagCategory> allTags;
-    std::map<std::string, std::vector<std::string>> tagGroupTable;
-    if (!ParseTagInfo(allTags, tagGroupTable) || allTags.size() == 0 || tagGroupTable.size() == 0) {
+    if (g_traceJsonParser == nullptr) {
+        g_traceJsonParser = std::make_shared<TraceJsonParser>(PARSE_TRACE_GROUP_INFO);
+    }
+    if (g_traceJsonParser->GetParserState() == PARSE_NONE) {
+        HILOG_ERROR(LOG_CORE, "OpenTrace: parse hitrace json file error.");
+        return FILE_ERROR;
+    }
+    auto allTags = g_traceJsonParser->GetAllTagInfos();
+    auto tagGroupTable = g_traceJsonParser->GetTagGroups();
+    auto traceFormats = g_traceJsonParser->GetBaseFmtPath();
+
+    if (allTags.size() == 0 || tagGroupTable.size() == 0) {
         HILOG_ERROR(LOG_CORE, "Hitrace OpenTrace: ParseTagInfo TAG_ERROR.");
         return TAG_ERROR;
     }
@@ -1499,12 +1504,13 @@ TraceErrorCode OpenTrace(const std::string &args)
         return TAG_ERROR;
     }
 
-    TraceErrorCode ret = HandleTraceOpen(cmdTraceParams, allTags, tagGroupTable);
+    TraceErrorCode ret = HandleTraceOpen(cmdTraceParams, allTags, tagGroupTable, traceFormats);
     if (ret != SUCCESS) {
         HILOG_ERROR(LOG_CORE, "Hitrace OpenTrace: CMD_MODE open failed.");
         return FILE_ERROR;
     }
     g_traceMode = CMD_MODE;
+    PreWriteEventsFormat(traceFormats);
     HILOG_INFO(LOG_CORE, "Hitrace OpenTrace: CMD_MODE open success, args:%{public}s.", args.c_str());
     return ret;
 }
@@ -1618,13 +1624,21 @@ TraceErrorCode CloseTrace()
         usleep(UNIT_TIME);
         g_dumpFlag = false;
     }
-    OHOS::system::SetParameter("debug.hitrace.app_pid", "-1");
-    std::map<std::string, TagCategory> allTags;
-    std::map<std::string, std::vector<std::string>> tagGroupTable;
-    if (!ParseTagInfo(allTags, tagGroupTable) || allTags.size() == 0 || tagGroupTable.size() == 0) {
+    OHOS::system::SetParameter(TRACE_KEY_APP_PID, "-1");
+
+    if (g_traceJsonParser == nullptr) {
+        g_traceJsonParser = std::make_shared<TraceJsonParser>(PARSE_TRACE_ENABLE_INFO);
+    }
+    if (g_traceJsonParser->GetParserState() == PARSE_NONE) {
+        HILOG_ERROR(LOG_CORE, "CloseTrace: parse hitrace json file error.");
+        return FILE_ERROR;
+    }
+    auto allTags = g_traceJsonParser->GetAllTagInfos();
+    if (allTags.size() == 0) {
         HILOG_ERROR(LOG_CORE, "CloseTrace: ParseTagInfo TAG_ERROR.");
         return TAG_ERROR;
     }
+
     TraceInit(allTags);
     TruncateFile();
     g_tagGroup = "UNSET";
@@ -1641,6 +1655,6 @@ void SetTraceFilesTable(const std::vector<std::pair<std::string, int>>& traceFil
 {
     g_traceFilesTable = traceFilesTable;
 }
-} // Hitrace
-} // HiviewDFX
-} // OHOS
+} // namespace Hitrace
+} // namespace HiviewDFX
+} // namespace OHOS

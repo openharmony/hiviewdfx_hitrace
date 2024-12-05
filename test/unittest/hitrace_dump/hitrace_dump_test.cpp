@@ -13,28 +13,23 @@
  * limitations under the License.
  */
 
-#include <cinttypes>
+#include "hitrace_dump.h"
+
 #include <cstdio>
-#include <ctime>
 #include <dirent.h>
 #include <fcntl.h>
-#include <filesystem>
-#include <sys/file.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
 #include <fstream>
+#include <gtest/gtest.h>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <string>
+#include <unistd.h>
 #include <vector>
 
+#include "common_define.h"
 #include "common_utils.h"
-#include "gtest/gtest.h"
 #include "hilog/log.h"
-#include "hitrace_osal.h"
-#include "hitrace_dump.h"
 #include "parameters.h"
 #include "securec.h"
 
@@ -43,18 +38,15 @@ using namespace testing::ext;
 using OHOS::HiviewDFX::HiLog;
 
 namespace {
-
+#ifdef LOG_DOMAIN
 #undef LOG_DOMAIN
 #define LOG_DOMAIN 0xD002D33
-
+#endif
+#ifdef LOG_TAG
 #undef LOG_TAG
 #define LOG_TAG "HitraceTest"
-
-const std::string TAG_PROP = "debug.hitrace.tags.enableflags";
-const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
-const std::string LOG_DIR = "/data/log/";
+#endif
 const std::string TRACE_SNAPSHOT_PREFIX = "trace_";
-const std::string SAVED_EVENTS_FORMAT_PATH = DEFAULT_OUTPUT_DIR + "saved_events_format";
 const int BUFFER_SIZE = 255;
 const int DUMPTRACE_COUNT = 25;
 const int SNAPSHOT_FILE_MAX_COUNT = 20;
@@ -63,8 +55,6 @@ constexpr uint32_t TWO_SEC = 2;
 constexpr uint32_t TEN_SEC = 10;
 constexpr uint32_t MAX_RATIO_UNIT = 1000;
 constexpr int DEFAULT_FULL_TRACE_LENGTH = 30;
-
-std::string g_traceRootPath;
 
 void AddPair2Table(std::string outputFileName, int nowSec)
 {
@@ -106,24 +96,14 @@ bool TraverseFiles(std::vector<std::string> files, std::string outputFileName)
     return isExists;
 }
 
-bool RunCmd(const string& cmdstr)
-{
-    FILE *fp = popen(cmdstr.c_str(), "r");
-    if (fp == nullptr) {
-        return false;
-    }
-    pclose(fp);
-    return true;
-}
-
 bool CountSnapShotTraceFile(int& fileCount)
 {
-    if (access(DEFAULT_OUTPUT_DIR.c_str(), F_OK) != 0) {
+    if (access(TRACE_FILE_DEFAULT_DIR.c_str(), F_OK) != 0) {
         return false;
     }
-    DIR* dirPtr = opendir(DEFAULT_OUTPUT_DIR.c_str());
+    DIR* dirPtr = opendir(TRACE_FILE_DEFAULT_DIR.c_str());
     if (dirPtr == nullptr) {
-        HILOG_ERROR(LOG_CORE, "Failed to opendir %{public}s.", DEFAULT_OUTPUT_DIR.c_str());
+        HILOG_ERROR(LOG_CORE, "Failed to opendir %{public}s.", TRACE_FILE_DEFAULT_DIR.c_str());
         return false;
     }
     struct dirent* ptr = nullptr;
@@ -169,8 +149,8 @@ struct stat GetFileStatInfo(const std::string& filePath)
 
 class HitraceDumpTest : public testing::Test {
 public:
-    static void SetUpTestCase(void);
-    static void TearDownTestCase(void);
+    static void SetUpTestCase(void) {}
+    static void TearDownTestCase(void) {}
     void SetUp();
     void TearDown() {}
 };
@@ -178,26 +158,6 @@ public:
 void HitraceDumpTest::SetUp()
 {
     CloseTrace();
-}
-
-void HitraceDumpTest::SetUpTestCase()
-{
-    const std::string debugfsDir = "/sys/kernel/debug/tracing/";
-    const std::string tracefsDir = "/sys/kernel/tracing/";
-    if (access((debugfsDir + "trace_marker").c_str(), F_OK) != -1) {
-        g_traceRootPath = debugfsDir;
-    } else if (access((tracefsDir + "trace_marker").c_str(), F_OK) != -1) {
-        g_traceRootPath = tracefsDir;
-    } else {
-        HILOG_ERROR(LOG_CORE, "Error: Finding trace folder failed.");
-    }
-
-    /* Open CMD_MODE */
-}
-
-void HitraceDumpTest::TearDownTestCase()
-{
-    /* Close CMD_MODE */
 }
 
 /**
@@ -405,7 +365,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_006, TestSize.Level0)
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     sleep(TWO_SEC);
     uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr)); // current time
-    
+
     TraceRetInfo ret = DumpTrace(INT_MAX, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(!ret.outputFiles.empty());
@@ -476,14 +436,14 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_002, TestSize.Level0)
 {
     const std::vector<std::string> tagGroups = {"scene_performance"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    ASSERT_TRUE(access(DEFAULT_OUTPUT_DIR.c_str(), F_OK) == 0) << "/data/log/hitrace not exists.";
+    ASSERT_TRUE(access(TRACE_FILE_DEFAULT_DIR.c_str(), F_OK) == 0) << "/data/log/hitrace not exists.";
 
     struct timeval now = {0, 0};
     gettimeofday(&now, nullptr);
     int nowSec = now.tv_sec;
     int nowUsec = now.tv_usec;
     nowSec--;
-    std::string outputFileName = DEFAULT_OUTPUT_DIR + "trace_" + std::to_string(nowSec)
+    std::string outputFileName = TRACE_FILE_DEFAULT_DIR + "trace_" + std::to_string(nowSec)
         + "_" + std::to_string(nowUsec) + ".sys";
     ASSERT_TRUE(CreateFile(outputFileName)) << "create log file failed.";
     HILOG_INFO(LOG_CORE, "outputFileName: %{public}s", outputFileName.c_str());
@@ -507,14 +467,14 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_003, TestSize.Level0)
 {
     const std::vector<std::string> tagGroups = {"scene_performance"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    ASSERT_TRUE(access(DEFAULT_OUTPUT_DIR.c_str(), F_OK) == 0) << "/data/log/hitrace not exists.";
+    ASSERT_TRUE(access(TRACE_FILE_DEFAULT_DIR.c_str(), F_OK) == 0) << "/data/log/hitrace not exists.";
 
     struct timeval now = {0, 0};
     gettimeofday(&now, nullptr);
     int nowSec = now.tv_sec;
     int nowUsec = now.tv_usec;
     nowSec = nowSec - 1900;
-    std::string outputFileName = DEFAULT_OUTPUT_DIR + "trace_" + std::to_string(nowSec)
+    std::string outputFileName = TRACE_FILE_DEFAULT_DIR + "trace_" + std::to_string(nowSec)
         + "_" + std::to_string(nowUsec) + ".sys";
     ASSERT_TRUE(CreateFile(outputFileName)) << "create log file failed.";
     HILOG_INFO(LOG_CORE, "outputFileName: %{public}s", outputFileName.c_str());
@@ -577,7 +537,7 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_006, TestSize.Level0)
 {
     const std::vector<std::string> tagGroups = {"scene_performance"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    ASSERT_TRUE(access(DEFAULT_OUTPUT_DIR.c_str(), F_OK) == 0) << "/data/log/hitrace not exists.";
+    ASSERT_TRUE(access(TRACE_FILE_DEFAULT_DIR.c_str(), F_OK) == 0) << "/data/log/hitrace not exists.";
 
     SetSysInitParamTags(123);
     ASSERT_TRUE(SetCheckParam() == false);
@@ -600,7 +560,7 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_007, TestSize.Level0)
         ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
         sleep(1);
     }
-    if (!OHOS::HiviewDFX::HitraceOsal::IsRootVersion()) {
+    if (!IsRootVersion()) {
         ASSERT_TRUE(CountSnapShotTraceFile(fileCount));
         ASSERT_TRUE(fileCount > 0 && fileCount <= SNAPSHOT_FILE_MAX_COUNT);
     }
@@ -885,14 +845,14 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_011, TestSize.Level0)
 HWTEST_F(HitraceDumpTest, DumpForCmdMode_012, TestSize.Level0)
 {
     std::string args = "tags: sched clockType: boot bufferSize:1024 overwrite: 1";
-    struct stat beforeStat = GetFileStatInfo(SAVED_EVENTS_FORMAT_PATH);
+    struct stat beforeStat = GetFileStatInfo(TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT);
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::SUCCESS);
     sleep(1);
     TraceRetInfo ret = DumpTraceOff();
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(ret.outputFiles.size() > 0);
-    struct stat afterStat = GetFileStatInfo(SAVED_EVENTS_FORMAT_PATH);
+    struct stat afterStat = GetFileStatInfo(TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT);
     ASSERT_TRUE(afterStat.st_ctime != beforeStat.st_ctime);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
@@ -908,108 +868,13 @@ HWTEST_F(HitraceDumpTest, ParammeterCheck_001, TestSize.Level0)
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
 
     // ckeck Property("debug.hitrace.tags.enableflags")
-    uint64_t openTags = OHOS::system::GetUintParameter<uint64_t>(TAG_PROP, 0);
+    uint64_t openTags = OHOS::system::GetUintParameter<uint64_t>(TRACE_TAG_ENABLE_FLAGS, 0);
     ASSERT_TRUE(openTags > 0);
 
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     // ckeck Property("debug.hitrace.tags.enableflags")
-    uint64_t closeTags = OHOS::system::GetUintParameter<uint64_t>(TAG_PROP, 0);
+    uint64_t closeTags = OHOS::system::GetUintParameter<uint64_t>(TRACE_TAG_ENABLE_FLAGS, 0);
     ASSERT_TRUE(closeTags == 0);
-}
-
-/**
- * @tc.name: CommonUtils_001
- * @tc.desc: Test canonicalizeSpecPath(), enter an existing file path.
- * @tc.type: FUNC
-*/
-HWTEST_F(HitraceDumpTest, CommonUtils_001, TestSize.Level0)
-{
-    // prepare a file
-    std::string filePath = "/data/local/tmp/tmp.txt";
-    if (access(filePath.c_str(), F_OK) != 0) {
-        int fd = open(filePath.c_str(), O_CREAT);
-        close(fd);
-    }
-    ASSERT_TRUE(CanonicalizeSpecPath(filePath.c_str()) == filePath);
-}
-
-/**
- * @tc.name: CommonUtils_002
- * @tc.desc: Test canonicalizeSpecPath(), enter a non-existent file path.
- * @tc.type: FUNC
-*/
-HWTEST_F(HitraceDumpTest, CommonUtils_002, TestSize.Level0)
-{
-    // prepare a file
-    std::string filePath = "/data/local/tmp/tmp1.txt";
-    if (access(filePath.c_str(), F_OK) != 0) {
-        ASSERT_TRUE(CanonicalizeSpecPath(filePath.c_str()) == filePath);
-    }
-}
-
-/**
- * @tc.name: CommonUtils_003
- * @tc.desc: Test canonicalizeSpecPath(), enter a non-existent file path with "..".
- * @tc.type: FUNC
-*/
-HWTEST_F(HitraceDumpTest, CommonUtils_003, TestSize.Level0)
-{
-    // prepare a file
-    std::string filePath = "../tmp2.txt";
-    if (access(filePath.c_str(), F_OK) != 0) {
-        ASSERT_TRUE(CanonicalizeSpecPath(filePath.c_str()) == "");
-    }
-}
-
-/**
- * @tc.name: CommonUtils_004
- * @tc.desc: Test MarkClockSync().
- * @tc.type: FUNC
-*/
-HWTEST_F(HitraceDumpTest, CommonUtils_004, TestSize.Level0)
-{
-    ASSERT_TRUE(MarkClockSync(g_traceRootPath) == true);
-}
-
-/**
- * @tc.name: CommonUtils_005
- * @tc.desc: Test ParseTagInfo().
- * @tc.type: FUNC
-*/
-HWTEST_F(HitraceDumpTest, CommonUtils_005, TestSize.Level0)
-{
-    std::map<std::string, OHOS::HiviewDFX::Hitrace::TagCategory> allTags;
-    std::map<std::string, std::vector<std::string>> tagGroupTable;
-    ASSERT_TRUE(ParseTagInfo(allTags, tagGroupTable) == true);
-    ASSERT_TRUE(allTags.size() > 0);
-    ASSERT_TRUE(tagGroupTable.size() > 0);
-}
-
-/**
- * @tc.name: CommonUtils_006
- * @tc.desc: Test ParseTagInfo().
- * @tc.type: FUNC
-*/
-HWTEST_F(HitraceDumpTest, CommonUtils_006, TestSize.Level0)
-{
-    std::map<std::string, OHOS::HiviewDFX::Hitrace::TagCategory> allTags;
-    std::map<std::string, std::vector<std::string>> tagGroupTable;
-
-    ASSERT_TRUE(RunCmd("mount -o rw,remount /"));
-    ASSERT_TRUE(RunCmd("cp /system/etc/hiview/hitrace_utils.json /system/etc/hiview/hitrace_utils-bak.json"));
-    ASSERT_TRUE(RunCmd("sed -i 's/tag_groups/TestCommonUtils/g' /system/etc/hiview/hitrace_utils.json"));
-    ParseTagInfo(allTags, tagGroupTable);
-    ASSERT_TRUE(RunCmd("sed -i 's/tag_category/TestCommonUtils/g' /system/etc/hiview/hitrace_utils.json"));
-    ParseTagInfo(allTags, tagGroupTable);
-    ASSERT_TRUE(RunCmd("rm /system/etc/hiview/hitrace_utils.json"));
-    ParseTagInfo(allTags, tagGroupTable);
-    ASSERT_TRUE(RunCmd("mv /system/etc/hiview/hitrace_utils-bak.json /system/etc/hiview/hitrace_utils.json"));
-
-    ASSERT_TRUE(IsNumber("scene_performance") == TraceErrorCode::SUCCESS);
-    ASSERT_TRUE(IsNumber("") == false);
-    ASSERT_TRUE(IsNumber("tags:sched clockType:boot bufferSize:1024 overwrite:1") == false);
-    CanonicalizeSpecPath(nullptr);
-    MarkClockSync("/sys/kernel/debug/tracing/test_trace_marker");
 }
 } // namespace

@@ -17,6 +17,7 @@ import("//build/ohos.gni")
 ohos_source_set("hitracechain_source") {
   branch_protector_ret = "pac_ret"
   include_dirs = [
+    "$hitrace_common_path",
     "$hitrace_interfaces_path/native/innerkits/include",
     "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
     "$hitrace_frameworks_path/include",

@@ -17,7 +17,8 @@ import("//build/ohos.gni")
 ohos_shared_library("hitracechain_napi") {
   include_dirs = [
     ".",
-    "include/",
+    "include",
+    "$hitrace_common_path",
   ]
 
   sources = [
@@ -27,14 +28,16 @@ ohos_shared_library("hitracechain_napi") {
   ]
 
   deps = [ "$hitrace_interfaces_path/native/innerkits:libhitracechain" ]
-  external_deps = [ "napi:ace_napi" ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "napi:ace_napi",
+  ]
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]
   } else {
     external_deps += [ "hilog:libhilog" ]
   }
-
-  external_deps += [ "bounds_checking_function:libsec_shared" ]
 
   relative_install_dir = "module"
   part_name = "hitrace"
@@ -42,16 +45,23 @@ ohos_shared_library("hitracechain_napi") {
 }
 
 ohos_shared_library("hitracemeter_napi") {
+  include_dirs = [
+    ".",
+    "$hitrace_common_path",
+  ]
   sources = [ "hitracemeter/napi_hitrace_meter.cpp" ]
+
   deps = [ "$hitrace_interfaces_path/native/innerkits:hitrace_meter" ]
-  external_deps = [ "napi:ace_napi" ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "napi:ace_napi",
+  ]
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]
   } else {
     external_deps += [ "hilog:libhilog" ]
   }
-
-  external_deps += [ "bounds_checking_function:libsec_shared" ]
 
   relative_install_dir = "module"
   subsystem_name = "hiviewdfx"

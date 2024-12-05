@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,15 +14,25 @@
  */
 
 #include "dynamic_buffer.h"
-#include "common_utils.h"
 
 #include <fstream>
 #include <cmath>
 
+#include "common_define.h"
+#include "common_utils.h"
+#include "hilog/log.h"
+
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
-
+#ifdef LOG_DOMAIN
+#undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD002D33
+#endif
+#ifdef LOG_TAG
+#undef LOG_TAG
+#define LOG_TAG "HitraceDynamicBuf"
+#endif
 namespace {
 constexpr int EXPANSION_SIZE = 1024 * 6; // 6M
 constexpr int LOW_THRESHOLD = 400 * 1024; // 400kb
@@ -110,6 +120,6 @@ void DynamicBuffer::CalculateBufferSize(std::vector<int>& result)
     }
 }
 
-} // Hitrace
-} // HiviewDFX
-} // OHOS
+} // namespace Hitrace
+} // namespace HiviewDFX
+} // namespace OHOS
