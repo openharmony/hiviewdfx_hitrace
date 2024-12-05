@@ -15,9 +15,10 @@
 
 #include <cstdio>
 #include <functional>
+#include <hilog/log.h>
 #include <map>
 #include <string>
-#include <hilog/log.h>
+
 #include "hitrace_meter.h"
 #include "napi_hitrace_meter.h"
 
@@ -27,11 +28,15 @@ constexpr int FIRST_ARG_INDEX = 0;
 constexpr int SECOND_ARG_INDEX = 1;
 constexpr int ARGC_NUMBER_TWO = 2;
 constexpr int ARGC_NUMBER_THREE = 3;
+
+#ifdef LOG_DOMAIN
 #undef LOG_DOMAIN
 #define LOG_DOMAIN 0xD002D33
-
+#endif
+#ifdef LOG_TAG
 #undef LOG_TAG
-#define LOG_TAG "HITRACE_METER_JS"
+#define LOG_TAG "HitraceMeterNapi"
+#endif
 
 using STR_NUM_PARAM_FUNC = std::function<bool(std::string, napi_value&)>;
 std::unordered_map<std::string, uint64_t> g_tagsMap = {

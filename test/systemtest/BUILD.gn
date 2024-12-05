@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+# Copyright (c) 2024 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -11,18 +11,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//build/ohos.gni")
+import("//base/hiviewdfx/hitrace/hitrace.gni")
+import("//build/config/features.gni")
+import("//build/test.gni")
 
-ohos_prebuilt_etc("hitrace_tags") {
-  source = "hitrace_utils.json"
-  relative_install_dir = "hiview"
-  subsystem_name = "hiviewdfx"
-  part_name = "hitrace"
-}
+module_output_path = "hiviewdfx/hitrace"
 
-ohos_prebuilt_etc("hitrace.cfg") {
-  source = "hitrace.cfg"
-  relative_install_dir = "init"
-  subsystem_name = "hiviewdfx"
-  part_name = "hitrace"
+ohos_systemtest("HitraceSystemTest") {
+  module_out_path = module_output_path
+  include_dirs = [ "$hitrace_common_path" ]
+  sources = [ "hitrace_systemtest.cpp" ]
+  external_deps = [ "googletest:gtest_main" ]
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Huawei Device Co., Ltd.
+ * Copyright (C) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,35 +13,36 @@
  * limitations under the License.
  */
 
-#include <fstream>
-#include <regex>
-#include <string>
 #include <fcntl.h>
+#include <fstream>
 #include <gtest/gtest.h>
 #include <hilog/log.h>
-#include "securec.h"
+#include <regex>
+#include <string>
+
+#include "common_define.h"
+#include "common_utils.h"
 #include "hitrace_meter.h"
-#include "hitrace_osal.h"
-#include "parameters.h"
 #include "hitrace/tracechain.h"
+#include "parameters.h"
+#include "securec.h"
 
 using namespace testing::ext;
 using namespace std;
-using namespace OHOS::HiviewDFX;
-using namespace OHOS::HiviewDFX::HitraceOsal;
-
-#define EXPECTANTLY(exp) (__builtin_expect(!!(exp), true))
+using namespace OHOS::HiviewDFX::Hitrace;
 
 namespace OHOS {
 namespace HiviewDFX {
 namespace HitraceTest {
-const string TRACE_MARKER_PATH = "trace_marker";
-const string TRACING_ON_PATH = "tracing_on";
-const string TRACING_ON = "tracing_on";
-const string TRACE_PATH = "trace";
-const string TRACE_PROPERTY = "debug.hitrace.tags.enableflags";
-const string KEY_RO_DEBUGGABLE = "ro.debuggable";
-const string KEY_APP_NUMBER = "debug.hitrace.app_number";
+#ifdef LOG_DOMAIN
+#undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD002D33
+#endif
+#ifdef LOG_TAG
+#undef LOG_TAG
+#define LOG_TAG "HitraceTest"
+#endif
+
 const string LABEL_HEADER = "|H:";
 const string VERTICAL_LINE = "|";
 
@@ -87,11 +88,6 @@ const vector<string> BYTRACE_OUTPUT_PATH = {
     "/system/bin/bytrace"
 };
 
-#undef LOG_DOMAIN
-#define LOG_DOMAIN 0xD002D33
-
-#undef LOG_TAG
-#define LOG_TAG "Hitrace_TEST"
 const uint64_t TAG = HITRACE_TAG_OHOS;
 constexpr const int OUTPACE_DEFAULT_CACHE_SIZE = 33 * 1024;
 constexpr int HITRACEID_LEN = 64;
@@ -119,12 +115,10 @@ public:
 void  HitraceNDKTest::SetUpTestCase()
 {
     g_pid = getpid();
-    const string debugfsDir = "/sys/kernel/debug/tracing/";
-    const string tracefsDir = "/sys/kernel/tracing/";
-    if (access((debugfsDir + TRACE_MARKER_PATH).c_str(), F_OK) != -1) {
-        g_traceRootPath = debugfsDir;
-    } else if (access((tracefsDir + TRACE_MARKER_PATH).c_str(), F_OK) != -1) {
-        g_traceRootPath = tracefsDir;
+    if (access((DEBUGFS_TRACING_DIR + TRACE_MARKER_NODE).c_str(), F_OK) != -1) {
+        g_traceRootPath = DEBUGFS_TRACING_DIR;
+    } else if (access((TRACEFS_DIR + TRACE_MARKER_NODE).c_str(), F_OK) != -1) {
+        g_traceRootPath = TRACEFS_DIR;
     } else {
         HILOG_ERROR(LOG_CORE, "Error: Finding trace folder failed");
     }
@@ -133,19 +127,19 @@ void  HitraceNDKTest::SetUpTestCase()
 
 void HitraceNDKTest::TearDownTestCase()
 {
-    SetProperty(TRACE_PROPERTY, "0");
-    SetFtrace(TRACING_ON, false);
+    SetProperty(TRACE_TAG_ENABLE_FLAGS, "0");
+    SetFtrace(TRACING_ON_NODE, false);
     CleanTrace();
 }
 
 void HitraceNDKTest::SetUp()
 {
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     string value = to_string(TAG);
-    SetProperty(TRACE_PROPERTY, value);
-    HILOG_INFO(LOG_CORE, "current tag is %{public}s", GetProperty(TRACE_PROPERTY, "0").c_str());
-    ASSERT_TRUE(GetProperty(TRACE_PROPERTY, "-123") == value);
+    SetProperty(TRACE_TAG_ENABLE_FLAGS, value);
+    HILOG_INFO(LOG_CORE, "current tag is %{public}s", GetProperty(TRACE_TAG_ENABLE_FLAGS, "0").c_str());
+    ASSERT_TRUE(GetProperty(TRACE_TAG_ENABLE_FLAGS, "-123") == value);
     UpdateTraceLabel();
 }
 
@@ -286,7 +280,7 @@ bool CleanTrace()
         return false;
     }
     ofstream ofs;
-    ofs.open(g_traceRootPath + TRACE_PATH, ofstream::out);
+    ofs.open(g_traceRootPath + TRACE_NODE, ofstream::out);
     if (!ofs.is_open()) {
         HILOG_ERROR(LOG_CORE, "Error: opening trace path failed.");
         return false;
@@ -344,7 +338,7 @@ vector<string> ReadFile2string(const string& filename)
 
 vector<string> ReadTrace()
 {
-    return ReadFile2string(g_traceRootPath + TRACE_PATH);
+    return ReadFile2string(g_traceRootPath + TRACE_NODE);
 }
 
 bool RunCmd(const string& cmdstr)
@@ -366,10 +360,10 @@ HWTEST_F(HitraceNDKTest, StartTrace_001, TestSize.Level0)
 {
     std::string traceName = "HitraceStartTrace001";
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Hitrace Setting tracing_on failed.";
     StartTrace(TAG, traceName);
     FinishTrace(TAG);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Hitrace Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
@@ -386,11 +380,11 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_001, TestSize.Level0)
 {
     std::string traceName = "AddHitraceMeterMarker001";
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Hitrace Setting tracing_on failed.";
     SetReloadPid(true);
     SetAddHitraceMeterMarker(TAG, traceName);
     FinishTrace(TAG);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Hitrace Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
@@ -402,7 +396,7 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_001, TestSize.Level0)
     SetpidHasReload(false);
     SetAddHitraceMeterMarker(TAG, traceName);
     SetAddTraceMarkerLarge(traceName, 1);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Hitrace Setting tracing_on failed.";
     list.clear();
     list = ReadTrace();
     isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
@@ -418,11 +412,11 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_002, TestSize.Level0)
 {
     std::string traceName = "AddHitraceMeterMarker002";
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Hitrace Setting tracing_on failed.";
     SetAppFd(1);
     SetAddHitraceMeterMarker(TAG, traceName);
     FinishTrace(TAG);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Hitrace Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
@@ -440,7 +434,7 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_003, TestSize.Level0)
 {
     std::string traceName = "AddHitraceMeterMarker003";
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Hitrace Setting tracing_on failed.";
     SetWriteToTraceMarker("B|3728|H:AddHitraceMeterMarker003", 0);
     SetWriteToTraceMarker("B|3728|H:AddHitraceMeterMarker003", 640);
     FinishTraceDebug(false, TAG);
@@ -455,11 +449,11 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_004, TestSize.Level0)
 {
     string traceName = "AddHitraceMeterMarker004";
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     int var = 1;
     StartTraceArgs(HITRACE_TAG_ZAUDIO, traceName.c_str(), var);
     FinishTrace(HITRACE_TAG_ZAUDIO);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Setting tracing_on failed.";
 }
 
 /**
@@ -474,7 +468,7 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_005, TestSize.Level0)
     int fileSize = 100 * 1024 * 1024; // 100M
 
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Hitrace Setting tracing_on failed.";
 
     SetWriteAppTrace(FLAG_MAIN_THREAD, traceName, 0, true);
     int ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, TAG, fileSize, fileName);
@@ -491,7 +485,7 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_005, TestSize.Level0)
     FinishTrace(TAG);
     ret = StopCaptureAppTrace();
     ASSERT_TRUE(ret == RetType::RET_SUCC);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Hitrace Setting tracing_on failed.";
 
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
@@ -511,7 +505,7 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_006, TestSize.Level0)
     string fileName;
     int fileSize = 100 * 1024 * 1024; // 100M
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Hitrace Setting tracing_on failed.";
 
     SetWriteAppTrace(FLAG_ALL_THREAD, traceName, 0, true);
 
@@ -532,13 +526,13 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_007, TestSize.Level0)
 
     StartTrace(TAG, traceName);
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Hitrace Setting tracing_on failed.";
     GetSetMainThreadInfo();
     GetSetCommStr();
     SetTraceBuffer(32775);
     FinishTrace(TAG);
 
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Hitrace Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
     ASSERT_FALSE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
@@ -556,11 +550,11 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_008, TestSize.Level0)
     std::string traceName = "HitraceStartTrace008";
 
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Hitrace Setting tracing_on failed.";
 
     SetAddHitraceMeterMarker(TAG, traceName);
     FinishTrace(TAG);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Hitrace Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
@@ -580,11 +574,11 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_009, TestSize.Level0)
         traceName += std::to_string(arc4random() % DIVISOR);
     }
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Hitrace Setting tracing_on failed.";
 
     SetAddHitraceMeterMarker(TAG, traceName);
     FinishTrace(TAG);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Hitrace Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('B', traceName.substr(0, BUFFER_LEN), nullptr, 0, list);
     ASSERT_FALSE(isStartSuc) << "Hitrace find \"B|pid|" + traceName + "\" from trace.";
@@ -603,13 +597,13 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_010, TestSize.Level0)
 
     StartTrace(TAG, traceName);
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Hitrace Setting tracing_on failed.";
     GetSetMainThreadInfo();
     GetSetCommStr();
     SetTraceBuffer(OUTPACE_DEFAULT_CACHE_SIZE);
     FinishTrace(TAG);
 
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Hitrace Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
     ASSERT_FALSE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
@@ -627,13 +621,13 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_011, TestSize.Level0)
     std::string traceName = "HitraceStartTrace011";
 
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Hitrace Setting tracing_on failed.";
     bool isWriteLog = false;
     SetWriteOnceLog(LOG_DEBUG, "write debug log", isWriteLog);
     SetAddHitraceMeterMarker(TAG, traceName);
     FinishTrace(TAG);
 
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Hitrace Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
@@ -652,12 +646,12 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_012, TestSize.Level0)
 
     StartTrace(TAG, traceName);
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Hitrace Setting tracing_on failed.";
     GetSetMainThreadInfo();
     GetSetCommStr();
     FinishTrace(TAG);
 
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Hitrace Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
     ASSERT_FALSE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
@@ -677,7 +671,7 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_013, TestSize.Level0)
     int fileSize = 100 * 1024 * 1024; // 100M
 
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Hitrace Setting tracing_on failed.";
 
     int ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, TAG, fileSize, fileName);
     StartTrace(TAG, traceName);
@@ -686,7 +680,7 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_013, TestSize.Level0)
     FinishTrace(TAG);
     ret = StopCaptureAppTrace();
     ASSERT_TRUE(ret == RetType::RET_SUCC);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Hitrace Setting tracing_on failed.";
 
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
@@ -704,12 +698,12 @@ HWTEST_F(HitraceNDKTest, StartHiTraceIdTest_001, TestSize.Level0)
 {
     std::string traceName = "StartHiTraceIdTest001";
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     HiTraceId hiTraceId = HiTraceChain::Begin(traceName, HiTraceFlag::HITRACE_FLAG_DEFAULT);
     StartTrace(TAG, traceName);
     FinishTrace(TAG);
     HiTraceChain::End(hiTraceId);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('B', traceName, &hiTraceId, 0, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
@@ -731,12 +725,12 @@ HWTEST_F(HitraceNDKTest, StartHiTraceIdTest_002, TestSize.Level0)
     longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
     longTraceName += "StartHiTraceIdTest002";
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     HiTraceId hiTraceId = HiTraceChain::Begin(longTraceName, HiTraceFlag::HITRACE_FLAG_DEFAULT);
     StartTrace(TAG, longTraceName, SLEEP_ONE_SECOND);
     FinishTrace(TAG);
     HiTraceChain::End(hiTraceId);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('B', longTraceName, &hiTraceId, 0, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + longTraceName + "\" from trace.";
@@ -755,12 +749,12 @@ HWTEST_F(HitraceNDKTest, StartAsyncHiTraceIdTest_001, TestSize.Level0)
     string traceName = "StartAsyncHiTraceIdTest001";
     int taskId = 123;
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     HiTraceId hiTraceId = HiTraceChain::Begin(traceName, HiTraceFlag::HITRACE_FLAG_DEFAULT);
     StartAsyncTrace(TAG, traceName, taskId);
     FinishAsyncTrace(TAG, traceName, taskId);
     HiTraceChain::End(hiTraceId);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('S', traceName, &hiTraceId, taskId, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"S|pid|" + traceName + "\" from trace.";
@@ -782,10 +776,10 @@ HWTEST_F(HitraceNDKTest, StartTrace_002, TestSize.Level0)
     longTraceName += "StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002StartHiTraceIdTest002";
     longTraceName += "StartHiTraceIdTest002";
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     StartTrace(TAG, longTraceName);
     FinishTrace(TAG);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('B', longTraceName, nullptr, 0, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + longTraceName + "\" from trace.";
@@ -802,7 +796,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_003, TestSize.Level0)
 {
     string traceName = "StartTraceTest003 %s";
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     StartTrace(TAG, traceName);
     FinishTrace(TAG);
     vector<string> list = ReadTrace();
@@ -816,7 +810,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_003, TestSize.Level0)
     traceName = "StartTraceTest003 %p";
     StartTrace(TAG, traceName);
     FinishTrace(TAG);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Setting tracing_on failed.";
     list = ReadTrace();
     isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
@@ -833,11 +827,11 @@ HWTEST_F(HitraceNDKTest, StartTrace_004, TestSize.Level0)
 {
     string traceName = "StartTraceTest004";
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     StartTrace(TAG, traceName);
     usleep(1000);
     FinishTrace(TAG);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
@@ -855,10 +849,10 @@ HWTEST_F(HitraceNDKTest, StartTrace_005, TestSize.Level0)
     string traceName = "asyncTraceTest005";
     int taskId = 123;
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     StartAsyncTrace(TAG, traceName, taskId);
     FinishAsyncTrace(TAG, traceName, taskId);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('S', traceName, nullptr, taskId, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"S|pid|" + traceName + "\" from trace.";
@@ -876,9 +870,9 @@ HWTEST_F(HitraceNDKTest, StartTrace_006, TestSize.Level0)
     string traceName = "countTraceTest006";
     int count = 1;
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     CountTrace(TAG, traceName, count);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isCountSuc = GetTraceResult('C', traceName, nullptr, count, list);
     ASSERT_TRUE(isCountSuc) << "Hitrace Can't find \"C|" + traceName + "\" from trace.";
@@ -893,10 +887,10 @@ HWTEST_F(HitraceNDKTest, StartTrace_007, TestSize.Level1)
 {
     string traceName = "StartTraceTest007";
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     StartTrace(TRACE_INVALIDATE_TAG, traceName);
     FinishTrace(TRACE_INVALIDATE_TAG);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
     EXPECT_FALSE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
@@ -913,7 +907,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_008, TestSize.Level1)
 {
     string traceName = "StartTraceTest008 %s";
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     StartTrace(TRACE_INVALIDATE_TAG, traceName);
     FinishTrace(TRACE_INVALIDATE_TAG);
     vector<string> list = ReadTrace();
@@ -927,7 +921,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_008, TestSize.Level1)
     traceName = "StartTraceTest008 %p";
     StartTrace(TRACE_INVALIDATE_TAG, traceName);
     FinishTrace(TRACE_INVALIDATE_TAG);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Setting tracing_on failed.";
     list = ReadTrace();
     isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
     EXPECT_FALSE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
@@ -945,10 +939,10 @@ HWTEST_F(HitraceNDKTest, StartTrace_009, TestSize.Level1)
     string traceName = "asyncTraceTest009";
     int taskId = 123;
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     StartAsyncTrace(TRACE_INVALIDATE_TAG, traceName, taskId);
     FinishAsyncTrace(TRACE_INVALIDATE_TAG, traceName, taskId);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('S', traceName, nullptr, taskId, list);
     EXPECT_FALSE(isStartSuc) << "Hitrace Can't find \"S|pid|" + traceName + "\" from trace.";
@@ -966,9 +960,9 @@ HWTEST_F(HitraceNDKTest, StartTrace_010, TestSize.Level1)
     string traceName = "countTraceTest010";
     int count = 1;
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     CountTrace(TRACE_INVALIDATE_TAG, traceName, count);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('C', traceName, nullptr, count, list);
     EXPECT_FALSE(isStartSuc) << "Hitrace Can't find \"C|" + traceName + "\" from trace.";
@@ -982,7 +976,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_010, TestSize.Level1)
 HWTEST_F(HitraceNDKTest, StartTrace_011, TestSize.Level1)
 {
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     StartTraceDebug(true, TAG, "StartTraceTest011");
     FinishTraceDebug(true, TAG);
 }
@@ -995,7 +989,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_011, TestSize.Level1)
 HWTEST_F(HitraceNDKTest, StartTrace_012, TestSize.Level1)
 {
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     StartTraceDebug(true, TAG, "StartTraceTest012 %s");
     FinishTraceDebug(true, TAG);
 }
@@ -1008,7 +1002,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_012, TestSize.Level1)
 HWTEST_F(HitraceNDKTest, StartTrace_013, TestSize.Level1)
 {
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     StartAsyncTraceDebug(true, TAG, "asyncTraceTest013", 123);
     FinishAsyncTraceDebug(true, TAG, "asyncTraceTest013", 123);
     StartAsyncTraceDebug(false, TAG, "asyncTraceTest013", 123);
@@ -1023,7 +1017,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_013, TestSize.Level1)
 HWTEST_F(HitraceNDKTest, StartTrace_014, TestSize.Level1)
 {
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     CountTraceDebug(true, TAG, "countTraceTest014", 1);
     CountTraceDebug(false, TAG, "countTraceTest014", 1);
 }
@@ -1036,7 +1030,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_014, TestSize.Level1)
 HWTEST_F(HitraceNDKTest, StartTrace_015, TestSize.Level1)
 {
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     MiddleTrace(TAG, "MiddleTraceTest015", "050tseTecarTelddiM");
 }
 
@@ -1048,7 +1042,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_015, TestSize.Level1)
 HWTEST_F(HitraceNDKTest, StartTrace_016, TestSize.Level1)
 {
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     MiddleTraceDebug(true, TAG, "MiddleTraceTest016", "061tseTecarTelddiM");
     MiddleTraceDebug(false, TAG, "MiddleTraceTest016", "061tseTecarTelddiM");
 }
@@ -1062,11 +1056,11 @@ HWTEST_F(HitraceNDKTest, StartTrace_017, TestSize.Level1)
 {
     string traceName = "StartTraceTest017-%d";
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     int var = 1;
     StartTraceArgs(TAG, traceName.c_str(), var);
     FinishTrace(TAG);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
 
     bool isStartSuc = GetTraceResult('B', traceName.replace(18, 2, to_string(var)), nullptr, 0, list);
@@ -1085,11 +1079,11 @@ HWTEST_F(HitraceNDKTest, StartTrace_018, TestSize.Level1)
     string traceName = "asyncTraceTest018-%d";
     int taskId = 123;
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     int var = 1;
     StartAsyncTraceArgs(TAG, taskId, traceName.c_str(), var);
     FinishAsyncTraceArgs(TAG, taskId, traceName.c_str(), var);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('S', traceName.replace(18, 2, to_string(var)), nullptr, taskId, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"S|pid|" + traceName + "\" from trace.";
@@ -1105,7 +1099,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_018, TestSize.Level1)
 HWTEST_F(HitraceNDKTest, StartTrace_019, TestSize.Level1)
 {
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     int var = 1;
     StartTraceArgsDebug(true, TAG, "StartTraceTest019-%d", var);
     FinishTrace(TAG);
@@ -1120,7 +1114,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_019, TestSize.Level1)
 HWTEST_F(HitraceNDKTest, StartTrace_020, TestSize.Level1)
 {
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     int var = 1;
     StartAsyncTraceArgsDebug(true, TAG, 123, "asyncTraceTest020-%d", var);
     FinishAsyncTraceArgsDebug(true, TAG, 123, "asyncTraceTest020-%d", var);
@@ -1140,10 +1134,10 @@ HWTEST_F(HitraceNDKTest, StartTraceWrapper_001, TestSize.Level0)
 {
     string traceName = "StartTraceWrapper001";
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     StartTraceWrapper(TAG, traceName.c_str());
     FinishTrace(TAG);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
@@ -1161,10 +1155,10 @@ HWTEST_F(HitraceNDKTest, StartAsyncTraceWrapper_001, TestSize.Level1)
     string traceName = "StartAsyncTraceWrapper009";
     int taskId = 123;
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     StartAsyncTraceWrapper(TRACE_INVALIDATE_TAG, traceName.c_str(), taskId);
     FinishAsyncTraceWrapper(TRACE_INVALIDATE_TAG, traceName.c_str(), taskId);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('S', traceName, nullptr, 0, list);
     EXPECT_FALSE(isStartSuc) << "Hitrace Can't find \"S|pid|" + traceName + "\" from trace.";
@@ -1182,9 +1176,9 @@ HWTEST_F(HitraceNDKTest, CountTraceWrapper_001, TestSize.Level0)
     string traceName = "CountTraceWrapper001";
     int count = 1;
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     CountTraceWrapper(TAG, traceName.c_str(), count);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('C', traceName, nullptr, count, list);
     ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"C|" + traceName + "\" from trace.";
@@ -1198,7 +1192,7 @@ HWTEST_F(HitraceNDKTest, CountTraceWrapper_001, TestSize.Level0)
 HWTEST_F(HitraceNDKTest, StartTrace_021, TestSize.Level1)
 {
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     SetTraceDisabled(true);
 }
 
@@ -1210,8 +1204,8 @@ HWTEST_F(HitraceNDKTest, StartTrace_021, TestSize.Level1)
 HWTEST_F(HitraceNDKTest, StartTrace_022, TestSize.Level1)
 {
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
-    ASSERT_TRUE(SetProperty(TRACE_PROPERTY, "0"));
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetProperty(TRACE_TAG_ENABLE_FLAGS, "0"));
     SetCachedHandleAndAppPidCachedHandle(nullptr, nullptr);
     SetCachedHandleAndAppPidCachedHandle(nullptr, (CachedHandle)0xf7696e60);
     SetCachedHandleAndAppPidCachedHandle((CachedHandle)0xf7c8c130, nullptr);
@@ -1225,9 +1219,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_022, TestSize.Level1)
 HWTEST_F(HitraceNDKTest, StartTrace_023, TestSize.Level1)
 {
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
-    SetProperty(KEY_RO_DEBUGGABLE, "true");
-    SetProperty(KEY_APP_NUMBER, "1");
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     StartTrace(TRACE_INVALIDATE_TAG, "StartTraceTest023");
     FinishTrace(TRACE_INVALIDATE_TAG);
 }
@@ -1368,7 +1360,7 @@ HWTEST_F(HitraceNDKTest, StartTrace_027, TestSize.Level1)
 HWTEST_F(HitraceNDKTest, StartTrace_028, TestSize.Level1)
 {
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     StartTraceDebug(false, TAG, "StartTraceTest028");
     FinishTraceDebug(true, TAG);
 }
@@ -1383,11 +1375,11 @@ HWTEST_F(HitraceNDKTest, StartTrace_029, TestSize.Level1)
     string traceName = "asyncTraceTest029-%d";
     int taskId = 123;
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     int var = 1;
     StartAsyncTraceArgs(TAG, taskId, traceName.c_str(), var);
     FinishAsyncTraceArgs(TAG, taskId, traceName.c_str(), var);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Setting tracing_on failed.";
     vector<string> list = ReadTrace();
     bool isStartSuc = GetTraceResult('S', traceName.replace(18, 2, to_string(var)), nullptr, taskId, list);
     ASSERT_FALSE(isStartSuc) << "Hitrace Can't find \"S|pid|" + traceName + "\" from trace.";
@@ -1406,7 +1398,7 @@ HWTEST_F(HitraceNDKTest, StartCaptureAppTrace_001, TestSize.Level1)
     string fileName;
     int fileSize = 100 * 1024 * 1024; // 100M
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Hitrace Setting tracing_on failed.";
 
     int ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, TAG, fileSize, fileName);
     ASSERT_TRUE(ret == RetType::RET_SUCC);
@@ -1423,7 +1415,7 @@ HWTEST_F(HitraceNDKTest, StartCaptureAppTrace_001, TestSize.Level1)
 
     ret = StopCaptureAppTrace();
     ASSERT_TRUE(ret != RetType::RET_SUCC);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Hitrace Setting tracing_on failed.";
 }
 
 /**
@@ -1436,7 +1428,7 @@ HWTEST_F(HitraceNDKTest, StartCaptureAppTrace_002, TestSize.Level1)
     string fileName;
     int fileSize = 100 * 1024 * 1024; // 100M
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Hitrace Setting tracing_on failed.";
 
     SetAppFd(1);
     int ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, TAG, fileSize, fileName);
@@ -1474,7 +1466,7 @@ HWTEST_F(HitraceNDKTest, StartCaptureAppTrace_004, TestSize.Level1)
     string fileName;
     int fileSize = 100 * 1024 * 1024; // 100M
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Hitrace Setting tracing_on failed.";
 
     int ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, TAG, fileSize, fileName);
     SetappTracePrefix("");
@@ -1495,7 +1487,7 @@ HWTEST_F(HitraceNDKTest, StartCaptureAppTrace_005, TestSize.Level1)
     string fileName;
     int fileSize = 100 * 1024 * 1024; // 100M
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Hitrace Setting tracing_on failed.";
 
     SetAppFd(1);
     int ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, TAG, fileSize, fileName);
@@ -1518,7 +1510,7 @@ HWTEST_F(HitraceNDKTest, HitraceMeterFmtScoped_001, TestSize.Level1)
     const char* name = "TestHitraceMeterFmtScoped";
     int taskId = 123;
     ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "Setting tracing_on failed.";
     StartAsyncTrace(TAG, traceName, taskId);
     SetTraceDisabled(true);
     HitraceMeterFmtScoped(TAG, name);
@@ -1564,10 +1556,8 @@ HWTEST_F(HitraceNDKTest, HitraceOsal_001, TestSize.Level1)
 {
     ASSERT_TRUE(CleanTrace());
     SetPropertyInner("", "0");
-    SetPropertyInner(TRACE_PROPERTY, "0");
-    GetPropertyInner(TRACE_PROPERTY, "0");
-    RefreshBinderServices();
-    RefreshHalServices();
+    SetPropertyInner(TRACE_TAG_ENABLE_FLAGS, "0");
+    GetPropertyInner(TRACE_TAG_ENABLE_FLAGS, "0");
 }
 
 /**
@@ -1580,10 +1570,8 @@ HWTEST_F(HitraceNDKTest, HitraceOsal_002, TestSize.Level1)
     ASSERT_TRUE(CleanTrace());
     IsHmKernel();
     SetPropertyInner("", "0");
-    SetPropertyInner(TRACE_PROPERTY, "0");
-    GetPropertyInner(TRACE_PROPERTY, "0");
-    RefreshBinderServices();
-    RefreshHalServices();
+    SetPropertyInner(TRACE_TAG_ENABLE_FLAGS, "0");
+    GetPropertyInner(TRACE_TAG_ENABLE_FLAGS, "0");
 }
 
 /**

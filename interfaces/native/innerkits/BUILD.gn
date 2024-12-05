@@ -65,6 +65,7 @@ config("hitrace_meter_config") {
 ohos_static_library("hitrace_inner") {
   branch_protector_ret = "pac_ret"
   include_dirs = [
+    "$hitrace_common_path",
     "include/hitrace_meter",
     "include",
     "$hitrace_frameworks_path/include/",
@@ -99,14 +100,13 @@ config("hitrace_dump_config") {
 ohos_shared_library("hitrace_dump") {
   include_dirs = [
     "include",
+    "$hitrace_common_path",
     "$hitrace_cmd_path/include",
     "$hitrace_frameworks_path/include",
     "$hitrace_utils_path",
   ]
   public_configs = [ ":hitrace_dump_config" ]
   sources = [
-    "$hitrace_cmd_path/src/hitrace_osal.cpp",
-    "$hitrace_frameworks_path/native/common_utils.cpp",
     "$hitrace_frameworks_path/native/dynamic_buffer.cpp",
     "src/hitrace_dump.cpp",
   ]
@@ -119,12 +119,13 @@ ohos_shared_library("hitrace_dump") {
   deps = [
     ":hitrace_meter",
     "$hitrace_config_path:hitrace_tags",
-    "$hitrace_utils_path:hitrace_utils",
+    "$hitrace_utils_path:hitrace_common_utils",
+    "$hitrace_utils_path:hitrace_file_utils",
+    "$hitrace_utils_path:hitrace_json_parser",
   ]
 
   external_deps = [
     "bounds_checking_function:libsec_shared",
-    "cJSON:cjson",
     "init:libbegetutil",
   ]
 

@@ -31,6 +31,7 @@
 #include <vector>
 #include <string>
 
+#include "common_define.h"
 #include "securec.h"
 #include "hilog/log.h"
 #include "param/sys_param.h"
@@ -39,11 +40,16 @@
 #include "hitrace_meter.h"
 #include "hitrace/tracechain.h"
 
-using namespace OHOS::HiviewDFX;
+#ifdef LOG_DOMAIN
+#undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD002D33
+#endif
+#ifdef LOG_TAG
+#undef LOG_TAG
+#define LOG_TAG "HitraceMeter"
+#endif
 
-#define EXPECTANTLY(exp) (__builtin_expect(!!(exp), true))
-#define UNEXPECTANTLY(exp) (__builtin_expect(!!(exp), false))
-#define UNUSED_PARAM __attribute__((__unused__))
+using namespace OHOS::HiviewDFX;
 
 namespace {
 int g_markerFd = -1;
@@ -62,11 +68,6 @@ std::atomic<uint64_t> g_tagsProperty(HITRACE_TAG_NOT_READY);
 std::atomic<uint64_t> g_appTag(HITRACE_TAG_NOT_READY);
 std::atomic<int64_t> g_appTagMatchPid(-1);
 
-const std::string KEY_TRACE_TAG = "debug.hitrace.tags.enableflags";
-const std::string KEY_APP_NUMBER = "debug.hitrace.app_number";
-const std::string KEY_APP_PID = "debug.hitrace.app_pid";
-const std::string KEY_RO_DEBUGGABLE = "ro.debuggable";
-const std::string KEY_PREFIX = "debug.hitrace.app_";
 const std::string SANDBOX_PATH = "/data/storage/el2/log/";
 const std::string PHYSICAL_PATH = "/data/app/el2/100/log/";
 
@@ -122,22 +123,16 @@ const std::string TRACE_TXT_HEADER_FORMAT = R"(# tracer: nop
 #              | |           |       |   ||||      |         |
 )";
 
-#undef LOG_DOMAIN
-#define LOG_DOMAIN 0xD002D33
-
-#undef LOG_TAG
-#define LOG_TAG "HitraceMeter"
-
 inline void CreateCacheHandle()
 {
     const char* devValue = "true";
-    g_cachedHandle = CachedParameterCreate(KEY_TRACE_TAG.c_str(), devValue);
-    g_appPidCachedHandle = CachedParameterCreate(KEY_APP_PID.c_str(), devValue);
+    g_cachedHandle = CachedParameterCreate(TRACE_TAG_ENABLE_FLAGS.c_str(), devValue);
+    g_appPidCachedHandle = CachedParameterCreate(TRACE_KEY_APP_PID.c_str(), devValue);
 }
 
 inline void UpdateSysParamTags()
 {
-    // Get the system parameters of KEY_TRACE_TAG.
+    // Get the system parameters of TRACE_TAG_ENABLE_FLAGS.
     int changed = 0;
     if (UNEXPECTANTLY(g_cachedHandle == nullptr || g_appPidCachedHandle == nullptr)) {
         CreateCacheHandle();
@@ -202,8 +197,8 @@ void ReloadPid()
 // open file "trace_marker".
 void OpenTraceMarkerFile()
 {
-    const std::string debugFile = "/sys/kernel/debug/tracing/trace_marker";
-    const std::string traceFile = "/sys/kernel/tracing/trace_marker";
+    const std::string debugFile = DEBUGFS_TRACING_DIR + TRACE_MARKER_NODE;
+    const std::string traceFile = TRACEFS_DIR + TRACE_MARKER_NODE;
     g_markerFd = open(debugFile.c_str(), O_WRONLY | O_CLOEXEC);
 #ifdef HITRACE_UNITTEST
     SetMarkerFd(g_markerFd);
@@ -218,7 +213,7 @@ void OpenTraceMarkerFile()
         }
     }
     // get tags and pid
-    g_tagsProperty = OHOS::system::GetUintParameter<uint64_t>(KEY_TRACE_TAG, 0);
+    g_tagsProperty = OHOS::system::GetUintParameter<uint64_t>(TRACE_TAG_ENABLE_FLAGS, 0);
     CreateCacheHandle();
     InitPid();
 

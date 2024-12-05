@@ -14,45 +14,26 @@
 import("//base/hiviewdfx/hitrace/hitrace.gni")
 import("//build/ohos.gni")
 
-config("hitrace_osal_inner_config") {
-  visibility = [ ":*" ]
-  include_dirs = [
-    "include",
-    "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
-    "$hitrace_interfaces_path/native/innerkits/include/",
-  ]
-}
-
-ohos_static_library("hitrace_osal_inner") {
-  sources = [ "src/hitrace_osal.cpp" ]
-  public_configs = [ ":hitrace_osal_inner_config" ]
-  external_deps = [ "init:libbegetutil" ]
-  subsystem_name = "hiviewdfx"
-  part_name = "hitrace"
-}
-
 ohos_executable("hitrace") {
   install_enable = true
 
   include_dirs = [
-    "include",
-    "$hitrace_frameworks_path/include/",
+    "$hitrace_common_path",
+    "$hitrace_frameworks_path/include",
     "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
+    "$hitrace_utils_path",
   ]
 
-  sources = [
-    "$hitrace_frameworks_path/native/common_utils.cpp",
-    "src/hitrace_cmd.cpp",
-  ]
+  sources = [ "hitrace_cmd.cpp" ]
 
   deps = [
-    ":hitrace_osal_inner",
     "$hitrace_config_path:hitrace_tags",
+    "$hitrace_utils_path:hitrace_common_utils",
+    "$hitrace_utils_path:hitrace_json_parser",
   ]
 
   external_deps = [
     "bounds_checking_function:libsec_shared",
-    "cJSON:cjson",
     "hisysevent:libhisysevent",
     "zlib:libz",
   ]
@@ -73,44 +54,9 @@ ohos_executable("hitrace") {
   part_name = "hitrace"
 }
 
-ohos_prebuilt_etc("hitrace.cfg") {
-  source = "config/hitrace.cfg"
-  relative_install_dir = "init"
-  subsystem_name = "hiviewdfx"
-  part_name = "hitrace"
-}
-
-ohos_executable("hitrace_example") {
-  sources = [ "example/hitrace_example.cpp" ]
-  deps = [ "$hitrace_interfaces_path/native/innerkits:hitrace_meter" ]
-
-  if (defined(ohos_lite)) {
-    external_deps = [ "hilog_lite:hilog_lite" ]
-  } else {
-    external_deps = [ "hilog:libhilog" ]
-  }
-  install_enable = false
-  subsystem_name = "hiviewdfx"
-  part_name = "hitrace"
-}
-
-ohos_rust_executable("hitrace_example_rust") {
-  sources = [ "example/rust/main.rs" ]
-
-  deps = [
-    "$hitrace_interfaces_path/rust/innerkits/hitrace_meter:hitrace_meter_rust",
-  ]
-  install_enable = false
-  subsystem_name = "hiviewdfx"
-  part_name = "hitrace"
-}
-
 group("hitrace_target") {
   if (device_company != "qemu" && hitrace_support_executable_file &&
       hiview_enable) {
-    deps = [
-      ":hitrace",
-      ":hitrace_example",
-    ]
+    deps = [ ":hitrace" ]
   }
 }

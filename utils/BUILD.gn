@@ -14,14 +14,52 @@
 import("//base/hiviewdfx/hitrace/hitrace.gni")
 import("//build/ohos.gni")
 
-ohos_source_set("hitrace_utils") {
-  include_dirs = [ "." ]
-  sources = [ "trace_utils.cpp" ]
+ohos_source_set("hitrace_common_utils") {
+  include_dirs = [
+    ".",
+    "$hitrace_common_path",
+  ]
+  sources = [ "common_utils.cpp" ]
   if (defined(ohos_lite)) {
     external_deps = [ "hilog_lite:hilog_lite" ]
   } else {
     external_deps = [ "hilog:libhilog" ]
   }
+  external_deps += [
+    "bounds_checking_function:libsec_shared",
+    "init:libbegetutil",
+  ]
+  part_name = "hitrace"
+  subsystem_name = "hiviewdfx"
+}
+
+ohos_source_set("hitrace_file_utils") {
+  include_dirs = [
+    ".",
+    "$hitrace_common_path",
+  ]
+  sources = [ "trace_file_utils.cpp" ]
+  if (defined(ohos_lite)) {
+    external_deps = [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps = [ "hilog:libhilog" ]
+  }
+  part_name = "hitrace"
+  subsystem_name = "hiviewdfx"
+}
+
+ohos_source_set("hitrace_json_parser") {
+  include_dirs = [
+    ".",
+    "$hitrace_common_path",
+  ]
+  sources = [ "trace_json_parser.cpp" ]
+  if (defined(ohos_lite)) {
+    external_deps = [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps = [ "hilog:libhilog" ]
+  }
+  external_deps += [ "cJSON:cjson" ]
   part_name = "hitrace"
   subsystem_name = "hiviewdfx"
 }

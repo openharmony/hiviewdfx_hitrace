@@ -15,6 +15,11 @@ import("//base/hiviewdfx/hitrace/hitrace.gni")
 import("//build/ohos.gni")
 import("//build/test.gni")
 
+group("hitrace_systemtest") {
+  testonly = true
+  deps = [ "systemtest:HitraceSystemTest" ]
+}
+
 group("hitrace_unittest") {
   testonly = true
   deps = [
@@ -22,6 +27,7 @@ group("hitrace_unittest") {
     "unittest:HitraceCppTest",
     "unittest:HitraceDumpTest",
     "unittest:HitraceNDKTest",
+    "unittest:HitraceUtilsTest",
   ]
   if (support_jsapi) {
     deps += [ "unittest/common/napi:unittest" ]
