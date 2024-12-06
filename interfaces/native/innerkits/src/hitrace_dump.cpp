@@ -483,10 +483,10 @@ bool CheckFileExist(const std::string &outputFile)
     return true;
 }
 
-TraceErrorCode SetTimeIntervalBoundary(int maxDuration, uint64_t utTraceEndTime)
+TraceErrorCode SetTimeIntervalBoundary(int inputMaxDuration, uint64_t utTraceEndTime)
 {
-    if (maxDuration < 0) {
-        HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input: maxDuration = %d < 0.", maxDuration);
+    if (inputMaxDuration < 0) {
+        HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input: maxDuration = %d < 0.", inputMaxDuration);
         return INVALID_MAX_DURATION;
     }
 
@@ -495,45 +495,37 @@ TraceErrorCode SetTimeIntervalBoundary(int maxDuration, uint64_t utTraceEndTime)
         HILOG_ERROR(LOG_CORE, "Get system info failed.");
         return SYSINFO_READ_FAILURE;
     }
-    std::time_t utNow = std::time(nullptr);
-    std::time_t utBootTime = utNow - info.uptime;
-    if (maxDuration > utBootTime - 1) {
+    uint64_t utNow = static_cast<uint64_t>(std::time(nullptr));
+    uint64_t utBootTime = utNow - info.uptime;
+    uint64_t maxDuration = inputMaxDuration > 0 ? static_cast<uint64_t>(inputMaxDuration) + 1 : 0;
+    if (maxDuration > utBootTime) {
         HILOG_WARN(LOG_CORE, "maxDuration is larger than boot_time.");
         maxDuration = 0;
     }
 
-    uint64_t btTraceEndTime = 0; // boot time based trace end time, in nano seconds
-    if (utTraceEndTime > 0) {
-        if (utTraceEndTime > static_cast<uint64_t>(utNow)) {
-            HILOG_WARN(LOG_CORE, "DumpTrace: Warning: traceEndTime is later than current time, set to current.");
-            utTraceEndTime = utNow;
-        }
-        if (utTraceEndTime > static_cast<uint64_t>(utBootTime)) {
-            // beware of input precision of seconds: add an extra second of tolerance
-            btTraceEndTime = (utTraceEndTime - static_cast<uint64_t>(utBootTime) + 1) * S_TO_NS;
-        } else {
-            HILOG_ERROR(LOG_CORE,
-                "DumpTrace: traceEndTime:(%{public}" PRIu64 ") is earlier than boot_time:(%{public}" PRIu64 ").",
-                utTraceEndTime, static_cast<uint64_t>(utBootTime));
-            return OUT_OF_TIME;
-        }
-        maxDuration = maxDuration > 0 ? maxDuration + 1 : 0; // for precision tolerance
+    if (utTraceEndTime + 1 > utNow) {
+        HILOG_WARN(LOG_CORE, "DumpTrace: Warning: traceEndTime is later than current time, set to current.");
+        utTraceEndTime = 0;
+    }
+
+    if (utTraceEndTime == 0) {
+        struct timespec bts = {0, 0};
+        clock_gettime(CLOCK_BOOTTIME, &bts);
+        g_traceEndTime = static_cast<uint64_t>(bts.tv_sec * S_TO_NS + bts.tv_nsec);
+    } else if (utTraceEndTime > utBootTime) {
+        // beware of input precision of seconds: add an extra second of tolerance
+        g_traceEndTime = (utTraceEndTime - utBootTime + 1) * S_TO_NS;
+    } else {
+        HILOG_ERROR(LOG_CORE,
+            "DumpTrace: traceEndTime:(%{public}" PRIu64 ") is earlier than boot_time:(%{public}" PRIu64 ").",
+            utTraceEndTime, utBootTime);
+        return OUT_OF_TIME;
     }
 
     if (maxDuration > 0) {
-        if (btTraceEndTime) {
-            g_traceStartTime = btTraceEndTime - static_cast<uint64_t>(maxDuration) * S_TO_NS;
-            g_traceEndTime = btTraceEndTime;
-        } else {
-            struct timespec bts = {0, 0};
-            clock_gettime(CLOCK_BOOTTIME, &bts);
-            g_traceStartTime = static_cast<uint64_t>(bts.tv_sec * S_TO_NS + bts.tv_nsec) -
-                static_cast<uint64_t>(maxDuration) * S_TO_NS;
-            g_traceEndTime = std::numeric_limits<uint64_t>::max();
-        }
+        g_traceStartTime = g_traceEndTime - maxDuration * S_TO_NS;
     } else {
         g_traceStartTime = 0;
-        g_traceEndTime = btTraceEndTime > 0 ? btTraceEndTime : std::numeric_limits<uint64_t>::max();
     }
     return SUCCESS;
 }

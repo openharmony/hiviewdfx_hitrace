@@ -37,7 +37,6 @@ enum TraceErrorCode : uint8_t {
     EPOLL_WAIT_ERROR = 10,
     PIPE_CREATE_ERROR = 11,
     SYSINFO_READ_FAILURE = 12,
-    INVALID_END_TIME = 13,
     UNSET = 255,
 };
 
