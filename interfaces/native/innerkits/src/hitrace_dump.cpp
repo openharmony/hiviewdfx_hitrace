@@ -1027,7 +1027,7 @@ bool ReadRawTrace(std::string &outputFileName)
         return false;
     } else {
         if (writeRet != static_cast<ssize_t>(sizeof(header))) {
-            HILOG_WARN(LOG_CORE, "Failed to write full info, writeLen: %{public}zd, FullLen: %{public}d.",
+            HILOG_WARN(LOG_CORE, "Failed to write full info, writeLen: %{public}zd, FullLen: %{public}zu.",
                 writeRet, sizeof(header));
             return false;
         }
