@@ -203,6 +203,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_002, TestSize.Level0)
     int maxDuration = -1;
     TraceRetInfo ret = DumpTrace(maxDuration);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_MAX_DURATION);
+    ASSERT_TRUE(ret.outputFiles.empty());
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -252,6 +253,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
     traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 10; // current time + 10 seconds
     ret = DumpTrace(0, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
+    ASSERT_FALSE(ret.outputFiles.empty());
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
@@ -259,6 +261,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
     int maxDuration = -1;
     ret = DumpTrace(maxDuration, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_MAX_DURATION);
+    ASSERT_TRUE(ret.outputFiles.empty());
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
@@ -266,6 +269,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
     maxDuration = -1;
     ret = DumpTrace(maxDuration, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_MAX_DURATION);
+    ASSERT_TRUE(ret.outputFiles.empty());
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
@@ -280,8 +284,8 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
     traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 100; // current time + 100 seconds
     maxDuration = 10;
     ret = DumpTrace(maxDuration, traceEndTime);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
-    ASSERT_TRUE(ret.outputFiles.empty());
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
+    ASSERT_FALSE(ret.outputFiles.empty());
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
@@ -289,6 +293,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
     maxDuration = 10;
     ret = DumpTrace(maxDuration, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
+    ASSERT_FALSE(ret.outputFiles.empty());
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -441,8 +446,9 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_004, TestSize.Level0)
 
     const std::vector<std::string> tagGroups1 = {"scene_performance1"};
     ASSERT_TRUE(OpenTrace(tagGroups1) == TraceErrorCode::TAG_ERROR);
-    ASSERT_TRUE(DumpTrace().errorCode == TraceErrorCode::WRONG_TRACE_MODE);
-
+    TraceRetInfo ret = DumpTrace();
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::WRONG_TRACE_MODE);
+    ASSERT_TRUE(ret.outputFiles.empty());
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 

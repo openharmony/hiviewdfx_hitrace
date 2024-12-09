@@ -135,8 +135,6 @@ uint8_t g_buffer[BUFFER_SIZE] = {0};
 std::vector<std::pair<std::string, int>> g_traceFilesTable;
 std::vector<std::string> g_outputFilesForCmd;
 int g_outputFileSize = 0;
-int g_inputMaxDuration = 0;
-uint64_t g_inputTraceEndTime = 0; // in nano seconds
 int g_newTraceFileLimit = 0;
 int g_writeFileLimit = 0;
 bool g_needGenerateNewTraceFile = false;
@@ -485,24 +483,51 @@ bool CheckFileExist(const std::string &outputFile)
     return true;
 }
 
-void SetTimeIntervalBoundary()
+TraceErrorCode SetTimeIntervalBoundary(int inputMaxDuration, uint64_t utTraceEndTime)
 {
-    if (g_inputMaxDuration > 0) {
-        if (g_inputTraceEndTime) {
-            g_traceStartTime = g_inputTraceEndTime - static_cast<uint64_t>(g_inputMaxDuration) * S_TO_NS;
-            g_traceEndTime = g_inputTraceEndTime;
-        } else {
-            struct timespec bts = {0, 0};
-            clock_gettime(CLOCK_BOOTTIME, &bts);
-            g_traceStartTime = static_cast<uint64_t>(bts.tv_sec * S_TO_NS + bts.tv_nsec) -
-                static_cast<uint64_t>(g_inputMaxDuration) * S_TO_NS;
-            g_traceEndTime = std::numeric_limits<uint64_t>::max();
-        }
+    if (inputMaxDuration < 0) {
+        HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input: maxDuration = %d < 0.", inputMaxDuration);
+        return INVALID_MAX_DURATION;
+    }
+
+    struct sysinfo info;
+    if (sysinfo(&info) != 0) {
+        HILOG_ERROR(LOG_CORE, "Get system info failed.");
+        return SYSINFO_READ_FAILURE;
+    }
+    uint64_t utNow = static_cast<uint64_t>(std::time(nullptr));
+    uint64_t utBootTime = utNow - info.uptime;
+    uint64_t maxDuration = inputMaxDuration > 0 ? static_cast<uint64_t>(inputMaxDuration) + 1 : 0;
+    if (maxDuration > utBootTime) {
+        HILOG_WARN(LOG_CORE, "maxDuration is larger than boot_time.");
+        maxDuration = 0;
+    }
+
+    if (utTraceEndTime + 1 > utNow) {
+        HILOG_WARN(LOG_CORE, "DumpTrace: Warning: traceEndTime is later than current time, set to current.");
+        utTraceEndTime = 0;
+    }
+
+    if (utTraceEndTime == 0) {
+        struct timespec bts = {0, 0};
+        clock_gettime(CLOCK_BOOTTIME, &bts);
+        g_traceEndTime = static_cast<uint64_t>(bts.tv_sec * S_TO_NS + bts.tv_nsec);
+    } else if (utTraceEndTime > utBootTime) {
+        // beware of input precision of seconds: add an extra second of tolerance
+        g_traceEndTime = (utTraceEndTime - utBootTime + 1) * S_TO_NS;
+    } else {
+        HILOG_ERROR(LOG_CORE,
+            "DumpTrace: traceEndTime:(%{public}" PRIu64 ") is earlier than boot_time:(%{public}" PRIu64 ").",
+            utTraceEndTime, utBootTime);
+        return OUT_OF_TIME;
+    }
+
+    if (maxDuration > 0) {
+        g_traceStartTime = g_traceEndTime - maxDuration * S_TO_NS;
     } else {
         g_traceStartTime = 0;
-        g_traceEndTime = g_inputTraceEndTime > 0 ? g_inputTraceEndTime : std::numeric_limits<uint64_t>::max();
     }
-    return;
+    return SUCCESS;
 }
 
 void RestoreTimeIntervalBoundary()
@@ -1099,6 +1124,7 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
 
     std::string outputFileName = GenerateTraceFileName();
     std::string reOutPath = CanonicalizeSpecPath(outputFileName.c_str());
+    g_dumpStatus = TraceErrorCode::UNSET;
     /*Child process handles task, Father process wait.*/
     pid_t pid = fork();
     if (pid < 0) {
@@ -1466,82 +1492,30 @@ TraceErrorCode OpenTrace(const std::string &args)
     return ret;
 }
 
-TraceRetInfo DumpTrace()
+TraceRetInfo DumpTrace(int maxDuration, uint64_t utTraceEndTime)
 {
+    std::lock_guard<std::mutex> lock(g_traceMutex);
+    HILOG_INFO(LOG_CORE, "DumpTrace with timelimit start, timelimit is %{public}d, endtime is (%{public}" PRIu64 ").",
+        maxDuration, utTraceEndTime);
     TraceRetInfo ret;
-    HILOG_INFO(LOG_CORE, "DumpTrace start.");
+
     if (g_traceMode != SERVICE_MODE) {
         HILOG_ERROR(LOG_CORE, "DumpTrace: WRONG_TRACE_MODE, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
         ret.errorCode = WRONG_TRACE_MODE;
         return ret;
     }
-
     if (!CheckServiceRunning()) {
         HILOG_ERROR(LOG_CORE, "DumpTrace: TRACE_IS_OCCUPIED.");
         ret.errorCode = TRACE_IS_OCCUPIED;
         return ret;
     }
-    std::lock_guard<std::mutex> lock(g_traceMutex);
-    g_dumpStatus = TraceErrorCode::UNSET;
-    SetTimeIntervalBoundary();
-    ret.errorCode = DumpTraceInner(ret.outputFiles);
-    RestoreTimeIntervalBoundary();
-    HILOG_INFO(LOG_CORE, "DumpTrace done.");
-    return ret;
-}
 
-TraceRetInfo DumpTrace(int maxDuration, uint64_t traceEndTime)
-{
-    HILOG_INFO(LOG_CORE, "DumpTrace with timelimit start, timelimit is %{public}d, endtime is (%{public}" PRIu64 ").",
-        maxDuration, traceEndTime);
-    TraceRetInfo ret;
-    if (maxDuration < 0) {
-        HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input.");
-        ret.errorCode = INVALID_MAX_DURATION;
+    ret.errorCode = SetTimeIntervalBoundary(maxDuration, utTraceEndTime);
+    if (ret.errorCode != SUCCESS) {
         return ret;
     }
-    {
-        std::time_t now = std::time(nullptr);
-        if (maxDuration > (now - 1)) {
-            maxDuration = 0;
-        }
-        struct sysinfo info;
-        if (sysinfo(&info) != 0) {
-            HILOG_ERROR(LOG_CORE, "Get system info failed.");
-            ret.errorCode = SYSINFO_READ_FAILURE;
-            return ret;
-        }
-        std::time_t boot_time = now - info.uptime;
-        std::lock_guard<std::mutex> lock(g_traceMutex);
-        if (traceEndTime > 0) {
-            if (traceEndTime > static_cast<uint64_t>(now)) {
-                HILOG_WARN(LOG_CORE, "DumpTrace: Warning: traceEndTime is later than current time.");
-            }
-            if (traceEndTime > static_cast<uint64_t>(boot_time)) {
-                // beware of input precision of seconds: add an extra second of tolerance
-                g_inputTraceEndTime = (traceEndTime - static_cast<uint64_t>(boot_time) + 1) * S_TO_NS;
-            } else {
-                HILOG_ERROR(LOG_CORE,
-                    "DumpTrace: traceEndTime:(%{public}" PRIu64 ") is earlier than boot_time:(%{public}" PRIu64 ").",
-                    traceEndTime, static_cast<uint64_t>(boot_time));
-                ret.errorCode = OUT_OF_TIME;
-                return ret;
-            }
-            g_inputMaxDuration = maxDuration ? maxDuration + 1 : 0; // for precision tolerance
-        } else {
-            g_inputMaxDuration = maxDuration;
-        }
-        if (boot_time <= g_inputMaxDuration) {
-            HILOG_WARN(LOG_CORE, "g_inputMaxDuration is larger than boot_time.");
-            g_inputMaxDuration = 0;
-        }
-    }
-    ret = DumpTrace();
-    {
-        std::lock_guard<std::mutex> lock(g_traceMutex);
-        g_inputMaxDuration = 0;
-        g_inputTraceEndTime = 0;
-    }
+    ret.errorCode = DumpTraceInner(ret.outputFiles);
+    RestoreTimeIntervalBoundary();
     HILOG_INFO(LOG_CORE, "DumpTrace with time limit done.");
     return ret;
 }
