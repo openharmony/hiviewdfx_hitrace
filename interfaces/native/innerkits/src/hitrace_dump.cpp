@@ -15,6 +15,7 @@
 
 #include "hitrace_dump.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cinttypes>
 #include <csignal>
@@ -78,10 +79,12 @@ const int HM_DEFAULT_BUFFER_SIZE = 144 * 1024;
 #endif
 const int SAVED_CMDLINES_SIZE = 3072; // 3M
 const int KB_PER_MB = 1024;
-const uint64_t S_TO_NS = 1000000000;
+constexpr uint64_t S_TO_NS = 1000000000;
+constexpr uint32_t MAX_RATIO_UNIT = 1000;
 const int MAX_NEW_TRACE_FILE_LIMIT = 5;
 const int JUDGE_FILE_EXIST = 10;  // Check whether the trace file exists every 10 times.
 const int SNAPSHOT_FILE_MAX_COUNT = 20;
+constexpr int DEFAULT_FULL_TRACE_LENGTH = 30;
 
 const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
 const std::string SAVED_EVENTS_FORMAT = "saved_events_format";
@@ -117,6 +120,11 @@ struct PageHeader {
     uint8_t *endPos = nullptr;
 };
 
+struct ChildProcessRet {
+    uint8_t dumpStatus;
+    uint64_t traceStartTime;
+};
+
 #ifndef PAGE_SIZE
 constexpr size_t PAGE_SIZE = 4096;
 #endif
@@ -141,7 +149,9 @@ bool g_needGenerateNewTraceFile = false;
 bool g_needLimitFileSize = true;
 uint64_t g_traceStartTime = 0;
 uint64_t g_traceEndTime = std::numeric_limits<uint64_t>::max(); // in nano seconds
+uint64_t g_firstPageTimestamp = 0;
 std::atomic<uint8_t> g_dumpStatus(TraceErrorCode::UNSET);
+std::string g_tagGroup("UNSET");
 
 TraceParams g_currentTraceParams = {};
 
@@ -503,7 +513,7 @@ TraceErrorCode SetTimeIntervalBoundary(int inputMaxDuration, uint64_t utTraceEnd
         maxDuration = 0;
     }
 
-    if (utTraceEndTime + 1 > utNow) {
+    if (utTraceEndTime >= utNow) {
         HILOG_WARN(LOG_CORE, "DumpTrace: Warning: traceEndTime is later than current time, set to current.");
         utTraceEndTime = 0;
     }
@@ -616,6 +626,12 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
                 HILOG_ERROR(LOG_CORE, "Failed to memcpy g_buffer to pageTraceTime.");
                 break;
             }
+            if (UNEXPECTANTLY(!printFirstPageTime) && isCpuRaw) {
+                HILOG_INFO(LOG_CORE, "First page trace time:(%{public}" PRIu64 ")", pageTraceTime);
+                printFirstPageTime = true;
+                g_firstPageTimestamp = pageTraceTime;
+            }
+
             if (traceEndTime < pageTraceTime) {
                 endFlag = true;
                 readBytes = 0;
@@ -624,12 +640,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
                     pageTraceTime, traceEndTime);
                 break;
             }
-
             if (pageTraceTime < traceStartTime) {
-                if (UNEXPECTANTLY(!printFirstPageTime)) {
-                    HILOG_INFO(LOG_CORE, "First page trace time:(%{public}" PRIu64 ")", pageTraceTime);
-                    printFirstPageTime = true;
-                }
                 continue;
             }
 
@@ -1105,7 +1116,10 @@ bool EpollWaitforChildProcess(pid_t &pid, int &pipefd)
         close(epollfd);
         return false;
     }
-    read(pipefd, &g_dumpStatus, sizeof(g_dumpStatus));
+    ChildProcessRet retVal;
+    read(pipefd, &retVal, sizeof(retVal));
+    g_dumpStatus = retVal.dumpStatus;
+    g_firstPageTimestamp = retVal.traceStartTime;
     close(pipefd);
     close(epollfd);
     if (waitpid(pid, nullptr, 0) <= 0) {
@@ -1145,7 +1159,10 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
             DelSnapshotTraceFile(false, SNAPSHOT_FILE_MAX_COUNT);
         }
         HILOG_DEBUG(LOG_CORE, "%{public}s exit.", processName.c_str());
-        write(pipefd[1], &g_dumpStatus, sizeof(g_dumpStatus));
+        ChildProcessRet retVal;
+        retVal.dumpStatus = g_dumpStatus;
+        retVal.traceStartTime = g_firstPageTimestamp;
+        write(pipefd[1], &retVal, sizeof(retVal));
         _exit(EXIT_SUCCESS);
     } else {
         close(pipefd[1]);
@@ -1453,6 +1470,11 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
     }
     g_sysInitParamTags = GetSysParamTags();
     HILOG_INFO(LOG_CORE, "OpenTrace: SERVICE_MODE open success.");
+    // store tag groups into g_tagGroup, seperated by comma
+    g_tagGroup = tagGroups[0];
+    for (size_t i = 1; i < tagGroups.size(); i++) {
+        g_tagGroup += "," + tagGroups[i];
+    }
     return ret;
 }
 
@@ -1514,7 +1536,21 @@ TraceRetInfo DumpTrace(int maxDuration, uint64_t utTraceEndTime)
     if (ret.errorCode != SUCCESS) {
         return ret;
     }
+    g_firstPageTimestamp = 0;
+    uint32_t committedDuration = maxDuration == 0 ? DEFAULT_FULL_TRACE_LENGTH :
+        std::min(maxDuration, DEFAULT_FULL_TRACE_LENGTH);
     ret.errorCode = DumpTraceInner(ret.outputFiles);
+    if (g_traceEndTime <= g_firstPageTimestamp) {
+        ret.coverRatio = 0;
+    } else {
+        ret.coverDuration = std::min(static_cast<uint32_t>((g_traceEndTime - g_firstPageTimestamp) / S_TO_NS),
+            committedDuration);
+        ret.coverRatio = (g_traceEndTime - g_firstPageTimestamp) * MAX_RATIO_UNIT / S_TO_NS / committedDuration;
+    }
+    if (ret.coverRatio > MAX_RATIO_UNIT) {
+        ret.coverRatio = MAX_RATIO_UNIT;
+    }
+    ret.tagGroup = g_tagGroup;
     RestoreTimeIntervalBoundary();
     HILOG_INFO(LOG_CORE, "DumpTrace with time limit done.");
     return ret;
@@ -1594,6 +1630,7 @@ TraceErrorCode CloseTrace()
     }
     TraceInit(allTags);
     TruncateFile();
+    g_tagGroup = "UNSET";
     HILOG_INFO(LOG_CORE, "CloseTrace done.");
     return SUCCESS;
 }

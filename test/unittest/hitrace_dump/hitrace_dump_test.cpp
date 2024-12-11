@@ -47,7 +47,11 @@ namespace {
 const std::string TAG_PROP = "debug.hitrace.tags.enableflags";
 const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
 const std::string LOG_DIR = "/data/log/";
-const int SLEEP_TIME = 10; // sleep 10ms
+constexpr uint32_t SLEEP_TIME = 10; // sleep 10ms
+constexpr uint32_t TWO_SEC = 2;
+constexpr uint32_t TEN_SEC = 10;
+constexpr uint32_t MAX_RATIO_UNIT = 1000;
+constexpr int DEFAULT_FULL_TRACE_LENGTH = 30;
 
 std::string g_traceRootPath;
 
@@ -187,6 +191,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_001, TestSize.Level0)
     TraceRetInfo ret = DumpTrace(maxDuration);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(ret.outputFiles.size() > 0);
+    ASSERT_EQ(ret.tagGroup, "default");
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -216,20 +221,25 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_003, TestSize.Level0)
 {
     const std::vector<std::string> tagGroups = {"default"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    sleep(2); // need at least one second of trace in cpu due to the input unit of 1 second to avoid OUT_OF_TIME.
+    sleep(TWO_SEC); // need at least one second of trace in cpu due to the input unit of 1 second to avoid OUT_OF_TIME.
     uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr));
     TraceRetInfo ret = DumpTrace(0, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(ret.outputFiles.size() > 0);
+    ASSERT_EQ(ret.tagGroup, "default");
+    ASSERT_GE(ret.coverDuration, TWO_SEC - 1);
+    ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT * TWO_SEC / DEFAULT_FULL_TRACE_LENGTH);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    sleep(2);
+    sleep(TWO_SEC);
     traceEndTime = static_cast<uint64_t>(std::time(nullptr));
-    int maxDuration = 10;
-    ret = DumpTrace(maxDuration, traceEndTime);
+    ret = DumpTrace(TEN_SEC, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(ret.outputFiles.size() > 0);
+    ASSERT_EQ(ret.tagGroup, "default");
+    ASSERT_GE(ret.coverDuration, TWO_SEC - 1);
+    ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT * TWO_SEC / TEN_SEC);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -306,7 +316,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_005, TestSize.Level0)
 {
     const std::vector<std::string> tagGroups = {"default"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    sleep(2);
+    sleep(TWO_SEC);
     uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr)) - 20; // current time - 20 seconds
     TraceRetInfo ret = DumpTrace(0, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
@@ -314,10 +324,9 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_005, TestSize.Level0)
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    sleep(2);
+    sleep(TWO_SEC);
     traceEndTime = static_cast<uint64_t>(std::time(nullptr)) - 20; // current time - 20 seconds
-    int maxDuration = 10;
-    ret = DumpTrace(maxDuration, traceEndTime);
+    ret = DumpTrace(TEN_SEC, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
     ASSERT_TRUE(ret.outputFiles.empty());
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
@@ -332,12 +341,15 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_006, TestSize.Level0)
 {
     const std::vector<std::string> tagGroups = {"default"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    sleep(2);
+    sleep(TWO_SEC);
     uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr)); // current time
     
     TraceRetInfo ret = DumpTrace(INT_MAX, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(!ret.outputFiles.empty());
+    ASSERT_EQ(ret.tagGroup, "default");
+    ASSERT_GE(ret.coverDuration, TWO_SEC - 1);
+    ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT * TWO_SEC / DEFAULT_FULL_TRACE_LENGTH);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -350,7 +362,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_007, TestSize.Level0)
 {
     const std::vector<std::string> tagGroups = {"default"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    sleep(2);
+    sleep(TWO_SEC);
     uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr));
     TraceRetInfo ret = DumpTrace(-1, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_MAX_DURATION);
@@ -400,6 +412,7 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_002, TestSize.Level0)
     // Remove outputFileName in g_hitraceFilesTable
     EraseFile(outputFileName);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
+    ASSERT_EQ(ret.tagGroup, "scene_performance");
     ASSERT_TRUE(TraverseFiles(ret.outputFiles, outputFileName)) << "file created by user is not exists.";
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }

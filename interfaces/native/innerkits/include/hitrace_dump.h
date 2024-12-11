@@ -51,6 +51,9 @@ enum TraceMode : uint8_t {
 struct TraceRetInfo {
     TraceErrorCode errorCode;
     std::vector<std::string> outputFiles;
+    uint32_t coverRatio = 0;
+    uint32_t coverDuration = 0;
+    std::string tagGroup;
 };
 
 #ifdef HITRACE_UNITTEST
