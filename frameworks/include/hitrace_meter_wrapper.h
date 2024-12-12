@@ -17,25 +17,40 @@
 #define HITRACE_METER_WRAPPER_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "hitrace/trace.h"
+#include "hitrace_meter_c.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void StartTraceCwrapper(uint64_t tag, const char *value);
+void StartTraceCwrapper(uint64_t tag, const char *name);
 
 void FinishTraceCwrapper(uint64_t tag);
 
-void StartAsyncTraceCwrapper(uint64_t tag, const char *value, int32_t taskId);
+void StartAsyncTraceCwrapper(uint64_t tag, const char *name, int32_t taskId);
 
-void FinishAsyncTraceCwrapper(uint64_t tag, const char *value, int32_t taskId);
+void FinishAsyncTraceCwrapper(uint64_t tag, const char *name, int32_t taskId);
 
-void CountTraceCwrapper(uint64_t tag, const char *value, int64_t count);
+void CountTraceCwrapper(uint64_t tag, const char *name, int64_t count);
 
 struct HiTraceIdStruct;
-void StartTraceChainPoint(const struct HiTraceIdStruct* hiTraceId, const char *value);
+void StartTraceChainPoint(const struct HiTraceIdStruct* hiTraceId, const char* value);
+
+void StartTraceExCwrapper(HiTraceOutputLevel level, uint64_t tag, const char* name, const char* customArgs);
+
+void FinishTraceExCwrapper(HiTraceOutputLevel level, uint64_t tag);
+
+void StartAsyncTraceExCwrapper(HiTraceOutputLevel level, uint64_t tag, const char* name, int32_t taskId,
+    const char* customCategory, const char* customArgs);
+
+void FinishAsyncTraceExCwrapper(HiTraceOutputLevel level, uint64_t tag, const char* name, int32_t taskId);
+
+void CountTraceExCwrapper(HiTraceOutputLevel level, uint64_t tag, const char* name, int64_t count);
+
+bool IsTagEnabledCwrapper(uint64_t tag);
 
 #ifdef __cplusplus
 }

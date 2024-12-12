@@ -21,27 +21,60 @@
 
 #endif
 
+typedef HiTraceOutputLevel HiTrace_Output_Level;
+
 void OH_HiTrace_StartTrace(const char *name)
 {
-    StartTraceCwrapper(HITRACE_TAG_APP, name);
+    StartTraceExCwrapper(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_APP, name, "");
 }
 
 void OH_HiTrace_FinishTrace(void)
 {
-    FinishTraceCwrapper(HITRACE_TAG_APP);
+    FinishTraceExCwrapper(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_APP);
 }
 
 void OH_HiTrace_StartAsyncTrace(const char *name, int32_t taskId)
 {
-    StartAsyncTraceCwrapper(HITRACE_TAG_APP, name, taskId);
+    StartAsyncTraceExCwrapper(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_APP, name, taskId, "", "");
 }
 
 void OH_HiTrace_FinishAsyncTrace(const char *name, int32_t taskId)
 {
-    FinishAsyncTraceCwrapper(HITRACE_TAG_APP, name, taskId);
+    FinishAsyncTraceExCwrapper(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_APP, name, taskId);
 }
 
 void OH_HiTrace_CountTrace(const char *name, int64_t count)
 {
-    CountTraceCwrapper(HITRACE_TAG_APP, name, count);
+    CountTraceExCwrapper(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_APP, name, count);
+}
+
+void OH_HiTrace_StartTraceEx(HiTrace_Output_Level level, const char *name, const char *customArgs)
+{
+    StartTraceExCwrapper(level, HITRACE_TAG_APP, name, customArgs);
+}
+
+void OH_HiTrace_FinishTraceEx(HiTrace_Output_Level level)
+{
+    FinishTraceExCwrapper(level, HITRACE_TAG_APP);
+}
+
+void OH_HiTrace_StartAsyncTraceEx(HiTrace_Output_Level level, const char *name, int32_t taskId,
+    const char *customCategory, const char *customArgs)
+{
+    StartAsyncTraceExCwrapper(level, HITRACE_TAG_APP, name, taskId, customCategory, customArgs);
+}
+
+void OH_HiTrace_FinishAsyncTraceEx(HiTrace_Output_Level level, const char *name, int32_t taskId)
+{
+    FinishAsyncTraceExCwrapper(level, HITRACE_TAG_APP, name, taskId);
+}
+
+void OH_HiTrace_CountTraceEx(HiTrace_Output_Level level, const char *name, int64_t count)
+{
+    CountTraceExCwrapper(level, HITRACE_TAG_APP, name, count);
+}
+
+bool OH_HiTrace_IsTraceEnabled(void)
+{
+    return IsTagEnabledCwrapper(HITRACE_TAG_APP);
 }

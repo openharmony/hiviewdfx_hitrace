@@ -35,6 +35,7 @@ ohos_executable("hitrace") {
   external_deps = [
     "bounds_checking_function:libsec_shared",
     "hisysevent:libhisysevent",
+    "init:libbegetutil",
     "zlib:libz",
   ]
 

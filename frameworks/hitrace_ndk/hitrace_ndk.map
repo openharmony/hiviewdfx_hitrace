@@ -27,6 +27,12 @@
         "OH_HiTrace_GetParentSpanId";
         "OH_HiTrace_SetParentSpanId";
         "OH_HiTrace_IdToBytes";
+        "OH_HiTrace_StartTraceEx";
+        "OH_HiTrace_FinishTraceEx";
+        "OH_HiTrace_StartAsyncTraceEx";
+        "OH_HiTrace_FinishAsyncTraceEx";
+        "OH_HiTrace_CountTraceEx";
+        "OH_HiTrace_IsTraceEnabled";
     };
   local:
     *;

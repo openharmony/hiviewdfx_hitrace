@@ -375,7 +375,6 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_001, TestSize.Level0)
     SetReloadPid(false);
     SetpidHasReload(false);
     SetAddHitraceMeterMarker(TAG, traceName);
-    SetAddTraceMarkerLarge(traceName, 1);
     ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Hitrace Setting tracing_on failed.";
     list.clear();
     list = ReadTrace();
@@ -1433,7 +1432,6 @@ HWTEST_F(HitraceNDKTest, HitracePerfScoped_001, TestSize.Level1)
     std::string traceName = "HitracePerfScoped001";
     ASSERT_TRUE(CleanTrace());
     HitracePerfScoped hitrace(true, TAG, traceName);
-    hitrace.SetHitracePerfScoped(-1, -1);
     HitracePerfScoped(true, TAG, traceName);
     HitracePerfScoped(false, TAG, traceName);
 }
@@ -1448,7 +1446,6 @@ HWTEST_F(HitraceNDKTest, HitracePerfScoped_002, TestSize.Level1)
     std::string traceName = "HitracePerfScoped002";
     ASSERT_TRUE(CleanTrace());
     HitracePerfScoped hitrace(true, TAG, traceName);
-    hitrace.SetHitracePerfScoped(0, 0);
 }
 
 /**

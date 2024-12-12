@@ -82,28 +82,77 @@ ohos_unittest("HitraceCppTest") {
   }
 }
 
-config("HitraceNDKTest_config") {
+config("HitraceMeterTest_config") {
   visibility = [ ":*" ]
 
   include_dirs = [
+    "hitrace_meter",
     "$hitrace_common_path",
-    "$hitrace_cmd_path/include",
     "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
     "$hitrace_utils_path",
   ]
 }
 
-ohos_unittest("HitraceNDKTest") {
+ohos_unittest("HitraceMeterTest") {
   module_out_path = module_output_path
 
   sources = [
     "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter.cpp",
-    "hitrace_meter/hitrace_ndk_test.cpp",
+    "hitrace_meter/hitrace_meter_test.cpp",
+    "hitrace_meter/hitrace_meter_test_utils.cpp",
   ]
 
-  configs = [ ":HitraceNDKTest_config" ]
+  configs = [ ":HitraceMeterTest_config" ]
 
   cflags = [ "-DHITRACE_UNITTEST" ]
+
+  deps = [
+    "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
+    "$hitrace_interfaces_path/native/innerkits:libhitracechain",
+    "$hitrace_utils_path:hitrace_common_utils",
+  ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "googletest:gtest_main",
+    "init:libbegetutil",
+  ]
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+}
+
+config("HitraceMeterNDKTest_config") {
+  visibility = [ ":*" ]
+
+  include_dirs = [
+    "hitrace_meter",
+    "$hitrace_common_path",
+    "$hitrace_frameworks_path/include",
+    "$hitrace_interfaces_path/native/innerkits/include",
+    "$hitrace_interfaces_path/native/kits/include/hitrace",
+    "$hitrace_utils_path",
+  ]
+}
+
+ohos_unittest("HitraceMeterNDKTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    "$hitrace_frameworks_path/hitrace_ndk/hitrace_chain_ndk.c",
+    "$hitrace_frameworks_path/hitrace_ndk/hitrace_meter_ndk.c",
+    "hitrace_meter/hitrace_meter_ndk_test.cpp",
+    "hitrace_meter/hitrace_meter_test_utils.cpp",
+  ]
+
+  configs = [ ":HitraceMeterNDKTest_config" ]
+
+  cflags = [
+    "-DHITRACE_UNITTEST",
+    "-DHITRACE_METER_SDK_C",
+  ]
 
   deps = [
     "$hitrace_interfaces_path/native/innerkits:hitrace_meter",

@@ -53,3 +53,22 @@ ohos_fuzztest("HitraceDumpFuzzTest") {
     "c_utils:utils",
   ]
 }
+
+ohos_fuzztest("HitraceMeterFuzzTest") {
+  module_out_path = module_output_path
+  fuzz_config_file = "hitracemeter_fuzzer"
+  include_dirs = [
+    "common",
+    "hitracemeter_fuzzer",
+    "$hitrace_common_path",
+    "$hitrace_utils_path",
+  ]
+  sources = [ "hitracemeter_fuzzer/hitracemeter_fuzzer.cpp" ]
+
+  deps = [
+    "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
+    "$hitrace_utils_path:hitrace_common_utils",
+  ]
+
+  external_deps = [ "bounds_checking_function:libsec_shared" ]
+}
