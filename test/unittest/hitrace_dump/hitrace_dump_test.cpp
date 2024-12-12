@@ -845,16 +845,15 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_011, TestSize.Level0)
 HWTEST_F(HitraceDumpTest, DumpForCmdMode_012, TestSize.Level0)
 {
     std::string args = "tags: sched clockType: boot bufferSize:1024 overwrite: 1";
-    struct stat beforeStat = GetFileStatInfo(TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT);
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
-    ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::SUCCESS);
     sleep(1);
-    TraceRetInfo ret = DumpTraceOff();
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
-    ASSERT_TRUE(ret.outputFiles.size() > 0);
-    struct stat afterStat = GetFileStatInfo(TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT);
-    ASSERT_TRUE(afterStat.st_ctime != beforeStat.st_ctime);
+    struct stat beforeStat = GetFileStatInfo(TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
+    sleep(1);
+    struct stat afterStat = GetFileStatInfo(TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT);
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(afterStat.st_ctime != beforeStat.st_ctime);
 }
 
 /**

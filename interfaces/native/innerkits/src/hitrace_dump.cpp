@@ -259,7 +259,7 @@ bool WriteStrToFileInner(const std::string& filename, const std::string& str)
 bool WriteStrToFile(const std::string& filename, const std::string& str)
 {
     if (access((g_traceRootPath + filename).c_str(), W_OK) < 0) {
-        HILOG_ERROR(LOG_CORE, "WriteStrToFile: Failed to access %{public}s, errno(%{public}d).",
+        HILOG_WARN(LOG_CORE, "WriteStrToFile: Failed to access %{public}s, errno(%{public}d).",
             (g_traceRootPath + filename).c_str(), errno);
         return false;
     }
@@ -364,7 +364,6 @@ void SetAllTags(const TraceParams &traceParams, const std::map<std::string, Trac
                 SetTraceNodeStatus(path, true);
             }
             for (const auto& format : iter->second.formatPath) {
-                HILOG_INFO(LOG_CORE, "push %{public}s", format.c_str());
                 tagFmts.emplace_back(format);
             }
         }
@@ -736,10 +735,11 @@ bool WriteEventsFormat(int outFd, const std::string &outputFile)
         return false;
     }
     if (g_traceJsonParser == nullptr) {
-        g_traceJsonParser = std::make_shared<TraceJsonParser>(PARSE_TRACE_FORMAT_INFO);
+        g_traceJsonParser = std::make_shared<TraceJsonParser>();
     }
-    if (g_traceJsonParser->GetParserState() == PARSE_NONE) {
-        HILOG_ERROR(LOG_CORE, "WriteEventsFormat: parse hitrace json file error.");
+    if (!g_traceJsonParser->ParseTraceJson(PARSE_TRACE_FORMAT_INFO)) {
+        HILOG_ERROR(LOG_CORE, "WriteEventsFormat: Failed to parse trace format infos.");
+        close(fd);
         return false;
     }
     auto allTags = g_traceJsonParser->GetAllTagInfos();
@@ -1427,10 +1427,10 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
     }
 
     if (g_traceJsonParser == nullptr) {
-        g_traceJsonParser = std::make_shared<TraceJsonParser>(PARSE_ALL_INFO);
+        g_traceJsonParser = std::make_shared<TraceJsonParser>();
     }
-    if (g_traceJsonParser->GetParserState() == PARSE_NONE) {
-        HILOG_ERROR(LOG_CORE, "OpenTrace: parse hitrace json file error.");
+    if (!g_traceJsonParser->ParseTraceJson(PARSE_ALL_INFO)) {
+        HILOG_ERROR(LOG_CORE, "WriteEventsFormat: Failed to parse trace tag total infos.");
         return FILE_ERROR;
     }
     auto allTags = g_traceJsonParser->GetAllTagInfos();
@@ -1483,10 +1483,10 @@ TraceErrorCode OpenTrace(const std::string &args)
     }
 
     if (g_traceJsonParser == nullptr) {
-        g_traceJsonParser = std::make_shared<TraceJsonParser>(PARSE_TRACE_GROUP_INFO);
+        g_traceJsonParser = std::make_shared<TraceJsonParser>();
     }
-    if (g_traceJsonParser->GetParserState() == PARSE_NONE) {
-        HILOG_ERROR(LOG_CORE, "OpenTrace: parse hitrace json file error.");
+    if (!g_traceJsonParser->ParseTraceJson(PARSE_TRACE_GROUP_INFO)) {
+        HILOG_ERROR(LOG_CORE, "WriteEventsFormat: Failed to parse trace tag format and group infos.");
         return FILE_ERROR;
     }
     auto allTags = g_traceJsonParser->GetAllTagInfos();
@@ -1627,10 +1627,10 @@ TraceErrorCode CloseTrace()
     OHOS::system::SetParameter(TRACE_KEY_APP_PID, "-1");
 
     if (g_traceJsonParser == nullptr) {
-        g_traceJsonParser = std::make_shared<TraceJsonParser>(PARSE_TRACE_ENABLE_INFO);
+        g_traceJsonParser = std::make_shared<TraceJsonParser>();
     }
-    if (g_traceJsonParser->GetParserState() == PARSE_NONE) {
-        HILOG_ERROR(LOG_CORE, "CloseTrace: parse hitrace json file error.");
+    if (!g_traceJsonParser->ParseTraceJson(PARSE_TRACE_ENABLE_INFO)) {
+        HILOG_ERROR(LOG_CORE, "WriteEventsFormat: Failed to parse trace tag enable infos.");
         return FILE_ERROR;
     }
     auto allTags = g_traceJsonParser->GetAllTagInfos();

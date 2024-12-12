@@ -118,18 +118,16 @@ HWTEST_F(HitraceUtilsTest, CommonUtilsTest004, TestSize.Level2)
 */
 HWTEST_F(HitraceUtilsTest, JsonParserTest001, TestSize.Level2)
 {
-    std::shared_ptr<TraceJsonParser> jsonParser = std::make_shared<TraceJsonParser>(PARSE_NONE);
+    std::shared_ptr<TraceJsonParser> jsonParser = std::make_shared<TraceJsonParser>();
     ASSERT_TRUE(jsonParser->GetAllTagInfos().empty());
     ASSERT_TRUE(jsonParser->GetTagGroups().empty());
     ASSERT_TRUE(jsonParser->GetBaseFmtPath().empty());
-    ASSERT_EQ(jsonParser->GetParserState(), PARSE_NONE);
 
     ASSERT_TRUE(jsonParser->ParseTraceJson(PARSE_TRACE_BUFSZ_INFO));
     ASSERT_TRUE(jsonParser->GetTagGroups().empty());
     ASSERT_TRUE(jsonParser->GetBaseFmtPath().empty());
     ASSERT_TRUE(jsonParser->GetAllTagInfos().empty());
     ASSERT_EQ(jsonParser->GetSnapShotBufSzKb(), 0);
-    ASSERT_EQ(jsonParser->GetParserState(), TRACE_SNAPSHOT_BUFSZ);
 
     ASSERT_TRUE(jsonParser->ParseTraceJson(PARSE_TRACE_BASE_INFO));
     ASSERT_TRUE(jsonParser->GetTagGroups().empty());
@@ -139,15 +137,12 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest001, TestSize.Level2)
     ASSERT_FALSE(tags.find("sched") == tags.end());
     ASSERT_TRUE(tags["sched"].enablePath.empty());
     ASSERT_TRUE(tags["sched"].formatPath.empty());
-    ASSERT_EQ(jsonParser->GetParserState(), TRACE_SNAPSHOT_BUFSZ | TRACE_TAG_BASE_INFO);
 
     ASSERT_TRUE(jsonParser->ParseTraceJson(PARSE_TRACE_ENABLE_INFO));
     tags = jsonParser->GetAllTagInfos();
     ASSERT_FALSE(tags.find("sched") == tags.end());
     ASSERT_FALSE(tags["sched"].enablePath.empty());
     ASSERT_TRUE(tags["sched"].formatPath.empty());
-    ASSERT_EQ(jsonParser->GetParserState(), TRACE_SNAPSHOT_BUFSZ | TRACE_TAG_BASE_INFO |
-        TRACE_TAG_ENABLE_INFO);
 
     ASSERT_TRUE(jsonParser->ParseTraceJson(PARSE_TRACE_FORMAT_INFO));
     ASSERT_FALSE(jsonParser->GetBaseFmtPath().empty()) << "base format path size:" <<
@@ -156,12 +151,9 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest001, TestSize.Level2)
     ASSERT_FALSE(tags.find("sched") == tags.end());
     ASSERT_FALSE(tags["sched"].enablePath.empty());
     ASSERT_FALSE(tags["sched"].formatPath.empty());
-    ASSERT_EQ(jsonParser->GetParserState(), TRACE_SNAPSHOT_BUFSZ | TRACE_TAG_BASE_INFO |
-        TRACE_TAG_ENABLE_INFO | TRACE_TAG_FORMAT_INFO);
 
     ASSERT_TRUE(jsonParser->ParseTraceJson(PARSE_TRACE_GROUP_INFO));
     ASSERT_FALSE(jsonParser->GetTagGroups().empty());
-    ASSERT_EQ(jsonParser->GetParserState(), PARSE_ALL_INFO);
 }
 
 /**
@@ -171,9 +163,8 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest001, TestSize.Level2)
 */
 HWTEST_F(HitraceUtilsTest, JsonParserTest002, TestSize.Level2)
 {
-    std::shared_ptr<TraceJsonParser> jsonParser = std::make_shared<TraceJsonParser>(PARSE_NONE);
+    std::shared_ptr<TraceJsonParser> jsonParser = std::make_shared<TraceJsonParser>();
     ASSERT_TRUE(jsonParser->ParseTraceJson(TRACE_TAG_FORMAT_INFO));
-    ASSERT_EQ(jsonParser->GetParserState(), TRACE_TAG_BASE_INFO | TRACE_TAG_FORMAT_INFO);
     ASSERT_FALSE(jsonParser->GetBaseFmtPath().empty()) << "base format path size:" <<
         jsonParser->GetBaseFmtPath().size();
 
@@ -191,16 +182,14 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest002, TestSize.Level2)
 */
 HWTEST_F(HitraceUtilsTest, JsonParserTest003, TestSize.Level2)
 {
-    std::shared_ptr<TraceJsonParser> jsonParser =
-        std::make_shared<TraceJsonParser>(PARSE_TRACE_FORMAT_INFO);
-    ASSERT_EQ(jsonParser->GetParserState(), PARSE_TRACE_FORMAT_INFO);
+    std::shared_ptr<TraceJsonParser> jsonParser = std::make_shared<TraceJsonParser>();
+    ASSERT_TRUE(jsonParser->ParseTraceJson(PARSE_TRACE_FORMAT_INFO));
     ASSERT_FALSE(jsonParser->GetBaseFmtPath().empty()) << "base format path size:" <<
         jsonParser->GetBaseFmtPath().size();
 
     int basePathCnt1 = jsonParser->GetBaseFmtPath().size();
     GTEST_LOG_(INFO) << "base format path size:" << basePathCnt1;
     jsonParser->ParseTraceJson(PARSE_TRACE_FORMAT_INFO);
-    ASSERT_EQ(jsonParser->GetParserState(), PARSE_TRACE_FORMAT_INFO);
     ASSERT_FALSE(jsonParser->GetBaseFmtPath().empty()) << "base format path size:" <<
         jsonParser->GetBaseFmtPath().size();
     int basePathCnt2 = jsonParser->GetBaseFmtPath().size();
@@ -216,7 +205,8 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest003, TestSize.Level2)
 */
 HWTEST_F(HitraceUtilsTest, JsonParserTest004, TestSize.Level2)
 {
-    std::shared_ptr<TraceJsonParser> jsonParser = std::make_shared<TraceJsonParser>(PARSE_TRACE_BASE_INFO);
+    std::shared_ptr<TraceJsonParser> jsonParser = std::make_shared<TraceJsonParser>();
+    ASSERT_TRUE(jsonParser->ParseTraceJson(PARSE_TRACE_BASE_INFO));
     ASSERT_TRUE(jsonParser->GetTagGroups().empty());
     ASSERT_TRUE(jsonParser->GetBaseFmtPath().empty());
     auto tags = jsonParser->GetAllTagInfos();
@@ -224,7 +214,6 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest004, TestSize.Level2)
     ASSERT_FALSE(tags.find("sched") == tags.end());
     ASSERT_TRUE(tags["sched"].enablePath.empty());
     ASSERT_TRUE(tags["sched"].formatPath.empty());
-    ASSERT_EQ(jsonParser->GetParserState(), TRACE_TAG_BASE_INFO);
 }
 
 /**
@@ -234,8 +223,8 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest004, TestSize.Level2)
 */
 HWTEST_F(HitraceUtilsTest, JsonParserTest005, TestSize.Level2)
 {
-    std::shared_ptr<TraceJsonParser> jsonParser =
-        std::make_shared<TraceJsonParser>(PARSE_TRACE_GROUP_INFO);
+    std::shared_ptr<TraceJsonParser> jsonParser = std::make_shared<TraceJsonParser>();
+    ASSERT_TRUE(jsonParser->ParseTraceJson(PARSE_TRACE_GROUP_INFO));
     ASSERT_EQ(jsonParser->GetSnapShotBufSzKb(), 0);
     auto groups = jsonParser->GetTagGroups();
     ASSERT_FALSE(groups.empty());
@@ -247,7 +236,6 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest005, TestSize.Level2)
     ASSERT_FALSE(tags.find("sched") == tags.end());
     ASSERT_FALSE(tags["sched"].enablePath.empty());
     ASSERT_FALSE(tags["sched"].formatPath.empty());
-    ASSERT_EQ(jsonParser->GetParserState(), PARSE_TRACE_GROUP_INFO);
 }
 
 /**
@@ -257,7 +245,8 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest005, TestSize.Level2)
 */
 HWTEST_F(HitraceUtilsTest, JsonParserTest006, TestSize.Level2)
 {
-    std::shared_ptr<TraceJsonParser> jsonParser = std::make_shared<TraceJsonParser>(PARSE_ALL_INFO);
+    std::shared_ptr<TraceJsonParser> jsonParser = std::make_shared<TraceJsonParser>();
+    ASSERT_TRUE(jsonParser->ParseTraceJson(PARSE_ALL_INFO));
     ASSERT_EQ(jsonParser->GetSnapShotBufSzKb(), 0);
     auto groups = jsonParser->GetTagGroups();
     ASSERT_FALSE(groups.empty());
@@ -269,7 +258,6 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest006, TestSize.Level2)
     ASSERT_FALSE(tags.find("sched") == tags.end());
     ASSERT_FALSE(tags["sched"].enablePath.empty());
     ASSERT_FALSE(tags["sched"].formatPath.empty());
-    ASSERT_EQ(jsonParser->GetParserState(), PARSE_ALL_INFO);
 }
 } // namespace
 } // namespace Hitrace

@@ -102,6 +102,7 @@ bool IsFileExcludeAllKeyWords(const string& fileName, std::vector<std::string>& 
         for (auto& word : keywords) {
             if (readLine.find(word) != std::string::npos) {
                 GTEST_LOG_(ERROR) << "File contained keyword: " << word;
+                readFile.close();
                 return false;
             }
         }
