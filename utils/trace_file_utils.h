@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef TRACE_UTILS_H
-#define TRACE_UTILS_H
+#ifndef TRACE_FILE_UTILS_H
+#define TRACE_FILE_UTILS_H
 
 #include <string>
 #include <vector>
@@ -22,12 +22,6 @@
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
-#undef LOG_DOMAIN
-#define LOG_DOMAIN 0xD002D33
-
-#undef LOG_TAG
-#define LOG_TAG "HitraceInfo"
-
 std::string GenerateTraceFileName(bool isSnapshot = true);
 void DelSnapshotTraceFile(const bool deleteSavedFmt = true, const int keepFileCount = 0);
 void DelOldRecordTraceFile(const int& fileLimit);
@@ -36,4 +30,4 @@ void DelSavedEventsFormat();
 } // namespace HiTrace
 } // namespace HiviewDFX
 } // namespace OHOS
-#endif // TRACE_UTILS_H
+#endif // TRACE_FILE_UTILS_H

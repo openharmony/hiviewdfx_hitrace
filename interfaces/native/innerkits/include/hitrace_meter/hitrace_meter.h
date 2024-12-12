@@ -18,6 +18,7 @@
 
 #include <string>
 #ifdef HITRACE_UNITTEST
+#include <hilog/log.h>
 #include "param/sys_param.h"
 #endif
 #ifdef __cplusplus

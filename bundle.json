@@ -31,11 +31,11 @@
         "cJSON",
         "hilog",
         "hilog_lite",
+        "hisysevent",
         "hiview",
         "init",
         "napi",
-        "zlib",
-        "hisysevent"
+        "zlib"
       ]
     },
     "hisysevent_config": [
@@ -43,16 +43,7 @@
     ],
     "build": {
       "sub_component": [
-        "//base/hiviewdfx/hitrace/interfaces/native/innerkits:hitrace_dump",
-        "//base/hiviewdfx/hitrace/cmd:hitrace_target",
-        "//base/hiviewdfx/hitrace/cmd:hitrace.cfg",
-        "//base/hiviewdfx/hitrace/interfaces/native/innerkits:hitrace_meter",
-        "//base/hiviewdfx/hitrace/interfaces/native/innerkits:libhitracechain",
-        "//base/hiviewdfx/hitrace/interfaces/js/kits:hitrace_napi",
-        "//base/hiviewdfx/hitrace/interfaces/cj/kits:hitrace_ffi",
-        "//base/hiviewdfx/hitrace/interfaces/rust/innerkits/hitracechain:hitracechain_rust",
-        "//base/hiviewdfx/hitrace/interfaces/rust/innerkits/hitrace_meter:hitrace_meter_rust",
-        "//base/hiviewdfx/hitrace/frameworks/hitrace_ndk:hitrace_ndk"
+        "//base/hiviewdfx/hitrace:hitrace_all_target"
       ],
       "inner_kits": [
         {
@@ -106,6 +97,7 @@
         }
       ],
       "test": [
+        "//base/hiviewdfx/hitrace/test:hitrace_systemtest",
         "//base/hiviewdfx/hitrace/test:hitrace_unittest",
         "//base/hiviewdfx/hitrace/test:hitrace_fuzztest"
       ]

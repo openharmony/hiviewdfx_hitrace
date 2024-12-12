@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,36 +13,35 @@
  * limitations under the License.
  */
 
-#ifndef BIN_INCLUDE_HITRACE_CAPTURE_H
-#define BIN_INCLUDE_HITRACE_CAPTURE_H
+#ifndef HITRACE_COMMON_UTILS_H
+#define HITRACE_COMMON_UTILS_H
 
-#include <cstdint>
-#include <iosfwd>
 #include <string>
 
 namespace OHOS {
 namespace HiviewDFX {
-namespace HitraceOsal {
-enum TraceType { USER, KERNEL };
-constexpr int MAX_SYS_FILES = 11;
-struct TagCategory {
-    std::string name;
-    std::string description;
-    uint64_t tag;
-    TraceType type;
-    struct {
-        std::string path;
-    } SysFiles[MAX_SYS_FILES];
-};
+namespace Hitrace {
+std::string CanonicalizeSpecPath(const char* src);
+
+bool MarkClockSync(const std::string& traceRootPath);
+
+bool IsNumber(const std::string &str);
+
+int GetCpuProcessors();
+
+void ReadCurrentCpuFrequencies(std::string& freqs);
 
 std::string GetPropertyInner(const std::string& property, const std::string& value);
+
 bool SetPropertyInner(const std::string& property, const std::string& value);
-bool RefreshBinderServices(void);
-bool RefreshHalServices(void);
+
 bool IsHmKernel();
+
 bool IsDeveloperMode();
+
 bool IsRootVersion();
-}
-}
-}
-#endif // BIN_INCLUDE_HITRACE_CAPTURE_H
+} // namespace Hitrace
+} // namespace HiviewDFX
+} // namespace OHOS
+
+#endif // HITRACE_COMMON_UTILS_H

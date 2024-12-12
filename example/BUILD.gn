@@ -1,0 +1,50 @@
+# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/hitrace/hitrace.gni")
+import("//build/ohos.gni")
+
+ohos_executable("hitrace_example") {
+  sources = [ "hitrace_example.cpp" ]
+  deps = [ "$hitrace_interfaces_path/native/innerkits:hitrace_meter" ]
+
+  if (defined(ohos_lite)) {
+    external_deps = [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps = [ "hilog:libhilog" ]
+  }
+  install_enable = false
+  subsystem_name = "hiviewdfx"
+  part_name = "hitrace"
+}
+
+ohos_rust_executable("hitrace_example_rust") {
+  sources = [ "rust/main.rs" ]
+
+  deps = [
+    "$hitrace_interfaces_path/rust/innerkits/hitrace_meter:hitrace_meter_rust",
+  ]
+  install_enable = false
+  subsystem_name = "hiviewdfx"
+  part_name = "hitrace"
+}
+
+group("hitrace_example_target") {
+  if (device_company != "qemu" && hitrace_support_executable_file &&
+      hiview_enable) {
+    deps = [
+      ":hitrace_example",
+      ":hitrace_example_rust",
+    ]
+  }
+}

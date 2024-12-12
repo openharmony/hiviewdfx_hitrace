@@ -20,10 +20,14 @@
 namespace OHOS {
 namespace HiviewDFX {
 namespace {
+#ifdef LOG_DOMAIN
 #undef LOG_DOMAIN
 #define LOG_DOMAIN 0xD002D33
+#endif
+#ifdef LOG_TAG
 #undef LOG_TAG
-#define LOG_TAG "HITRACE_UTIL_NAPI"
+#define LOG_TAG "HitraceUtilNapi"
+#endif
 
 constexpr uint32_t UINT32_T_PRO_DEFAULT_VALUE = 0;
 constexpr uint64_t UINT64_T_PRO_DEFAULT_VALUE = 0;
