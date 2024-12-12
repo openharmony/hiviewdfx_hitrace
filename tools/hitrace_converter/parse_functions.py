@@ -730,7 +730,8 @@ def parse_tracing_mark_write(data, one_event):
             result_str = result_str[:-1]
         elif result_str.startswith("S|") or result_str.startswith("F|") or result_str.startswith("C|"):
             pos = result_str.rfind(' ')
-            result_str = result_str[:pos] + "|" + result_str[pos + 1:]
+            if pos != -1:
+                result_str = result_str[:pos + 1] + "|" + result_str[pos + 1:]
     return result_str
 
 
