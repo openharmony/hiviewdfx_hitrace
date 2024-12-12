@@ -628,10 +628,10 @@ static void DumpTrace()
 static bool InitAllSupportTags()
 {
     if (g_traceJsonParser == nullptr) {
-        g_traceJsonParser = std::make_shared<TraceJsonParser>(PARSE_TRACE_BASE_INFO);
+        g_traceJsonParser = std::make_shared<TraceJsonParser>();
     }
-    if (g_traceJsonParser->GetParserState() == PARSE_NONE) {
-        ConsoleLog("error: hitrace_utils.json file is damaged.");
+    if (!g_traceJsonParser->ParseTraceJson(PARSE_TRACE_BASE_INFO)) {
+        ConsoleLog("error: failed to parse trace tag information from configuration file.");
         return false;
     }
     return true;
