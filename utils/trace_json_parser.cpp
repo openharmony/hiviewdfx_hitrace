@@ -197,15 +197,6 @@ uint8_t UpdateParseItem(const uint8_t parseItem)
 }
 }
 
-TraceJsonParser::TraceJsonParser(const ParsePolicy policy)
-{
-    if (policy != PARSE_NONE) {
-        if (!ParseTraceJson(policy)) {
-            HILOG_ERROR(LOG_CORE, "Failed to init TraceJsonParser, input policy is %{public}d", policy);
-        }
-    }
-}
-
 bool TraceJsonParser::ParseTraceJson(const uint8_t policy)
 {
     if ((policy & parserState_) == policy) {
@@ -245,8 +236,9 @@ bool TraceJsonParser::ParseTraceJson(const uint8_t policy)
     }
 
     cJSON_Delete(rootNode);
-    HILOG_INFO(LOG_CORE, "ParseTraceJson: parse done, parser state(%{public}zu)", parserState_);
-    return true;
+    HILOG_INFO(LOG_CORE, "ParseTraceJson: parse done, input policy(%{public}u), parser state(%{public}u)",
+        policy, parserState_);
+    return (policy & parserState_) == policy;
 }
 } // namespace HiTrace
 } // namespace HiviewDFX

@@ -56,14 +56,12 @@ enum ParsePolicy : uint8_t {
 
 class TraceJsonParser {
 public:
-    TraceJsonParser() = delete;
-    explicit TraceJsonParser(const ParsePolicy policy);
+    TraceJsonParser() = default;
     bool ParseTraceJson(const uint8_t policy);
     std::map<std::string, TraceTag>& GetAllTagInfos() { return traceTagInfos_; }
     std::map<std::string, std::vector<std::string>>& GetTagGroups() { return tagGroups_; }
-    std::vector<std::string>& GetBaseFmtPath() { return baseTraceFormats_; }
+    std::vector<std::string> GetBaseFmtPath() { return baseTraceFormats_; }
     int GetSnapShotBufSzKb() { return snapshotBufSzKb_; }
-    uint8_t GetParserState() { return parserState_; }
 
 private:
     uint8_t parserState_ = PARSE_NONE;
