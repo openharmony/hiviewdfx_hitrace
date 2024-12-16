@@ -196,7 +196,7 @@ void HiTraceChainEnd(const HiTraceIdStruct* pId)
     }
 
     if (!HiTraceChainIsFlagEnabled(&(pThreadId->id), HITRACE_FLAG_NO_BE_INFO)) {
-        HILOG_DEBUG(LOG_CORE, "HiTraceEnd.");
+        HILOG_INFO(LOG_CORE, "HiTraceEnd.");
     }
 
     HiTraceChainInitId(&(pThreadId->id));

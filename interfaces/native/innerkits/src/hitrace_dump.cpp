@@ -1034,14 +1034,10 @@ bool ReadRawTrace(std::string &outputFileName)
     }
     ssize_t writeRet = TEMP_FAILURE_RETRY(write(outFd, reinterpret_cast<char*>(&header), sizeof(header)));
     if (writeRet < 0) {
-        HILOG_WARN(LOG_CORE, "WriteFile Fail, errno: %{public}d.", errno);
+        HILOG_WARN(LOG_CORE, "Failed to write trace file header, errno: %{public}s, headerLen: %{public}zu.",
+            strerror(errno), sizeof(header));
+        close(outFd);
         return false;
-    } else {
-        if (writeRet != static_cast<ssize_t>(sizeof(header))) {
-            HILOG_WARN(LOG_CORE, "Failed to write full info, writeLen: %{public}zd, FullLen: %{public}zu.",
-                writeRet, sizeof(header));
-            return false;
-        }
     }
 
     if (WriteEventsFormat(outFd, outPath) && WriteCpuRaw(outFd, outPath) &&
