@@ -106,6 +106,7 @@
         }
       ],
       "test": [
+        "//base/hiviewdfx/hitrace/test:hitrace_systemtest",
         "//base/hiviewdfx/hitrace/test:hitrace_unittest",
         "//base/hiviewdfx/hitrace/test:hitrace_fuzztest"
       ]

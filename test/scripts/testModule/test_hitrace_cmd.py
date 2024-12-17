@@ -381,4 +381,25 @@ class TestHitraceCmd:
         for word_cmd in word_cmds3:
             get_shell_result(word_cmd, word_cmds3.get(word_cmd))
 
+    @pytest.mark.L0
+    def test_capture_cpu_idle(self):
+        word_cmds1 = {
+            'hdc shell hitrace -t 5 idle': 'cpu_idle',
+        }
+        
+        for word_cmd in word_cmds1:
+            get_shell_result(word_cmd, word_cmds1.get(word_cmd))
+
+    @pytest.mark.L0
+    def test_max_parameters_cmd(self):
+        hitrace_cmd = 'hdc shell hitrace -t 5'
+        for i in range(1, 256):
+            hitrace_cmd += ' app'
+        word_cmds1 = {
+            hitrace_cmd: 'error: the number of input arguments exceeds the upper limit',
+        }
+        
+        for word_cmd in word_cmds1:
+            get_shell_result(word_cmd, word_cmds1.get(word_cmd))
+
 

@@ -358,26 +358,6 @@ bool RunCmd(const string& cmdstr)
 }
 
 /**
- * @tc.name: HiTraceNDKTest_StartTrace_001
- * @tc.desc: tracing_mark_write file node normal output start tracing and end tracing.
- * @tc.type: FUNC
- */
-HWTEST_F(HitraceNDKTest, StartTrace_001, TestSize.Level0)
-{
-    std::string traceName = "HitraceStartTrace001";
-    ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
-    StartTrace(TAG, traceName);
-    FinishTrace(TAG);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
-    vector<string> list = ReadTrace();
-    bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
-    ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
-    bool isFinishSuc = GetTraceResult('E', traceName, nullptr, 0, list);
-    ASSERT_TRUE(isFinishSuc) << "Hitrace Can't find \"E|\" from trace.";
-}
-
-/**
  * @tc.name: HiTraceNDKTest_AddHitraceMeterMarker_001
  * @tc.desc: Testing AddHitraceMeterMarker function
  * @tc.type: FUNC
@@ -769,6 +749,26 @@ HWTEST_F(HitraceNDKTest, StartAsyncHiTraceIdTest_001, TestSize.Level0)
 }
 
 /**
+ * @tc.name: HiTraceNDKTest_StartTrace_001
+ * @tc.desc: tracing_mark_write file node normal output start tracing and end tracing.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, StartTrace_001, TestSize.Level0)
+{
+    std::string traceName = "HitraceStartTrace001";
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Hitrace Setting tracing_on failed.";
+    StartTrace(TAG, traceName);
+    FinishTrace(TAG);
+    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Hitrace Setting tracing_on failed.";
+    vector<string> list = ReadTrace();
+    bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
+    ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
+    bool isFinishSuc = GetTraceResult('E', traceName, nullptr, 0, list);
+    ASSERT_TRUE(isFinishSuc) << "Hitrace Can't find \"E|\" from trace.";
+}
+
+/**
  * @tc.name: HiTraceNDKTest_StartTrace_002
  * @tc.desc: tracing_mark_write file node has no output.
  * @tc.type: FUNC
@@ -1132,26 +1132,6 @@ HWTEST_F(HitraceNDKTest, StartTrace_020, TestSize.Level1)
 }
 
 /**
- * @tc.name: HiTraceNDKTest_StartTraceWrapper_001
- * @tc.desc: Testing StartTraceWrapper function
- * @tc.type: FUNC
- */
-HWTEST_F(HitraceNDKTest, StartTraceWrapper_001, TestSize.Level0)
-{
-    string traceName = "StartTraceWrapper001";
-    ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
-    StartTraceWrapper(TAG, traceName.c_str());
-    FinishTrace(TAG);
-    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
-    vector<string> list = ReadTrace();
-    bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
-    ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
-    bool isFinishSuc = GetTraceResult('E', traceName, nullptr, 0, list);
-    ASSERT_TRUE(isFinishSuc) << "Hitrace Can't find \"E|\" from trace.";
-}
-
-/**
  * @tc.name: HiTraceNDKTest_StartAsyncTraceWrapper
  * @tc.desc: Testing  StartAsyncTraceWrapper function
  * @tc.type: FUNC
@@ -1170,6 +1150,26 @@ HWTEST_F(HitraceNDKTest, StartAsyncTraceWrapper_001, TestSize.Level1)
     EXPECT_FALSE(isStartSuc) << "Hitrace Can't find \"S|pid|" + traceName + "\" from trace.";
     bool isFinishSuc = GetTraceResult('F', traceName, nullptr, 0, list);
     EXPECT_FALSE(isFinishSuc) << "Hitrace Can't find \"F|pid|" + traceName + "\" from trace.";
+}
+
+/**
+ * @tc.name: HiTraceNDKTest_StartTraceWrapper_001
+ * @tc.desc: Testing StartTraceWrapper function
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceNDKTest, StartTraceWrapper_001, TestSize.Level0)
+{
+    string traceName = "StartTraceWrapper001";
+    ASSERT_TRUE(CleanTrace());
+    ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
+    StartTraceWrapper(TAG, traceName.c_str());
+    FinishTrace(TAG);
+    ASSERT_TRUE(SetFtrace(TRACING_ON, false)) << "Setting tracing_on failed.";
+    vector<string> list = ReadTrace();
+    bool isStartSuc = GetTraceResult('B', traceName, nullptr, 0, list);
+    ASSERT_TRUE(isStartSuc) << "Hitrace Can't find \"B|pid|" + traceName + "\" from trace.";
+    bool isFinishSuc = GetTraceResult('E', traceName, nullptr, 0, list);
+    ASSERT_TRUE(isFinishSuc) << "Hitrace Can't find \"E|\" from trace.";
 }
 
 /**
@@ -1234,106 +1234,10 @@ HWTEST_F(HitraceNDKTest, StartTrace_023, TestSize.Level1)
 
 /**
  * @tc.name: HiTraceNDKTest_StartTrace_024
- * @tc.desc: Testing trace cmd function
- * @tc.type: FUNC
- */
-HWTEST_F(HitraceNDKTest, StartTrace_024, TestSize.Level1)
-{
-    ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(RunCmd("hitrace -h > /data/local/tmp/test1.txt"));
-    ASSERT_TRUE(RunCmd("hitrace -l > /data/local/tmp/test2.txt"));
-    ASSERT_TRUE(RunCmd("hitrace --list_categories > /data/local/tmp/test3.txt"));
-    ASSERT_TRUE(RunCmd("hitrace --trace_begin > /data/local/tmp/test4.txt"));
-    ASSERT_TRUE(RunCmd("hitrace --trace_dump > /data/local/tmp/test5.txt"));
-    ASSERT_TRUE(RunCmd("hitrace --trace_finish > /data/local/tmp/test6.txt"));
-    ASSERT_TRUE(RunCmd("hitrace --hlep > /data/local/tmp/test7.txt"));
-    ASSERT_TRUE(RunCmd("hitrace -a > /data/local/tmp/test8.txt"));
-    ASSERT_TRUE(RunCmd("hitrace --trace_clock > /data/local/tmp/test9.txt"));
-    ASSERT_TRUE(RunCmd("hitrace -t a > /data/local/tmp/test10.txt"));
-    ASSERT_TRUE(RunCmd("hitrace -t -1 > /data/local/tmp/test11.txt"));
-    ASSERT_TRUE(RunCmd("hitrace --time a > /data/local/tmp/test12.txt"));
-    ASSERT_TRUE(RunCmd("hitrace --time -1 > /data/local/tmp/test13.txt"));
-    ASSERT_TRUE(RunCmd("hitrace -b a > /data/local/tmp/test14.txt"));
-    ASSERT_TRUE(RunCmd("hitrace -b -1 > /data/local/tmp/test15.txt"));
-    ASSERT_TRUE(RunCmd("hitrace --buffer_size a > /data/local/tmp/test16.txt"));
-    ASSERT_TRUE(RunCmd("hitrace --buffer_size -1 > /data/local/tmp/test17.txt"));
-    ASSERT_TRUE(RunCmd("hitrace -z --time 1 --buffer_size 10240 --trace_clock clock ohos > /data/local/tmp/trace01"));
-    ASSERT_TRUE(RunCmd("hitrace -z -t 1 -b 10240 --trace_clock clock --overwrite ohos > /data/local/tmp/trace02"));
-    ASSERT_TRUE(RunCmd("hitrace -t 1 --trace_clock boot ohos > /data/local/tmp/trace03"));
-    ASSERT_TRUE(RunCmd("hitrace -t 1 --trace_clock global ohos > /data/local/tmp/trace04"));
-    ASSERT_TRUE(RunCmd("hitrace -t 1 --trace_clock mono ohos > /data/local/tmp/trace05"));
-    ASSERT_TRUE(RunCmd("hitrace -t 1 --trace_clock uptime ohos > /data/local/tmp/trace06"));
-    ASSERT_TRUE(RunCmd("hitrace -t 1 --trace_clock perf ohos > /data/local/tmp/trace07"));
-    ASSERT_TRUE(RunCmd("hitrace -b 2048 -t 10 -o /data/local/tmp/test20.txt sched"));
-    ASSERT_TRUE(RunCmd("hitrace -b 2048 -t 10 -o /data/local/tmp/test21 load"));
-    ASSERT_TRUE(RunCmd("hitrace --trace_begin --record app > /data/local/tmp/test22.txt"));
-    ASSERT_TRUE(RunCmd("hitrace --trace_finish --record > /data/local/tmp/test23.txt"));
-    ASSERT_TRUE(RunCmd("hitrace --trace_begin --record app --file_size 10240 > /data/local/tmp/test24.txt"));
-    ASSERT_TRUE(RunCmd("hitrace --trace_begin --record app --file_size 102400 > /data/local/tmp/test25.txt"));
-    ASSERT_TRUE(RunCmd("hitrace --trace_finish --record > /data/local/tmp/test26.txt"));
-    ASSERT_TRUE(RunCmd("hitrace --start_bgsrv > /data/local/tmp/test27.txt"));
-    ASSERT_TRUE(RunCmd("hitrace --dump_bgsrv > /data/local/tmp/test28.txt"));
-    ASSERT_TRUE(RunCmd("hitrace --stop_bgsrv > /data/local/tmp/test29.txt"));
-    ASSERT_TRUE(RunCmd("hitrace -t 3 -b 10240 --text app --output /data/local/tmp/trace.txt"));
-    ASSERT_TRUE(RunCmd("hitrace -t 3 -b 10240 --raw app > /data/local/tmp/test30.txt"));
-    ASSERT_TRUE(RunCmd("hitrace -t 3 -b 10240 --raw app --file_size 102400 > /data/local/tmp/test31.txt"));
-    ASSERT_TRUE(RunCmd("hitrace --trace_finish_nodump > /data/local/tmp/test3.txt"));
-}
-
-/**
- * @tc.name: HiTraceNDKTest_StartTrace_025
- * @tc.desc: Testing bytrace cmd function
- * @tc.type: FUNC
- */
-HWTEST_F(HitraceNDKTest, StartTrace_025, TestSize.Level1)
-{
-    ASSERT_TRUE(CleanTrace());
-    ASSERT_TRUE(RunCmd("bytrace -h > /data/local/tmp/test1.txt"));
-    ASSERT_TRUE(RunCmd("bytrace -l > /data/local/tmp/test2.txt"));
-    ASSERT_TRUE(RunCmd("bytrace --list_categories > /data/local/tmp/test3.txt"));
-    ASSERT_TRUE(RunCmd("bytrace --trace_begin > /data/local/tmp/test4.txt"));
-    ASSERT_TRUE(RunCmd("bytrace --trace_dump > /data/local/tmp/test5.txt"));
-    ASSERT_TRUE(RunCmd("bytrace --trace_finish > /data/local/tmp/test6.txt"));
-    ASSERT_TRUE(RunCmd("bytrace --hlep > /data/local/tmp/test7.txt"));
-    ASSERT_TRUE(RunCmd("bytrace -a > /data/local/tmp/test8.txt"));
-    ASSERT_TRUE(RunCmd("bytrace --trace_clock > /data/local/tmp/test9.txt"));
-    ASSERT_TRUE(RunCmd("bytrace -t a > /data/local/tmp/test10.txt"));
-    ASSERT_TRUE(RunCmd("bytrace -t -1 > /data/local/tmp/test11.txt"));
-    ASSERT_TRUE(RunCmd("bytrace --time a > /data/local/tmp/test12.txt"));
-    ASSERT_TRUE(RunCmd("bytrace --time -1 > /data/local/tmp/test13.txt"));
-    ASSERT_TRUE(RunCmd("bytrace -b a > /data/local/tmp/test14.txt"));
-    ASSERT_TRUE(RunCmd("bytrace -b -1 > /data/local/tmp/test15.txt"));
-    ASSERT_TRUE(RunCmd("bytrace --buffer_size a > /data/local/tmp/test16.txt"));
-    ASSERT_TRUE(RunCmd("bytrace --buffer_size -1 > /data/local/tmp/test17.txt"));
-    ASSERT_TRUE(RunCmd("bytrace -z --time 1 --buffer_size 10240 --trace_clock clock ohos > /data/local/tmp/trace01"));
-    ASSERT_TRUE(RunCmd("bytrace -z -t 1 -b 10240 --trace_clock clock --overwrite ohos > /data/local/tmp/trace02"));
-    ASSERT_TRUE(RunCmd("bytrace -t 1 --trace_clock boot ohos > /data/local/tmp/trace03"));
-    ASSERT_TRUE(RunCmd("bytrace -t 1 --trace_clock global ohos > /data/local/tmp/trace04"));
-    ASSERT_TRUE(RunCmd("bytrace -t 1 --trace_clock mono ohos > /data/local/tmp/trace05"));
-    ASSERT_TRUE(RunCmd("bytrace -t 1 --trace_clock uptime ohos > /data/local/tmp/trace06"));
-    ASSERT_TRUE(RunCmd("bytrace -t 1 --trace_clock perf ohos > /data/local/tmp/trace07"));
-    ASSERT_TRUE(RunCmd("bytrace -b 2048 -t 10 -o /data/local/tmp/test20.txt sched"));
-    ASSERT_TRUE(RunCmd("bytrace -b 2048 -t 10 -o /data/local/tmp/test21 load"));
-    ASSERT_TRUE(RunCmd("bytrace --trace_begin --record app > /data/local/tmp/test22.txt"));
-    ASSERT_TRUE(RunCmd("bytrace --trace_finish --record > /data/local/tmp/test23.txt"));
-    ASSERT_TRUE(RunCmd("bytrace --trace_begin --record app --file_size 10240 > /data/local/tmp/test24.txt"));
-    ASSERT_TRUE(RunCmd("bytrace --trace_begin --record app --file_size 102400 > /data/local/tmp/test25.txt"));
-    ASSERT_TRUE(RunCmd("bytrace --trace_finish --record > /data/local/tmp/test26.txt"));
-    ASSERT_TRUE(RunCmd("bytrace --start_bgsrv > /data/local/tmp/test27.txt"));
-    ASSERT_TRUE(RunCmd("bytrace --dump_bgsrv > /data/local/tmp/test28.txt"));
-    ASSERT_TRUE(RunCmd("bytrace --stop_bgsrv > /data/local/tmp/test29.txt"));
-    ASSERT_TRUE(RunCmd("bytrace -t 3 -b 10240 --text app --output /data/local/tmp/trace.txt"));
-    ASSERT_TRUE(RunCmd("bytrace -t 3 -b 10240 --raw app > /data/local/tmp/test30.txt"));
-    ASSERT_TRUE(RunCmd("bytrace -t 3 -b 10240 --raw app --file_size 102400 > /data/local/tmp/test31.txt"));
-    ASSERT_TRUE(RunCmd("bytrace --trace_finish_nodump > /data/local/tmp/test3.txt"));
-}
-
-/**
- * @tc.name: HiTraceNDKTest_StartTrace_026
  * @tc.desc: Testing IsTagEnabled
  * @tc.type: FUNC
  */
-HWTEST_F(HitraceNDKTest, StartTrace_026, TestSize.Level1)
+HWTEST_F(HitraceNDKTest, StartTrace_024, TestSize.Level1)
 {
     const std::string keyTraceTag = "debug.hitrace.tags.enableflags";
     ASSERT_TRUE(SetProperty(keyTraceTag, std::to_string(HITRACE_TAG_USB | HITRACE_TAG_HDF)));
@@ -1345,11 +1249,11 @@ HWTEST_F(HitraceNDKTest, StartTrace_026, TestSize.Level1)
 }
 
 /**
- * @tc.name: HiTraceNDKTest_StartTrace_027
+ * @tc.name: HiTraceNDKTest_StartTrace_025
  * @tc.desc: Testing IsTagEnabled with multiple tags
  * @tc.type: FUNC
  */
-HWTEST_F(HitraceNDKTest, StartTrace_027, TestSize.Level1)
+HWTEST_F(HitraceNDKTest, StartTrace_025, TestSize.Level1)
 {
     const std::string keyTraceTag = "debug.hitrace.tags.enableflags";
     ASSERT_TRUE(SetProperty(keyTraceTag, std::to_string(HITRACE_TAG_ZIMAGE | HITRACE_TAG_HDF | HITRACE_TAG_ZAUDIO)));
@@ -1361,11 +1265,11 @@ HWTEST_F(HitraceNDKTest, StartTrace_027, TestSize.Level1)
 }
 
 /**
- * @tc.name: HiTraceNDKTest_StartTrace_028
+ * @tc.name: HiTraceNDKTest_StartTrace_026
  * @tc.desc: tracing_mark_write file node general output start and end tracing for debugging.
  * @tc.type: FUNC
  */
-HWTEST_F(HitraceNDKTest, StartTrace_028, TestSize.Level1)
+HWTEST_F(HitraceNDKTest, StartTrace_026, TestSize.Level1)
 {
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";
@@ -1374,13 +1278,13 @@ HWTEST_F(HitraceNDKTest, StartTrace_028, TestSize.Level1)
 }
 
 /**
- * @tc.name: HiTraceNDKTest_StartTrace_029
+ * @tc.name: HiTraceNDKTest_StartTrace_027
  * @tc.desc: tracing_mark_write file node normal output start trace and end trace async with args
  * @tc.type: FUNC
  */
-HWTEST_F(HitraceNDKTest, StartTrace_029, TestSize.Level1)
+HWTEST_F(HitraceNDKTest, StartTrace_027, TestSize.Level1)
 {
-    string traceName = "asyncTraceTest029-%d";
+    string traceName = "asyncTraceTest027-%d";
     int taskId = 123;
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON, true)) << "Setting tracing_on failed.";

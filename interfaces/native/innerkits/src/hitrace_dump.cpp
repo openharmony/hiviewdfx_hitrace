@@ -1217,7 +1217,6 @@ bool CheckParam()
 
     if (currentTags == 0) {
         HILOG_ERROR(LOG_CORE, "tag is 0, restart it.");
-        RestartService();
         return false;
     }
     HILOG_ERROR(LOG_CORE, "trace is being used, restart later.");
@@ -1231,7 +1230,6 @@ bool CheckTraceFile()
         return true;
     }
     HILOG_ERROR(LOG_CORE, "tracing_on is 0, restart it.");
-    RestartService();
     return false;
 }
 
@@ -1260,6 +1258,7 @@ void MonitorServiceTask()
         }
 
         if (!CheckServiceRunning()) {
+            RestartService();
             continue;
         }
 
@@ -1516,7 +1515,7 @@ TraceErrorCode OpenTrace(const std::string &args)
 
 TraceRetInfo DumpTrace(int maxDuration, uint64_t utTraceEndTime)
 {
-    std::lock_guard<std::mutex> lock(g_traceMutex);
+    std::unique_lock<std::mutex> lock(g_traceMutex);
     HILOG_INFO(LOG_CORE, "DumpTrace with timelimit start, timelimit is %{public}d, endtime is (%{public}" PRIu64 ").",
         maxDuration, utTraceEndTime);
     TraceRetInfo ret;
@@ -1527,6 +1526,8 @@ TraceRetInfo DumpTrace(int maxDuration, uint64_t utTraceEndTime)
         return ret;
     }
     if (!CheckServiceRunning()) {
+        lock.unlock();
+        RestartService();
         HILOG_ERROR(LOG_CORE, "DumpTrace: TRACE_IS_OCCUPIED.");
         ret.errorCode = TRACE_IS_OCCUPIED;
         return ret;

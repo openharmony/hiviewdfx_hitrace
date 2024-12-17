@@ -13,24 +13,30 @@
  * limitations under the License.
  */
 
-#include "hitrace_dump.h"
-#include "common_utils.h"
+#include <cinttypes>
+#include <cstdio>
+#include <ctime>
+#include <dirent.h>
+#include <fcntl.h>
+#include <filesystem>
+#include <sys/file.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
-#include <iostream>
-#include <memory>
 #include <fstream>
+#include <iostream>
+#include <map>
+#include <memory>
 #include <string>
 #include <vector>
-#include <map>
 
-#include <unistd.h>
-#include <cstdio>
-#include <fcntl.h>
-#include "securec.h"
-
+#include "common_utils.h"
+#include "gtest/gtest.h"
 #include "hilog/log.h"
+#include "hitrace_osal.h"
+#include "hitrace_dump.h"
 #include "parameters.h"
-#include <gtest/gtest.h>
+#include "securec.h"
 
 using namespace OHOS::HiviewDFX::Hitrace;
 using namespace testing::ext;
@@ -47,6 +53,11 @@ namespace {
 const std::string TAG_PROP = "debug.hitrace.tags.enableflags";
 const std::string DEFAULT_OUTPUT_DIR = "/data/log/hitrace/";
 const std::string LOG_DIR = "/data/log/";
+const std::string TRACE_SNAPSHOT_PREFIX = "trace_";
+const std::string SAVED_EVENTS_FORMAT_PATH = DEFAULT_OUTPUT_DIR + "saved_events_format";
+const int BUFFER_SIZE = 255;
+const int DUMPTRACE_COUNT = 25;
+const int SNAPSHOT_FILE_MAX_COUNT = 20;
 constexpr uint32_t SLEEP_TIME = 10; // sleep 10ms
 constexpr uint32_t TWO_SEC = 2;
 constexpr uint32_t TEN_SEC = 10;
@@ -103,6 +114,57 @@ bool RunCmd(const string& cmdstr)
     }
     pclose(fp);
     return true;
+}
+
+bool CountSnapShotTraceFile(int& fileCount)
+{
+    if (access(DEFAULT_OUTPUT_DIR.c_str(), F_OK) != 0) {
+        return false;
+    }
+    DIR* dirPtr = opendir(DEFAULT_OUTPUT_DIR.c_str());
+    if (dirPtr == nullptr) {
+        HILOG_ERROR(LOG_CORE, "Failed to opendir %{public}s.", DEFAULT_OUTPUT_DIR.c_str());
+        return false;
+    }
+    struct dirent* ptr = nullptr;
+    while ((ptr = readdir(dirPtr)) != nullptr) {
+        if (ptr->d_type == DT_REG) {
+            std::string name = std::string(ptr->d_name);
+            if (name.compare(0, TRACE_SNAPSHOT_PREFIX.size(), TRACE_SNAPSHOT_PREFIX) != 0) {
+                continue;
+            }
+        }
+    }
+    closedir(dirPtr);
+    return true;
+}
+
+int HasProcessWithName(const std::string& name)
+{
+    std::array<char, BUFFER_SIZE> buffer;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen("ps -ef | grep HitraceDump", "r"), pclose);
+    if (pipe == nullptr) {
+        HILOG_ERROR(LOG_CORE, "Error: run command failed.");
+        return -1;
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        std::string line(buffer.data());
+        size_t found = line.rfind(name);
+        if (found != std::string::npos && (found == line.length() - name.length() ||
+            line[found + name.length()] == ' ')) {
+                return 1;
+            }
+    }
+    return 0;
+}
+
+struct stat GetFileStatInfo(const std::string& filePath)
+{
+    struct stat fileStat;
+    if (stat(filePath.c_str(), &fileStat) != 0) {
+        HILOG_ERROR(LOG_CORE, "Error getting file status: %{public}d.", errno);
+    }
+    return fileStat;
 }
 
 class HitraceDumpTest : public testing::Test {
@@ -371,6 +433,25 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_007, TestSize.Level0)
 }
 
 /**
+ * @tc.name: DumpTraceTest_008
+ * @tc.desc: Test Test DumpTrace(int maxDuration) for check process is recycled.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpTraceTest_008, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"default"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    for (int i = 0; i < 10; i++) {
+        int maxDuration = 1;
+        TraceRetInfo ret = DumpTrace(maxDuration);
+        ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
+        sleep(1);
+        ASSERT_TRUE(HasProcessWithName("HitraceDump") == 0);
+    }
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
  * @tc.name: DumpForServiceMode_001
  * @tc.desc: The correct usage of grasping trace in SERVICE_MODE.
  * @tc.type: FUNC
@@ -500,6 +581,45 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_006, TestSize.Level0)
 
     SetSysInitParamTags(123);
     ASSERT_TRUE(SetCheckParam() == false);
+
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpForServiceMode_007
+ * @tc.desc: File aging and deletion function in SERVICE_MODE with commerical version.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForServiceMode_007, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"default"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    int fileCount = 0;
+    for (int i = 0; i < DUMPTRACE_COUNT; i++) {
+        TraceRetInfo ret = DumpTrace();
+        ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
+        sleep(1);
+    }
+    if (!OHOS::HiviewDFX::HitraceOsal::IsRootVersion()) {
+        ASSERT_TRUE(CountSnapShotTraceFile(fileCount));
+        ASSERT_TRUE(fileCount > 0 && fileCount <= SNAPSHOT_FILE_MAX_COUNT);
+    }
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpForServiceMode_008
+ * @tc.desc: Test TRACE_IS_OCCUPIED.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForServiceMode_008, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+
+    SetSysInitParamTags(123);
+    OHOS::system::SetParameter("debug.hitrace.tags.enableflags", std::to_string(0));
+    ASSERT_TRUE(DumpTrace().errorCode == TraceErrorCode::TRACE_IS_OCCUPIED);
 
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
@@ -754,6 +874,26 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_011, TestSize.Level0)
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::WRONG_TRACE_MODE);
     ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::WRONG_TRACE_MODE);
 
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpForCmdMode_012
+ * @tc.desc: Test saved_events_format regenerate.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForCmdMode_012, TestSize.Level0)
+{
+    std::string args = "tags: sched clockType: boot bufferSize:1024 overwrite: 1";
+    struct stat beforeStat = GetFileStatInfo(SAVED_EVENTS_FORMAT_PATH);
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::SUCCESS);
+    sleep(1);
+    TraceRetInfo ret = DumpTraceOff();
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(ret.outputFiles.size() > 0);
+    struct stat afterStat = GetFileStatInfo(SAVED_EVENTS_FORMAT_PATH);
+    ASSERT_TRUE(afterStat.st_ctime != beforeStat.st_ctime);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
