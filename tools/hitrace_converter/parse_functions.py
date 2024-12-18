@@ -16,6 +16,7 @@
 #
 import re
 
+
 def parse_bytes_to_str(data):
     decoded_str = ""
 
@@ -23,10 +24,10 @@ def parse_bytes_to_str(data):
         return decoded_str
 
     if data.find(b'\x00') == -1:
-        decoded_str = data[:].decode('utf-8', errors ="ignore")
+        decoded_str = data[:].decode('utf-8', errors="ignore")
         return decoded_str
 
-    decoded_str = data[:data.index(b'\x00')].decode('utf-8', errors ="ignore")
+    decoded_str = data[:data.index(b'\x00')].decode('utf-8', errors="ignore")
 
     return decoded_str
 
@@ -80,9 +81,9 @@ def parse_sched_switch_hm_new(data, one_event):
     nprio = parse_int_field(one_event, "nprio", True)
     ninfo = one_event["fields"]["ninfo[8]"]
 
-    affinity = [hex(int.from_bytes(ninfo[value : value + 1], byteorder='big')) for value in range(len(ninfo))]
-    affinity = affinity[:4]
-    affinity = ''.join(value[2:] for value in affinity)
+    tmp_affinity = [hex(int.from_bytes(ninfo[value : value + 1], byteorder='big')) for value in range(len(ninfo))]
+    tmp_affinity = tmp_affinity[:4]
+    affinity = ''.join(value[2:] for value in tmp_affinity)
     affinity = re.sub("0+", "", affinity)
 
     load = (((ninfo[4] << 8) | ninfo[5]) >> 6) << 1
