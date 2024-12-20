@@ -35,18 +35,27 @@
 #include <iostream>
 #include <zlib.h>
 
+#include "common_define.h"
 #include "common_utils.h"
 #include "hilog/log.h"
 #include "hisysevent.h"
-#include "hitrace_osal.h"
 #include "hitrace_meter.h"
 #include "securec.h"
 #include "trace_collector_client.h"
+#include "trace_json_parser.h"
 
-using namespace OHOS::HiviewDFX::HitraceOsal;
+using namespace OHOS::HiviewDFX::Hitrace;
+
+#ifdef LOG_DOMAIN
+#undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD002D33
+#endif
+#ifdef LOG_TAG
+#undef LOG_TAG
+#define LOG_TAG "Hitrace"
+#endif
 
 namespace {
-
 struct TraceArgs {
     std::string tags;
     std::string tagGroups;
@@ -141,13 +150,6 @@ constexpr struct option LONG_OPTIONS[] = {
 };
 const unsigned int CHUNK_SIZE = 65536;
 
-constexpr const char *TRACE_TAG_PROPERTY = "debug.hitrace.tags.enableflags";
-
-// various operating paths of ftrace
-constexpr const char *TRACING_ON_PATH = "tracing_on";
-constexpr const char *TRACE_PATH = "trace";
-constexpr const char *TRACE_MARKER_PATH = "trace_marker";
-
 // support customization of some parameters
 const int KB_PER_MB = 1024;
 const int MIN_BUFFER_SIZE = 256;
@@ -160,14 +162,11 @@ const int MIN_FILE_SIZE = 51200; // 50 MB
 const int MAX_FILE_SIZE = 512000; // 500 MB
 
 std::string g_traceRootPath;
-
 std::shared_ptr<OHOS::HiviewDFX::UCollectClient::TraceCollector> g_traceCollector;
-
 TraceArgs g_traceArgs;
 TraceSysEventParams g_traceSysEventParams;
 bool g_needSysEvent = true;
-std::map<std::string, OHOS::HiviewDFX::Hitrace::TagCategory> g_allTags;
-std::map<std::string, std::vector<std::string>> g_allTagGroups;
+std::shared_ptr<TraceJsonParser> g_traceJsonParser = nullptr;
 RunningState g_runningState = STATE_NULL;
 }
 
@@ -195,15 +194,12 @@ static std::string GetStateInfo(const RunningState state)
 
 static bool IsTraceMounted()
 {
-    const std::string debugfsPath = "/sys/kernel/debug/tracing/";
-    const std::string tracefsPath = "/sys/kernel/tracing/";
-
-    if (access((debugfsPath + TRACE_MARKER_PATH).c_str(), F_OK) != -1) {
-        g_traceRootPath = debugfsPath;
+    if (access((DEBUGFS_TRACING_DIR + TRACE_MARKER_NODE).c_str(), F_OK) != -1) {
+        g_traceRootPath = DEBUGFS_TRACING_DIR;
         return true;
     }
-    if (access((tracefsPath + TRACE_MARKER_PATH).c_str(), F_OK) != -1) {
-        g_traceRootPath = tracefsPath;
+    if (access((TRACEFS_DIR + TRACE_MARKER_NODE).c_str(), F_OK) != -1) {
+        g_traceRootPath = TRACEFS_DIR;
         return true;
     }
     return false;
@@ -243,14 +239,15 @@ static bool SetProperty(const std::string& property, const std::string& value)
 static bool SetTraceTagsEnabled(uint64_t tags)
 {
     std::string value = std::to_string(tags);
-    return SetProperty(TRACE_TAG_PROPERTY, value);
+    return SetProperty(TRACE_TAG_ENABLE_FLAGS, value);
 }
 
 static void ShowListCategory()
 {
     g_traceSysEventParams.opt = "ShowListCategory";
     printf("  %18s   description:\n", "tagName:");
-    for (auto it = g_allTags.begin(); it != g_allTags.end(); ++it) {
+    auto traceTags = g_traceJsonParser->GetAllTagInfos();
+    for (auto it = traceTags.begin(); it != traceTags.end(); ++it) {
         printf("  %18s - %s\n", it->first.c_str(), it->second.description.c_str());
     }
 }
@@ -469,9 +466,10 @@ static bool ParseOpt(int opt, char** argv, int optIndex)
 
 static bool AddTagItems(int argc, char** argv)
 {
+    auto traceTags = g_traceJsonParser->GetAllTagInfos();
     for (int i = optind; i < argc; i++) {
         std::string tag = std::string(argv[i]);
-        if (g_allTags.find(tag) == g_allTags.end()) {
+        if (traceTags.find(tag) == traceTags.end()) {
             std::string errorInfo = "error: " + tag + " is not support category on this device.";
             ConsoleLog(errorInfo);
             return false;
@@ -510,7 +508,7 @@ static void StopTrace()
     const int napTime = 10000;
     usleep(napTime);
     SetTraceTagsEnabled(0);
-    SetFtraceEnabled(TRACING_ON_PATH, false);
+    SetFtraceEnabled(TRACING_ON_NODE, false);
 }
 
 static void DumpCompressedTrace(int traceFd, int outFd)
@@ -585,8 +583,8 @@ static void DumpCompressedTrace(int traceFd, int outFd)
 
 static void DumpTrace()
 {
-    std::string tracePath = g_traceRootPath + TRACE_PATH;
-    std::string traceSpecPath = OHOS::HiviewDFX::Hitrace::CanonicalizeSpecPath(tracePath.c_str());
+    std::string tracePath = g_traceRootPath + TRACE_NODE;
+    std::string traceSpecPath = CanonicalizeSpecPath(tracePath.c_str());
     int traceFd = open(traceSpecPath.c_str(), O_RDONLY);
     if (traceFd == -1) {
         ConsoleLog("error: opening " + tracePath + ", errno: " + std::to_string(errno));
@@ -595,7 +593,7 @@ static void DumpTrace()
 
     int outFd = STDOUT_FILENO;
     if (g_traceArgs.output.size() > 0) {
-        std::string outSpecPath = OHOS::HiviewDFX::Hitrace::CanonicalizeSpecPath(g_traceArgs.output.c_str());
+        std::string outSpecPath = CanonicalizeSpecPath(g_traceArgs.output.c_str());
         outFd = open(outSpecPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     }
 
@@ -630,8 +628,11 @@ static void DumpTrace()
 
 static bool InitAllSupportTags()
 {
-    if (!OHOS::HiviewDFX::Hitrace::ParseTagInfo(g_allTags, g_allTagGroups)) {
-        ConsoleLog("error: hitrace_utils.json file is damaged.");
+    if (g_traceJsonParser == nullptr) {
+        g_traceJsonParser = std::make_shared<TraceJsonParser>();
+    }
+    if (!g_traceJsonParser->ParseTraceJson(PARSE_TRACE_BASE_INFO)) {
+        ConsoleLog("error: failed to parse trace tag information from configuration file.");
         return false;
     }
     return true;
@@ -744,7 +745,7 @@ static bool HandleRecordingShortText()
     ConsoleLog("start capture, please wait " + std::to_string(g_traceArgs.duration) + "s ...");
     sleep(g_traceArgs.duration);
 
-    OHOS::HiviewDFX::Hitrace::MarkClockSync(g_traceRootPath);
+    MarkClockSync(g_traceRootPath);
     StopTrace();
 
     if (g_traceArgs.output.size() > 0) {
@@ -782,7 +783,7 @@ static bool HandleRecordingLongBegin()
 static bool HandleRecordingLongDump()
 {
     g_traceSysEventParams.opt = "RecordingLongDump";
-    OHOS::HiviewDFX::Hitrace::MarkClockSync(g_traceRootPath);
+    MarkClockSync(g_traceRootPath);
     ConsoleLog("start to read trace.");
     DumpTrace();
     return true;
@@ -791,7 +792,7 @@ static bool HandleRecordingLongDump()
 static bool HandleRecordingLongFinish()
 {
     g_traceSysEventParams.opt = "RecordingLongFinish";
-    OHOS::HiviewDFX::Hitrace::MarkClockSync(g_traceRootPath);
+    MarkClockSync(g_traceRootPath);
     StopTrace();
     ConsoleLog("start to read trace.");
     DumpTrace();

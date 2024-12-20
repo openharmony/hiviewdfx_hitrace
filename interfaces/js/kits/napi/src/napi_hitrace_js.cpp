@@ -22,11 +22,15 @@
 using namespace OHOS::HiviewDFX;
 
 namespace {
+#ifdef LOG_DOMAIN
 #undef LOG_DOMAIN
 #define LOG_DOMAIN 0xD002D33
-
+#endif
+#ifdef LOG_TAG
 #undef LOG_TAG
-#define LOG_TAG "HITRACE_JS_NAPI"
+#define LOG_TAG "HitraceChainNapi"
+#endif
+
 constexpr uint32_t BUF_SIZE_64 = 64;
 
 bool ParseInt32Param(const napi_env& env, const napi_value& origin, int& dest)

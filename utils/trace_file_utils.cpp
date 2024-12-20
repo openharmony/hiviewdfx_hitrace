@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "trace_utils.h"
+#include "trace_file_utils.h"
 
 #include <cinttypes>
 #include <ctime>
@@ -24,14 +24,21 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "common_define.h"
 #include "hilog/log.h"
 
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
+#ifdef LOG_DOMAIN
+#undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD002D33
+#endif
+#ifdef LOG_TAG
+#undef LOG_TAG
+#define LOG_TAG "HitraceUtils"
+#endif
 namespace {
-const std::string TRACE_DEFAULT_DIR = "/data/log/hitrace/";
-const std::string TRACE_EVENT_FORMT = "saved_events_format";
 const std::string TRACE_SNAPSHOT_PREFIX = "trace_";
 const std::string TRACE_RECORDING_PREFIX = "record_trace_";
 const size_t DEFAULT_TRACE_FILE_LIMIT = 15;
@@ -65,13 +72,13 @@ void RemoveFile(const std::string& fileName)
 void GetRecordTraceFilesInDir(std::vector<FileWithTime>& fileList)
 {
     struct stat fileStat;
-    for (const auto &entry : std::filesystem::directory_iterator(TRACE_DEFAULT_DIR)) {
+    for (const auto &entry : std::filesystem::directory_iterator(TRACE_FILE_DEFAULT_DIR)) {
         if (!entry.is_regular_file()) {
             continue;
         }
         std::string fileName = entry.path().filename().string();
         if (fileName.substr(0, TRACE_RECORDING_PREFIX.size()) == TRACE_RECORDING_PREFIX) {
-            if (stat((TRACE_DEFAULT_DIR + fileName).c_str(), &fileStat) == 0) {
+            if (stat((TRACE_FILE_DEFAULT_DIR + fileName).c_str(), &fileStat) == 0) {
                 fileList.push_back({fileName, fileStat.st_ctime});
             }
         }
@@ -85,7 +92,7 @@ void GetRecordTraceFilesInDir(std::vector<FileWithTime>& fileList)
 std::string GenerateTraceFileName(bool isSnapshot)
 {
     // eg: /data/log/hitrace/trace_localtime@boottime.sys
-    std::string name = TRACE_DEFAULT_DIR;
+    std::string name = TRACE_FILE_DEFAULT_DIR;
 
     if (isSnapshot) {
         name += TRACE_SNAPSHOT_PREFIX;
@@ -121,12 +128,12 @@ std::string GenerateTraceFileName(bool isSnapshot)
 */
 void DelSnapshotTraceFile(const bool deleteSavedFmt, const int keepFileCount)
 {
-    if (access(TRACE_DEFAULT_DIR.c_str(), F_OK) != 0) {
+    if (access(TRACE_FILE_DEFAULT_DIR.c_str(), F_OK) != 0) {
         return;
     }
-    DIR* dirPtr = opendir(TRACE_DEFAULT_DIR.c_str());
+    DIR* dirPtr = opendir(TRACE_FILE_DEFAULT_DIR.c_str());
     if (dirPtr == nullptr) {
-        HILOG_ERROR(LOG_CORE, "Failed to opendir %{public}s.", TRACE_DEFAULT_DIR.c_str());
+        HILOG_ERROR(LOG_CORE, "Failed to opendir %{public}s.", TRACE_FILE_DEFAULT_DIR.c_str());
         return;
     }
     std::vector<FileWithTime> snapshotTraceFiles;
@@ -135,14 +142,14 @@ void DelSnapshotTraceFile(const bool deleteSavedFmt, const int keepFileCount)
     while ((ptr = readdir(dirPtr)) != nullptr) {
         if (ptr->d_type == DT_REG) {
             std::string name = std::string(ptr->d_name);
-            if (deleteSavedFmt && name.compare(0, TRACE_EVENT_FORMT.size(), TRACE_EVENT_FORMT) == 0) {
-                RemoveFile(TRACE_DEFAULT_DIR + name);
+            if (deleteSavedFmt && name.compare(0, TRACE_SAVED_EVENTS_FORMAT.size(), TRACE_SAVED_EVENTS_FORMAT) == 0) {
+                RemoveFile(TRACE_FILE_DEFAULT_DIR + name);
                 continue;
             }
             if (name.compare(0, TRACE_SNAPSHOT_PREFIX.size(), TRACE_SNAPSHOT_PREFIX) != 0) {
                 continue;
             }
-            if (stat((TRACE_DEFAULT_DIR + name).c_str(), &fileStat) == 0) {
+            if (stat((TRACE_FILE_DEFAULT_DIR + name).c_str(), &fileStat) == 0) {
                 snapshotTraceFiles.push_back({name, fileStat.st_ctime});
             }
         }
@@ -156,7 +163,7 @@ void DelSnapshotTraceFile(const bool deleteSavedFmt, const int keepFileCount)
     int snapshotTraceFilesSize = static_cast<int>(snapshotTraceFiles.size());
     int deleteFileCnt = snapshotTraceFilesSize - keepFileCount;
     for (int i = 0; i < deleteFileCnt && i < snapshotTraceFilesSize; i++) {
-        RemoveFile(TRACE_DEFAULT_DIR + snapshotTraceFiles[i].filename);
+        RemoveFile(TRACE_FILE_DEFAULT_DIR + snapshotTraceFiles[i].filename);
     }
 }
 
@@ -181,7 +188,7 @@ void DelOldRecordTraceFile(const int& fileLimit)
 
     size_t deleteNum = fileList.size() - traceFileLimit;
     for (size_t i = 0; i < deleteNum; ++i) {
-        if (remove((TRACE_DEFAULT_DIR + fileList[i].filename).c_str()) == 0) {
+        if (remove((TRACE_FILE_DEFAULT_DIR + fileList[i].filename).c_str()) == 0) {
             HILOG_INFO(LOG_CORE, "DelOldRecordTraceFile: delete first: %{public}s success.",
                 fileList[i].filename.c_str());
         } else {
@@ -218,7 +225,7 @@ void ClearOldTraceFile(std::vector<std::string>& fileLists, const int& fileLimit
  */
 void DelSavedEventsFormat()
 {
-    const std::string savedEventsFormatPath = TRACE_DEFAULT_DIR + TRACE_EVENT_FORMT;
+    const std::string savedEventsFormatPath = TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT;
     if (access(savedEventsFormatPath.c_str(), F_OK) != 0) {
         // saved_events_format not exit
         return;

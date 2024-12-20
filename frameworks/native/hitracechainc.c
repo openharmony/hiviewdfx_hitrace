@@ -14,23 +14,30 @@
  */
 
 #include "hitrace/hitracechainc.h"
+
 #include <sched.h>
 #include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
-#include "securec.h"
+
 #include "hilog/log.h"
 #include "hilog_trace.h"
 #include "hitracechain_inner.h"
 #include "hitrace_meter_wrapper.h"
 #include "hitrace_meter_c.h"
+#include "securec.h"
 
+#ifdef LOG_DOMAIN
 #undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD002D33
+#endif
+#ifdef LOG_TAG
 #undef LOG_TAG
-static const unsigned int LOG_DOMAIN = 0xD002D33;
-static const char* LOG_TAG = "HiTraceC";
+#define LOG_TAG "HiTraceC"
+#endif
+
 static const int BUFF_ZERO_NUMBER = 0;
 static const int BUFF_ONE_NUMBER = 1;
 static const int BUFF_TWO_NUMBER = 2;
