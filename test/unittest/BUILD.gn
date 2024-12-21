@@ -185,3 +185,27 @@ ohos_unittest("HitraceUtilsTest") {
     external_deps += [ "hilog:libhilog" ]
   }
 }
+
+ohos_unittest("HitraceEventTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    "hitrace_event/hitrace_event_listener.cpp",
+    "hitrace_event/hitrace_event_test.cpp",
+  ]
+
+  cflags = [ "-DHITRACE_UNITTEST" ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "googletest:gtest_main",
+    "hisysevent:libhisysevent",
+    "hisysevent:libhisyseventmanager",
+    "init:libbegetutil",
+  ]
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+}

@@ -26,6 +26,7 @@ group("hitrace_unittest") {
     "unittest:HitraceCTest",
     "unittest:HitraceCppTest",
     "unittest:HitraceDumpTest",
+    "unittest:HitraceEventTest",
     "unittest:HitraceNDKTest",
     "unittest:HitraceUtilsTest",
   ]
