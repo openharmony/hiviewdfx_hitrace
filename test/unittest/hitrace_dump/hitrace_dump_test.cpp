@@ -46,10 +46,7 @@ namespace {
 #undef LOG_TAG
 #define LOG_TAG "HitraceTest"
 #endif
-const std::string TRACE_SNAPSHOT_PREFIX = "trace_";
 const int BUFFER_SIZE = 255;
-const int DUMPTRACE_COUNT = 25;
-const int SNAPSHOT_FILE_MAX_COUNT = 20;
 constexpr uint32_t SLEEP_TIME = 10; // sleep 10ms
 constexpr uint32_t TWO_SEC = 2;
 constexpr uint32_t TEN_SEC = 10;
@@ -94,29 +91,6 @@ bool TraverseFiles(std::vector<std::string> files, std::string outputFileName)
         HILOG_INFO(LOG_CORE, "ret.outputFile%{public}d: %{public}s", i++, iter->c_str());
     }
     return isExists;
-}
-
-bool CountSnapShotTraceFile(int& fileCount)
-{
-    if (access(TRACE_FILE_DEFAULT_DIR.c_str(), F_OK) != 0) {
-        return false;
-    }
-    DIR* dirPtr = opendir(TRACE_FILE_DEFAULT_DIR.c_str());
-    if (dirPtr == nullptr) {
-        HILOG_ERROR(LOG_CORE, "Failed to opendir %{public}s.", TRACE_FILE_DEFAULT_DIR.c_str());
-        return false;
-    }
-    struct dirent* ptr = nullptr;
-    while ((ptr = readdir(dirPtr)) != nullptr) {
-        if (ptr->d_type == DT_REG) {
-            std::string name = std::string(ptr->d_name);
-            if (name.compare(0, TRACE_SNAPSHOT_PREFIX.size(), TRACE_SNAPSHOT_PREFIX) != 0) {
-                continue;
-            }
-        }
-    }
-    closedir(dirPtr);
-    return true;
 }
 
 int HasProcessWithName(const std::string& name)
@@ -542,28 +516,6 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_006, TestSize.Level0)
     SetSysInitParamTags(123);
     ASSERT_TRUE(SetCheckParam() == false);
 
-    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
-}
-
-/**
- * @tc.name: DumpForServiceMode_007
- * @tc.desc: File aging and deletion function in SERVICE_MODE with commerical version.
- * @tc.type: FUNC
- */
-HWTEST_F(HitraceDumpTest, DumpForServiceMode_007, TestSize.Level0)
-{
-    const std::vector<std::string> tagGroups = {"default"};
-    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    int fileCount = 0;
-    for (int i = 0; i < DUMPTRACE_COUNT; i++) {
-        TraceRetInfo ret = DumpTrace();
-        ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
-        sleep(1);
-    }
-    if (!IsRootVersion()) {
-        ASSERT_TRUE(CountSnapShotTraceFile(fileCount));
-        ASSERT_TRUE(fileCount > 0 && fileCount <= SNAPSHOT_FILE_MAX_COUNT);
-    }
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 

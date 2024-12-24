@@ -21,9 +21,11 @@
 #include <vector>
 
 #include "common_define.h"
+#include "test_utils.h"
 
 namespace OHOS {
 namespace HiviewDFX {
+namespace Hitrace {
 using namespace testing::ext;
 class HitraceSystemTest : public testing::Test {
 public:
@@ -144,6 +146,44 @@ HWTEST_F(HitraceSystemTest, HitraceSystemTest002, TestSize.Level2)
     ASSERT_TRUE(IsFileExcludeAllKeyWords(TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT, excludeWords));
     ASSERT_TRUE(RunCmd("hitrace --trace_finish_nodump"));
 }
+
+/**
+ * @tc.name: HitraceSystemTest003
+ * @tc.desc: when excute hitrace record command, check record file aging rules.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSystemTest, HitraceSystemTest003, TestSize.Level2)
+{
+    ASSERT_TRUE(RunCmd("hitrace --trace_finish_nodump"));
+    const int recordCnt = 20;
+    for (int i = 0; i < recordCnt; ++i) {
+        ASSERT_TRUE(RunCmd("hitrace --trace_begin --record sched"));
+        ASSERT_TRUE(RunCmd("hitrace --trace_finish --record"));
+    }
+    int filecnt = CountRecordingTraceFile();
+    GTEST_LOG_(INFO) << "Filecnt: " << filecnt;
+    ASSERT_LE(filecnt, 16); // 16 : snapshot trace file max count
+}
+
+/**
+ * @tc.name: HitraceSystemTest004
+ * @tc.desc: when excute hitrace dump bgsrv command, check snapshot file aging rules.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSystemTest, HitraceSystemTest004, TestSize.Level2)
+{
+    ASSERT_TRUE(RunCmd("hitrace --trace_finish_nodump"));
+    ASSERT_TRUE(RunCmd("hitrace --start_bgsrv"));
+    const int recordCnt = 30;
+    for (int i = 0; i < recordCnt; ++i) {
+        ASSERT_TRUE(RunCmd("hitrace --dump_bgsrv"));
+    }
+    ASSERT_TRUE(RunCmd("hitrace --stop_bgsrv"));
+    int filecnt = CountSnapShotTraceFile();
+    GTEST_LOG_(INFO) << "Filecnt: " << filecnt;
+    ASSERT_LE(filecnt, 20); // 20 : record trace file max count
+}
 } // namespace
+} // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS

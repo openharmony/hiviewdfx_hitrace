@@ -186,6 +186,21 @@ bool ParseTraceBufSz(cJSON* jsonNode, int& bufSz)
     return true;
 }
 
+bool ParseTraceFileAge(cJSON* jsonNode, const std::string& jsonLabel, bool& agingSwitcher)
+{
+    cJSON* agingNode = cJSON_GetObjectItem(jsonNode, jsonLabel.c_str());
+    if (agingNode == nullptr) {
+        HILOG_ERROR(LOG_CORE, "ParseTraceJson: %{public}s json node not found.", jsonLabel.c_str());
+        return false;
+    }
+    if (!cJSON_IsNumber(agingNode)) {
+        HILOG_ERROR(LOG_CORE, "ParseTraceJson:  %{public}s item is illegal.", jsonLabel.c_str());
+        return false;
+    }
+    agingSwitcher = agingNode->valueint == 0 ? false : true;
+    return true;
+}
+
 uint8_t UpdateParseItem(const uint8_t parseItem)
 {
     uint8_t retParseItem = parseItem;
@@ -214,6 +229,14 @@ bool TraceJsonParser::ParseTraceJson(const uint8_t policy)
 
     if ((needParseItem & TRACE_SNAPSHOT_BUFSZ) > 0 && ParseTraceBufSz(rootNode, snapshotBufSzKb_)) {
         parserState_ |= TRACE_SNAPSHOT_BUFSZ;
+    }
+    if ((needParseItem & TRACE_RECORD_FILE_AGE) > 0 &&
+        ParseTraceFileAge(rootNode, "record_file_aging", recordFileAge_)) {
+        parserState_ |= TRACE_RECORD_FILE_AGE;
+    }
+    if ((needParseItem & TRACE_SNAPSHOT_FILE_AGE) > 0 &&
+        ParseTraceFileAge(rootNode, "snapshot_file_aging", snapshotFileAge_)) {
+        parserState_ |= TRACE_SNAPSHOT_FILE_AGE;
     }
 
     bool needParseTagEnableInfo = (needParseItem & TRACE_TAG_ENABLE_INFO) > 0;
