@@ -83,6 +83,7 @@ const int HM_DEFAULT_BUFFER_SIZE = 144 * 1024;
 const int SAVED_CMDLINES_SIZE = 3072; // 3M
 const int KB_PER_MB = 1024;
 constexpr uint64_t S_TO_NS = 1000000000;
+constexpr uint64_t S_TO_MS = 1000;
 constexpr uint32_t MAX_RATIO_UNIT = 1000;
 const int MAX_NEW_TRACE_FILE_LIMIT = 5;
 const int JUDGE_FILE_EXIST = 10;  // Check whether the trace file exists every 10 times.
@@ -151,7 +152,7 @@ uint64_t g_traceStartTime = 0;
 uint64_t g_traceEndTime = std::numeric_limits<uint64_t>::max(); // in nano seconds
 uint64_t g_firstPageTimestamp = 0;
 std::atomic<uint8_t> g_dumpStatus(TraceErrorCode::UNSET);
-std::string g_tagGroup("UNSET");
+std::vector<std::string> g_tags{};
 
 TraceParams g_currentTraceParams = {};
 std::shared_ptr<TraceJsonParser> g_traceJsonParser = nullptr;
@@ -510,18 +511,12 @@ TraceErrorCode SetTimeIntervalBoundary(int inputMaxDuration, uint64_t utTraceEnd
         return SYSINFO_READ_FAILURE;
     }
     uint64_t utNow = static_cast<uint64_t>(std::time(nullptr));
-    uint64_t utBootTime = utNow - info.uptime;
-    uint64_t maxDuration = inputMaxDuration > 0 ? static_cast<uint64_t>(inputMaxDuration) + 1 : 0;
-    if (maxDuration > utBootTime) {
-        HILOG_WARN(LOG_CORE, "maxDuration is larger than boot_time.");
-        maxDuration = 0;
-    }
-
     if (utTraceEndTime >= utNow) {
         HILOG_WARN(LOG_CORE, "DumpTrace: Warning: traceEndTime is later than current time, set to current.");
         utTraceEndTime = 0;
     }
 
+    uint64_t utBootTime = utNow - info.uptime;
     if (utTraceEndTime == 0) {
         struct timespec bts = {0, 0};
         clock_gettime(CLOCK_BOOTTIME, &bts);
@@ -536,6 +531,11 @@ TraceErrorCode SetTimeIntervalBoundary(int inputMaxDuration, uint64_t utTraceEnd
         return OUT_OF_TIME;
     }
 
+    uint64_t maxDuration = inputMaxDuration > 0 ? static_cast<uint64_t>(inputMaxDuration) + 1 : 0;
+    if (maxDuration > g_traceEndTime / S_TO_NS) {
+        HILOG_WARN(LOG_CORE, "maxDuration is larger than TraceEndTime boot clock.");
+        maxDuration = 0;
+    }
     if (maxDuration > 0) {
         g_traceStartTime = g_traceEndTime - maxDuration * S_TO_NS;
     } else {
@@ -1461,11 +1461,7 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
     }
     g_sysInitParamTags = GetSysParamTags();
     HILOG_INFO(LOG_CORE, "OpenTrace: SERVICE_MODE open success.");
-    // store tag groups into g_tagGroup, seperated by comma
-    g_tagGroup = tagGroups[0];
-    for (size_t i = 1; i < tagGroups.size(); i++) {
-        g_tagGroup += "," + tagGroups[i];
-    }
+    g_tags = tagGroups;
     return ret;
 }
 
@@ -1539,21 +1535,21 @@ TraceRetInfo DumpTrace(int maxDuration, uint64_t utTraceEndTime)
     if (ret.errorCode != SUCCESS) {
         return ret;
     }
-    g_firstPageTimestamp = 0;
+    g_firstPageTimestamp = UINT64_MAX;
     uint32_t committedDuration = maxDuration == 0 ? DEFAULT_FULL_TRACE_LENGTH :
         std::min(maxDuration, DEFAULT_FULL_TRACE_LENGTH);
     ret.errorCode = DumpTraceInner(ret.outputFiles);
     if (g_traceEndTime <= g_firstPageTimestamp) {
         ret.coverRatio = 0;
     } else {
-        ret.coverDuration = std::min(static_cast<uint32_t>((g_traceEndTime - g_firstPageTimestamp) / S_TO_NS),
-            committedDuration);
+        ret.coverDuration = static_cast<uint32_t>(std::min(
+            (g_traceEndTime - g_firstPageTimestamp) * S_TO_MS / S_TO_NS, committedDuration * S_TO_MS));
         ret.coverRatio = (g_traceEndTime - g_firstPageTimestamp) * MAX_RATIO_UNIT / S_TO_NS / committedDuration;
     }
     if (ret.coverRatio > MAX_RATIO_UNIT) {
         ret.coverRatio = MAX_RATIO_UNIT;
     }
-    ret.tagGroup = g_tagGroup;
+    ret.tags = g_tags;
     RestoreTimeIntervalBoundary();
     HILOG_INFO(LOG_CORE, "DumpTrace with time limit done.");
     return ret;
@@ -1641,7 +1637,7 @@ TraceErrorCode CloseTrace()
 
     TraceInit(allTags);
     TruncateFile();
-    g_tagGroup = "UNSET";
+    g_tags.clear();
     HILOG_INFO(LOG_CORE, "CloseTrace done.");
     return SUCCESS;
 }
