@@ -213,7 +213,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_001, TestSize.Level0)
     TraceRetInfo ret = DumpTrace(maxDuration);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(ret.outputFiles.size() > 0);
-    ASSERT_EQ(ret.tagGroup, "default");
+    ASSERT_EQ(ret.tags, tagGroups);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -248,9 +248,9 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_003, TestSize.Level0)
     TraceRetInfo ret = DumpTrace(0, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(ret.outputFiles.size() > 0);
-    ASSERT_EQ(ret.tagGroup, "default");
+    ASSERT_EQ(ret.tags, tagGroups);
     ASSERT_GE(ret.coverDuration, TWO_SEC - 1);
-    ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT * TWO_SEC / DEFAULT_FULL_TRACE_LENGTH);
+    ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT * (TWO_SEC - 1) / DEFAULT_FULL_TRACE_LENGTH);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
@@ -259,9 +259,9 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_003, TestSize.Level0)
     ret = DumpTrace(TEN_SEC, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(ret.outputFiles.size() > 0);
-    ASSERT_EQ(ret.tagGroup, "default");
+    ASSERT_EQ(ret.tags, tagGroups);
     ASSERT_GE(ret.coverDuration, TWO_SEC - 1);
-    ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT * TWO_SEC / TEN_SEC);
+    ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT * (TWO_SEC - 1) / TEN_SEC);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -369,9 +369,9 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_006, TestSize.Level0)
     TraceRetInfo ret = DumpTrace(INT_MAX, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(!ret.outputFiles.empty());
-    ASSERT_EQ(ret.tagGroup, "default");
+    ASSERT_EQ(ret.tags, tagGroups);
     ASSERT_GE(ret.coverDuration, TWO_SEC - 1);
-    ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT * TWO_SEC / DEFAULT_FULL_TRACE_LENGTH);
+    ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT * (TWO_SEC - 1) / DEFAULT_FULL_TRACE_LENGTH);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -453,7 +453,7 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_002, TestSize.Level0)
     // Remove outputFileName in g_hitraceFilesTable
     EraseFile(outputFileName);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
-    ASSERT_EQ(ret.tagGroup, "scene_performance");
+    ASSERT_EQ(ret.tags, tagGroups);
     ASSERT_TRUE(TraverseFiles(ret.outputFiles, outputFileName)) << "file created by user is not exists.";
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }

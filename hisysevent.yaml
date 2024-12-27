@@ -28,3 +28,21 @@ HITRACE_USAGE:
   IS_OVERWRITE: {type: BOOL, desc: whether trace data is overwrite}
   ERROR_CODE: {type: INT32, desc: request error code}
   ERROR_MESSAGE: {type: STRING, desc: request error message}
+
+DUMP_TRACE:
+  __BASE: {type: BEHAVIOR, level: CRITICAL, tag: usageStats, desc: trace dump statistics}
+  CALLER: {type: STRING, desc: caller of DumpTrace functionality}
+  ERROR_CODE: {type: INT32, desc: error code}
+  IPC_TIME: {type: UINT64, desc: timestamp of sending DumpTrace request in unix time}
+  REQ_TIME: {type: UINT64, desc: target trace end time in unix timepassed by the caller}
+  REQ_DURATION: {type: INT32, desc: target trace duration passed by the caller}
+  EXEC_TIME: {type: UINT64, desc: DumpTrace execution start time in unix time in milliseconds}
+  EXEC_DURATION: {type: INT32, desc: DumpTrace execution duration in milliseconds}
+  COVER_DURATION: {type: INT32, desc: time coverage of captured trace on requested interval in milliseconds}
+  COVER_RATIO: {type: INT32, desc: time coverage ratio expressed in premille}
+  TAGS: {type: STRING, arrsize: 100, desc: tags}
+  FILE_SIZE: {type: INT32, desc: total trace file size in MB}
+  SYS_MEM_TOTAL: {type: INT32, desc: total system memory in MB}
+  SYS_MEM_FREE: {type: INT32, desc: free system memory in MB}
+  SYS_MEM_AVAIL: {type: INT32, desc: available system memory in MB}
+  SYS_CPU: {type: INT32, desc: average system cpu usage}
