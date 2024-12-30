@@ -111,6 +111,11 @@ enum RunningState {
     SHOW_LIST_CATEGORY = 32,  // -l, --list_categories
 };
 
+enum CmdErrorCode {
+    OPEN_ROOT_PATH_FAILURE = 2001,
+    OPEN_FILE_PATH_FAILURE = 2002,
+};
+
 const std::map<RunningState, std::string> STATE_INFO = {
     { STATE_NULL, "STATE_NULL" },
     { RECORDING_SHORT_TEXT, "RECORDING_SHORT_TEXT" },
@@ -165,9 +170,15 @@ std::string g_traceRootPath;
 std::shared_ptr<OHOS::HiviewDFX::UCollectClient::TraceCollector> g_traceCollector;
 TraceArgs g_traceArgs;
 TraceSysEventParams g_traceSysEventParams;
-bool g_needSysEvent = true;
+bool g_needSysEvent = false;
 std::shared_ptr<TraceJsonParser> g_traceJsonParser = nullptr;
 RunningState g_runningState = STATE_NULL;
+}
+
+static void SetTraceSysEventParams()
+{
+    g_needSysEvent = true;
+    g_traceSysEventParams.caller = "CMD";
 }
 
 static void ConsoleLog(const std::string& logInfo)
@@ -583,11 +594,15 @@ static void DumpCompressedTrace(int traceFd, int outFd)
 
 static void DumpTrace()
 {
+    g_traceSysEventParams.opt = "DumpTextTrace";
     std::string tracePath = g_traceRootPath + TRACE_NODE;
     std::string traceSpecPath = CanonicalizeSpecPath(tracePath.c_str());
     int traceFd = open(traceSpecPath.c_str(), O_RDONLY);
     if (traceFd == -1) {
         ConsoleLog("error: opening " + tracePath + ", errno: " + std::to_string(errno));
+        g_traceSysEventParams.errorCode = OPEN_ROOT_PATH_FAILURE;
+        g_traceSysEventParams.errorMessage = "error: opening " + tracePath + ", errno: " +
+            std::to_string(errno);
         return;
     }
 
@@ -599,6 +614,9 @@ static void DumpTrace()
 
     if (outFd == -1) {
         ConsoleLog("error: opening " + g_traceArgs.output + ", errno: " + std::to_string(errno));
+        g_traceSysEventParams.errorCode = OPEN_FILE_PATH_FAILURE;
+        g_traceSysEventParams.errorMessage = "error: opening " + g_traceArgs.output + ", errno: " +
+            std::to_string(errno);
         close(traceFd);
         return;
     }
@@ -616,9 +634,11 @@ static void DumpTrace()
                 break;
             }
             bytesWritten = TEMP_FAILURE_RETRY(write(outFd, buffer, bytesRead));
+            g_traceSysEventParams.fileSize += bytesWritten;
         } while (bytesWritten > 0);
     }
 
+    g_traceSysEventParams.fileSize = g_traceSysEventParams.fileSize / KB_PER_MB;
     if (outFd != STDOUT_FILENO) {
         ConsoleLog("trace read done, output: " + g_traceArgs.output);
         close(outFd);
@@ -681,15 +701,12 @@ static std::string ReloadTraceArgs()
 
 static bool HandleRecordingShortRaw()
 {
-    g_traceSysEventParams.opt = "RecordingShortRaw";
-    g_traceSysEventParams.isRaw = true;
     std::string args = ReloadTraceArgs();
     if (g_traceArgs.output.size() > 0) {
         ConsoleLog("warning: The current state does not support specifying the output file path, " +
                    g_traceArgs.output + " is invalid.");
     }
     auto openRet = g_traceCollector->OpenRecording(args);
-    g_traceSysEventParams.errorCode = openRet.retCode;
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
         if (openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_IS_OCCUPIED ||
@@ -702,7 +719,6 @@ static bool HandleRecordingShortRaw()
     }
 
     auto recOnRet = g_traceCollector->RecordingOn();
-    g_traceSysEventParams.errorCode = recOnRet.retCode;
     if (recOnRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: RecordingOn failed, errorCode(" + std::to_string(recOnRet.retCode) +")");
         g_traceCollector->Recover();
@@ -712,7 +728,6 @@ static bool HandleRecordingShortRaw()
     sleep(g_traceArgs.duration);
 
     auto recOffRet = g_traceCollector->RecordingOff();
-    g_traceSysEventParams.errorCode = recOffRet.retCode;
     if (recOffRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: RecordingOff failed, errorCode(" + std::to_string(recOffRet.retCode) +")");
         g_traceCollector->Recover();
@@ -728,10 +743,8 @@ static bool HandleRecordingShortRaw()
 
 static bool HandleRecordingShortText()
 {
-    g_traceSysEventParams.opt = "RecordingShortText";
     std::string args = ReloadTraceArgs();
     auto openRet = g_traceCollector->OpenRecording(args);
-    g_traceSysEventParams.errorCode = openRet.retCode;
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
         if (openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_IS_OCCUPIED ||
@@ -758,14 +771,12 @@ static bool HandleRecordingShortText()
 
 static bool HandleRecordingLongBegin()
 {
-    g_traceSysEventParams.opt = "RecordingLongBegin";
     std::string args = ReloadTraceArgs();
     if (g_traceArgs.output.size() > 0) {
         ConsoleLog("warning: The current state does not support specifying the output file path, " +
                    g_traceArgs.output + " is invalid.");
     }
     auto openRet = g_traceCollector->OpenRecording(args);
-    g_traceSysEventParams.errorCode = openRet.retCode;
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
         if (openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_IS_OCCUPIED ||
@@ -782,7 +793,6 @@ static bool HandleRecordingLongBegin()
 
 static bool HandleRecordingLongDump()
 {
-    g_traceSysEventParams.opt = "RecordingLongDump";
     MarkClockSync(g_traceRootPath);
     ConsoleLog("start to read trace.");
     DumpTrace();
@@ -791,7 +801,6 @@ static bool HandleRecordingLongDump()
 
 static bool HandleRecordingLongFinish()
 {
-    g_traceSysEventParams.opt = "RecordingLongFinish";
     MarkClockSync(g_traceRootPath);
     StopTrace();
     ConsoleLog("start to read trace.");
@@ -802,7 +811,6 @@ static bool HandleRecordingLongFinish()
 
 static bool HandleRecordingLongFinishNodump()
 {
-    g_traceSysEventParams.opt = "RecordingLongFinishNodump";
     g_traceCollector->Recover();
     ConsoleLog("end capture trace.");
     return true;
@@ -810,14 +818,12 @@ static bool HandleRecordingLongFinishNodump()
 
 static bool HandleRecordingLongBeginRecord()
 {
-    g_traceSysEventParams.opt = "RecordingLongBeginRecord";
     std::string args = ReloadTraceArgs();
     if (g_traceArgs.output.size() > 0) {
         ConsoleLog("warning: The current state does not support specifying the output file path, " +
                    g_traceArgs.output + " is invalid.");
     }
     auto openRet = g_traceCollector->OpenRecording(args);
-    g_traceSysEventParams.errorCode = openRet.retCode;
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
         g_traceCollector->Recover();
@@ -825,7 +831,6 @@ static bool HandleRecordingLongBeginRecord()
     }
 
     auto recOnRet = g_traceCollector->RecordingOn();
-    g_traceSysEventParams.errorCode = recOnRet.retCode;
     if (recOnRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: RecordingOn failed, errorCode(" + std::to_string(recOnRet.retCode) +")");
         g_traceCollector->Recover();
@@ -837,10 +842,7 @@ static bool HandleRecordingLongBeginRecord()
 
 static bool HandleRecordingLongFinishRecord()
 {
-    g_traceSysEventParams.opt = "RecordingLongFinishRecord";
-    g_traceSysEventParams.isRaw = true;
     auto recOffRet = g_traceCollector->RecordingOff();
-    g_traceSysEventParams.errorCode = recOffRet.retCode;
     if (recOffRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: RecordingOff failed, errorCode(" + std::to_string(recOffRet.retCode) +")");
         g_traceCollector->Recover();
@@ -913,28 +915,6 @@ static void InterruptExit(int signo)
     _exit(-1);
 }
 
-static void SetTraceSysEventParams()
-{
-    g_traceSysEventParams.caller = "CMD";
-    g_traceSysEventParams.tags = g_traceArgs.tags;
-    if (g_traceArgs.clockType.empty()) {
-        g_traceSysEventParams.clockType = "boot";
-    } else {
-        g_traceSysEventParams.clockType = g_traceArgs.clockType;
-    }
-    if (!g_traceArgs.bufferSize) {
-        g_traceSysEventParams.bufferSize = DEFAULT_BUFFER_SIZE;
-    } else {
-        g_traceSysEventParams.bufferSize = g_traceArgs.bufferSize;
-    }
-    if (g_traceArgs.fileSize) {
-        g_traceSysEventParams.fileSize = g_traceArgs.fileSize;
-    }
-    g_traceSysEventParams.duration = g_traceArgs.duration;
-    g_traceSysEventParams.isCompress = g_traceArgs.isCompress;
-    g_traceSysEventParams.isOverwrite = g_traceArgs.overwrite;
-}
-
 static void RecordSysEvent()
 {
     if (!g_needSysEvent) {
@@ -1002,6 +982,7 @@ int main(int argc, char **argv)
         g_runningState != RECORDING_LONG_FINISH) {
         ConsoleLog(std::string(argv[0]) + " enter, running_state is " + GetStateInfo(g_runningState));
     }
+
     SetTraceSysEventParams();
 
     switch (g_runningState) {
