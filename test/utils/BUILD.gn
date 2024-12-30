@@ -12,18 +12,15 @@
 # limitations under the License.
 
 import("//base/hiviewdfx/hitrace/hitrace.gni")
-import("//build/config/features.gni")
+import("//build/ohos.gni")
 import("//build/test.gni")
 
-module_output_path = "hiviewdfx/hitrace"
-
-ohos_systemtest("HitraceSystemTest") {
-  module_out_path = module_output_path
+ohos_static_library("hitrace_test_utils") {
   include_dirs = [
+    ".",
     "$hitrace_common_path",
-    "$hitrace_path/test/utils",
   ]
-  sources = [ "hitrace_systemtest.cpp" ]
-  deps = [ "$hitrace_path/test/utils:hitrace_test_utils" ]
-  external_deps = [ "googletest:gtest_main" ]
+  sources = [ "test_utils.cpp" ]
+  part_name = "hitrace"
+  subsystem_name = "hiviewdfx"
 }

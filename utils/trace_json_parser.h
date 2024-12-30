@@ -42,6 +42,8 @@ enum TraceJsonInfo : uint8_t {
     TRACE_TAG_ENABLE_INFO = 1 << 2,
     TRACE_TAG_FORMAT_INFO = 1 << 3,
     TRACE_TAG_GROUP_INFO = 1 << 4,
+    TRACE_RECORD_FILE_AGE = 1 << 5,
+    TRACE_SNAPSHOT_FILE_AGE = 1 << 6,
 };
 
 enum ParsePolicy : uint8_t {
@@ -62,6 +64,8 @@ public:
     std::map<std::string, std::vector<std::string>>& GetTagGroups() { return tagGroups_; }
     std::vector<std::string> GetBaseFmtPath() { return baseTraceFormats_; }
     int GetSnapShotBufSzKb() { return snapshotBufSzKb_; }
+    bool GetRecordFileAge() { return recordFileAge_; }
+    bool GetSnapShotFileAge() { return snapshotFileAge_; }
 
 private:
     uint8_t parserState_ = PARSE_NONE;
@@ -69,6 +73,8 @@ private:
     std::map<std::string, std::vector<std::string>> tagGroups_ = {};
     std::vector<std::string> baseTraceFormats_ = {};
     int snapshotBufSzKb_ = 0;
+    bool recordFileAge_ = true;
+    bool snapshotFileAge_ = true;
 };
 } // namespace HiTrace
 } // namespace HiviewDFX

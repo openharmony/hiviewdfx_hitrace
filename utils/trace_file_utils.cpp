@@ -126,7 +126,7 @@ std::string GenerateTraceFileName(bool isSnapshot)
 /**
  * When the SERVICE_MODE is started, clear the remaining trace files in the folder.
 */
-void DelSnapshotTraceFile(const bool deleteSavedFmt, const int keepFileCount)
+void DelSnapshotTraceFile(const int keepFileCount)
 {
     if (access(TRACE_FILE_DEFAULT_DIR.c_str(), F_OK) != 0) {
         return;
@@ -142,10 +142,6 @@ void DelSnapshotTraceFile(const bool deleteSavedFmt, const int keepFileCount)
     while ((ptr = readdir(dirPtr)) != nullptr) {
         if (ptr->d_type == DT_REG) {
             std::string name = std::string(ptr->d_name);
-            if (deleteSavedFmt && name.compare(0, TRACE_SAVED_EVENTS_FORMAT.size(), TRACE_SAVED_EVENTS_FORMAT) == 0) {
-                RemoveFile(TRACE_FILE_DEFAULT_DIR + name);
-                continue;
-            }
             if (name.compare(0, TRACE_SNAPSHOT_PREFIX.size(), TRACE_SNAPSHOT_PREFIX) != 0) {
                 continue;
             }

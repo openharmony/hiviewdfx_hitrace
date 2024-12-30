@@ -13,21 +13,15 @@
  * limitations under the License.
  */
 
-#ifndef TRACE_FILE_UTILS_H
-#define TRACE_FILE_UTILS_H
-
-#include <string>
-#include <vector>
+#ifndef HITRACE_TEST_UTILS_H
+#define HITRACE_TEST_UTILS_H
 
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
-std::string GenerateTraceFileName(bool isSnapshot = true);
-void DelSnapshotTraceFile(const int keepFileCount = 0);
-void DelOldRecordTraceFile(const int& fileLimit);
-void ClearOldTraceFile(std::vector<std::string>& fileLists, const int& fileLimit);
-void DelSavedEventsFormat();
+int CountSnapShotTraceFile();
+int CountRecordingTraceFile();
 } // namespace HiTrace
 } // namespace HiviewDFX
 } // namespace OHOS
-#endif // TRACE_FILE_UTILS_H
+#endif // HITRACE_TEST_UTILS_H

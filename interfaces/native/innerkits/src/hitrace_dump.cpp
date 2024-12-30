@@ -928,9 +928,17 @@ void ProcessDumpTask()
     const std::string threadName = "TraceDumpTask";
     prctl(PR_SET_NAME, threadName.c_str());
     HILOG_INFO(LOG_CORE, "ProcessDumpTask: trace dump thread start.");
+    if (g_traceJsonParser == nullptr) {
+        g_traceJsonParser = std::make_shared<TraceJsonParser>();
+    }
+    if (!g_traceJsonParser->ParseTraceJson(TRACE_RECORD_FILE_AGE)) {
+        HILOG_WARN(LOG_CORE, "ProcessDumpTask: Failed to parse TRACE_RECORD_FILE_AGE.");
+    }
 
-    // clear old record file before record tracing start.
-    DelOldRecordTraceFile(g_currentTraceParams.fileLimit);
+    if ((!IsRootVersion()) || g_traceJsonParser->GetRecordFileAge()) {
+        // clear old record file before record tracing start.
+        DelOldRecordTraceFile(g_currentTraceParams.fileLimit);
+    }
 
     // if input filesize = 0, trace file should not be cut in root version.
     if (g_currentTraceParams.fileSize == 0 && IsRootVersion()) {
@@ -946,7 +954,7 @@ void ProcessDumpTask()
     }
 
     while (g_dumpFlag) {
-        if (!IsRootVersion()) {
+        if ((!IsRootVersion()) || g_traceJsonParser->GetRecordFileAge()) {
             ClearOldTraceFile(g_outputFilesForCmd, g_currentTraceParams.fileLimit);
         }
         // Generate file name
@@ -1117,8 +1125,14 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
         if (ReadRawTrace(reOutPath)) {
             g_dumpStatus = TraceErrorCode::SUCCESS;
         }
-        if (!IsRootVersion()) {
-            DelSnapshotTraceFile(false, SNAPSHOT_FILE_MAX_COUNT);
+        if (g_traceJsonParser == nullptr) {
+            g_traceJsonParser = std::make_shared<TraceJsonParser>();
+        }
+        if (!g_traceJsonParser->ParseTraceJson(TRACE_SNAPSHOT_FILE_AGE)) {
+            HILOG_WARN(LOG_CORE, "DumpTraceInner: Failed to parse TRACE_SNAPSHOT_FILE_AGE.");
+        }
+        if ((!IsRootVersion()) || g_traceJsonParser->GetSnapShotFileAge()) {
+            DelSnapshotTraceFile(SNAPSHOT_FILE_MAX_COUNT);
         }
         HILOG_DEBUG(LOG_CORE, "%{public}s exit.", processName.c_str());
         ChildProcessRet retVal;
@@ -1449,7 +1463,9 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
         return ret;
     }
     g_traceMode = SERVICE_MODE;
-    DelSnapshotTraceFile();
+    if (!g_traceJsonParser->ParseTraceJson(TRACE_SNAPSHOT_FILE_AGE)) {
+        HILOG_WARN(LOG_CORE, "OpenTrace: Failed to parse TRACE_SNAPSHOT_FILE_AGE.");
+    }
     PreWriteEventsFormat(traceFormats);
     if (!IsHmKernel() && !g_serviceThreadIsStart) {
         // open SERVICE_MODE monitor thread

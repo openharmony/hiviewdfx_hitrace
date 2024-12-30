@@ -1,5 +1,7 @@
 {
     "snapshot_buffer_kb" : 0,
+    "record_file_aging": 1,
+    "snapshot_file_aging": 1,
     "tag_category": {
         "commercial": {
             "description": "Commercial version tag",
