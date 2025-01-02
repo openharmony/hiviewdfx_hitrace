@@ -22,8 +22,12 @@ ohos_systemtest("HitraceSystemTest") {
   include_dirs = [
     "$hitrace_common_path",
     "$hitrace_path/test/utils",
+    "$hitrace_utils_path",
   ]
   sources = [ "hitrace_systemtest.cpp" ]
-  deps = [ "$hitrace_path/test/utils:hitrace_test_utils" ]
+  deps = [
+    "$hitrace_path/test/utils:hitrace_test_utils",
+    "$hitrace_utils_path:hitrace_common_utils",
+  ]
   external_deps = [ "googletest:gtest_main" ]
 }

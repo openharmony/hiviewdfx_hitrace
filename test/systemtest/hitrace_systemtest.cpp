@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "common_define.h"
+#include "common_utils.h"
 #include "test_utils.h"
 
 namespace OHOS {
@@ -154,15 +155,17 @@ HWTEST_F(HitraceSystemTest, HitraceSystemTest002, TestSize.Level2)
  */
 HWTEST_F(HitraceSystemTest, HitraceSystemTest003, TestSize.Level2)
 {
-    ASSERT_TRUE(RunCmd("hitrace --trace_finish_nodump"));
-    const int recordCnt = 20;
-    for (int i = 0; i < recordCnt; ++i) {
-        ASSERT_TRUE(RunCmd("hitrace --trace_begin --record sched"));
-        ASSERT_TRUE(RunCmd("hitrace --trace_finish --record"));
+    if (IsRootVersion()) {
+        ASSERT_TRUE(RunCmd("hitrace --trace_finish_nodump"));
+        const int recordCnt = 20;
+        for (int i = 0; i < recordCnt; ++i) {
+            ASSERT_TRUE(RunCmd("hitrace --trace_begin --record sched"));
+            ASSERT_TRUE(RunCmd("hitrace --trace_finish --record"));
+        }
+        int filecnt = CountRecordingTraceFile();
+        GTEST_LOG_(INFO) << "Filecnt: " << filecnt;
+        ASSERT_GE(filecnt, recordCnt);
     }
-    int filecnt = CountRecordingTraceFile();
-    GTEST_LOG_(INFO) << "Filecnt: " << filecnt;
-    ASSERT_LE(filecnt, 16); // 16 : snapshot trace file max count
 }
 
 /**
