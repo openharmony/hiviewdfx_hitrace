@@ -268,8 +268,6 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest006, TestSize.Level2)
 HWTEST_F(HitraceUtilsTest, JsonParserTest007, TestSize.Level2)
 {
     std::shared_ptr<TraceJsonParser> jsonParser = std::make_shared<TraceJsonParser>();
-    ASSERT_TRUE(jsonParser->ParseTraceJson(TRACE_RECORD_FILE_AGE));
-    ASSERT_TRUE(jsonParser->GetRecordFileAge());
     ASSERT_TRUE(jsonParser->ParseTraceJson(TRACE_SNAPSHOT_FILE_AGE));
     ASSERT_TRUE(jsonParser->GetSnapShotFileAge());
 }

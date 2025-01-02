@@ -928,14 +928,8 @@ void ProcessDumpTask()
     const std::string threadName = "TraceDumpTask";
     prctl(PR_SET_NAME, threadName.c_str());
     HILOG_INFO(LOG_CORE, "ProcessDumpTask: trace dump thread start.");
-    if (g_traceJsonParser == nullptr) {
-        g_traceJsonParser = std::make_shared<TraceJsonParser>();
-    }
-    if (!g_traceJsonParser->ParseTraceJson(TRACE_RECORD_FILE_AGE)) {
-        HILOG_WARN(LOG_CORE, "ProcessDumpTask: Failed to parse TRACE_RECORD_FILE_AGE.");
-    }
 
-    if ((!IsRootVersion()) || g_traceJsonParser->GetRecordFileAge()) {
+    if (!IsRootVersion()) {
         // clear old record file before record tracing start.
         DelOldRecordTraceFile(g_currentTraceParams.fileLimit);
     }
@@ -954,7 +948,7 @@ void ProcessDumpTask()
     }
 
     while (g_dumpFlag) {
-        if ((!IsRootVersion()) || g_traceJsonParser->GetRecordFileAge()) {
+        if (!IsRootVersion()) {
             ClearOldTraceFile(g_outputFilesForCmd, g_currentTraceParams.fileLimit);
         }
         // Generate file name

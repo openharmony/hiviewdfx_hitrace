@@ -230,10 +230,6 @@ bool TraceJsonParser::ParseTraceJson(const uint8_t policy)
     if ((needParseItem & TRACE_SNAPSHOT_BUFSZ) > 0 && ParseTraceBufSz(rootNode, snapshotBufSzKb_)) {
         parserState_ |= TRACE_SNAPSHOT_BUFSZ;
     }
-    if ((needParseItem & TRACE_RECORD_FILE_AGE) > 0 &&
-        ParseTraceFileAge(rootNode, "record_file_aging", recordFileAge_)) {
-        parserState_ |= TRACE_RECORD_FILE_AGE;
-    }
     if ((needParseItem & TRACE_SNAPSHOT_FILE_AGE) > 0 &&
         ParseTraceFileAge(rootNode, "snapshot_file_aging", snapshotFileAge_)) {
         parserState_ |= TRACE_SNAPSHOT_FILE_AGE;
