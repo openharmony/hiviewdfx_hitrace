@@ -51,6 +51,19 @@ def parse_irq_handler_entry(data, one_event):
     return "irq=%d name=%s" % (irq, parse_bytes_to_str(data[data_pos:]))
 
 
+def parse_irq_handler_exit(data, one_event):
+    irq = parse_int_field(one_event, "irq", True)
+    ret = parse_int_field(one_event, "ret", True)
+    return "irq=%d ret=%s" % (irq, "handled" if ret else "unhandled")
+
+
+def parse_softirq_entry_exit(data, one_event):
+    vec = parse_int_field(one_event, "vec", False)
+    vec_map = {0: "HI", 1: "TIMER", 2: "NET_TX", 3: "NET_RX", 4: "BLOCK", 5: "IRQ_POLL", \
+        6: "TASKLET", 7: "SCHED", 8: "HRTIMER", 9: "RCU"}
+    return "vec=%d [action=%s]" % (vec, vec_map.get(vec, ''))
+
+
 def parse_sched_wakeup_hm(data, one_event):
     pname = parse_bytes_to_str(one_event["fields"]["pname[16]"])
     pid = parse_int_field(one_event, "pid", True)
@@ -440,8 +453,19 @@ def parse_i2c_write_or_reply(data, one_event):
     flags = parse_int_field(one_event, "flags", False)
     len_write = parse_int_field(one_event, "len", False)
     buf_pos = parse_int_field(one_event, "buf", False) & 0xffff
-    return ("i2c-%d #%d a=%03x f=%04x l=%d " % (adapter_nr, msg_nr, addr, flags, len_write)) \
-        + "{:{width}d}".format(int(parse_bytes_to_str(data[buf_pos:])), width=len_write)
+    buf_str = ""
+    read_cnt = 0
+    while read_cnt < len_write:
+        temp_data = parse_bytes_to_str(data[buf_pos + read_cnt : buf_pos + read_cnt + 1])
+        if temp_data == "" or temp_data == '\x00':
+            buf_str += "00"
+        else:
+            buf_str += temp_data.encode('utf-8').hex()
+        if read_cnt < (len_write - 1):
+            buf_str += "-"
+        read_cnt += 1
+    buf_str += "]"
+    return ("i2c-%d #%d a=%03x f=%04x l=%d %s" % (adapter_nr, msg_nr, addr, flags, len_write, buf_str))
 
 
 def parse_i2c_result(data, one_event):
@@ -472,14 +496,16 @@ def parse_smbus_write_or_reply(data, one_event):
     command = parse_int_field(one_event, "command", False)
     len_write = parse_int_field(one_event, "len", False)
     protocol = parse_int_field(one_event, "protocol", False)
-    buf = parse_bytes_to_str(one_event["fields"]["buf[32 + 2]"])
+    buf_key = "buf[32 + 2]"
+    buf_str = ""
+    if buf_key in one_event["fields"]:
+        buf_str = parse_bytes_to_str(one_event["fields"][buf_key])
 
     protocol_map = {0: "QUICK", 1: "BYTE", 2: "BYTE_DATA", 3: "WORD_DATA", \
         4: "PROC_CALL", 5: "BLOCK_DATA", 6: "I2C_BLOCK_BROKEN", 7: "BLOCK_PROC_CALL", 8: "I2C_BLOCK_DATA"}
 
-    return ("i2c-%d a=%03x f=%04x c=%x %s l=%d" \
-        % (adapter_nr, addr, flags, command, protocol_map.get(protocol, ''), \
-        len_write)) + "{:{width}d}".format(int(buf), width=len_write)
+    return ("i2c-%d a=%03x f=%04x c=%x %s l=%d %s" \
+        % (adapter_nr, addr, flags, command, protocol_map.get(protocol, ''), len_write, buf_str))
 
 
 def parse_smbus_result(data, one_event):
@@ -749,6 +775,8 @@ def parse_xacct_tracing_mark_write(data, one_event):
 
 
 PRINT_FMT_IRQ_HANDLER_ENTRY = '"irq=%d name=%s", REC->irq, ((char *)((void *)((char *)REC + (REC->__data_loc_name & 0xffff))))'
+PRINT_FMT_IRQ_HANDLER_EXIT = '"irq=%d ret=%s", REC->irq, REC->ret ? "handled" : "unhandled"'
+PRINT_FMT_SOFTIRQ_ENTRY_EXIT = '"vec=%u [action=%s]", REC->vec, __print_symbolic(REC->vec, { 0, "HI" }, { 1, "TIMER" }, { 2, "NET_TX" }, { 3, "NET_RX" }, { 4, "BLOCK" }, { 5, "IRQ_POLL" }, { 6, "TASKLET" }, { 7, "SCHED" }, { 8, "HRTIMER" }, { 9, "RCU" })'
 PRINT_FMT_SCHED_WAKEUP_HM = '"comm=%s pid=%d prio=%d target_cpu=%03d", REC->pname, REC->pid, REC->prio, REC->target_cpu'
 PRINT_FMT_SCHED_WAKEUP = '"comm=%s pid=%d prio=%d target_cpu=%03d", REC->comm, REC->pid, REC->prio, REC->target_cpu'
 PRINT_FMT_SCHED_SWITCH_HM = '"prev_comm=%s prev_pid=%d prev_prio=%d prev_state=%s" " ==> next_comm=%s next_pid=%d next_prio=%d", REC->pname, REC->prev_tid, REC->pprio, hm_trace_tcb_state2str(REC->pstate), REC->nname, REC->next_tid, REC->nprio'
@@ -812,6 +840,8 @@ PRINT_FMT_XACCT_TRACING_MARK_WRITE = '"%c|%d|%s", "EB"[REC->start], REC->pid, RE
 
 print_fmt_func_map = {
 PRINT_FMT_IRQ_HANDLER_ENTRY: parse_irq_handler_entry,
+PRINT_FMT_IRQ_HANDLER_EXIT: parse_irq_handler_exit,
+PRINT_FMT_SOFTIRQ_ENTRY_EXIT: parse_softirq_entry_exit,
 PRINT_FMT_SCHED_WAKEUP_HM: parse_sched_wakeup_hm,
 PRINT_FMT_SCHED_WAKEUP: parse_sched_wakeup,
 PRINT_FMT_SCHED_SWITCH_HM: parse_sched_switch_hm,

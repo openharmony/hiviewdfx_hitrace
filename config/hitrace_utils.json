@@ -442,7 +442,12 @@
                 "events/ipi/enable"
             ],
             "type": 1,
-            "format_path": [ "events/irq/irq_handler_entry/format" ]
+            "format_path": [
+                "events/irq/irq_handler_entry/format",
+                "events/irq/irq_handler_exit/format",
+                "events/irq/softirq_entry/format",
+                "events/irq/softirq_exit/format"
+            ]
         },
         "irqoff": {
             "description": "IRQ-disabled code section tracing",
