@@ -189,6 +189,11 @@ ohos_unittest("HitraceUtilsTest") {
 ohos_unittest("HitraceEventTest") {
   module_out_path = module_output_path
 
+  include_dirs = [
+    "$hitrace_common_path",
+    "$hitrace_utils_path",
+  ]
+
   sources = [
     "hitrace_event/hitrace_event_listener.cpp",
     "hitrace_event/hitrace_event_test.cpp",
@@ -196,16 +201,14 @@ ohos_unittest("HitraceEventTest") {
 
   cflags = [ "-DHITRACE_UNITTEST" ]
 
+  deps = [
+    "$hitrace_utils_path:hitrace_common_utils",
+    "$hitrace_utils_path:hitrace_file_utils",
+  ]
+
   external_deps = [
-    "bounds_checking_function:libsec_shared",
     "googletest:gtest_main",
     "hisysevent:libhisysevent",
     "hisysevent:libhisyseventmanager",
-    "init:libbegetutil",
   ]
-  if (defined(ohos_lite)) {
-    external_deps += [ "hilog_lite:hilog_lite" ]
-  } else {
-    external_deps += [ "hilog:libhilog" ]
-  }
 }

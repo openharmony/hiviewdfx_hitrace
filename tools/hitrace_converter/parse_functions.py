@@ -24,10 +24,10 @@ def parse_bytes_to_str(data):
         return decoded_str
 
     if data.find(b'\x00') == -1:
-        decoded_str = data[:].decode('utf-8', errors="ignore")
+        decoded_str = data[:].decode('utf-8', errors ="ignore")
         return decoded_str
 
-    decoded_str = data[:data.index(b'\x00')].decode('utf-8', errors="ignore")
+    decoded_str = data[:data.index(b'\x00')].decode('utf-8', errors ="ignore")
 
     return decoded_str
 
