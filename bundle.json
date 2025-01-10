@@ -38,9 +38,6 @@
         "zlib"
       ]
     },
-    "hisysevent_config": [
-      "//base/hiviewdfx/hitrace/hisysevent.yaml"
-    ],
     "build": {
       "sub_component": [
         "//base/hiviewdfx/hitrace:hitrace_all_target"
