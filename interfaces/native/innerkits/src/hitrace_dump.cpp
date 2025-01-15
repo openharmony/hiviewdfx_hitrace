@@ -84,7 +84,7 @@ const int SAVED_CMDLINES_SIZE = 3072; // 3M
 const int KB_PER_MB = 1024;
 constexpr uint64_t S_TO_NS = 1000000000;
 constexpr uint64_t S_TO_MS = 1000;
-constexpr uint32_t MAX_RATIO_UNIT = 1000;
+constexpr int32_t MAX_RATIO_UNIT = 1000;
 const int MAX_NEW_TRACE_FILE_LIMIT = 5;
 const int JUDGE_FILE_EXIST = 10;  // Check whether the trace file exists every 10 times.
 const int SNAPSHOT_FILE_MAX_COUNT = 20;
@@ -1546,15 +1546,16 @@ TraceRetInfo DumpTrace(int maxDuration, uint64_t utTraceEndTime)
         return ret;
     }
     g_firstPageTimestamp = UINT64_MAX;
-    uint32_t committedDuration = maxDuration == 0 ? DEFAULT_FULL_TRACE_LENGTH :
-        std::min(maxDuration, DEFAULT_FULL_TRACE_LENGTH);
+    uint32_t committedDuration = static_cast<uint32_t>(maxDuration == 0 ? DEFAULT_FULL_TRACE_LENGTH :
+        std::min(maxDuration, DEFAULT_FULL_TRACE_LENGTH));
     ret.errorCode = DumpTraceInner(ret.outputFiles);
     if (g_traceEndTime <= g_firstPageTimestamp) {
         ret.coverRatio = 0;
     } else {
-        ret.coverDuration = static_cast<uint32_t>(std::min(
-            (g_traceEndTime - g_firstPageTimestamp) * S_TO_MS / S_TO_NS, committedDuration * S_TO_MS));
-        ret.coverRatio = (g_traceEndTime - g_firstPageTimestamp) * MAX_RATIO_UNIT / S_TO_NS / committedDuration;
+        ret.coverDuration = static_cast<int32_t>(std::min((g_traceEndTime - g_firstPageTimestamp) *
+            S_TO_MS / S_TO_NS, committedDuration * S_TO_MS));
+        ret.coverRatio = static_cast<int32_t>((g_traceEndTime - g_firstPageTimestamp) *
+            MAX_RATIO_UNIT / S_TO_NS / committedDuration);
     }
     if (ret.coverRatio > MAX_RATIO_UNIT) {
         ret.coverRatio = MAX_RATIO_UNIT;
