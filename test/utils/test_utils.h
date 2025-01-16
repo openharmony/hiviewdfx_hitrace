@@ -16,11 +16,16 @@
 #ifndef HITRACE_TEST_UTILS_H
 #define HITRACE_TEST_UTILS_H
 
+#include <string>
+#include <vector>
+
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
 int CountSnapShotTraceFile();
 int CountRecordingTraceFile();
+void GetSnapShotTraceFileList(std::vector<std::string>& fileList);
+void GetRecordingTraceFileList(std::vector<std::string>& fileList);
 } // namespace HiTrace
 } // namespace HiviewDFX
 } // namespace OHOS
