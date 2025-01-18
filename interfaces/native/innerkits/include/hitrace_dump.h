@@ -22,6 +22,8 @@
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
+constexpr uint64_t DEFAULT_TRACE_SLICE_DURATION = 10;
+constexpr uint64_t DEFAULT_TOTAL_CACHE_FILE_SIZE = 800;
 
 enum TraceErrorCode : uint8_t {
     SUCCESS = 0,
@@ -69,12 +71,12 @@ TraceMode GetTraceMode();
 /**
  * Set trace parameters based on args for CMD_MODE.
 */
-TraceErrorCode OpenTrace(const std::string &args);
+TraceErrorCode OpenTrace(const std::string& args);
 
 /**
  * Set trace tags based on tagGroups for SERVICE_MODE.
 */
-TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups);
+TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups);
 
 /**
  * Reading trace data once from ftrace ringbuffer in the kernel.
@@ -99,6 +101,19 @@ TraceErrorCode DumpTraceOn();
  * End the periodic disk drop task.
 */
 TraceRetInfo DumpTraceOff();
+
+/**
+ * Enable sub threads to periodically dump cache data
+ * End dumping with CacheTraceOff()
+ * CacheTraceOn() function call during the caching phase will return corresponding cache files.
+*/
+TraceErrorCode CacheTraceOn(uint64_t totalFileSize = DEFAULT_TOTAL_CACHE_FILE_SIZE,
+    uint64_t sliceMaxDuration = DEFAULT_TRACE_SLICE_DURATION);
+
+/**
+ * End the periodic cache task.
+*/
+TraceErrorCode CacheTraceOff();
 
 /**
  * Turn off trace mode.

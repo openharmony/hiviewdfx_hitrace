@@ -34,4 +34,5 @@ const std::string TRACE_NODE = "trace";
 const std::string TRACE_FILE_DEFAULT_DIR = "/data/log/hitrace/";
 const std::string TRACE_SAVED_EVENTS_FORMAT = "saved_events_format";
 
+
 #endif // HITRACE_COMMON_DEFINE_H

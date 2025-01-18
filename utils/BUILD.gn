@@ -44,6 +44,7 @@ ohos_source_set("hitrace_file_utils") {
   } else {
     external_deps = [ "hilog:libhilog" ]
   }
+  external_deps += [ "bounds_checking_function:libsec_shared" ]
   part_name = "hitrace"
   subsystem_name = "hiviewdfx"
 }
