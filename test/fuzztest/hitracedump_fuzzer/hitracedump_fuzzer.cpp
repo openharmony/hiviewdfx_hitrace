@@ -35,7 +35,7 @@ void HitraceDumpCmdModeTest(const uint8_t* data, size_t size)
         return;
     }
     StreamToValueInfo(data, traceTags);
-    std::string hitraceTags = " sched freq binder idle disk";
+    std::string hitraceTags = " sched freq idle disk";
     GenerateTagStr(traceTags, hitraceTags);
     std::cout << "trace mode : " << GetTraceMode() << std::endl;
     (void)OpenTrace(hitraceTags);
@@ -43,6 +43,34 @@ void HitraceDumpCmdModeTest(const uint8_t* data, size_t size)
     (void)DumpTraceOn();
     sleep(1);
     (void)DumpTraceOff();
+    (void)CloseTrace();
+    std::cout << "trace mode : " << GetTraceMode() << std::endl;
+}
+
+void HitraceDumpCacheTest(const uint8_t* data, size_t size)
+{
+    uint64_t traceTags = 0;
+    if (size < sizeof(traceTags)) {
+        return;
+    }
+    StreamToValueInfo(data, traceTags);
+    std::vector<std::string> hitraceTags = { "sched", "freq", "idle", "disk" };
+    GenerateTagVec(traceTags, hitraceTags);
+    std::cout << "trace mode : " << GetTraceMode() << std::endl;
+    (void)OpenTrace(hitraceTags);
+    std::cout << "trace mode : " << GetTraceMode() << std::endl;
+    sleep(1);
+    (void)CacheTraceOn();
+    std::cout << "trace mode : " << GetTraceMode() << std::endl;
+    sleep(1);
+    (void)DumpTrace();
+    std::cout << "trace mode : " << GetTraceMode() << std::endl;
+    sleep(1);
+    (void)CacheTraceOff();
+    std::cout << "trace mode : " << GetTraceMode() << std::endl;
+    sleep(1);
+    (void)DumpTrace();
+    std::cout << "trace mode : " << GetTraceMode() << std::endl;
     (void)CloseTrace();
     std::cout << "trace mode : " << GetTraceMode() << std::endl;
 }
@@ -59,7 +87,7 @@ void HitraceDumpServiceModeTest(const uint8_t* data, size_t size)
     StreamToValueInfo(data, happenTime);
     StreamToValueInfo(data, traceTags);
     duration = duration > 30 ? 30 : duration; // 30 : max duration
-    std::vector<std::string> hitraceTags = { "sched", "freq", "binder", "idle", "disk" };
+    std::vector<std::string> hitraceTags = { "sched", "freq", "idle", "disk" };
     GenerateTagVec(traceTags, hitraceTags);
     std::cout << "trace mode : " << GetTraceMode() << std::endl;
     (void)OpenTrace(hitraceTags);
@@ -84,6 +112,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 
     /* Run your code on data */
     OHOS::HiviewDFX::Hitrace::HitraceDumpCmdModeTest(data, size);
+    OHOS::HiviewDFX::Hitrace::HitraceDumpCacheTest(data, size);
     OHOS::HiviewDFX::Hitrace::HitraceDumpServiceModeTest(data, size);
     return 0;
 }

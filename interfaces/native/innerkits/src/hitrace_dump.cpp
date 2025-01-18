@@ -70,11 +70,13 @@ constexpr uint16_t MAGIC_NUMBER = 57161;
 constexpr uint16_t VERSION_NUMBER = 1;
 constexpr uint8_t FILE_RAW_TRACE = 0;
 constexpr uint8_t HM_FILE_RAW_TRACE = 1;
+constexpr uint64_t CACHE_TRACE_LOOP_SLEEP_TIME = 1;
 constexpr int UNIT_TIME = 100000;
 constexpr int ALIGNMENT_COEFFICIENT = 4;
 
 const int DEFAULT_BUFFER_SIZE = 12 * 1024;
 const int DEFAULT_FILE_SIZE = 100 * 1024;
+const int DEFAULT_CACHE_FILE_SIZE = 150;
 #if defined(SNAPSHOT_TRACEBUFFER_SIZE) && (SNAPSHOT_TRACEBUFFER_SIZE != 0)
 const int HM_DEFAULT_BUFFER_SIZE = SNAPSHOT_TRACEBUFFER_SIZE;
 #else
@@ -82,6 +84,7 @@ const int HM_DEFAULT_BUFFER_SIZE = 144 * 1024;
 #endif
 const int SAVED_CMDLINES_SIZE = 3072; // 3M
 const int KB_PER_MB = 1024;
+const int BYTE_PER_MB = 1024 * 1024;
 constexpr uint64_t S_TO_NS = 1000000000;
 constexpr uint64_t S_TO_MS = 1000;
 constexpr int32_t MAX_RATIO_UNIT = 1000;
@@ -124,6 +127,7 @@ struct PageHeader {
 struct ChildProcessRet {
     uint8_t dumpStatus;
     uint64_t traceStartTime;
+    uint64_t traceEndTime;
 };
 
 #ifndef PAGE_SIZE
@@ -134,7 +138,10 @@ const int BUFFER_SIZE = 256 * PAGE_SIZE; // 1M
 
 std::atomic<bool> g_dumpFlag(false);
 std::atomic<bool> g_dumpEnd(true);
+std::atomic<bool> g_cacheFlag(false);
+std::atomic<bool> g_cacheEnd(true);
 std::mutex g_traceMutex;
+std::mutex g_cacheTraceMutex;
 
 bool g_serviceThreadIsStart = false;
 uint64_t g_sysInitParamTags = 0;
@@ -148,21 +155,29 @@ int g_newTraceFileLimit = 0;
 int g_writeFileLimit = 0;
 bool g_needGenerateNewTraceFile = false;
 bool g_needLimitFileSize = true;
+uint64_t g_totalFileSizeLimit = 0;
+uint64_t g_sliceMaxDuration = 0;
 uint64_t g_traceStartTime = 0;
 uint64_t g_traceEndTime = std::numeric_limits<uint64_t>::max(); // in nano seconds
-uint64_t g_firstPageTimestamp = 0;
+uint64_t g_firstPageTimestamp = std::numeric_limits<uint64_t>::max();
+uint64_t g_lastPageTimestamp = 0;
+uint64_t g_utDestTraceStartTime = 0;
+uint64_t g_utDestTraceEndTime = 0;
 std::atomic<uint8_t> g_dumpStatus(TraceErrorCode::UNSET);
 std::vector<std::string> g_tags{};
+std::vector<TraceFileInfo> g_traceFileVec{};
+std::vector<TraceFileInfo> g_cacheFileVec{};
 
 TraceParams g_currentTraceParams = {};
 std::shared_ptr<TraceJsonParser> g_traceJsonParser = nullptr;
+std::atomic<uint8_t> g_interruptDump(0);
 
 std::string GetFilePath(const std::string &fileName)
 {
     return g_traceRootPath + fileName;
 }
 
-std::vector<std::string> Split(const std::string &str, char delimiter)
+std::vector<std::string> Split(const std::string& str, char delimiter)
 {
     std::vector<std::string> res;
     size_t startPos = 0;
@@ -215,7 +230,7 @@ void GetCpuNums(TraceFileHeader& header)
     HILOG_INFO(LOG_CORE, "reserved with cpu number info is %{public}d.", header.reserved);
 }
 
-bool CheckTags(const std::vector<std::string> &tags, const std::map<std::string, TraceTag> &allTags)
+bool CheckTags(const std::vector<std::string>& tags, const std::map<std::string, TraceTag>& allTags)
 {
     for (const auto &tag : tags) {
         if (allTags.find(tag) == allTags.end()) {
@@ -226,8 +241,8 @@ bool CheckTags(const std::vector<std::string> &tags, const std::map<std::string,
     return true;
 }
 
-bool CheckTagGroup(const std::vector<std::string> &tagGroups,
-                   const std::map<std::string, std::vector<std::string>> &tagGroupTable)
+bool CheckTagGroup(const std::vector<std::string>& tagGroups,
+                   const std::map<std::string, std::vector<std::string>>& tagGroupTable)
 {
     for (auto groupName : tagGroups) {
         if (tagGroupTable.find(groupName) == tagGroupTable.end()) {
@@ -295,7 +310,7 @@ bool SetProperty(const std::string& property, const std::string& value)
 }
 
 // close all trace node
-void TraceInit(const std::map<std::string, TraceTag> &allTags)
+void TraceInit(const std::map<std::string, TraceTag>& allTags)
 {
     // close all ftrace events
     for (auto it = allTags.begin(); it != allTags.end(); it++) {
@@ -317,9 +332,9 @@ void TraceInit(const std::map<std::string, TraceTag> &allTags)
 }
 
 // Open specific trace node
-void SetAllTags(const TraceParams &traceParams, const std::map<std::string, TraceTag> &allTags,
-                const std::map<std::string, std::vector<std::string>> &tagGroupTable,
-                std::vector<std::string> &tagFmts)
+void SetAllTags(const TraceParams& traceParams, const std::map<std::string, TraceTag>& allTags,
+                const std::map<std::string, std::vector<std::string>>& tagGroupTable,
+                std::vector<std::string>& tagFmts)
 {
     std::set<std::string> readyEnableTagList;
     for (std::string tagName : traceParams.tags) {
@@ -441,9 +456,9 @@ void SetClock(const std::string& clockType)
     return;
 }
 
-bool SetTraceSetting(const TraceParams &traceParams, const std::map<std::string, TraceTag> &allTags,
-                     const std::map<std::string, std::vector<std::string>> &tagGroupTable,
-                     std::vector<std::string> &tagFmts)
+bool SetTraceSetting(const TraceParams& traceParams, const std::map<std::string, TraceTag>& allTags,
+                     const std::map<std::string, std::vector<std::string>>& tagGroupTable,
+                     std::vector<std::string>& tagFmts)
 {
     TraceInit(allTags);
 
@@ -468,7 +483,7 @@ bool SetTraceSetting(const TraceParams &traceParams, const std::map<std::string,
     return true;
 }
 
-bool CheckPage(uint8_t contentType, uint8_t *page)
+bool CheckPage(uint8_t contentType, uint8_t* page)
 {
     const int pageThreshold = PAGE_SIZE / 2;
 
@@ -483,7 +498,7 @@ bool CheckPage(uint8_t contentType, uint8_t *page)
     return true;
 }
 
-bool CheckFileExist(const std::string &outputFile)
+bool CheckFileExist(const std::string& outputFile)
 {
     g_writeFileLimit++;
     if (g_writeFileLimit > JUDGE_FILE_EXIST) {
@@ -560,13 +575,17 @@ void GetFileSizeThresholdAndTraceTime(bool &isCpuRaw, uint8_t contentType, uint6
         HILOG_INFO(LOG_CORE, "traceStartTime:(%{public}" PRIu64 "), traceEndTime:(%{public}" PRIu64 ").",
             traceStartTime, traceEndTime);
     }
+    if (g_cacheFlag.load()) {
+        fileSizeThreshold = DEFAULT_CACHE_FILE_SIZE * KB_PER_MB;
+        return;
+    }
     if (g_currentTraceParams.fileSize != 0) {
         fileSizeThreshold = g_currentTraceParams.fileSize * KB_PER_MB;
     }
 }
 
-bool IsWriteFileOverflow(const bool isCpuRaw, const int &outputFileSize, const ssize_t &writeLen,
-                         const int &fileSizeThreshold)
+bool IsWriteFileOverflow(const bool isCpuRaw, const int &outputFileSize, const ssize_t& writeLen,
+                         const int& fileSizeThreshold)
 {
     // attention: we only check file size threshold in CMD_MODE
     if (!isCpuRaw || g_traceMode != TraceMode::CMD_MODE || !g_needLimitFileSize) {
@@ -583,7 +602,7 @@ bool IsWriteFileOverflow(const bool isCpuRaw, const int &outputFileSize, const s
     return false;
 }
 
-bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std::string &outputFile)
+bool WriteFile(uint8_t contentType, const std::string& src, int outFd, const std::string& outputFile)
 {
     std::string srcPath = CanonicalizeSpecPath(src.c_str());
     int srcFd = open(srcPath.c_str(), O_RDONLY | O_NONBLOCK);
@@ -630,15 +649,17 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
                 HILOG_ERROR(LOG_CORE, "Failed to memcpy g_buffer to pageTraceTime.");
                 break;
             }
-            if (UNEXPECTANTLY(!printFirstPageTime) && isCpuRaw) {
-                HILOG_INFO(LOG_CORE, "First page trace time:(%{public}" PRIu64 ")", pageTraceTime);
-                printFirstPageTime = true;
-                g_firstPageTimestamp = pageTraceTime;
+            if (isCpuRaw) {
+                g_lastPageTimestamp = std::max(pageTraceTime, g_lastPageTimestamp);
+                if (UNEXPECTANTLY(!printFirstPageTime)) {
+                    HILOG_INFO(LOG_CORE, "first page trace time:(%{public}" PRIu64 ")", pageTraceTime);
+                    printFirstPageTime = true;
+                    g_firstPageTimestamp = std::min(g_firstPageTimestamp, pageTraceTime);
+                }
             }
 
             if (traceEndTime < pageTraceTime) {
                 endFlag = true;
-                readBytes = 0;
                 HILOG_INFO(LOG_CORE,
                     "Current pageTraceTime:(%{public}" PRIu64 ") is larger than traceEndTime:(%{public}" PRIu64 ")",
                     pageTraceTime, traceEndTime);
@@ -698,7 +719,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
     return true;
 }
 
-void WriteEventFile(std::string &srcPath, int outFd)
+void WriteEventFile(std::string& srcPath, int outFd)
 {
     uint8_t buffer[PAGE_SIZE] = {0};
     std::string srcSpecPath = CanonicalizeSpecPath(srcPath.c_str());
@@ -721,7 +742,7 @@ void WriteEventFile(std::string &srcPath, int outFd)
         srcPath.c_str(), static_cast<uint64_t>(readLen));
 }
 
-bool WriteEventsFormat(int outFd, const std::string &outputFile)
+bool WriteEventsFormat(int outFd, const std::string& outputFile)
 {
     const std::string savedEventsFormatPath = TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT;
     if (access(savedEventsFormatPath.c_str(), F_OK) != -1) {
@@ -760,7 +781,7 @@ bool WriteEventsFormat(int outFd, const std::string &outputFile)
     return WriteFile(CONTENT_TYPE_EVENTS_FORMAT, savedEventsFormatPath, outFd, outputFile);
 }
 
-bool WriteHeaderPage(int outFd, const std::string &outputFile)
+bool WriteHeaderPage(int outFd, const std::string& outputFile)
 {
     if (IsHmKernel()) {
         return true;
@@ -788,7 +809,7 @@ bool WriteKallsyms(int outFd)
     return true;
 }
 
-bool HmWriteCpuRawInner(int outFd, const std::string &outputFile)
+bool HmWriteCpuRawInner(int outFd, const std::string& outputFile)
 {
     uint8_t type = CONTENT_TYPE_CPU_RAW;
     std::string src = g_traceRootPath + "/trace_pipe_raw";
@@ -805,7 +826,7 @@ bool HmWriteCpuRawInner(int outFd, const std::string &outputFile)
     return true;
 }
 
-bool WriteCpuRawInner(int outFd, const std::string &outputFile)
+bool WriteCpuRawInner(int outFd, const std::string& outputFile)
 {
     int cpuNums = GetCpuProcessors();
     uint8_t type = CONTENT_TYPE_CPU_RAW;
@@ -822,7 +843,7 @@ bool WriteCpuRawInner(int outFd, const std::string &outputFile)
     return true;
 }
 
-bool WriteCpuRaw(int outFd, const std::string &outputFile)
+bool WriteCpuRaw(int outFd, const std::string& outputFile)
 {
     if (!IsHmKernel()) {
         return WriteCpuRawInner(outFd, outputFile);
@@ -831,24 +852,24 @@ bool WriteCpuRaw(int outFd, const std::string &outputFile)
     }
 }
 
-bool WriteCmdlines(int outFd, const std::string &outputFile)
+bool WriteCmdlines(int outFd, const std::string& outputFile)
 {
     std::string cmdlinesPath = GetFilePath("saved_cmdlines");
     return WriteFile(CONTENT_TYPE_CMDLINES, cmdlinesPath, outFd, outputFile);
 }
 
-bool WriteTgids(int outFd, const std::string &outputFile)
+bool WriteTgids(int outFd, const std::string& outputFile)
 {
     std::string tgidsPath = GetFilePath("saved_tgids");
     return WriteFile(CONTENT_TYPE_TGIDS, tgidsPath, outFd, outputFile);
 }
 
-bool GenerateNewFile(int &outFd, std::string &outPath)
+bool GenerateNewFile(int& outFd, std::string& outPath, const TRACE_TYPE traceType)
 {
     if (access(outPath.c_str(), F_OK) == 0) {
         return true;
     }
-    std::string outputFileName = GenerateTraceFileName(false);
+    std::string outputFileName = GenerateTraceFileName(traceType);
     outPath = CanonicalizeSpecPath(outputFileName.c_str());
     outFd = open(outPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644:-rw-r--r--
     if (outFd < 0) {
@@ -863,7 +884,148 @@ bool GenerateNewFile(int &outFd, std::string &outPath)
     return true;
 }
 
-bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
+bool SetFileInfo(const std::string outPath, const uint64_t& firstPageTimestamp,
+    const uint64_t& lastPageTimestamp, TraceFileInfo& traceFileInfo)
+{
+    std::string newFileName;
+    if (!RenameTraceFile(outPath, newFileName, firstPageTimestamp, lastPageTimestamp)) {
+        HILOG_INFO(LOG_CORE, "rename failed, outPath: %{public}s.", outPath.c_str());
+        return false;
+    }
+    time_t firstPageTime = 0;
+    time_t lastPageTime = 0;
+    if (!ConvertPageTraceTimeToUtTime(firstPageTimestamp, firstPageTime) ||
+        !ConvertPageTraceTimeToUtTime(lastPageTimestamp, lastPageTime)) {
+        return false;
+    }
+    uint64_t traceFileSize = 0;
+    if (!GetFileSize(newFileName, traceFileSize)) {
+        return false;
+    }
+    traceFileInfo.filename = newFileName;
+    traceFileInfo.traceStartTime = static_cast<uint64_t>(firstPageTime);
+    traceFileInfo.traceEndTime = static_cast<uint64_t>(lastPageTime);
+    traceFileInfo.fileSize = traceFileSize;
+    return true;
+}
+
+void GetTraceFileFromVec(const uint64_t& inputTraceStartTime, const uint64_t& inputTraceEndTime,
+    std::vector<TraceFileInfo>& fileVec, std::vector<std::string>& outputFiles)
+{
+    if (!fileVec.empty()) {
+        for (auto it = fileVec.begin(); it != fileVec.end(); it++) {
+            HILOG_INFO(LOG_CORE, "traceStartTime:(%{public}" PRIu64 "), traceEndTime: (%{public}" PRIu64 ").",
+                (*it).traceStartTime, (*it).traceEndTime);
+            if ((((*it).traceStartTime >= inputTraceStartTime && (*it).traceStartTime <= inputTraceEndTime) ||
+                 ((*it).traceEndTime >= inputTraceStartTime && (*it).traceEndTime <= inputTraceEndTime) ||
+                 ((*it).traceStartTime <= inputTraceStartTime && (*it).traceEndTime >= inputTraceEndTime)) &&
+                 ((*it).traceEndTime - (*it).traceStartTime < 2000)) { // 2000 : max trace duration 2000s
+                outputFiles.push_back((*it).filename);
+                HILOG_INFO(LOG_CORE, "Put file: %{public}s into outputFiles.", (*it).filename.c_str());
+            }
+        }
+    }
+}
+
+void SearchTraceFiles(const uint64_t& inputTraceStartTime, const uint64_t& inputTraceEndTime,
+    std::vector<std::string>& outputFiles)
+{
+    GetTraceFileFromVec(inputTraceStartTime, inputTraceEndTime, g_cacheFileVec, outputFiles);
+    GetTraceFileFromVec(inputTraceStartTime, inputTraceEndTime, g_traceFileVec, outputFiles);
+}
+
+bool CacheTraceLoop(const std::string &outputFileName)
+{
+    std::lock_guard<std::mutex> lock(g_cacheTraceMutex);
+    int fileSizeThreshold = DEFAULT_CACHE_FILE_SIZE * BYTE_PER_MB;
+    g_firstPageTimestamp = UINT64_MAX;
+    g_lastPageTimestamp = 0;
+    g_outputFileSize = 0;
+    std::string outPath = CanonicalizeSpecPath(outputFileName.c_str());
+    int outFd = open(outPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644:-rw-r--r--
+    if (outFd < 0) {
+        HILOG_ERROR(LOG_CORE, "open %{public}s failed, errno: %{public}d.", outPath.c_str(), errno);
+        return false;
+    }
+    MarkClockSync(g_traceRootPath);
+    struct TraceFileHeader header;
+    GetArchWordSize(header);
+    GetCpuNums(header);
+    if (IsHmKernel()) {
+        header.fileType = HM_FILE_RAW_TRACE;
+    }
+    uint64_t sliceDuration = 0;
+    do {
+        g_interruptDump.store(0);
+        g_needGenerateNewTraceFile = false;
+        ssize_t writeRet = TEMP_FAILURE_RETRY(write(outFd, reinterpret_cast<char *>(&header), sizeof(header)));
+        if (writeRet < 0) {
+            HILOG_WARN(LOG_CORE, "Failed to write trace file header, errno: %{public}s, headerLen: %{public}zu.",
+                strerror(errno), sizeof(header));
+            close(outFd);
+            return false;
+        }
+        WriteEventsFormat(outFd, outPath);
+        while (g_cacheFlag.load()) {
+            if (g_outputFileSize > fileSizeThreshold) {
+                break;
+            }
+            struct timespec bts = {0, 0};
+            clock_gettime(CLOCK_BOOTTIME, &bts);
+            uint64_t startTime = static_cast<uint64_t>(bts.tv_sec * S_TO_NS + bts.tv_nsec);
+            sleep(CACHE_TRACE_LOOP_SLEEP_TIME);
+            if (!WriteCpuRaw(outFd, outPath)) {
+                break;
+            }
+            clock_gettime(CLOCK_BOOTTIME, &bts);
+            uint64_t endTime = static_cast<uint64_t>(bts.tv_sec * S_TO_NS + bts.tv_nsec);
+            uint64_t timeDiff = (endTime - startTime) / S_TO_NS;
+            sliceDuration += timeDiff;
+            if (sliceDuration >= g_sliceMaxDuration || g_interruptDump.load() == 1) {
+                sliceDuration = 0;
+                break;
+            }
+        }
+        WriteCmdlines(outFd, outPath);
+        WriteTgids(outFd, outPath);
+        WriteHeaderPage(outFd, outPath);
+        WritePrintkFormats(outFd, outPath);
+        WriteKallsyms(outFd);
+        if (!GenerateNewFile(outFd, outPath, TRACE_CACHE)) {
+            HILOG_INFO(LOG_CORE, "CacheTraceLoop access file:%{public}s failed, errno: %{public}d.",
+                outPath.c_str(), errno);
+            close(outFd);
+            return false;
+        }
+    } while (g_needGenerateNewTraceFile);
+    close(outFd);
+    TraceFileInfo traceFileInfo;
+    if (!SetFileInfo(outPath, g_firstPageTimestamp, g_lastPageTimestamp, traceFileInfo)) {
+        RemoveFile(outPath);
+        return false;
+    }
+    g_cacheFileVec.push_back(traceFileInfo);
+    return true;
+}
+
+void ProcessCacheTask()
+{
+    const std::string threadName = "CacheTraceTask";
+    prctl(PR_SET_NAME, threadName.c_str());
+    while (g_cacheFlag.load()) {
+        std::string outputFileName = GenerateTraceFileName(TRACE_CACHE);
+        if (CacheTraceLoop(outputFileName)) {
+            ClearCacheTraceFileBySize(g_cacheFileVec, g_totalFileSizeLimit);
+            HILOG_INFO(LOG_CORE, "ProcessCacheTask: save cache file.");
+        } else {
+            break;
+        }
+    }
+    g_cacheEnd.store(true);
+    HILOG_INFO(LOG_CORE, "ProcessCacheTask: trace cache thread exit.");
+}
+
+bool DumpTraceLoop(const std::string& outputFileName, bool isLimited)
 {
     const int sleepTime = 1;
     int fileSizeThreshold = DEFAULT_FILE_SIZE * KB_PER_MB;
@@ -886,9 +1048,15 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
     }
     do {
         g_needGenerateNewTraceFile = false;
-        write(outFd, reinterpret_cast<char *>(&header), sizeof(header));
+        ssize_t writeRet = TEMP_FAILURE_RETRY(write(outFd, reinterpret_cast<char *>(&header), sizeof(header)));
+        if (writeRet < 0) {
+            HILOG_WARN(LOG_CORE, "Failed to write trace file header, errno: %{public}s, headerLen: %{public}zu.",
+                strerror(errno), sizeof(header));
+            close(outFd);
+            return false;
+        }
         WriteEventsFormat(outFd, outPath);
-        while (g_dumpFlag) {
+        while (g_dumpFlag.load()) {
             if (isLimited && g_outputFileSize > fileSizeThreshold) {
                 break;
             }
@@ -902,7 +1070,7 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
         WriteHeaderPage(outFd, outPath);
         WritePrintkFormats(outFd, outPath);
         WriteKallsyms(outFd);
-        if (!GenerateNewFile(outFd, outPath)) {
+        if (!GenerateNewFile(outFd, outPath, TRACE_RECORDING)) {
             HILOG_INFO(LOG_CORE, "DumpTraceLoop access file:%{public}s failed, errno: %{public}d.",
                 outPath.c_str(), errno);
             close(outFd);
@@ -922,8 +1090,8 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
 */
 void ProcessDumpTask()
 {
-    g_dumpFlag = true;
-    g_dumpEnd = false;
+    g_dumpFlag.store(true);
+    g_dumpEnd.store(false);
     g_outputFilesForCmd = {};
     const std::string threadName = "TraceDumpTask";
     prctl(PR_SET_NAME, threadName.c_str());
@@ -938,21 +1106,21 @@ void ProcessDumpTask()
     if (g_currentTraceParams.fileSize == 0 && IsRootVersion()) {
         g_needLimitFileSize = false;
         std::string outputFileName = g_currentTraceParams.outputFile.empty() ?
-                                     GenerateTraceFileName(false) : g_currentTraceParams.outputFile;
+                                     GenerateTraceFileName(TRACE_RECORDING) : g_currentTraceParams.outputFile;
         if (DumpTraceLoop(outputFileName, g_needLimitFileSize)) {
             g_outputFilesForCmd.push_back(outputFileName);
         }
-        g_dumpEnd = true;
+        g_dumpEnd.store(true);
         g_needLimitFileSize = true;
         return;
     }
 
-    while (g_dumpFlag) {
+    while (g_dumpFlag.load()) {
         if (!IsRootVersion()) {
             ClearOldTraceFile(g_outputFilesForCmd, g_currentTraceParams.fileLimit);
         }
         // Generate file name
-        std::string outputFileName = GenerateTraceFileName(false);
+        std::string outputFileName = GenerateTraceFileName(TRACE_RECORDING);
         if (DumpTraceLoop(outputFileName, true)) {
             g_outputFilesForCmd.push_back(outputFileName);
         } else {
@@ -960,33 +1128,10 @@ void ProcessDumpTask()
         }
     }
     HILOG_INFO(LOG_CORE, "ProcessDumpTask: trace dump thread exit.");
-    g_dumpEnd = true;
+    g_dumpEnd.store(true);
 }
 
-void SearchFromTable(std::vector<std::string> &outputFiles, int nowSec)
-{
-    const int maxInterval = 30;
-    const int agingTime = 30 * 60;
-
-    for (auto iter = g_traceFilesTable.begin(); iter != g_traceFilesTable.end();) {
-        if (nowSec - iter->second >= agingTime) {
-            // delete outdated trace file
-            if (access(iter->first.c_str(), F_OK) == 0) {
-                remove(iter->first.c_str());
-                HILOG_INFO(LOG_CORE, "delete old %{public}s file success.", iter->first.c_str());
-            }
-            iter = g_traceFilesTable.erase(iter);
-            continue;
-        }
-
-        if (nowSec - iter->second <= maxInterval) {
-            outputFiles.push_back(iter->first);
-        }
-        iter++;
-    }
-}
-
-bool ReadRawTrace(std::string &outputFileName)
+bool ReadRawTrace(std::string& outputFileName)
 {
     // read trace data from /per_cpu/cpux/trace_pipe_raw
     std::string outPath = CanonicalizeSpecPath(outputFileName.c_str());
@@ -1047,7 +1192,7 @@ void TimeoutSignalHandler(int signum)
     }
 }
 
-bool EpollWaitforChildProcess(pid_t &pid, int &pipefd)
+bool EpollWaitforChildProcess(pid_t& pid, int& pipefd)
 {
     int epollfd = epoll_create1(0);
     if (epollfd == -1) {
@@ -1084,6 +1229,8 @@ bool EpollWaitforChildProcess(pid_t &pid, int &pipefd)
     read(pipefd, &retVal, sizeof(retVal));
     g_dumpStatus = retVal.dumpStatus;
     g_firstPageTimestamp = retVal.traceStartTime;
+    g_lastPageTimestamp = retVal.traceEndTime;
+
     close(pipefd);
     close(epollfd);
     if (waitpid(pid, nullptr, 0) <= 0) {
@@ -1092,7 +1239,7 @@ bool EpollWaitforChildProcess(pid_t &pid, int &pipefd)
     return true;
 }
 
-TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
+TraceErrorCode DumpTraceInner(std::vector<std::string>& outputFiles)
 {
     int pipefd[2];
     if (pipe(pipefd) == -1) {
@@ -1100,7 +1247,7 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
         return TraceErrorCode::PIPE_CREATE_ERROR;
     }
 
-    std::string outputFileName = GenerateTraceFileName();
+    std::string outputFileName = GenerateTraceFileName(TRACE_SNAPSHOT);
     std::string reOutPath = CanonicalizeSpecPath(outputFileName.c_str());
     g_dumpStatus = TraceErrorCode::UNSET;
     /*Child process handles task, Father process wait.*/
@@ -1126,12 +1273,13 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
             HILOG_WARN(LOG_CORE, "DumpTraceInner: Failed to parse TRACE_SNAPSHOT_FILE_AGE.");
         }
         if ((!IsRootVersion()) || g_traceJsonParser->GetSnapShotFileAge()) {
-            DelSnapshotTraceFile(SNAPSHOT_FILE_MAX_COUNT);
+            DelSnapshotTraceFile(SNAPSHOT_FILE_MAX_COUNT, g_traceFileVec);
         }
         HILOG_DEBUG(LOG_CORE, "%{public}s exit.", processName.c_str());
         ChildProcessRet retVal;
         retVal.dumpStatus = g_dumpStatus;
         retVal.traceStartTime = g_firstPageTimestamp;
+        retVal.traceEndTime = g_lastPageTimestamp;
         write(pipefd[1], &retVal, sizeof(retVal));
         _exit(EXIT_SUCCESS);
     } else {
@@ -1148,7 +1296,11 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
         } else {
             HILOG_INFO(LOG_CORE, "Delete outpath:%{public}s failed.", reOutPath.c_str());
         }
-        return static_cast<TraceErrorCode>(g_dumpStatus.load());
+        SearchTraceFiles(g_utDestTraceStartTime, g_utDestTraceEndTime, outputFiles);
+        if (outputFiles.empty()) {
+            return static_cast<TraceErrorCode>(g_dumpStatus.load());
+        }
+        return TraceErrorCode::SUCCESS;
     }
 
     if (access(reOutPath.c_str(), F_OK) != 0) {
@@ -1157,12 +1309,13 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
     }
 
     HILOG_INFO(LOG_CORE, "Output: %{public}s.", reOutPath.c_str());
-    struct timeval now = {0, 0};
-    gettimeofday(&now, nullptr);
-    int nowSec = now.tv_sec;
-    SearchFromTable(outputFiles, nowSec);
-    outputFiles.push_back(outputFileName);
-    g_traceFilesTable.push_back({outputFileName, nowSec});
+    TraceFileInfo traceFileInfo;
+    if (!SetFileInfo(reOutPath, g_firstPageTimestamp, g_lastPageTimestamp, traceFileInfo)) {
+        RemoveFile(reOutPath);
+        return TraceErrorCode::WRITE_TRACE_INFO_ERROR;
+    }
+    g_traceFileVec.push_back(traceFileInfo);
+    SearchTraceFiles(g_utDestTraceStartTime, g_utDestTraceEndTime, outputFiles);
     return TraceErrorCode::SUCCESS;
 }
 
@@ -1252,10 +1405,10 @@ void MonitorServiceTask()
     g_serviceThreadIsStart = false;
 }
 
-TraceErrorCode HandleTraceOpen(const TraceParams &traceParams,
-                               const std::map<std::string, TraceTag> &allTags,
-                               const std::map<std::string, std::vector<std::string>> &tagGroupTable,
-                               std::vector<std::string> &tagFmts)
+TraceErrorCode HandleTraceOpen(const TraceParams& traceParams,
+                               const std::map<std::string, TraceTag>& allTags,
+                               const std::map<std::string, std::vector<std::string>>& tagGroupTable,
+                               std::vector<std::string>& tagFmts)
 {
     if (!SetTraceSetting(traceParams, allTags, tagGroupTable, tagFmts)) {
         return TraceErrorCode::FILE_ERROR;
@@ -1265,10 +1418,10 @@ TraceErrorCode HandleTraceOpen(const TraceParams &traceParams,
     return TraceErrorCode::SUCCESS;
 }
 
-TraceErrorCode HandleServiceTraceOpen(const std::vector<std::string> &tagGroups,
-                                      const std::map<std::string, TraceTag> &allTags,
-                                      const std::map<std::string, std::vector<std::string>> &tagGroupTable,
-                                      std::vector<std::string> &tagFmts, const int custBufSz)
+TraceErrorCode HandleServiceTraceOpen(const std::vector<std::string>& tagGroups,
+                                      const std::map<std::string, TraceTag>& allTags,
+                                      const std::map<std::string, std::vector<std::string>>& tagGroupTable,
+                                      std::vector<std::string>& tagFmts, const int custBufSz)
 {
     TraceParams serviceTraceParams;
     serviceTraceParams.tagGroups = tagGroups;
@@ -1302,7 +1455,7 @@ void RemoveUnSpace(std::string str, std::string& args)
     }
 }
 
-void SetCmdTraceIntParams(const std::string &traceParamsStr, int &traceParams)
+void SetCmdTraceIntParams(const std::string& traceParamsStr, int& traceParams)
 {
     if (traceParamsStr.empty() || !IsNumber(traceParamsStr)) {
         HILOG_WARN(LOG_CORE, "Illegal input, traceParams initialized to null.");
@@ -1316,12 +1469,33 @@ void SetCmdTraceIntParams(const std::string &traceParamsStr, int &traceParams)
     }
 }
 
+void SetDestTraceTimeAndDuration(int& maxDuration, const uint64_t& utTraceEndTime)
+{
+    if (utTraceEndTime == 0) {
+        time_t currentTime;
+        time(&currentTime);
+        g_utDestTraceEndTime = static_cast<uint64_t>(currentTime);
+    } else {
+        g_utDestTraceEndTime = utTraceEndTime;
+    }
+    if (maxDuration == 0) {
+        maxDuration = DEFAULT_FULL_TRACE_LENGTH;
+    }
+    if (g_utDestTraceEndTime < static_cast<uint64_t>(maxDuration)) {
+        g_utDestTraceStartTime = 0;
+    } else {
+        g_utDestTraceStartTime = g_utDestTraceEndTime - static_cast<uint64_t>(maxDuration);
+    }
+    HILOG_INFO(LOG_CORE, "g_utDestTraceStartTime:(%{public}" PRIu64 "), g_utDestTraceEndTime:(%{public}" PRIu64 ").",
+        g_utDestTraceStartTime, g_utDestTraceEndTime);
+}
+
 /**
  * args: tags:tag1,tags2... tagGroups:group1,group2... clockType:boot bufferSize:1024 overwrite:1 output:filename
  * cmdTraceParams:  Save the above parameters
 */
-bool ParseArgs(const std::string &args, TraceParams &cmdTraceParams, const std::map<std::string, TraceTag> &allTags,
-               const std::map<std::string, std::vector<std::string>> &tagGroupTable)
+bool ParseArgs(const std::string& args, TraceParams& cmdTraceParams, const std::map<std::string, TraceTag>& allTags,
+               const std::map<std::string, std::vector<std::string>>& tagGroupTable)
 {
     std::string userArgs = args;
     std::string str = ":";
@@ -1382,6 +1556,37 @@ void WriteCpuFreqTrace()
     HILOG_INFO(LOG_CORE, "hitracedump write trace(%{public}s)", freqsfmt.c_str());
     HITRACE_METER_NAME(HITRACE_TAG_OHOS, freqsfmt);
 }
+
+void SetTotalFileSizeLimitAndSliceMaxDuration(const uint64_t& totalFileSize, const uint64_t& sliceMaxDuration)
+{
+    if (totalFileSize == 0) {
+        g_totalFileSizeLimit = DEFAULT_TOTAL_CACHE_FILE_SIZE * BYTE_PER_MB;
+    } else {
+        g_totalFileSizeLimit = totalFileSize * BYTE_PER_MB;
+    }
+    if (sliceMaxDuration == 0) {
+        g_sliceMaxDuration = DEFAULT_TRACE_SLICE_DURATION;
+    } else {
+        g_sliceMaxDuration = sliceMaxDuration;
+    }
+}
+
+void GetFileInCache(TraceRetInfo& traceRetInfo)
+{
+    g_interruptDump.store(1);
+    HILOG_INFO(LOG_CORE, "DumpTrace: Trace is caching, get cache file.");
+    std::lock_guard<std::mutex> lock(g_cacheTraceMutex);
+    SearchTraceFiles(g_utDestTraceStartTime, g_utDestTraceEndTime, traceRetInfo.outputFiles);
+    if (traceRetInfo.outputFiles.empty()) {
+        HILOG_ERROR(LOG_CORE, "DumpTrace: Trace is caching, search file failed.");
+        traceRetInfo.errorCode = OUT_OF_TIME;
+    } else {
+        for (const auto& file: traceRetInfo.outputFiles) {
+            HILOG_INFO(LOG_CORE, "dumptrace file is %{public}s.", file.c_str());
+        }
+        traceRetInfo.errorCode = SUCCESS;
+    }
+}
 } // namespace
 
 #ifdef HITRACE_UNITTEST
@@ -1422,7 +1627,7 @@ bool PreWriteEventsFormat(const std::vector<std::string>& eventFormats)
     return true;
 }
 
-TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
+TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups)
 {
     if (g_traceMode != CLOSE) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: WRONG_TRACE_MODE, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
@@ -1460,6 +1665,9 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
     if (!g_traceJsonParser->ParseTraceJson(TRACE_SNAPSHOT_FILE_AGE)) {
         HILOG_WARN(LOG_CORE, "OpenTrace: Failed to parse TRACE_SNAPSHOT_FILE_AGE.");
     }
+    RefreshTraceVec(g_traceFileVec, TRACE_SNAPSHOT);
+    RefreshTraceVec(g_cacheFileVec, TRACE_CACHE);
+    ClearCacheTraceFileByDuration(g_cacheFileVec);
     PreWriteEventsFormat(traceFormats);
     if (!IsHmKernel() && !g_serviceThreadIsStart) {
         // open SERVICE_MODE monitor thread
@@ -1475,7 +1683,7 @@ TraceErrorCode OpenTrace(const std::vector<std::string> &tagGroups)
     return ret;
 }
 
-TraceErrorCode OpenTrace(const std::string &args)
+TraceErrorCode OpenTrace(const std::string& args)
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
     if (g_traceMode != CLOSE) {
@@ -1521,23 +1729,68 @@ TraceErrorCode OpenTrace(const std::string &args)
     return ret;
 }
 
+TraceErrorCode CacheTraceOn(uint64_t totalFileSize, uint64_t sliceMaxDuration)
+{
+    std::lock_guard<std::mutex> lock(g_traceMutex);
+    if (g_traceMode != SERVICE_MODE) {
+        HILOG_ERROR(LOG_CORE, "CacheTraceOn: WRONG_TRACE_MODE, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
+        return WRONG_TRACE_MODE;
+    }
+    if (!g_cacheEnd.load()) {
+        HILOG_ERROR(LOG_CORE, "CacheTraceOn: cache trace is dumping now.");
+        return WRONG_TRACE_MODE;
+    }
+    SetTotalFileSizeLimitAndSliceMaxDuration(totalFileSize, sliceMaxDuration);
+    g_cacheFlag.store(true);
+    g_cacheEnd.store(false);
+    auto it = []() {
+        ProcessCacheTask();
+    };
+    std::thread task(it);
+    task.detach();
+    HILOG_INFO(LOG_CORE, "Caching trace on.");
+    return SUCCESS;
+}
+
+TraceErrorCode CacheTraceOff()
+{
+    std::lock_guard<std::mutex> lock(g_traceMutex);
+    if (g_traceMode != SERVICE_MODE) {
+        HILOG_ERROR(LOG_CORE,
+            "CacheTraceOff: WRONG_TRACE_MODE, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
+        return WRONG_TRACE_MODE;
+    }
+    g_cacheFlag.store(false);
+    while (!g_cacheEnd.load()) {
+        g_cacheFlag.store(false);
+        usleep(UNIT_TIME);
+    }
+    HILOG_INFO(LOG_CORE, "Caching trace off.");
+    return SUCCESS;
+}
+
 TraceRetInfo DumpTrace(int maxDuration, uint64_t utTraceEndTime)
 {
     std::unique_lock<std::mutex> lock(g_traceMutex);
     HILOG_INFO(LOG_CORE, "DumpTrace with timelimit start, timelimit is %{public}d, endtime is (%{public}" PRIu64 ").",
         maxDuration, utTraceEndTime);
     TraceRetInfo ret;
-
     if (g_traceMode != SERVICE_MODE) {
         HILOG_ERROR(LOG_CORE, "DumpTrace: WRONG_TRACE_MODE, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
         ret.errorCode = WRONG_TRACE_MODE;
         return ret;
     }
+
     if (!CheckServiceRunning()) {
         lock.unlock();
         RestartService();
         HILOG_ERROR(LOG_CORE, "DumpTrace: TRACE_IS_OCCUPIED.");
         ret.errorCode = TRACE_IS_OCCUPIED;
+        return ret;
+    }
+    SetDestTraceTimeAndDuration(maxDuration, utTraceEndTime);
+    if (UNEXPECTANTLY(g_cacheFlag.load())) {
+        GetFileInCache(ret);
         return ret;
     }
 
@@ -1546,6 +1799,8 @@ TraceRetInfo DumpTrace(int maxDuration, uint64_t utTraceEndTime)
         return ret;
     }
     g_firstPageTimestamp = UINT64_MAX;
+    g_lastPageTimestamp = 0;
+
     uint32_t committedDuration = static_cast<uint32_t>(maxDuration == 0 ? DEFAULT_FULL_TRACE_LENGTH :
         std::min(maxDuration, DEFAULT_FULL_TRACE_LENGTH));
     ret.errorCode = DumpTraceInner(ret.outputFiles);
@@ -1575,7 +1830,7 @@ TraceErrorCode DumpTraceOn()
         return WRONG_TRACE_MODE;
     }
 
-    if (!g_dumpEnd) {
+    if (!g_dumpEnd.load()) {
         HILOG_ERROR(LOG_CORE, "DumpTraceOn: WRONG_TRACE_MODE, record trace is dumping now.");
         return WRONG_TRACE_MODE;
     }
@@ -1604,10 +1859,10 @@ TraceRetInfo DumpTraceOff()
         return ret;
     }
 
-    g_dumpFlag = false;
-    while (!g_dumpEnd) {
+    g_dumpFlag.store(false);
+    while (!g_dumpEnd.load()) {
         usleep(UNIT_TIME);
-        g_dumpFlag = false;
+        g_dumpFlag.store(false);
     }
     ret.errorCode = SUCCESS;
     ret.outputFiles = g_outputFilesForCmd;
@@ -1626,10 +1881,15 @@ TraceErrorCode CloseTrace()
 
     g_traceMode = CLOSE;
     // Waiting for the data drop task to end
-    g_dumpFlag = false;
-    while (!g_dumpEnd) {
+    g_dumpFlag.store(false);
+    g_cacheFlag.store(false);
+    while (!g_dumpEnd.load()) {
         usleep(UNIT_TIME);
-        g_dumpFlag = false;
+        g_dumpFlag.store(false);
+    }
+    while (!g_cacheEnd.load()) {
+        usleep(UNIT_TIME);
+        g_cacheFlag.store(false);
     }
     OHOS::system::SetParameter(TRACE_KEY_APP_PID, "-1");
 

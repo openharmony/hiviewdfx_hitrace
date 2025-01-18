@@ -51,36 +51,27 @@ constexpr uint32_t SLEEP_TIME = 10; // sleep 10ms
 constexpr uint32_t TWO_SEC = 2;
 constexpr uint32_t TEN_SEC = 10;
 constexpr uint32_t MAX_RATIO_UNIT = 1000;
+constexpr uint64_t S_TO_MS = 1000;
 constexpr int DEFAULT_FULL_TRACE_LENGTH = 30;
-
-void AddPair2Table(std::string outputFileName, int nowSec)
-{
-    std::vector<std::pair<std::string, int>> traceFilesTable = GetTraceFilesTable();
-    traceFilesTable.push_back({outputFileName, nowSec});
-    SetTraceFilesTable(traceFilesTable);
-}
-
-bool CreateFile(std::string outputFileName)
-{
-    std::ofstream ofs;
-    ofs.open(outputFileName, std::ios::out | std::ios::trunc);
-    bool openRes = ofs.is_open();
-    ofs.close();
-    return openRes;
-}
-
-void EraseFile(std::string outputFileName)
-{
-    std::vector<std::pair<std::string, int>> traceFilesTable = GetTraceFilesTable();
-    for (auto iter = traceFilesTable.begin(); iter != traceFilesTable.end();) {
-        if (strcmp(iter->first.c_str(), outputFileName.c_str())) {
-            iter = traceFilesTable.erase(iter);
-            continue;
-        }
-        iter++;
-    }
-    SetTraceFilesTable(traceFilesTable);
-}
+const int BYTE_PER_MB = 1024 * 1024;
+const std::string TRACE_SNAPSHOT_PREFIX = "trace_";
+const std::string TRACE_RECORDING_PREFIX = "record_trace_";
+const std::string TRACE_CACHE_PREFIX = "cache_trace_";
+struct FileWithTime {
+    std::string filename;
+    time_t ctime;
+    uint64_t fileSize;
+};
+enum TRACE_TYPE : uint8_t {
+    TRACE_SNAPSHOT = 0,
+    TRACE_RECORDING = 1,
+    TRACE_CACHE = 2,
+};
+std::map<TRACE_TYPE, std::string> tracePrefixMap = {
+    {TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
+    {TRACE_RECORDING, TRACE_RECORDING_PREFIX},
+    {TRACE_CACHE, TRACE_CACHE_PREFIX},
+};
 
 bool TraverseFiles(std::vector<std::string> files, std::string outputFileName)
 {
@@ -119,6 +110,51 @@ struct stat GetFileStatInfo(const std::string& filePath)
         HILOG_ERROR(LOG_CORE, "Error getting file status: %{public}d.", errno);
     }
     return fileStat;
+}
+
+std::vector<FileWithTime> GetTraceFilesInDir(const TRACE_TYPE& traceType)
+{
+    struct stat fileStat;
+    std::vector<FileWithTime> fileList;
+    for (const auto &entry : std::filesystem::directory_iterator(TRACE_FILE_DEFAULT_DIR)) {
+        if (!entry.is_regular_file()) {
+            continue;
+        }
+        std::string fileName = entry.path().filename().string();
+        if (fileName.substr(0, tracePrefixMap[traceType].size()) == tracePrefixMap[traceType]) {
+            if (stat((TRACE_FILE_DEFAULT_DIR + fileName).c_str(), &fileStat) == 0) {
+                fileList.push_back({fileName, fileStat.st_ctime, static_cast<uint64_t>(fileStat.st_size)});
+            }
+        }
+    }
+    std::sort(fileList.begin(), fileList.end(), [](const FileWithTime& a, const FileWithTime& b) {
+        return a.ctime < b.ctime;
+    });
+    return fileList;
+}
+
+uint64_t GetTotalSizeFromDir(const std::vector<FileWithTime>& fileList)
+{
+    uint64_t totalFileSize = 0;
+    for (auto i = 0; i < fileList.size(); i++) {
+        totalFileSize += fileList[i].fileSize;
+    }
+    return totalFileSize;
+}
+
+bool GetDurationFromFileName(const std::string& fileName, uint64_t& duration)
+{
+    auto index = fileName.find("-");
+    if (index == std::string::npos) {
+        return false;
+    }
+    uint32_t number;
+    if (sscanf_s(fileName.substr(index, fileName.size() - index).c_str(), "-%u.sys", &number) != 1) {
+        HILOG_ERROR(LOG_CORE, "sscanf_s failed.");
+        return false;
+    }
+    duration = static_cast<uint64_t>(number);
+    return true;
 }
 
 class HitraceDumpTest : public testing::Test {
@@ -285,22 +321,6 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
     ASSERT_TRUE(ret.outputFiles.empty());
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
-
-    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 100; // current time + 100 seconds
-    maxDuration = 10;
-    ret = DumpTrace(maxDuration, traceEndTime);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
-    ASSERT_FALSE(ret.outputFiles.empty());
-    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
-
-    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 1; // current time + 1 seconds
-    maxDuration = 10;
-    ret = DumpTrace(maxDuration, traceEndTime);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
-    ASSERT_FALSE(ret.outputFiles.empty());
-    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
 /**
@@ -386,6 +406,171 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_008, TestSize.Level0)
 }
 
 /**
+ * @tc.name: DumpTraceTest_009
+ * @tc.desc: Test DumpTrace() result in cache_on is opening 8s and slice time is 5s.
+ * The no arg version DumpTrace() is implicitly tested in other tests.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpTraceTest_009, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"default"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    // total cache filesize limit: 800MB, sliceduration: 5s
+    ASSERT_TRUE(CacheTraceOn(800, 5) == TraceErrorCode::SUCCESS);
+    sleep(8); // wait 8s
+    ASSERT_TRUE(CacheTraceOff() == TraceErrorCode::SUCCESS);
+    sleep(2); // wait 2s
+    TraceRetInfo ret = DumpTrace();
+    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
+    for (int i = 0; i < ret.outputFiles.size(); i++) {
+        GTEST_LOG_(INFO) << "outputFiles:" << ret.outputFiles[i].c_str();
+    }
+    ASSERT_TRUE(ret.outputFiles.size() >= 3); // compare file count
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpTraceTest_010
+ * @tc.desc: Test DumpTrace() result in cache_on is opening 50s and slice time is 10s.
+ * The no arg version DumpTrace() is implicitly tested in other tests.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpTraceTest_010, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"default"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    // total cache filesize limit: 800MB, sliceduration: 5s
+    ASSERT_TRUE(CacheTraceOn(800, 10) == TraceErrorCode::SUCCESS);
+    sleep(40); // wait 40s, over 30s
+    TraceRetInfo ret = DumpTrace();
+    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
+    for (int i = 0; i < ret.outputFiles.size(); i++) {
+        GTEST_LOG_(INFO) << "outputFiles:" << ret.outputFiles[i].c_str();
+    }
+    ASSERT_TRUE(ret.outputFiles.size() >= 3); // compare file count
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpTraceTest_011
+ * @tc.desc: Test result when calling DumpTrace() twice with cache_on is opening 20s and slice time is 5s.
+ * The no arg version DumpTrace() is implicitly tested in other tests.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpTraceTest_011, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"default"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    // total cache filesize limit: 800MB, sliceduration: 5s
+    ASSERT_TRUE(CacheTraceOn(800, 5) == TraceErrorCode::SUCCESS);
+    sleep(8); // wait 8s
+    TraceRetInfo ret = DumpTrace();
+    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
+    for (int i = 0; i < ret.outputFiles.size(); i++) {
+        GTEST_LOG_(INFO) << "outputFiles:" << ret.outputFiles[i].c_str();
+    }
+    ASSERT_TRUE(ret.outputFiles.size() >= 2); // compare file count
+    sleep(1);
+    TraceRetInfo retNext = DumpTrace();
+    ASSERT_EQ(retNext.errorCode, TraceErrorCode::SUCCESS);
+    for (int i = 0; i < retNext.outputFiles.size(); i++) {
+        GTEST_LOG_(INFO) << "outputFiles:" << retNext.outputFiles[i].c_str();
+    }
+    ASSERT_TRUE(retNext.outputFiles.size() >= 3); // compare file count
+    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpTraceTest_012
+ * @tc.desc: Test CacheTraceOn() is opening, then calling DumpTraceOn and DumpTraceOff.
+ * The no arg version DumpTrace() is implicitly tested in other tests.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpTraceTest_012, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"default"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(CacheTraceOn() == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::WRONG_TRACE_MODE);
+    TraceRetInfo ret = DumpTraceOff();
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::WRONG_TRACE_MODE);
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpTraceTest_013
+ * @tc.desc: Test CacheTraceOn() when OpenTrace is not ruinng and CacheTraceOff() when CloseTrace is runing.
+ * The no arg version DumpTrace() is implicitly tested in other tests.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpTraceTest_013, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"default"};
+    ASSERT_TRUE(CacheTraceOn() == TraceErrorCode::WRONG_TRACE_MODE);
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(CacheTraceOn() == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(CacheTraceOff() == TraceErrorCode::WRONG_TRACE_MODE);
+}
+
+/**
+ * @tc.name: DumpTraceTest_014
+ * @tc.desc: Test aging cache trace file when OpenTrace over 30s.
+ * The no arg version DumpTrace() is implicitly tested in other tests.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpTraceTest_014, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"default"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    // total cache filesize limit: 800MB, sliceduration: 5s
+    ASSERT_TRUE(CacheTraceOn(800, 5) == TraceErrorCode::SUCCESS);
+    sleep(8); // wait 8s
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+    sleep(30); // wait 30s: start aging file
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    std::vector<FileWithTime> fileList;
+    ASSERT_EQ(GetTraceFilesInDir(TRACE_CACHE).size(), 0); // no cache trace file
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpTraceTest_015
+ * @tc.desc: Test aging cache trace file when file size overflow
+ * The no arg version DumpTrace() is implicitly tested in other tests.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpTraceTest_015, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"default"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    // total cache filesize limit: 5MB, sliceduration: 2s
+    ASSERT_TRUE(CacheTraceOn(5, 2) == TraceErrorCode::SUCCESS);
+    sleep(10); // wait 10s
+    ASSERT_TRUE(CacheTraceOff() == TraceErrorCode::SUCCESS);
+    std::vector<FileWithTime> fileList = GetTraceFilesInDir(TRACE_CACHE);
+    if (fileList.empty()) {
+        ASSERT_LT(GetTotalSizeFromDir(fileList), 6 * BYTE_PER_MB); // aging file in 6MB
+    }
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpTraceTest_016
+ * @tc.desc: Test runing CacheTraceOn() twice
+ * The no arg version DumpTrace() is implicitly tested in other tests.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpTraceTest_016, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"default"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(CacheTraceOn() == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(CacheTraceOn() == TraceErrorCode::WRONG_TRACE_MODE);
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
  * @tc.name: DumpForServiceMode_001
  * @tc.desc: The correct usage of grasping trace in SERVICE_MODE.
  * @tc.type: FUNC
@@ -408,66 +593,34 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_001, TestSize.Level0)
  */
 HWTEST_F(HitraceDumpTest, DumpForServiceMode_002, TestSize.Level0)
 {
-    const std::vector<std::string> tagGroups = {"scene_performance"};
+    const std::vector<std::string> tagGroups = {"default"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    ASSERT_TRUE(access(TRACE_FILE_DEFAULT_DIR.c_str(), F_OK) == 0) << "/data/log/hitrace not exists.";
-
-    struct timeval now = {0, 0};
-    gettimeofday(&now, nullptr);
-    int nowSec = now.tv_sec;
-    int nowUsec = now.tv_usec;
-    nowSec--;
-    std::string outputFileName = TRACE_FILE_DEFAULT_DIR + "trace_" + std::to_string(nowSec)
-        + "_" + std::to_string(nowUsec) + ".sys";
-    ASSERT_TRUE(CreateFile(outputFileName)) << "create log file failed.";
-    HILOG_INFO(LOG_CORE, "outputFileName: %{public}s", outputFileName.c_str());
-    AddPair2Table(outputFileName, nowSec);
-
+    // total cache filesize limit: 800MB, sliceduration: 5s
+    ASSERT_TRUE(CacheTraceOn(800, 5) == TraceErrorCode::SUCCESS);
+    sleep(8); // wait 8s
+    ASSERT_TRUE(CacheTraceOff() == TraceErrorCode::SUCCESS);
     TraceRetInfo ret = DumpTrace();
-    // Remove outputFileName in g_hitraceFilesTable
-    EraseFile(outputFileName);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
-    ASSERT_EQ(ret.tags, tagGroups);
-    ASSERT_TRUE(TraverseFiles(ret.outputFiles, outputFileName)) << "file created by user is not exists.";
+    uint64_t totalDuartion = 0;
+    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
+    for (int i = 0; i < ret.outputFiles.size(); i++) {
+        uint64_t duration = 0;
+        ASSERT_TRUE(GetDurationFromFileName(ret.outputFiles[i], duration) == true);
+        GTEST_LOG_(INFO) << "outputFiles:" << ret.outputFiles[i].c_str();
+        GTEST_LOG_(INFO) << "duration:" << duration;
+        totalDuartion += duration;
+    }
+    totalDuartion /= S_TO_MS;
+
+    ASSERT_TRUE(totalDuartion >= 8); // total trace duration over 8s
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
 /**
  * @tc.name: DumpForServiceMode_003
- * @tc.desc: Verify if files can be deleted in Service_MODE.
- * @tc.type: FUNC
- */
-HWTEST_F(HitraceDumpTest, DumpForServiceMode_003, TestSize.Level0)
-{
-    const std::vector<std::string> tagGroups = {"scene_performance"};
-    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    ASSERT_TRUE(access(TRACE_FILE_DEFAULT_DIR.c_str(), F_OK) == 0) << "/data/log/hitrace not exists.";
-
-    struct timeval now = {0, 0};
-    gettimeofday(&now, nullptr);
-    int nowSec = now.tv_sec;
-    int nowUsec = now.tv_usec;
-    nowSec = nowSec - 1900;
-    std::string outputFileName = TRACE_FILE_DEFAULT_DIR + "trace_" + std::to_string(nowSec)
-        + "_" + std::to_string(nowUsec) + ".sys";
-    ASSERT_TRUE(CreateFile(outputFileName)) << "create log file failed.";
-    HILOG_INFO(LOG_CORE, "outputFileName: %{public}s", outputFileName.c_str());
-    AddPair2Table(outputFileName, nowSec);
-
-    TraceRetInfo ret = DumpTrace();
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
-    ASSERT_FALSE(TraverseFiles(ret.outputFiles, outputFileName))
-        << "Returned files that should have been deleted half an hour ago.";
-    ASSERT_TRUE(access(outputFileName.c_str(), F_OK) < 0) << "The file was not deleted half an hour ago";
-    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
-}
-
-/**
- * @tc.name: DumpForServiceMode_004
  * @tc.desc: Invalid parameter verification in CMD_MODE.
  * @tc.type: FUNC
  */
-HWTEST_F(HitraceDumpTest, DumpForServiceMode_004, TestSize.Level0)
+HWTEST_F(HitraceDumpTest, DumpForServiceMode_003, TestSize.Level0)
 {
     const std::vector<std::string> tagGroups;
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::TAG_ERROR);
@@ -481,11 +634,11 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_004, TestSize.Level0)
 }
 
 /**
- * @tc.name: DumpForServiceMode_005
+ * @tc.name: DumpForServiceMode_004
  * @tc.desc: Enable the service mode in CMD_MODE.
  * @tc.type: FUNC
  */
-HWTEST_F(HitraceDumpTest, DumpForServiceMode_005, TestSize.Level0)
+HWTEST_F(HitraceDumpTest, DumpForServiceMode_004, TestSize.Level0)
 {
     std::string args = "tags:sched clockType:boot bufferSize:1024 overwrite:1";
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
@@ -503,11 +656,11 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_005, TestSize.Level0)
 }
 
 /**
- * @tc.name: DumpForServiceMode_006
+ * @tc.name: DumpForServiceMode_005
  * @tc.desc: Invalid parameter verification in CMD_MODE.
  * @tc.type: FUNC
  */
-HWTEST_F(HitraceDumpTest, DumpForServiceMode_006, TestSize.Level0)
+HWTEST_F(HitraceDumpTest, DumpForServiceMode_005, TestSize.Level0)
 {
     const std::vector<std::string> tagGroups = {"scene_performance"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
@@ -520,11 +673,11 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_006, TestSize.Level0)
 }
 
 /**
- * @tc.name: DumpForServiceMode_008
+ * @tc.name: DumpForServiceMode_006
  * @tc.desc: Test TRACE_IS_OCCUPIED.
  * @tc.type: FUNC
  */
-HWTEST_F(HitraceDumpTest, DumpForServiceMode_008, TestSize.Level0)
+HWTEST_F(HitraceDumpTest, DumpForServiceMode_006, TestSize.Level0)
 {
     const std::vector<std::string> tagGroups = {"scene_performance"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
@@ -818,13 +971,13 @@ HWTEST_F(HitraceDumpTest, ParammeterCheck_001, TestSize.Level0)
     const std::vector<std::string> tagGroups = {"scene_performance"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
 
-    // ckeck Property("debug.hitrace.tags.enableflags")
+    // check Property("debug.hitrace.tags.enableflags")
     uint64_t openTags = OHOS::system::GetUintParameter<uint64_t>(TRACE_TAG_ENABLE_FLAGS, 0);
     ASSERT_TRUE(openTags > 0);
 
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
-    // ckeck Property("debug.hitrace.tags.enableflags")
+    // check Property("debug.hitrace.tags.enableflags")
     uint64_t closeTags = OHOS::system::GetUintParameter<uint64_t>(TRACE_TAG_ENABLE_FLAGS, 0);
     ASSERT_TRUE(closeTags == 0);
 }
