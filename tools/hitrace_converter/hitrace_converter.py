@@ -55,7 +55,7 @@ BUFFER_TYPE_TIME_STAMP = 31
 events_format = {}
 cmd_lines = {}
 tgids = {}
-get_not_found_foramt = set()
+get_not_found_format = set()
 
 TRACE_TXT_HEADER_FORMAT = """# tracer: nop
 #
@@ -290,7 +290,7 @@ def generate_one_event_str(data, cpu_id, time_stamp, one_event):
 
     parse_result = parse_functions.parse(one_event["print_fmt"], data, one_event)
     if parse_result is None:
-        get_not_found_foramt.add(str(one_event["name"]))
+        get_not_found_format.add(str(one_event["name"]))
     else:
         event_str += str(one_event["name"]) + ": " + parse_result
 
@@ -486,7 +486,7 @@ def parse_binary_trace_file():
     for miss_format_id in format_miss_set:
         print("%d" % miss_format_id)
 
-    for name in get_not_found_foramt:
+    for name in get_not_found_format:
         print("Error: function parse_%s not found" % name)
 
 
