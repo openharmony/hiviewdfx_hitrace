@@ -649,15 +649,6 @@ bool WriteFile(uint8_t contentType, const std::string& src, int outFd, const std
                 HILOG_ERROR(LOG_CORE, "Failed to memcpy g_buffer to pageTraceTime.");
                 break;
             }
-            if (isCpuRaw) {
-                g_lastPageTimestamp = std::max(pageTraceTime, g_lastPageTimestamp);
-                if (UNEXPECTANTLY(!printFirstPageTime)) {
-                    HILOG_INFO(LOG_CORE, "first page trace time:(%{public}" PRIu64 ")", pageTraceTime);
-                    printFirstPageTime = true;
-                    g_firstPageTimestamp = std::min(g_firstPageTimestamp, pageTraceTime);
-                }
-            }
-
             if (traceEndTime < pageTraceTime) {
                 endFlag = true;
                 HILOG_INFO(LOG_CORE,
@@ -667,6 +658,14 @@ bool WriteFile(uint8_t contentType, const std::string& src, int outFd, const std
             }
             if (pageTraceTime < traceStartTime) {
                 continue;
+            }
+            if (isCpuRaw) {
+                g_lastPageTimestamp = std::max(pageTraceTime, g_lastPageTimestamp);
+                if (UNEXPECTANTLY(!printFirstPageTime)) {
+                    HILOG_INFO(LOG_CORE, "first page trace time:(%{public}" PRIu64 ")", pageTraceTime);
+                    printFirstPageTime = true;
+                    g_firstPageTimestamp = std::min(g_firstPageTimestamp, pageTraceTime);
+                }
             }
 
             if (CheckPage(contentType, g_buffer + bytes) == false) {
