@@ -405,12 +405,14 @@
             "enable_path": [
                 "events/power/cpu_frequency/enable",
                 "events/power/clock_set_rate/enable",
+                "events/power_kernel/clock_set_rate/enable",
                 "events/power/cpu_frequency_limits/enable"
             ],
             "type": 1,
             "format_path": [
                 "events/power/cpu_frequency/format",
                 "events/power/clock_set_rate/format",
+                "events/power_kernel/clock_set_rate/format",
                 "events/power/cpu_frequency_limits/format"
             ]
         },
