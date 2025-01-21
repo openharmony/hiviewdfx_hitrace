@@ -352,7 +352,7 @@ HiTraceId OH_HiTrace_BeginChain(const char *name, int flags);
  *
  * @since 12
  */
-void OH_HiTrace_EndChain();
+void OH_HiTrace_EndChain(void);
 
 /**
  * @brief Obtains the trace ID of the calling thread from the TLS.
@@ -365,7 +365,7 @@ void OH_HiTrace_EndChain();
  *
  * @since 12
  */
-HiTraceId OH_HiTrace_GetId();
+HiTraceId OH_HiTrace_GetId(void);
 
 /**
  * @brief Sets the trace ID of the calling thread. If the ID is invalid, no operation is performed.

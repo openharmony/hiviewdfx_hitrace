@@ -394,7 +394,7 @@ class TestHitraceCmd:
     def test_max_parameters_cmd(self):
         hitrace_cmd = 'hdc shell hitrace -t 5'
         for i in range(1, 256):
-            hitrace_cmd += ' app'
+            hitrace_cmd = '{} {}'.format(hitrace_cmd, 'app')
         word_cmds1 = {
             hitrace_cmd: 'error: the number of input arguments exceeds the upper limit',
         }

@@ -172,11 +172,6 @@ TraceParams g_currentTraceParams = {};
 std::shared_ptr<TraceJsonParser> g_traceJsonParser = nullptr;
 std::atomic<uint8_t> g_interruptDump(0);
 
-std::string GetFilePath(const std::string &fileName)
-{
-    return g_traceRootPath + fileName;
-}
-
 std::vector<std::string> Split(const std::string& str, char delimiter)
 {
     std::vector<std::string> res;
@@ -191,20 +186,6 @@ std::vector<std::string> Split(const std::string& str, char delimiter)
         res.push_back(str.substr(startPos));
     }
     return res;
-}
-
-bool IsTraceMounted()
-{
-    if (access((DEBUGFS_TRACING_DIR + TRACE_MARKER_NODE).c_str(), F_OK) != -1) {
-        g_traceRootPath = DEBUGFS_TRACING_DIR;
-        return true;
-    }
-    if (access((TRACEFS_DIR + TRACE_MARKER_NODE).c_str(), F_OK) != -1) {
-        g_traceRootPath = TRACEFS_DIR;
-        return true;
-    }
-    HILOG_ERROR(LOG_CORE, "IsTraceMounted: Did not find trace folder");
-    return false;
 }
 
 // Arch is 64bit when reserved = 0; Arch is 32bit when reserved = 1.
@@ -387,26 +368,6 @@ void SetAllTags(const TraceParams& traceParams, const std::map<std::string, Trac
     SetProperty(TRACE_TAG_ENABLE_FLAGS, std::to_string(enabledUserTags));
 }
 
-std::string ReadFileInner(const std::string& filename)
-{
-    std::string resolvedPath = CanonicalizeSpecPath(filename.c_str());
-    std::ifstream fileIn(resolvedPath.c_str());
-    if (!fileIn.is_open()) {
-        HILOG_ERROR(LOG_CORE, "ReadFile: %{public}s open failed.", filename.c_str());
-        return "";
-    }
-
-    std::string str((std::istreambuf_iterator<char>(fileIn)), std::istreambuf_iterator<char>());
-    fileIn.close();
-    return str;
-}
-
-std::string ReadFile(const std::string& filename)
-{
-    std::string filePath = GetFilePath(filename);
-    return ReadFileInner(filePath);
-}
-
 void SetClock(const std::string& clockType)
 {
     const std::string traceClockPath = "trace_clock";
@@ -414,7 +375,7 @@ void SetClock(const std::string& clockType)
         WriteStrToFile(traceClockPath, "boot"); //set default: boot
         return;
     }
-    std::string allClocks = ReadFile(traceClockPath);
+    std::string allClocks = ReadFile(traceClockPath, g_traceRootPath);
     if (allClocks.find(clockType) == std::string::npos) {
         HILOG_ERROR(LOG_CORE, "SetClock: %{public}s is non-existent, set to boot", clockType.c_str());
         WriteStrToFile(traceClockPath, "boot"); // set default: boot
@@ -785,7 +746,7 @@ bool WriteHeaderPage(int outFd, const std::string& outputFile)
     if (IsHmKernel()) {
         return true;
     }
-    std::string headerPagePath = GetFilePath("events/header_page");
+    std::string headerPagePath = GetFilePath("events/header_page", g_traceRootPath);
     return WriteFile(CONTENT_TYPE_HEADER_PAGE, headerPagePath, outFd, outputFile);
 }
 
@@ -794,7 +755,7 @@ bool WritePrintkFormats(int outFd, const std::string &outputFile)
     if (IsHmKernel()) {
         return true;
     }
-    std::string printkFormatPath = GetFilePath("printk_formats");
+    std::string printkFormatPath = GetFilePath("printk_formats", g_traceRootPath);
     return WriteFile(CONTENT_TYPE_PRINTK_FORMATS, printkFormatPath, outFd, outputFile);
 }
 
@@ -853,13 +814,13 @@ bool WriteCpuRaw(int outFd, const std::string& outputFile)
 
 bool WriteCmdlines(int outFd, const std::string& outputFile)
 {
-    std::string cmdlinesPath = GetFilePath("saved_cmdlines");
+    std::string cmdlinesPath = GetFilePath("saved_cmdlines", g_traceRootPath);
     return WriteFile(CONTENT_TYPE_CMDLINES, cmdlinesPath, outFd, outputFile);
 }
 
 bool WriteTgids(int outFd, const std::string& outputFile)
 {
-    std::string tgidsPath = GetFilePath("saved_tgids");
+    std::string tgidsPath = GetFilePath("saved_tgids", g_traceRootPath);
     return WriteFile(CONTENT_TYPE_TGIDS, tgidsPath, outFd, outputFile);
 }
 
@@ -913,8 +874,8 @@ void GetTraceFileFromVec(const uint64_t& inputTraceStartTime, const uint64_t& in
 {
     if (!fileVec.empty()) {
         for (auto it = fileVec.begin(); it != fileVec.end(); it++) {
-            HILOG_INFO(LOG_CORE, "traceStartTime:(%{public}" PRIu64 "), traceEndTime: (%{public}" PRIu64 ").",
-                (*it).traceStartTime, (*it).traceEndTime);
+            HILOG_INFO(LOG_CORE, "GetTraceFileFromVec: %{public}s, [(%{public}" PRIu64 ", %{public}" PRIu64 "].",
+                (*it).filename.c_str(), (*it).traceStartTime, (*it).traceEndTime);
             if ((((*it).traceStartTime >= inputTraceStartTime && (*it).traceStartTime <= inputTraceEndTime) ||
                  ((*it).traceEndTime >= inputTraceStartTime && (*it).traceEndTime <= inputTraceEndTime) ||
                  ((*it).traceStartTime <= inputTraceStartTime && (*it).traceEndTime >= inputTraceEndTime)) &&
@@ -955,7 +916,6 @@ bool CacheTraceLoop(const std::string &outputFileName)
     }
     uint64_t sliceDuration = 0;
     do {
-        g_interruptDump.store(0);
         g_needGenerateNewTraceFile = false;
         ssize_t writeRet = TEMP_FAILURE_RETRY(write(outFd, reinterpret_cast<char *>(&header), sizeof(header)));
         if (writeRet < 0) {
@@ -1345,22 +1305,12 @@ bool CheckParam()
     return false;
 }
 
-bool CheckTraceFile()
-{
-    const std::string enable = "1";
-    if (ReadFile(TRACING_ON_NODE).substr(0, enable.size()) == enable) {
-        return true;
-    }
-    HILOG_ERROR(LOG_CORE, "tracing_on is 0, restart it.");
-    return false;
-}
-
 /**
  * SERVICE_MODE is running, check param and tracing_on.
 */
 bool CheckServiceRunning()
 {
-    if (CheckParam() && CheckTraceFile()) {
+    if (CheckParam() && IsTracingOn(g_traceRootPath)) {
         return true;
     }
     return false;
@@ -1468,7 +1418,7 @@ void SetCmdTraceIntParams(const std::string& traceParamsStr, int& traceParams)
     }
 }
 
-void SetDestTraceTimeAndDuration(int& maxDuration, const uint64_t& utTraceEndTime)
+void SetDestTraceTimeAndDuration(int maxDuration, const uint64_t& utTraceEndTime)
 {
     if (utTraceEndTime == 0) {
         time_t currentTime;
@@ -1585,6 +1535,7 @@ void GetFileInCache(TraceRetInfo& traceRetInfo)
         }
         traceRetInfo.errorCode = SUCCESS;
     }
+    g_interruptDump.store(0);
 }
 } // namespace
 
@@ -1633,7 +1584,7 @@ TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups)
         return WRONG_TRACE_MODE;
     }
     std::lock_guard<std::mutex> lock(g_traceMutex);
-    if (!IsTraceMounted()) {
+    if (!IsTraceMounted(g_traceRootPath)) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: TRACE_NOT_SUPPORTED.");
         return TRACE_NOT_SUPPORTED;
     }
@@ -1666,7 +1617,9 @@ TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups)
     }
     RefreshTraceVec(g_traceFileVec, TRACE_SNAPSHOT);
     RefreshTraceVec(g_cacheFileVec, TRACE_CACHE);
+    std::unique_lock<std::mutex> lck(g_cacheTraceMutex);
     ClearCacheTraceFileByDuration(g_cacheFileVec);
+    lck.unlock();
     PreWriteEventsFormat(traceFormats);
     if (!IsHmKernel() && !g_serviceThreadIsStart) {
         // open SERVICE_MODE monitor thread
@@ -1690,7 +1643,7 @@ TraceErrorCode OpenTrace(const std::string& args)
         return WRONG_TRACE_MODE;
     }
 
-    if (!IsTraceMounted()) {
+    if (!IsTraceMounted(g_traceRootPath)) {
         HILOG_ERROR(LOG_CORE, "Hitrace OpenTrace: TRACE_NOT_SUPPORTED.");
         return TRACE_NOT_SUPPORTED;
     }

@@ -26,6 +26,7 @@ struct TraceSysEventParams {
     std::string caller;
     std::string tags;
     std::string clockType;
+    int errorCode;
     std::string errorMessage;
 };
 

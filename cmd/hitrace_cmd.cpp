@@ -114,6 +114,7 @@ enum RunningState {
 enum CmdErrorCode {
     OPEN_ROOT_PATH_FAILURE = 2001,
     OPEN_FILE_PATH_FAILURE = 2002,
+    TRACING_ON_CLOSED = 2003,
 };
 
 const std::map<RunningState, std::string> STATE_INFO = {
@@ -201,19 +202,6 @@ static std::string GetStateInfo(const RunningState state)
         return "";
     }
     return STATE_INFO.at(state);
-}
-
-static bool IsTraceMounted()
-{
-    if (access((DEBUGFS_TRACING_DIR + TRACE_MARKER_NODE).c_str(), F_OK) != -1) {
-        g_traceRootPath = DEBUGFS_TRACING_DIR;
-        return true;
-    }
-    if (access((TRACEFS_DIR + TRACE_MARKER_NODE).c_str(), F_OK) != -1) {
-        g_traceRootPath = TRACEFS_DIR;
-        return true;
-    }
-    return false;
 }
 
 static bool WriteStrToFile(const std::string& filename, const std::string& str)
@@ -594,7 +582,6 @@ static void DumpCompressedTrace(int traceFd, int outFd)
 
 static void DumpTrace()
 {
-    g_traceSysEventParams.opt = "DumpTextTrace";
     std::string tracePath = g_traceRootPath + TRACE_NODE;
     std::string traceSpecPath = CanonicalizeSpecPath(tracePath.c_str());
     int traceFd = open(traceSpecPath.c_str(), O_RDONLY);
@@ -764,6 +751,7 @@ static bool HandleRecordingShortText()
     if (g_traceArgs.output.size() > 0) {
         ConsoleLog("capture done, start to read trace.");
     }
+    g_traceSysEventParams.opt = "DumpTextTrace";
     DumpTrace();
     g_traceCollector->Recover();
     return true;
@@ -793,6 +781,13 @@ static bool HandleRecordingLongBegin()
 
 static bool HandleRecordingLongDump()
 {
+    g_traceSysEventParams.opt = "DumpTextTrace";
+    if (!IsTracingOn(g_traceRootPath)) {
+        g_traceSysEventParams.errorCode = TRACING_ON_CLOSED;
+        g_traceSysEventParams.errorMessage = "Warning: tracing on is closed, no trace can be read.";
+        ConsoleLog("Warning: tracing on is closed, no trace can be read.");
+        return false;
+    }
     MarkClockSync(g_traceRootPath);
     ConsoleLog("start to read trace.");
     DumpTrace();
@@ -801,6 +796,13 @@ static bool HandleRecordingLongDump()
 
 static bool HandleRecordingLongFinish()
 {
+    g_traceSysEventParams.opt = "DumpTextTrace";
+    if (!IsTracingOn(g_traceRootPath)) {
+        g_traceSysEventParams.errorCode = TRACING_ON_CLOSED;
+        g_traceSysEventParams.errorMessage = "Warning: tracing on is closed, no trace can be read.";
+        ConsoleLog("Warning: tracing on is closed, no trace can be read.");
+        return false;
+    }
     MarkClockSync(g_traceRootPath);
     StopTrace();
     ConsoleLog("start to read trace.");
@@ -960,7 +962,7 @@ int main(int argc, char **argv)
     (void)signal(SIGKILL, InterruptExit);
     (void)signal(SIGINT, InterruptExit);
 
-    if (!IsTraceMounted()) {
+    if (!IsTraceMounted(g_traceRootPath)) {
         ConsoleLog("error: trace isn't mounted, exit.");
         return -1;
     }

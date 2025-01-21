@@ -15,7 +15,6 @@
 
 #include "hitrace_event_listener.h"
 
-#include <cstring>
 #include <iostream>
 
 namespace OHOS {
@@ -31,8 +30,7 @@ bool HitraceEventListener::IsTraceSysEventParamsEqual(const TraceSysEventParams&
 {
     if (traceEventParams.opt == traceSysEventParams.opt &&
         traceEventParams.caller == traceSysEventParams.caller &&
-        traceEventParams.tags == traceSysEventParams.tags &&
-        traceEventParams.clockType == traceSysEventParams.clockType &&
+        traceEventParams.errorCode == traceSysEventParams.errorCode &&
         traceEventParams.errorMessage == traceSysEventParams.errorMessage) {
         return true;
     }
@@ -45,8 +43,13 @@ void HitraceEventListener::OnEvent(std::shared_ptr<HiSysEventRecord> sysEvent)
         return;
     }
     TraceSysEventParams traceEventParams;
+    int64_t errorCode;
     sysEvent->GetParamValue("CALLER", traceEventParams.caller);
     sysEvent->GetParamValue("OPT", traceEventParams.opt);
+    sysEvent->GetParamValue("ERROR_CODE", errorCode);
+    traceEventParams.errorCode = static_cast<int>(errorCode);
+    sysEvent->GetParamValue("ERROR_MESSAGE", traceEventParams.errorMessage);
+
     if (!IsTraceSysEventParamsEqual(traceEventParams)) {
         return;
     }

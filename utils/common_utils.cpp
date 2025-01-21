@@ -129,7 +129,7 @@ bool MarkClockSync(const std::string& traceRootPath)
     return true;
 }
 
-bool IsNumber(const std::string &str)
+bool IsNumber(const std::string& str)
 {
     if (str.empty()) {
         return false;
@@ -205,6 +205,54 @@ bool IsDeveloperMode()
 bool IsRootVersion()
 {
     return OHOS::system::GetBoolParameter("const.debuggable", false);
+}
+
+bool IsTraceMounted(std::string& traceRootPath)
+{
+    if (access((DEBUGFS_TRACING_DIR + TRACE_MARKER_NODE).c_str(), F_OK) != -1) {
+        traceRootPath = DEBUGFS_TRACING_DIR;
+        return true;
+    }
+    if (access((TRACEFS_DIR + TRACE_MARKER_NODE).c_str(), F_OK) != -1) {
+        traceRootPath = TRACEFS_DIR;
+        return true;
+    }
+    return false;
+}
+
+std::string GetFilePath(const std::string& fileName, const std::string& traceRootPath)
+{
+    return traceRootPath + fileName;
+}
+
+std::string ReadFileInner(const std::string& filename)
+{
+    std::string resolvedPath = CanonicalizeSpecPath(filename.c_str());
+    std::ifstream fileIn(resolvedPath.c_str());
+    if (!fileIn.is_open()) {
+        HILOG_ERROR(LOG_CORE, "ReadFile: %{public}s open failed.", filename.c_str());
+        return "";
+    }
+    std::string str((std::istreambuf_iterator<char>(fileIn)), std::istreambuf_iterator<char>());
+    fileIn.close();
+    return str;
+}
+
+std::string ReadFile(const std::string& filename, const std::string& traceRootPath)
+{
+    std::string filePath = GetFilePath(filename, traceRootPath);
+    return ReadFileInner(filePath);
+}
+
+bool IsTracingOn(const std::string& traceRootPath)
+{
+    const std::string enable = "1";
+    if (ReadFile(TRACING_ON_NODE, traceRootPath).substr(0, enable.size()) == enable) {
+        HILOG_INFO(LOG_CORE, "tracing_on is 1.");
+        return true;
+    }
+    HILOG_INFO(LOG_CORE, "tracing_on is 0.");
+    return false;
 }
 } // namespace Hitrace
 } // namespace HiviewDFX

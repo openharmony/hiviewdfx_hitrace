@@ -25,7 +25,7 @@ std::string CanonicalizeSpecPath(const char* src);
 
 bool MarkClockSync(const std::string& traceRootPath);
 
-bool IsNumber(const std::string &str);
+bool IsNumber(const std::string& str);
 
 int GetCpuProcessors();
 
@@ -40,8 +40,17 @@ bool IsHmKernel();
 bool IsDeveloperMode();
 
 bool IsRootVersion();
+
+bool IsTraceMounted(std::string& traceRootPath);
+
+std::string GetFilePath(const std::string& fileName, const std::string& traceRootPath);
+
+std::string ReadFileInner(const std::string& filename);
+
+std::string ReadFile(const std::string& filename, const std::string& traceRootPath);
+
+bool IsTracingOn(const std::string& traceRootPath);
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS
-
 #endif // HITRACE_COMMON_UTILS_H

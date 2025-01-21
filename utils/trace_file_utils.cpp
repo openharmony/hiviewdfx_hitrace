@@ -74,7 +74,7 @@ void GetTraceFilesInDir(std::vector<FileWithTime>& fileList, TRACE_TYPE traceTyp
             }
         }
     }
-    HILOG_INFO(LOG_CORE, "GetTraceFilesInDir fileList size: %{public}d.", fileList.size());
+    HILOG_INFO(LOG_CORE, "GetTraceFilesInDir fileList size: %{public}d.", static_cast<int>(fileList.size()));
     std::sort(fileList.begin(), fileList.end(), [](const FileWithTime& a, const FileWithTime& b) {
         return a.ctime < b.ctime;
     });
@@ -385,6 +385,8 @@ bool RenameTraceFile(const std::string& fileName, std::string& newFileName,
             firstPageTraceTime, lastPageTraceTime);
         return false;
     }
+    HILOG_INFO(LOG_CORE, "RenameTraceFile: firstPageTraceTime:(%{public}" PRIu64
+        "), lastPageTraceTime:(%{public}" PRIu64 ")", firstPageTraceTime, lastPageTraceTime);
     uint64_t traceDuration = (lastPageTraceTime - firstPageTraceTime) / MS_TO_NS;
     newFileName = RegenerateTraceFileName(fileName, firstPageTraceTime, traceDuration).c_str();
     if (newFileName == "") {

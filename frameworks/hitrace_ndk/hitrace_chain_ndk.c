@@ -29,13 +29,13 @@ HiTraceId OH_HiTrace_BeginChain(const char* name, int flags)
     return HiTraceChainBegin(name, flags);
 }
 
-void OH_HiTrace_EndChain()
+void OH_HiTrace_EndChain(void)
 {
     HiTraceId id = HiTraceChainGetId();
     HiTraceChainEnd(&id);
 }
 
-HiTraceId OH_HiTrace_GetId()
+HiTraceId OH_HiTrace_GetId(void)
 {
     return HiTraceChainGetId();
 }
