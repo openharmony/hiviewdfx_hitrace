@@ -17,7 +17,6 @@
 
 #include <dirent.h>
 #include <fcntl.h>
-#include <string>
 #include <unistd.h>
 
 #include "common_define.h"
@@ -29,39 +28,49 @@ namespace {
 const std::string TRACE_SNAPSHOT_PREFIX = "trace_";
 const std::string TRACE_RECORD_PREFIX = "record_";
 
-int CountTraceFileByPrefix(const std::string& prefix)
+std::vector<std::string> GetTraceFileByPrefix(const std::string& prefix)
 {
     if (access(TRACE_FILE_DEFAULT_DIR.c_str(), F_OK) != 0) {
-        return 0;
+        return {};
     }
     DIR* dirPtr = opendir(TRACE_FILE_DEFAULT_DIR.c_str());
     if (dirPtr == nullptr) {
-        return 0;
+        return {};
     }
 
-    int filecnt = 0;
+    std::vector<std::string> filelist = {};
     struct dirent* ptr = nullptr;
     while ((ptr = readdir(dirPtr)) != nullptr) {
         if (ptr->d_type == DT_REG) {
             std::string name = std::string(ptr->d_name);
             if (name.compare(0, prefix.size(), prefix) == 0) {
-                filecnt++;
+                filelist.push_back(name);
             }
         }
     }
     closedir(dirPtr);
-    return filecnt;
+    return filelist;
 }
 }
 
 int CountSnapShotTraceFile()
 {
-    return CountTraceFileByPrefix(TRACE_SNAPSHOT_PREFIX);
+    return GetTraceFileByPrefix(TRACE_SNAPSHOT_PREFIX).size();
 }
 
 int CountRecordingTraceFile()
 {
-    return CountTraceFileByPrefix(TRACE_RECORD_PREFIX);
+    return GetTraceFileByPrefix(TRACE_RECORD_PREFIX).size();
+}
+
+void GetSnapShotTraceFileList(std::vector<std::string>& fileList)
+{
+    fileList = GetTraceFileByPrefix(TRACE_SNAPSHOT_PREFIX);
+}
+
+void GetRecordingTraceFileList(std::vector<std::string>& fileList)
+{
+    fileList = GetTraceFileByPrefix(TRACE_RECORD_PREFIX);
 }
 } // namespace Hitrace
 } // namespace HiviewDFX

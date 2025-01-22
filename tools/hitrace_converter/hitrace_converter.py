@@ -296,15 +296,25 @@ def generate_one_event_str(data, cpu_id, time_stamp, one_event):
 
     return event_str
 
+
 format_miss_cnt = 0
 format_miss_set = set()
+trace_event_count_dict = {} # trace event count dict
+trace_event_mem_dict = {} # trace event mem dict
 
 
 def parse_one_event(data, event_id, cpu_id, time_stamp):
     global format_miss_cnt
     global format_miss_set
+    global trace_event_count_dict
+    if event_id in trace_event_count_dict:
+        trace_event_count_dict[event_id] += 1
+    else:
+        trace_event_count_dict[event_id] = 1
+
     event_format = events_format.get(event_id, "")
     if event_format == "":
+        # current event format is not found in trace file format data.
         format_miss_cnt += 1
         format_miss_set.add(event_id)
         return ""
@@ -328,6 +338,7 @@ RMQ_ENTRY_ALIGN_MASK = 3
 
 def parse_cpu_raw_one_page(data, result):
     global cpu_raw_read_pos
+    global trace_event_mem_dict
     end_pos = cpu_raw_read_pos + READ_PAGE_SIZE
     page_header = parse_page_header(data)
 
@@ -338,6 +349,11 @@ def parse_cpu_raw_one_page(data, result):
 
         time_stamp = page_header.get("time_stamp", 0) + event_header.get("time_stamp_offset", 0)
         event_id = struct.unpack('H', data[cpu_raw_read_pos:cpu_raw_read_pos + INT16_DATA_READ_LEN])[0]
+
+        if event_id in trace_event_mem_dict:
+            trace_event_mem_dict[event_id] += event_header.get("size", 0)
+        else:
+            trace_event_mem_dict[event_id] = event_header.get("size", 0)
 
         one_event_data = data[cpu_raw_read_pos:cpu_raw_read_pos + event_header.get("size", 0)]
         one_event_result = parse_one_event(one_event_data, event_id, page_header.get("core_id", 0), time_stamp)
@@ -481,13 +497,20 @@ def parse_binary_trace_file():
     outfile.close()
     infile.close()
 
-    print("Trace format miss count: %d" % format_miss_cnt)
-    print("Trace format id missed set:")
-    for miss_format_id in format_miss_set:
-        print("%d" % miss_format_id)
-
     for name in get_not_found_format:
         print("Error: function parse_%s not found" % name)
+    print("Trace format miss count: %d" % format_miss_cnt)
+    print("Trace format id missed set:")
+    print(format_miss_set)
+
+    count_total = sum(trace_event_count_dict.values())
+    mem_total = sum(trace_event_mem_dict.values()) / 1024 # KB
+    print(f"Trace counter: total count({count_total}), total mem({mem_total:.3f}KB)")
+    for id, count in trace_event_count_dict.items():
+        count_percentage = count / count_total * 100
+        mem = trace_event_mem_dict[id] / 1024
+        mem_percentage = mem / mem_total * 100
+        print(f"ID {id}: count={count}, count percentage={count_percentage:.5f}%, mem={mem:.3f}KB, mem percentage={mem_percentage:.5f}%")
 
 
 def main():
