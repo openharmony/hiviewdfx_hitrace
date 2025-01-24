@@ -76,14 +76,18 @@ constexpr int ALIGNMENT_COEFFICIENT = 4;
 
 const int DEFAULT_BUFFER_SIZE = 12 * 1024;
 const int DEFAULT_FILE_SIZE = 100 * 1024;
-const int DEFAULT_CACHE_FILE_SIZE = 150;
+#ifdef HITRACE_UNITTEST
+const int DEFAULT_CACHE_FILE_SIZE = 15 * 1024;
+#else
+const int DEFAULT_CACHE_FILE_SIZE = 150 * 1024;
+#endif
 #if defined(SNAPSHOT_TRACEBUFFER_SIZE) && (SNAPSHOT_TRACEBUFFER_SIZE != 0)
 const int HM_DEFAULT_BUFFER_SIZE = SNAPSHOT_TRACEBUFFER_SIZE;
 #else
 const int HM_DEFAULT_BUFFER_SIZE = 144 * 1024;
 #endif
 const int SAVED_CMDLINES_SIZE = 3072; // 3M
-const int KB_PER_MB = 1024;
+const int BYTE_PER_KB = 1024;
 const int BYTE_PER_MB = 1024 * 1024;
 constexpr uint64_t S_TO_NS = 1000000000;
 constexpr uint64_t S_TO_MS = 1000;
@@ -537,11 +541,11 @@ void GetFileSizeThresholdAndTraceTime(bool &isCpuRaw, uint8_t contentType, uint6
             traceStartTime, traceEndTime);
     }
     if (g_cacheFlag.load()) {
-        fileSizeThreshold = DEFAULT_CACHE_FILE_SIZE * KB_PER_MB;
+        fileSizeThreshold = DEFAULT_CACHE_FILE_SIZE * BYTE_PER_KB;
         return;
     }
     if (g_currentTraceParams.fileSize != 0) {
-        fileSizeThreshold = g_currentTraceParams.fileSize * KB_PER_MB;
+        fileSizeThreshold = g_currentTraceParams.fileSize * BYTE_PER_KB;
     }
 }
 
@@ -549,7 +553,7 @@ bool IsWriteFileOverflow(const bool isCpuRaw, const int &outputFileSize, const s
                          const int& fileSizeThreshold)
 {
     // attention: we only check file size threshold in CMD_MODE
-    if (!isCpuRaw || g_traceMode != TraceMode::CMD_MODE || !g_needLimitFileSize) {
+    if (!isCpuRaw || (g_traceMode != TraceMode::CMD_MODE && !g_cacheFlag.load()) || !g_needLimitFileSize) {
         return false;
     }
     if (outputFileSize + writeLen + static_cast<int>(sizeof(TraceFileContentHeader)) >= fileSizeThreshold) {
@@ -584,7 +588,7 @@ bool WriteFile(uint8_t contentType, const std::string& src, int outFd, const std
 
     uint64_t traceStartTime = 0;
     uint64_t traceEndTime = std::numeric_limits<uint64_t>::max();
-    int fileSizeThreshold = DEFAULT_FILE_SIZE * KB_PER_MB;
+    int fileSizeThreshold = DEFAULT_FILE_SIZE * BYTE_PER_KB;
     bool isCpuRaw = false;
     GetFileSizeThresholdAndTraceTime(isCpuRaw, contentType, traceStartTime, traceEndTime, fileSizeThreshold);
     bool printFirstPageTime = false;
@@ -897,7 +901,7 @@ void SearchTraceFiles(const uint64_t& inputTraceStartTime, const uint64_t& input
 bool CacheTraceLoop(const std::string &outputFileName)
 {
     std::lock_guard<std::mutex> lock(g_cacheTraceMutex);
-    int fileSizeThreshold = DEFAULT_CACHE_FILE_SIZE * BYTE_PER_MB;
+    int fileSizeThreshold = DEFAULT_CACHE_FILE_SIZE * BYTE_PER_KB;
     g_firstPageTimestamp = UINT64_MAX;
     g_lastPageTimestamp = 0;
     g_outputFileSize = 0;
@@ -987,9 +991,9 @@ void ProcessCacheTask()
 bool DumpTraceLoop(const std::string& outputFileName, bool isLimited)
 {
     const int sleepTime = 1;
-    int fileSizeThreshold = DEFAULT_FILE_SIZE * KB_PER_MB;
+    int fileSizeThreshold = DEFAULT_FILE_SIZE * BYTE_PER_KB;
     if (g_currentTraceParams.fileSize != 0) {
-        fileSizeThreshold = g_currentTraceParams.fileSize * KB_PER_MB;
+        fileSizeThreshold = g_currentTraceParams.fileSize * BYTE_PER_KB;
     }
     g_outputFileSize = 0;
     std::string outPath = CanonicalizeSpecPath(outputFileName.c_str());

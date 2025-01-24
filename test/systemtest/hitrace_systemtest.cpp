@@ -365,6 +365,7 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest010, TestSize.Level1)
     const int dumpCnt = 30; // 30 : dump 30 times
     for (int i = 0; i < dumpCnt; ++i) {
         ASSERT_TRUE(RunCmd("hitrace --dump_bgsrv"));
+        sleep(1); // wait 1s
     }
     const int snapshotFileAge = 21;
     std::vector<std::string> traceLists = {};
