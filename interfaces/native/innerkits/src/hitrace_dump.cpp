@@ -1033,6 +1033,7 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
         if (!GenerateNewFile(outFd, outPath)) {
             HILOG_INFO(LOG_CORE, "DumpTraceLoop access file:%{public}s failed, errno: %{public}d.",
                 outPath.c_str(), errno);
+            close(outFd);
             return false;
         }
     } while (g_needGenerateNewTraceFile);
