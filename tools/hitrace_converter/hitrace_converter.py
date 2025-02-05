@@ -506,11 +506,11 @@ def parse_binary_trace_file():
     count_total = sum(trace_event_count_dict.values())
     mem_total = sum(trace_event_mem_dict.values()) / 1024 # KB
     print(f"Trace counter: total count({count_total}), total mem({mem_total:.3f}KB)")
-    for id, count in trace_event_count_dict.items():
+    for format_id, count in trace_event_count_dict.items():
         count_percentage = count / count_total * 100
-        mem = trace_event_mem_dict[id] / 1024
+        mem = trace_event_mem_dict.get(format_id, 0) / 1024
         mem_percentage = mem / mem_total * 100
-        print(f"ID {id}: count={count}, count percentage={count_percentage:.5f}%, mem={mem:.3f}KB, mem percentage={mem_percentage:.5f}%")
+        print(f"ID {format_id}: count={count}, count percentage={count_percentage:.5f}%, mem={mem:.3f}KB, mem percentage={mem_percentage:.5f}%")
 
 
 def main():
