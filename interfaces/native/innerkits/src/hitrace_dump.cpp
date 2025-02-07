@@ -485,21 +485,16 @@ TraceErrorCode SetTimeIntervalBoundary(int inputMaxDuration, uint64_t utTraceEnd
         return INVALID_MAX_DURATION;
     }
 
-    struct sysinfo info;
-    if (sysinfo(&info) != 0) {
-        HILOG_ERROR(LOG_CORE, "Get system info failed.");
-        return SYSINFO_READ_FAILURE;
-    }
     uint64_t utNow = static_cast<uint64_t>(std::time(nullptr));
     if (utTraceEndTime >= utNow) {
         HILOG_WARN(LOG_CORE, "DumpTrace: Warning: traceEndTime is later than current time, set to current.");
         utTraceEndTime = 0;
     }
-
-    uint64_t utBootTime = utNow - info.uptime;
+    struct timespec bts = {0, 0};
+    clock_gettime(CLOCK_BOOTTIME, &bts);
+    uint64_t btNow = bts.tv_sec + (bts.tv_nsec != 0 ? 1 : 0);
+    uint64_t utBootTime = utNow - btNow;
     if (utTraceEndTime == 0) {
-        struct timespec bts = {0, 0};
-        clock_gettime(CLOCK_BOOTTIME, &bts);
         g_traceEndTime = static_cast<uint64_t>(bts.tv_sec * S_TO_NS + bts.tv_nsec);
     } else if (utTraceEndTime > utBootTime) {
         // beware of input precision of seconds: add an extra second of tolerance
