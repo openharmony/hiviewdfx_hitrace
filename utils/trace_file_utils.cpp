@@ -364,13 +364,11 @@ bool GetFileSize(const std::string& filePath, uint64_t& fileSize)
 
 bool ConvertPageTraceTimeToUtTime(const uint64_t& pageTraceTime, time_t& utPageTraceTime)
 {
-    struct sysinfo info;
-    if (sysinfo(&info) != 0) {
-        HILOG_ERROR(LOG_CORE, "ConvertPageTraceTimeToUtTime: get sysinfo failed, errno: %{public}d", errno);
-        return false;
-    }
+    struct timespec bts = {0, 0};
+    clock_gettime(CLOCK_BOOTTIME, &bts);
+    uint64_t btNow = bts.tv_sec + (bts.tv_nsec != 0 ? 1 : 0);
     uint64_t utNow = static_cast<uint64_t>(std::time(nullptr));
-    uint64_t utBootTime = utNow - info.uptime;
+    uint64_t utBootTime = utNow - btNow;
     utPageTraceTime = static_cast<time_t>(utBootTime + pageTraceTime / S_TO_NS);
     return true;
 }
