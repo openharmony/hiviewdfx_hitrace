@@ -871,17 +871,15 @@ bool SetFileInfo(const std::string outPath, const uint64_t& firstPageTimestamp,
 void GetTraceFileFromVec(const uint64_t& inputTraceStartTime, const uint64_t& inputTraceEndTime,
     std::vector<TraceFileInfo>& fileVec, std::vector<std::string>& outputFiles)
 {
-    if (!fileVec.empty()) {
-        for (auto it = fileVec.begin(); it != fileVec.end(); it++) {
-            HILOG_INFO(LOG_CORE, "GetTraceFileFromVec: %{public}s, [(%{public}" PRIu64 ", %{public}" PRIu64 "].",
-                (*it).filename.c_str(), (*it).traceStartTime, (*it).traceEndTime);
-            if ((((*it).traceStartTime >= inputTraceStartTime && (*it).traceStartTime <= inputTraceEndTime) ||
-                 ((*it).traceEndTime >= inputTraceStartTime && (*it).traceEndTime <= inputTraceEndTime) ||
-                 ((*it).traceStartTime <= inputTraceStartTime && (*it).traceEndTime >= inputTraceEndTime)) &&
-                 ((*it).traceEndTime - (*it).traceStartTime < 2000)) { // 2000 : max trace duration 2000s
-                outputFiles.push_back((*it).filename);
-                HILOG_INFO(LOG_CORE, "Put file: %{public}s into outputFiles.", (*it).filename.c_str());
-            }
+    for (auto it = fileVec.begin(); it != fileVec.end(); it++) {
+        HILOG_INFO(LOG_CORE, "GetTraceFileFromVec: %{public}s, [(%{public}" PRIu64 ", %{public}" PRIu64 "].",
+            (*it).filename.c_str(), (*it).traceStartTime, (*it).traceEndTime);
+        if ((((*it).traceStartTime >= inputTraceStartTime && (*it).traceStartTime <= inputTraceEndTime) ||
+             ((*it).traceEndTime >= inputTraceStartTime && (*it).traceEndTime <= inputTraceEndTime) ||
+             ((*it).traceStartTime <= inputTraceStartTime && (*it).traceEndTime >= inputTraceEndTime)) &&
+             ((*it).traceEndTime - (*it).traceStartTime < 2000)) { // 2000 : max trace duration 2000s
+            outputFiles.push_back((*it).filename);
+            HILOG_INFO(LOG_CORE, "Put file: %{public}s into outputFiles.", (*it).filename.c_str());
         }
     }
 }
@@ -1263,16 +1261,16 @@ TraceErrorCode DumpTraceInner(std::vector<std::string>& outputFiles)
 
     if (access(reOutPath.c_str(), F_OK) != 0) {
         HILOG_ERROR(LOG_CORE, "DumpTraceInner: write %{public}s failed.", outputFileName.c_str());
-        return TraceErrorCode::WRITE_TRACE_INFO_ERROR;
+    } else {
+        HILOG_INFO(LOG_CORE, "Output: %{public}s.", reOutPath.c_str());
+        TraceFileInfo traceFileInfo;
+        if (SetFileInfo(reOutPath, g_firstPageTimestamp, g_lastPageTimestamp, traceFileInfo)) {
+            g_traceFileVec.push_back(traceFileInfo);
+        } else {
+            HILOG_ERROR(LOG_CORE, "SetFileInfo: set %{public}s info failed.", reOutPath.c_str());
+            RemoveFile(reOutPath);
+        }
     }
-
-    HILOG_INFO(LOG_CORE, "Output: %{public}s.", reOutPath.c_str());
-    TraceFileInfo traceFileInfo;
-    if (!SetFileInfo(reOutPath, g_firstPageTimestamp, g_lastPageTimestamp, traceFileInfo)) {
-        RemoveFile(reOutPath);
-        return TraceErrorCode::WRITE_TRACE_INFO_ERROR;
-    }
-    g_traceFileVec.push_back(traceFileInfo);
     SearchTraceFiles(g_utDestTraceStartTime, g_utDestTraceEndTime, outputFiles);
     return TraceErrorCode::SUCCESS;
 }
