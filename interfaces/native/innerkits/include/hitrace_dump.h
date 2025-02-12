@@ -50,6 +50,12 @@ enum TraceMode : uint8_t {
     SNAPSHOT_MODE = SERVICE_MODE,
 };
 
+enum TraceState : uint8_t {
+    OPEN = 1 << 0,
+    RECORD = 1 << 1,
+    CACHE = 1 << 2,
+};
+
 struct TraceRetInfo {
     TraceErrorCode errorCode;
     std::vector<std::string> outputFiles;
@@ -67,6 +73,11 @@ bool SetCheckParam();
  * Get the current trace mode.
 */
 TraceMode GetTraceMode();
+
+/**
+ * Get the current trace state.
+*/
+uint8_t GetTraceState();
 
 /**
  * Set trace parameters based on args for CMD_MODE.

@@ -1561,6 +1561,22 @@ TraceMode GetTraceMode()
     return g_traceMode;
 }
 
+uint8_t GetTraceState()
+{
+    std::lock_guard<std::mutex> lock(g_traceMutex);
+    uint8_t state = 0;
+    if (g_traceMode != CLOSE) {
+        state |= TraceState::OPEN;
+    }
+    if (!g_dumpEnd) {
+        state |= TraceState::RECORD;
+    }
+    if (!g_cacheEnd) {
+        state |= TraceState::CACHE;
+    }
+    return state;
+}
+
 bool PreWriteEventsFormat(const std::vector<std::string>& eventFormats)
 {
     DelSavedEventsFormat();
