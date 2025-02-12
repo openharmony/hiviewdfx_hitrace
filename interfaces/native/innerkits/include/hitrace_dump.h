@@ -44,13 +44,6 @@ enum TraceErrorCode : uint8_t {
 
 enum TraceMode : uint8_t {
     CLOSE = 0,
-    CMD_MODE = 1,
-    SERVICE_MODE = 2,
-    RECORDING_MODE = CMD_MODE,
-    SNAPSHOT_MODE = SERVICE_MODE,
-};
-
-enum TraceState : uint8_t {
     OPEN = 1 << 0,
     RECORD = 1 << 1,
     CACHE = 1 << 2,
@@ -72,20 +65,15 @@ bool SetCheckParam();
 /**
  * Get the current trace mode.
 */
-TraceMode GetTraceMode();
+uint8_t GetTraceMode();
 
 /**
- * Get the current trace state.
-*/
-uint8_t GetTraceState();
-
-/**
- * Set trace parameters based on args for CMD_MODE.
+ * Open trace with customized args.
 */
 TraceErrorCode OpenTrace(const std::string& args);
 
 /**
- * Set trace tags based on tagGroups for SERVICE_MODE.
+ * Open trace by tag groups using default parameters.
 */
 TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups);
 

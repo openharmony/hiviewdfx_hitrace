@@ -149,7 +149,7 @@ std::mutex g_cacheTraceMutex;
 
 bool g_serviceThreadIsStart = false;
 uint64_t g_sysInitParamTags = 0;
-TraceMode g_traceMode = TraceMode::CLOSE;
+uint8_t g_traceMode = TraceMode::CLOSE;
 std::string g_traceRootPath;
 uint8_t g_buffer[BUFFER_SIZE] = {0};
 std::vector<std::pair<std::string, int>> g_traceFilesTable;
@@ -175,6 +175,21 @@ std::vector<TraceFileInfo> g_cacheFileVec{};
 TraceParams g_currentTraceParams = {};
 std::shared_ptr<TraceJsonParser> g_traceJsonParser = nullptr;
 std::atomic<uint8_t> g_interruptDump(0);
+
+bool IsTraceOpen()
+{
+    return (g_traceMode & TraceMode::OPEN) != 0;
+}
+
+bool IsRecordOn()
+{
+    return (g_traceMode & TraceMode::RECORD) != 0;
+}
+
+bool IsCacheOn()
+{
+    return (g_traceMode & TraceMode::CACHE) != 0;
+}
 
 std::vector<std::string> Split(const std::string& str, char delimiter)
 {
@@ -553,7 +568,7 @@ bool IsWriteFileOverflow(const bool isCpuRaw, const int &outputFileSize, const s
                          const int& fileSizeThreshold)
 {
     // attention: we only check file size threshold in CMD_MODE
-    if (!isCpuRaw || (g_traceMode != TraceMode::CMD_MODE && !g_cacheFlag.load()) || !g_needLimitFileSize) {
+    if (!isCpuRaw || (!IsRecordOn() && !IsCacheOn()) || !g_needLimitFileSize) {
         return false;
     }
     if (outputFileSize + writeLen + static_cast<int>(sizeof(TraceFileContentHeader)) >= fileSizeThreshold) {
@@ -1287,13 +1302,6 @@ uint64_t GetSysParamTags()
     return OHOS::system::GetUintParameter<uint64_t>(TRACE_TAG_ENABLE_FLAGS, 0);
 }
 
-void RestartService()
-{
-    CloseTrace();
-    const std::vector<std::string> tagGroups = {"scene_performance"};
-    OpenTrace(tagGroups);
-}
-
 bool CheckParam()
 {
     uint64_t currentTags = GetSysParamTags();
@@ -1302,10 +1310,10 @@ bool CheckParam()
     }
 
     if (currentTags == 0) {
-        HILOG_ERROR(LOG_CORE, "tag is 0, restart it.");
+        HILOG_ERROR(LOG_CORE, "allowed tags are cleared, should restart.");
         return false;
     }
-    HILOG_ERROR(LOG_CORE, "trace is being used, restart later.");
+    HILOG_ERROR(LOG_CORE, "trace is being used, should restart.");
     return false;
 }
 
@@ -1329,13 +1337,8 @@ void MonitorServiceTask()
     const int intervalTime = 15;
     while (true) {
         sleep(intervalTime);
-        if (g_traceMode != TraceMode::SERVICE_MODE) {
+        if (!IsTraceOpen() || !CheckServiceRunning()) {
             break;
-        }
-
-        if (!CheckServiceRunning()) {
-            RestartService();
-            continue;
         }
 
         const int cpuNums = GetCpuProcessors();
@@ -1556,25 +1559,10 @@ bool SetCheckParam()
 }
 #endif
 
-TraceMode GetTraceMode()
-{
-    return g_traceMode;
-}
-
-uint8_t GetTraceState()
+uint8_t GetTraceMode()
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
-    uint8_t state = 0;
-    if (g_traceMode != CLOSE) {
-        state |= TraceState::OPEN;
-    }
-    if (!g_dumpEnd) {
-        state |= TraceState::RECORD;
-    }
-    if (!g_cacheEnd) {
-        state |= TraceState::CACHE;
-    }
-    return state;
+    return g_traceMode;
 }
 
 bool PreWriteEventsFormat(const std::vector<std::string>& eventFormats)
@@ -1599,11 +1587,12 @@ bool PreWriteEventsFormat(const std::vector<std::string>& eventFormats)
 
 TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups)
 {
-    if (g_traceMode != CLOSE) {
-        HILOG_ERROR(LOG_CORE, "OpenTrace: WRONG_TRACE_MODE, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
+    std::lock_guard<std::mutex> lock(g_traceMutex);
+    if (g_traceMode != TraceMode::CLOSE) {
+        HILOG_ERROR(LOG_CORE, "OpenTrace: WRONG_TRACE_MODE, current trace mode: %{public}u.",
+            static_cast<uint32_t>(g_traceMode));
         return WRONG_TRACE_MODE;
     }
-    std::lock_guard<std::mutex> lock(g_traceMutex);
     if (!IsTraceMounted(g_traceRootPath)) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: TRACE_NOT_SUPPORTED.");
         return TRACE_NOT_SUPPORTED;
@@ -1628,18 +1617,19 @@ TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups)
 
     TraceErrorCode ret = HandleServiceTraceOpen(tagGroups, allTags, tagGroupTable, traceFormats, customizedBufSz);
     if (ret != SUCCESS) {
-        HILOG_ERROR(LOG_CORE, "OpenTrace: open fail.");
+        HILOG_ERROR(LOG_CORE, "OpenTrace: failed.");
         return ret;
     }
-    g_traceMode = SERVICE_MODE;
+    g_traceMode = TraceMode::OPEN;
     if (!g_traceJsonParser->ParseTraceJson(TRACE_SNAPSHOT_FILE_AGE)) {
         HILOG_WARN(LOG_CORE, "OpenTrace: Failed to parse TRACE_SNAPSHOT_FILE_AGE.");
     }
     RefreshTraceVec(g_traceFileVec, TRACE_SNAPSHOT);
     RefreshTraceVec(g_cacheFileVec, TRACE_CACHE);
-    std::unique_lock<std::mutex> lck(g_cacheTraceMutex);
-    ClearCacheTraceFileByDuration(g_cacheFileVec);
-    lck.unlock();
+    {
+        std::lock_guard<std::mutex> cacheLock(g_cacheTraceMutex);
+        ClearCacheTraceFileByDuration(g_cacheFileVec);
+    }
     PreWriteEventsFormat(traceFormats);
     if (!IsHmKernel() && !g_serviceThreadIsStart) {
         // open SERVICE_MODE monitor thread
@@ -1650,21 +1640,22 @@ TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups)
         auxiliaryTask.detach();
     }
     g_sysInitParamTags = GetSysParamTags();
-    HILOG_INFO(LOG_CORE, "OpenTrace: SERVICE_MODE open success.");
     g_tags = tagGroups;
+    HILOG_INFO(LOG_CORE, "OpenTrace: open by tag group success.");
     return ret;
 }
 
 TraceErrorCode OpenTrace(const std::string& args)
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
-    if (g_traceMode != CLOSE) {
-        HILOG_ERROR(LOG_CORE, "OpenTrace: WRONG_TRACE_MODE, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
+    if (g_traceMode != TraceMode::CLOSE) {
+        HILOG_ERROR(LOG_CORE, "OpenTrace: WRONG_TRACE_MODE, current trace mode: %{public}u.",
+            static_cast<uint32_t>(g_traceMode));
         return WRONG_TRACE_MODE;
     }
 
     if (!IsTraceMounted(g_traceRootPath)) {
-        HILOG_ERROR(LOG_CORE, "Hitrace OpenTrace: TRACE_NOT_SUPPORTED.");
+        HILOG_ERROR(LOG_CORE, "OpenTrace: TRACE_NOT_SUPPORTED.");
         return TRACE_NOT_SUPPORTED;
     }
 
@@ -1680,38 +1671,41 @@ TraceErrorCode OpenTrace(const std::string& args)
     auto traceFormats = g_traceJsonParser->GetBaseFmtPath();
 
     if (allTags.size() == 0 || tagGroupTable.size() == 0) {
-        HILOG_ERROR(LOG_CORE, "Hitrace OpenTrace: ParseTagInfo TAG_ERROR.");
+        HILOG_ERROR(LOG_CORE, "OpenTrace: ParseTagInfo TAG_ERROR.");
         return TAG_ERROR;
     }
     // parse args
     TraceParams cmdTraceParams;
     if (!ParseArgs(args, cmdTraceParams, allTags, tagGroupTable)) {
-        HILOG_ERROR(LOG_CORE, "Hitrace OpenTrace: TAG_ERROR.");
+        HILOG_ERROR(LOG_CORE, "OpenTrace: TAG_ERROR.");
         return TAG_ERROR;
     }
 
     TraceErrorCode ret = HandleTraceOpen(cmdTraceParams, allTags, tagGroupTable, traceFormats);
     if (ret != SUCCESS) {
-        HILOG_ERROR(LOG_CORE, "Hitrace OpenTrace: CMD_MODE open failed.");
+        HILOG_ERROR(LOG_CORE, "OpenTrace: open by args failed.");
         return FILE_ERROR;
     }
-    g_traceMode = CMD_MODE;
+    g_sysInitParamTags = GetSysParamTags();
+    g_traceMode = TraceMode::OPEN;
     PreWriteEventsFormat(traceFormats);
-    HILOG_INFO(LOG_CORE, "Hitrace OpenTrace: CMD_MODE open success, args:%{public}s.", args.c_str());
+    HILOG_INFO(LOG_CORE, "Hitrace OpenTrace: open by args success, args:%{public}s.", args.c_str());
     return ret;
 }
 
 TraceErrorCode CacheTraceOn(uint64_t totalFileSize, uint64_t sliceMaxDuration)
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
-    if (g_traceMode != SERVICE_MODE) {
-        HILOG_ERROR(LOG_CORE, "CacheTraceOn: WRONG_TRACE_MODE, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
+    if (g_traceMode != TraceMode::OPEN) {
+        HILOG_ERROR(LOG_CORE, "CacheTraceOn: WRONG_TRACE_MODE, current trace mode: %{public}u.",
+            static_cast<uint32_t>(g_traceMode));
         return WRONG_TRACE_MODE;
     }
     if (!g_cacheEnd.load()) {
         HILOG_ERROR(LOG_CORE, "CacheTraceOn: cache trace is dumping now.");
         return WRONG_TRACE_MODE;
     }
+
     SetTotalFileSizeLimitAndSliceMaxDuration(totalFileSize, sliceMaxDuration);
     g_cacheFlag.store(true);
     g_cacheEnd.store(false);
@@ -1721,15 +1715,16 @@ TraceErrorCode CacheTraceOn(uint64_t totalFileSize, uint64_t sliceMaxDuration)
     std::thread task(it);
     task.detach();
     HILOG_INFO(LOG_CORE, "Caching trace on.");
+    g_traceMode |= TraceMode::CACHE;
     return SUCCESS;
 }
 
 TraceErrorCode CacheTraceOff()
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
-    if (g_traceMode != SERVICE_MODE) {
+    if (g_traceMode != (TraceMode::OPEN | TraceMode::CACHE)) {
         HILOG_ERROR(LOG_CORE,
-            "CacheTraceOff: WRONG_TRACE_MODE, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
+            "CacheTraceOff: WRONG_TRACE_MODE, current trace mode: %{public}u.", static_cast<uint32_t>(g_traceMode));
         return WRONG_TRACE_MODE;
     }
     g_cacheFlag.store(false);
@@ -1738,30 +1733,31 @@ TraceErrorCode CacheTraceOff()
         usleep(UNIT_TIME);
     }
     HILOG_INFO(LOG_CORE, "Caching trace off.");
+    g_traceMode &= ~TraceMode::CACHE;
     return SUCCESS;
 }
 
 TraceRetInfo DumpTrace(int maxDuration, uint64_t utTraceEndTime)
 {
-    std::unique_lock<std::mutex> lock(g_traceMutex);
-    HILOG_INFO(LOG_CORE, "DumpTrace with timelimit start, timelimit is %{public}d, endtime is (%{public}" PRIu64 ").",
-        maxDuration, utTraceEndTime);
-    TraceRetInfo ret;
-    if (g_traceMode != SERVICE_MODE) {
-        HILOG_ERROR(LOG_CORE, "DumpTrace: WRONG_TRACE_MODE, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
+    std::lock_guard<std::mutex> lock(g_traceMutex);
+    if (!IsTraceOpen() || IsRecordOn()) {
+        HILOG_ERROR(LOG_CORE, "DumpTrace: WRONG_TRACE_MODE, current trace mode: %{public}u.",
+            static_cast<uint32_t>(g_traceMode));
+        TraceRetInfo ret;
         ret.errorCode = WRONG_TRACE_MODE;
         return ret;
     }
+    HILOG_INFO(LOG_CORE, "DumpTrace start, target duration is %{public}d, target endtime is (%{public}" PRIu64 ").",
+        maxDuration, utTraceEndTime);
+    TraceRetInfo ret;
 
     if (!CheckServiceRunning()) {
-        lock.unlock();
-        RestartService();
         HILOG_ERROR(LOG_CORE, "DumpTrace: TRACE_IS_OCCUPIED.");
         ret.errorCode = TRACE_IS_OCCUPIED;
         return ret;
     }
     SetDestTraceTimeAndDuration(maxDuration, utTraceEndTime);
-    if (UNEXPECTANTLY(g_cacheFlag.load())) {
+    if (UNEXPECTANTLY(IsCacheOn())) {
         GetFileInCache(ret);
         return ret;
     }
@@ -1797,8 +1793,8 @@ TraceErrorCode DumpTraceOn()
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
     // check current trace status
-    if (g_traceMode != CMD_MODE) {
-        HILOG_ERROR(LOG_CORE, "DumpTraceOn: WRONG_TRACE_MODE, g_traceMode:%{public}d.", static_cast<int>(g_traceMode));
+    if (g_traceMode != TraceMode::OPEN) {
+        HILOG_ERROR(LOG_CORE, "DumpTraceOn: WRONG_TRACE_MODE, current trace mode: %{public}u.", static_cast<uint32_t>(g_traceMode));
         return WRONG_TRACE_MODE;
     }
 
@@ -1815,6 +1811,7 @@ TraceErrorCode DumpTraceOn()
     task.detach();
     WriteCpuFreqTrace();
     HILOG_INFO(LOG_CORE, "Recording trace on.");
+    g_traceMode |= TraceMode::RECORD;
     return SUCCESS;
 }
 
@@ -1823,9 +1820,9 @@ TraceRetInfo DumpTraceOff()
     std::lock_guard<std::mutex> lock(g_traceMutex);
     TraceRetInfo ret;
     // check current trace status
-    if (g_traceMode != CMD_MODE) {
-        HILOG_ERROR(LOG_CORE, "DumpTraceOff: The current state is %{public}d, data exception.",
-            static_cast<int>(g_traceMode));
+    if (!IsRecordOn()) {
+        HILOG_ERROR(LOG_CORE, "DumpTraceOff: The current state is %{public}u, data exception.",
+            static_cast<uint32_t>(g_traceMode));
         ret.errorCode = WRONG_TRACE_MODE;
         ret.outputFiles = g_outputFilesForCmd;
         return ret;
@@ -1839,6 +1836,7 @@ TraceRetInfo DumpTraceOff()
     ret.errorCode = SUCCESS;
     ret.outputFiles = g_outputFilesForCmd;
     HILOG_INFO(LOG_CORE, "Recording trace off.");
+    g_traceMode &= ~TraceMode::RECORD;
     return ret;
 }
 
@@ -1846,23 +1844,25 @@ TraceErrorCode CloseTrace()
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
     HILOG_INFO(LOG_CORE, "CloseTrace start.");
-    if (g_traceMode == CLOSE) {
-        HILOG_INFO(LOG_CORE, "Trace already close.");
+    if (g_traceMode == TraceMode::CLOSE) {
+        HILOG_INFO(LOG_CORE, "Trace has already been closed.");
         return SUCCESS;
     }
-
-    g_traceMode = CLOSE;
-    // Waiting for the data drop task to end
-    g_dumpFlag.store(false);
-    g_cacheFlag.store(false);
-    while (!g_dumpEnd.load()) {
-        usleep(UNIT_TIME);
+    if (IsRecordOn()) {
         g_dumpFlag.store(false);
+        while (!g_dumpEnd.load()) {
+            usleep(UNIT_TIME);
+            g_dumpFlag.store(false);
+        }
     }
-    while (!g_cacheEnd.load()) {
-        usleep(UNIT_TIME);
+    if (IsCacheOn()) {
         g_cacheFlag.store(false);
+        while (!g_cacheEnd.load()) {
+            usleep(UNIT_TIME);
+            g_cacheFlag.store(false);
+        }
     }
+    g_traceMode = TraceMode::CLOSE;
     OHOS::system::SetParameter(TRACE_KEY_APP_PID, "-1");
 
     if (g_traceJsonParser == nullptr) {

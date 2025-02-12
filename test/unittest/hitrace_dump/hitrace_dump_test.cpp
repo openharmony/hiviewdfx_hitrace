@@ -190,40 +190,77 @@ void HitraceDumpTest::SetUp()
 
 /**
  * @tc.name: GetTraceModeTest_001
- * @tc.desc: test GetTraceMode() service mode
+ * @tc.desc: test trace state for OpenTrace and CloseTrace
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceDumpTest, GetTraceModeTest_001, TestSize.Level0)
 {
-    // check service mode
+    // check OpenTrace(tagGroup)
     const std::vector<std::string> tagGroups = {"scene_performance"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    TraceMode serviceMode = GetTraceMode();
-    ASSERT_TRUE(serviceMode == TraceMode::SERVICE_MODE);
+    uint8_t traceMode = GetTraceMode();
+    ASSERT_EQ(traceMode, TraceMode::OPEN);
 
-    // check close mode
+    // check close trace
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
-    TraceMode closeMode = GetTraceMode();
-    ASSERT_TRUE(closeMode == TraceMode::CLOSE);
+    traceMode = GetTraceMode();
+    ASSERT_EQ(traceMode, TraceMode::CLOSE);
+
+    // check OpenTrace(args)
+    std::string args = "tags:sched clockType:boot bufferSize:1024 overwrite:1";
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
+    traceMode = GetTraceMode();
+    ASSERT_EQ(traceMode, TraceMode::OPEN);
+
+    // check close trace
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+    traceMode = GetTraceMode();
+    ASSERT_EQ(traceMode, TraceMode::CLOSE);
 }
 
 /**
  * @tc.name: GetTraceModeTest_002
- * @tc.desc: test GetTraceMode() cmd mode
+ * @tc.desc: test trace state for RecordOn and RecordOff
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceDumpTest, GetTraceModeTest_002, TestSize.Level0)
 {
-    // check cmd mode
-    std::string args = "tags:sched clockType:boot bufferSize:1024 overwrite:1";
-    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
-    TraceMode cmdMode = GetTraceMode();
-    ASSERT_TRUE(cmdMode == TraceMode::CMD_MODE);
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    ASSERT_EQ(OpenTrace(tagGroups), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(DumpTraceOn(), TraceErrorCode::SUCCESS);
+    uint8_t traceMode = GetTraceMode();
+    ASSERT_EQ(traceMode, TraceMode::OPEN | TraceMode::RECORD);
 
-    // check close mode
+    TraceRetInfo ret = DumpTraceOff();
+    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
+    traceMode = GetTraceMode();
+    ASSERT_EQ(traceMode, TraceMode::OPEN);
+
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
-    TraceMode closeMode = GetTraceMode();
-    ASSERT_TRUE(closeMode == TraceMode::CLOSE);
+    traceMode = GetTraceMode();
+    ASSERT_EQ(traceMode, TraceMode::CLOSE);
+}
+
+/**
+ * @tc.name: GetTraceModeTest_003
+ * @tc.desc: test trace state for CacheOn and CacheOff
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, GetTraceModeTest_003, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    ASSERT_EQ(OpenTrace(tagGroups), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(CacheTraceOn(), TraceErrorCode::SUCCESS);
+    uint8_t traceMode = GetTraceMode();
+    ASSERT_EQ(traceMode, TraceMode::OPEN | TraceMode::CACHE);
+
+    ASSERT_EQ(CacheTraceOff(), TraceErrorCode::SUCCESS);
+    traceMode = GetTraceMode();
+    ASSERT_EQ(traceMode, TraceMode::OPEN);
+
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+    traceMode = GetTraceMode();
+    ASSERT_EQ(traceMode, TraceMode::CLOSE);
 }
 
 /**
@@ -841,8 +878,8 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_005, TestSize.Level0)
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     std::string args = "tags:sched clockType:boot bufferSize:1024 overwrite:1";
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::WRONG_TRACE_MODE);
-    ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::WRONG_TRACE_MODE);
-
+    ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::SUCCESS);
+    ASSERT_EQ(GetTraceMode(), TraceMode::OPEN | TraceMode::RECORD);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -960,12 +997,11 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_010, TestSize.Level0)
 
     ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::SUCCESS);
     sleep(1);
-
     TraceRetInfo ret = DumpTraceOff();
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(ret.errorCode), static_cast<int>(TraceErrorCode::SUCCESS));
     ASSERT_TRUE(ret.outputFiles.size() > 0);
 
-    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
 }
 
 /**
@@ -988,8 +1024,6 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_011, TestSize.Level0)
 
     std::string args = "tags:sched clockType:boot bufferSize:1024 overwrite:1";
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::WRONG_TRACE_MODE);
-    ASSERT_TRUE(DumpTraceOn() == TraceErrorCode::WRONG_TRACE_MODE);
-
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
