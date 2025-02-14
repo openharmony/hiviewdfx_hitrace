@@ -146,6 +146,7 @@ std::atomic<bool> g_cacheFlag(false);
 std::atomic<bool> g_cacheEnd(true);
 std::mutex g_traceMutex;
 std::mutex g_cacheTraceMutex;
+std::mutex g_outputFilesForCmdMutex;
 
 bool g_serviceThreadIsStart = false;
 uint64_t g_sysInitParamTags = 0;
@@ -492,7 +493,7 @@ TraceErrorCode SetTimeIntervalBoundary(int inputMaxDuration, uint64_t utTraceEnd
     }
     struct timespec bts = {0, 0};
     clock_gettime(CLOCK_BOOTTIME, &bts);
-    uint64_t btNow = bts.tv_sec + (bts.tv_nsec != 0 ? 1 : 0);
+    uint64_t btNow = static_cast<uint64_t>(bts.tv_sec) + (static_cast<uint64_t>(bts.tv_nsec) != 0 ? 1 : 0);
     uint64_t utBootTime = utNow - btNow;
     if (utTraceEndTime == 0) {
         g_traceEndTime = static_cast<uint64_t>(bts.tv_sec * S_TO_NS + bts.tv_nsec);
@@ -1050,7 +1051,10 @@ void ProcessDumpTask()
 {
     g_dumpFlag.store(true);
     g_dumpEnd.store(false);
-    g_outputFilesForCmd = {};
+    {
+        std::lock_guard<std::mutex> lock(g_outputFilesForCmdMutex);
+        g_outputFilesForCmd = {};
+    }
     const std::string threadName = "TraceDumpTask";
     prctl(PR_SET_NAME, threadName.c_str());
     HILOG_INFO(LOG_CORE, "ProcessDumpTask: trace dump thread start.");
@@ -1066,6 +1070,7 @@ void ProcessDumpTask()
         std::string outputFileName = g_currentTraceParams.outputFile.empty() ?
                                      GenerateTraceFileName(TRACE_RECORDING) : g_currentTraceParams.outputFile;
         if (DumpTraceLoop(outputFileName, g_needLimitFileSize)) {
+            std::lock_guard<std::mutex> lock(g_outputFilesForCmdMutex);
             g_outputFilesForCmd.push_back(outputFileName);
         }
         g_dumpEnd.store(true);
@@ -1075,11 +1080,13 @@ void ProcessDumpTask()
 
     while (g_dumpFlag.load()) {
         if (!IsRootVersion()) {
+            std::lock_guard<std::mutex> lock(g_outputFilesForCmdMutex);
             ClearOldTraceFile(g_outputFilesForCmd, g_currentTraceParams.fileLimit);
         }
         // Generate file name
         std::string outputFileName = GenerateTraceFileName(TRACE_RECORDING);
         if (DumpTraceLoop(outputFileName, true)) {
+            std::lock_guard<std::mutex> lock(g_outputFilesForCmdMutex);
             g_outputFilesForCmd.push_back(outputFileName);
         } else {
             break;
@@ -1806,6 +1813,8 @@ TraceRetInfo DumpTraceOff()
         HILOG_ERROR(LOG_CORE, "DumpTraceOff: The current state is %{public}d, data exception.",
             static_cast<int>(g_traceMode));
         ret.errorCode = WRONG_TRACE_MODE;
+
+        std::lock_guard<std::mutex> lock(g_outputFilesForCmdMutex);
         ret.outputFiles = g_outputFilesForCmd;
         return ret;
     }
@@ -1816,6 +1825,8 @@ TraceRetInfo DumpTraceOff()
         g_dumpFlag.store(false);
     }
     ret.errorCode = SUCCESS;
+
+    std::lock_guard<std::mutex> outputFileslock(g_outputFilesForCmdMutex);
     ret.outputFiles = g_outputFilesForCmd;
     HILOG_INFO(LOG_CORE, "Recording trace off.");
     return ret;

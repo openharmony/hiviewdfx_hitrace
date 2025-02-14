@@ -366,7 +366,7 @@ bool ConvertPageTraceTimeToUtTime(const uint64_t& pageTraceTime, time_t& utPageT
 {
     struct timespec bts = {0, 0};
     clock_gettime(CLOCK_BOOTTIME, &bts);
-    uint64_t btNow = bts.tv_sec + (bts.tv_nsec != 0 ? 1 : 0);
+    uint64_t btNow = static_cast<uint64_t>(bts.tv_sec) + (static_cast<uint64_t>(bts.tv_nsec) != 0 ? 1 : 0);
     uint64_t utNow = static_cast<uint64_t>(std::time(nullptr));
     uint64_t utBootTime = utNow - btNow;
     utPageTraceTime = static_cast<time_t>(utBootTime + pageTraceTime / S_TO_NS);
