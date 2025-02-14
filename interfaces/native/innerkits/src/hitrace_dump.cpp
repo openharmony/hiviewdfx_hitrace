@@ -153,7 +153,7 @@ uint8_t g_traceMode = TraceMode::CLOSE;
 std::string g_traceRootPath;
 uint8_t g_buffer[BUFFER_SIZE] = {0};
 std::vector<std::pair<std::string, int>> g_traceFilesTable;
-std::vector<std::string> g_outputFilesForCmd;
+std::vector<std::string> g_recordingOutput;
 int g_outputFileSize = 0;
 int g_newTraceFileLimit = 0;
 int g_writeFileLimit = 0;
@@ -1070,7 +1070,7 @@ void ProcessDumpTask()
 {
     g_dumpFlag.store(true);
     g_dumpEnd.store(false);
-    g_outputFilesForCmd = {};
+    g_recordingOutput = {};
     const std::string threadName = "TraceDumpTask";
     prctl(PR_SET_NAME, threadName.c_str());
     HILOG_INFO(LOG_CORE, "ProcessDumpTask: trace dump thread start.");
@@ -1086,7 +1086,7 @@ void ProcessDumpTask()
         std::string outputFileName = g_currentTraceParams.outputFile.empty() ?
                                      GenerateTraceFileName(TRACE_RECORDING) : g_currentTraceParams.outputFile;
         if (DumpTraceLoop(outputFileName, g_needLimitFileSize)) {
-            g_outputFilesForCmd.push_back(outputFileName);
+            g_recordingOutput.push_back(outputFileName);
         }
         g_dumpEnd.store(true);
         g_needLimitFileSize = true;
@@ -1095,12 +1095,12 @@ void ProcessDumpTask()
 
     while (g_dumpFlag.load()) {
         if (!IsRootVersion()) {
-            ClearOldTraceFile(g_outputFilesForCmd, g_currentTraceParams.fileLimit);
+            ClearOldTraceFile(g_recordingOutput, g_currentTraceParams.fileLimit);
         }
         // Generate file name
         std::string outputFileName = GenerateTraceFileName(TRACE_RECORDING);
         if (DumpTraceLoop(outputFileName, true)) {
-            g_outputFilesForCmd.push_back(outputFileName);
+            g_recordingOutput.push_back(outputFileName);
         } else {
             break;
         }
@@ -1328,12 +1328,12 @@ bool CheckServiceRunning()
     return false;
 }
 
-void MonitorServiceTask()
+void CpuBufferBalanceTask()
 {
     g_serviceThreadIsStart = true;
-    const std::string threadName = "TraceMonitor";
+    const std::string threadName = "CpuBufferBalancer";
     prctl(PR_SET_NAME, threadName.c_str());
-    HILOG_INFO(LOG_CORE, "MonitorServiceTask: monitor thread start.");
+    HILOG_INFO(LOG_CORE, "CpuBufferBalanceTask: monitor thread start.");
     const int intervalTime = 15;
     while (true) {
         sleep(intervalTime);
@@ -1357,9 +1357,22 @@ void MonitorServiceTask()
             WriteStrToFile(path, std::to_string(result[i]));
         }
     }
-    HILOG_INFO(LOG_CORE, "MonitorServiceTask: monitor thread exit.");
+    HILOG_INFO(LOG_CORE, "CpuBufferBalanceTask: monitor thread exit.");
     g_serviceThreadIsStart = false;
 }
+
+void StartCpuBufferBalanceService()
+{
+    if (!IsHmKernel() && !g_serviceThreadIsStart) {
+        // open monitor thread
+        auto it = []() {
+            CpuBufferBalanceTask();
+        };
+        std::thread auxiliaryTask(it);
+        auxiliaryTask.detach();
+    }
+}
+
 
 TraceErrorCode HandleTraceOpen(const TraceParams& traceParams,
                                const std::map<std::string, TraceTag>& allTags,
@@ -1374,24 +1387,38 @@ TraceErrorCode HandleTraceOpen(const TraceParams& traceParams,
     return TraceErrorCode::SUCCESS;
 }
 
-TraceErrorCode HandleServiceTraceOpen(const std::vector<std::string>& tagGroups,
-                                      const std::map<std::string, TraceTag>& allTags,
-                                      const std::map<std::string, std::vector<std::string>>& tagGroupTable,
-                                      std::vector<std::string>& tagFmts, const int custBufSz)
+TraceErrorCode HandleDefaultTraceOpen(const std::vector<std::string>& tagGroups)
 {
-    TraceParams serviceTraceParams;
-    serviceTraceParams.tagGroups = tagGroups;
+    if (g_traceJsonParser == nullptr) {
+        g_traceJsonParser = std::make_shared<TraceJsonParser>();
+    }
+    if (!g_traceJsonParser->ParseTraceJson(PARSE_ALL_INFO)) {
+        HILOG_ERROR(LOG_CORE, "WriteEventsFormat: Failed to parse trace tag total infos.");
+        return FILE_ERROR;
+    }
+    auto allTags = g_traceJsonParser->GetAllTagInfos();
+    auto tagGroupTable = g_traceJsonParser->GetTagGroups();
+    auto tagFmts = g_traceJsonParser->GetBaseFmtPath();
+    auto custBufSz = g_traceJsonParser->GetSnapShotBufSzKb();
+
+    if (tagGroups.size() == 0 || !CheckTagGroup(tagGroups, tagGroupTable)) {
+        HILOG_ERROR(LOG_CORE, "OpenTrace: TAG_ERROR.");
+        return TAG_ERROR;
+    }
+
+    TraceParams defaultTraceParams;
+    defaultTraceParams.tagGroups = tagGroups;
     // attention: the buffer size value in the configuration file is preferred to set.
     if (custBufSz > 0) {
-        serviceTraceParams.bufferSize = std::to_string(custBufSz);
+        defaultTraceParams.bufferSize = std::to_string(custBufSz);
     } else {
         int traceBufSz = IsHmKernel() ? HM_DEFAULT_BUFFER_SIZE : DEFAULT_BUFFER_SIZE;
-        serviceTraceParams.bufferSize = std::to_string(traceBufSz);
+        defaultTraceParams.bufferSize = std::to_string(traceBufSz);
     }
-    serviceTraceParams.clockType = "boot";
-    serviceTraceParams.isOverWrite = "1";
-    serviceTraceParams.fileSize = DEFAULT_FILE_SIZE;
-    return HandleTraceOpen(serviceTraceParams, allTags, tagGroupTable, tagFmts);
+    defaultTraceParams.clockType = "boot";
+    defaultTraceParams.isOverWrite = "1";
+    defaultTraceParams.fileSize = DEFAULT_FILE_SIZE;
+    return HandleTraceOpen(defaultTraceParams, allTags, tagGroupTable, tagFmts);
 }
 
 void RemoveUnSpace(std::string str, std::string& args)
@@ -1448,9 +1475,9 @@ void SetDestTraceTimeAndDuration(int maxDuration, const uint64_t& utTraceEndTime
 
 /**
  * args: tags:tag1,tags2... tagGroups:group1,group2... clockType:boot bufferSize:1024 overwrite:1 output:filename
- * cmdTraceParams:  Save the above parameters
+ * traceParams:  Save the above parameters
 */
-bool ParseArgs(const std::string& args, TraceParams& cmdTraceParams, const std::map<std::string, TraceTag>& allTags,
+bool ParseArgs(const std::string& args, TraceParams& traceParams, const std::map<std::string, TraceTag>& allTags,
                const std::map<std::string, std::vector<std::string>>& tagGroupTable)
 {
     std::string userArgs = args;
@@ -1467,27 +1494,27 @@ bool ParseArgs(const std::string& args, TraceParams& cmdTraceParams, const std::
         }
         std::string itemName = item.substr(0, pos);
         if (itemName == "tags") {
-            cmdTraceParams.tags = Split(item.substr(pos + 1), ',');
+            traceParams.tags = Split(item.substr(pos + 1), ',');
         } else if (itemName == "tagGroups") {
-            cmdTraceParams.tagGroups = Split(item.substr(pos + 1), ',');
+            traceParams.tagGroups = Split(item.substr(pos + 1), ',');
         } else if (itemName == "clockType") {
-            cmdTraceParams.clockType = item.substr(pos + 1);
+            traceParams.clockType = item.substr(pos + 1);
         } else if (itemName == "bufferSize") {
-            cmdTraceParams.bufferSize = item.substr(pos + 1);
+            traceParams.bufferSize = item.substr(pos + 1);
         } else if (itemName == "overwrite") {
-            cmdTraceParams.isOverWrite = item.substr(pos + 1);
+            traceParams.isOverWrite = item.substr(pos + 1);
         } else if (itemName == "output") {
-            cmdTraceParams.outputFile = item.substr(pos + 1);
+            traceParams.outputFile = item.substr(pos + 1);
         } else if (itemName == "fileSize") {
             std::string fileSizeStr = item.substr(pos + 1);
-            SetCmdTraceIntParams(fileSizeStr, cmdTraceParams.fileSize);
+            SetCmdTraceIntParams(fileSizeStr, traceParams.fileSize);
         } else if (itemName == "fileLimit") {
             std::string fileLimitStr = item.substr(pos + 1);
-            SetCmdTraceIntParams(fileLimitStr, cmdTraceParams.fileLimit);
+            SetCmdTraceIntParams(fileLimitStr, traceParams.fileLimit);
         } else if (itemName == "appPid") {
             std::string pidStr = item.substr(pos + 1);
-            SetCmdTraceIntParams(pidStr, cmdTraceParams.appPid);
-            if (cmdTraceParams.appPid == 0) {
+            SetCmdTraceIntParams(pidStr, traceParams.appPid);
+            if (traceParams.appPid == 0) {
                 HILOG_ERROR(LOG_CORE, "Illegal input, appPid(%{public}s) must be number and greater than 0.",
                     pidStr.c_str());
                 return false;
@@ -1499,7 +1526,7 @@ bool ParseArgs(const std::string& args, TraceParams& cmdTraceParams, const std::
             return false;
         }
     }
-    if (CheckTags(cmdTraceParams.tags, allTags) && CheckTagGroup(cmdTraceParams.tagGroups, tagGroupTable)) {
+    if (CheckTags(traceParams.tags, allTags) && CheckTagGroup(traceParams.tagGroups, tagGroupTable)) {
         return true;
     }
     return false;
@@ -1598,24 +1625,7 @@ TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups)
         return TRACE_NOT_SUPPORTED;
     }
 
-    if (g_traceJsonParser == nullptr) {
-        g_traceJsonParser = std::make_shared<TraceJsonParser>();
-    }
-    if (!g_traceJsonParser->ParseTraceJson(PARSE_ALL_INFO)) {
-        HILOG_ERROR(LOG_CORE, "WriteEventsFormat: Failed to parse trace tag total infos.");
-        return FILE_ERROR;
-    }
-    auto allTags = g_traceJsonParser->GetAllTagInfos();
-    auto tagGroupTable = g_traceJsonParser->GetTagGroups();
-    auto traceFormats = g_traceJsonParser->GetBaseFmtPath();
-    auto customizedBufSz = g_traceJsonParser->GetSnapShotBufSzKb();
-
-    if (tagGroups.size() == 0 || !CheckTagGroup(tagGroups, tagGroupTable)) {
-        HILOG_ERROR(LOG_CORE, "OpenTrace: TAG_ERROR.");
-        return TAG_ERROR;
-    }
-
-    TraceErrorCode ret = HandleServiceTraceOpen(tagGroups, allTags, tagGroupTable, traceFormats, customizedBufSz);
+    TraceErrorCode ret = HandleDefaultTraceOpen(tagGroups);
     if (ret != SUCCESS) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: failed.");
         return ret;
@@ -1630,15 +1640,7 @@ TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups)
         std::lock_guard<std::mutex> cacheLock(g_cacheTraceMutex);
         ClearCacheTraceFileByDuration(g_cacheFileVec);
     }
-    PreWriteEventsFormat(traceFormats);
-    if (!IsHmKernel() && !g_serviceThreadIsStart) {
-        // open SERVICE_MODE monitor thread
-        auto it = []() {
-            MonitorServiceTask();
-        };
-        std::thread auxiliaryTask(it);
-        auxiliaryTask.detach();
-    }
+    StartCpuBufferBalanceService();
     g_sysInitParamTags = GetSysParamTags();
     g_tags = tagGroups;
     HILOG_INFO(LOG_CORE, "OpenTrace: open by tag group success.");
@@ -1675,17 +1677,18 @@ TraceErrorCode OpenTrace(const std::string& args)
         return TAG_ERROR;
     }
     // parse args
-    TraceParams cmdTraceParams;
-    if (!ParseArgs(args, cmdTraceParams, allTags, tagGroupTable)) {
+    TraceParams traceParams;
+    if (!ParseArgs(args, traceParams, allTags, tagGroupTable)) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: TAG_ERROR.");
         return TAG_ERROR;
     }
 
-    TraceErrorCode ret = HandleTraceOpen(cmdTraceParams, allTags, tagGroupTable, traceFormats);
+    TraceErrorCode ret = HandleTraceOpen(traceParams, allTags, tagGroupTable, traceFormats);
     if (ret != SUCCESS) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: open by args failed.");
         return FILE_ERROR;
     }
+    StartCpuBufferBalanceService();
     g_sysInitParamTags = GetSysParamTags();
     g_traceMode = TraceMode::OPEN;
     PreWriteEventsFormat(traceFormats);
@@ -1789,17 +1792,17 @@ TraceRetInfo DumpTrace(int maxDuration, uint64_t utTraceEndTime)
     return ret;
 }
 
-TraceErrorCode DumpTraceOn()
+TraceErrorCode RecordTraceOn()
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
     // check current trace status
     if (g_traceMode != TraceMode::OPEN) {
-        HILOG_ERROR(LOG_CORE, "DumpTraceOn: WRONG_TRACE_MODE, current trace mode: %{public}u.", static_cast<uint32_t>(g_traceMode));
+        HILOG_ERROR(LOG_CORE, "RecordTraceOn: WRONG_TRACE_MODE, current trace mode: %{public}u.", static_cast<uint32_t>(g_traceMode));
         return WRONG_TRACE_MODE;
     }
 
     if (!g_dumpEnd.load()) {
-        HILOG_ERROR(LOG_CORE, "DumpTraceOn: WRONG_TRACE_MODE, record trace is dumping now.");
+        HILOG_ERROR(LOG_CORE, "RecordTraceOn: WRONG_TRACE_MODE, record trace is dumping now.");
         return WRONG_TRACE_MODE;
     }
 
@@ -1815,16 +1818,16 @@ TraceErrorCode DumpTraceOn()
     return SUCCESS;
 }
 
-TraceRetInfo DumpTraceOff()
+TraceRetInfo RecordTraceOff()
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
     TraceRetInfo ret;
     // check current trace status
     if (!IsRecordOn()) {
-        HILOG_ERROR(LOG_CORE, "DumpTraceOff: The current state is %{public}u, data exception.",
+        HILOG_ERROR(LOG_CORE, "RecordTraceOff: The current state is %{public}u, data exception.",
             static_cast<uint32_t>(g_traceMode));
         ret.errorCode = WRONG_TRACE_MODE;
-        ret.outputFiles = g_outputFilesForCmd;
+        ret.outputFiles = g_recordingOutput;
         return ret;
     }
 
@@ -1834,7 +1837,7 @@ TraceRetInfo DumpTraceOff()
         g_dumpFlag.store(false);
     }
     ret.errorCode = SUCCESS;
-    ret.outputFiles = g_outputFilesForCmd;
+    ret.outputFiles = g_recordingOutput;
     HILOG_INFO(LOG_CORE, "Recording trace off.");
     g_traceMode &= ~TraceMode::RECORD;
     return ret;

@@ -92,14 +92,14 @@ TraceRetInfo DumpTrace(int maxDuration = 0, uint64_t happenTime = 0);
 
 /**
  * Enable sub threads to periodically drop disk trace data.
- * End the periodic disk drop task until the next call to DumpTraceOff().
+ * End the periodic disk drop task until the next call to RecordTraceOff().
 */
-TraceErrorCode DumpTraceOn();
+TraceErrorCode RecordTraceOn();
 
 /**
  * End the periodic disk drop task.
 */
-TraceRetInfo DumpTraceOff();
+TraceRetInfo RecordTraceOff();
 
 /**
  * Enable sub threads to periodically dump cache data
