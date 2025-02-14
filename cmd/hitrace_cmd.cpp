@@ -743,6 +743,13 @@ static bool HandleRecordingShortText()
     }
     g_traceSysEventParams.opt = "DumpTextTrace";
     DumpTrace();
+
+    auto closeRet = g_traceCollector->Close();
+    if (closeRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
+        ConsoleLog("error: TraceFinish failed, errorCode(" + std::to_string(closeRet.retCode) +")");
+    } else {
+        ConsoleLog("TraceFinish done.");
+    }
     return true;
 }
 
@@ -790,6 +797,12 @@ static bool HandleRecordingLongFinish()
     StopTrace();
     ConsoleLog("start to read trace.");
     DumpTrace();
+    auto closeRet = g_traceCollector->Close();
+    if (closeRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
+        ConsoleLog("error: TraceFinish failed, errorCode(" + std::to_string(closeRet.retCode) +")");
+    } else {
+        ConsoleLog("TraceFinish done.");
+    }
     return true;
 }
 

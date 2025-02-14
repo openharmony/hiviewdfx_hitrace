@@ -146,7 +146,7 @@ std::atomic<bool> g_cacheFlag(false);
 std::atomic<bool> g_cacheEnd(true);
 std::mutex g_traceMutex;
 std::mutex g_cacheTraceMutex;
-std::mutex g_outputFilesForCmdMutex;
+std::mutex g_recordingOutputMutex;
 
 bool g_serviceThreadIsStart = false;
 uint64_t g_sysInitParamTags = 0;
@@ -1067,8 +1067,8 @@ void ProcessDumpTask()
     g_dumpFlag.store(true);
     g_dumpEnd.store(false);
     {
-        std::lock_guard<std::mutex> lock(g_outputFilesForCmdMutex);
-        g_outputFilesForCmd = {};
+        std::lock_guard<std::mutex> lock(g_recordingOutputMutex);
+        g_recordingOutput = {};
     }
     const std::string threadName = "TraceDumpTask";
     prctl(PR_SET_NAME, threadName.c_str());
@@ -1085,8 +1085,8 @@ void ProcessDumpTask()
         std::string outputFileName = g_currentTraceParams.outputFile.empty() ?
                                      GenerateTraceFileName(TRACE_RECORDING) : g_currentTraceParams.outputFile;
         if (DumpTraceLoop(outputFileName, g_needLimitFileSize)) {
-            std::lock_guard<std::mutex> lock(g_outputFilesForCmdMutex);
-            g_outputFilesForCmd.push_back(outputFileName);
+            std::lock_guard<std::mutex> lock(g_recordingOutputMutex);
+            g_recordingOutput.push_back(outputFileName);
         }
         g_dumpEnd.store(true);
         g_needLimitFileSize = true;
@@ -1095,14 +1095,14 @@ void ProcessDumpTask()
 
     while (g_dumpFlag.load()) {
         if (!IsRootVersion()) {
-            std::lock_guard<std::mutex> lock(g_outputFilesForCmdMutex);
-            ClearOldTraceFile(g_outputFilesForCmd, g_currentTraceParams.fileLimit);
+            std::lock_guard<std::mutex> lock(g_recordingOutputMutex);
+            ClearOldTraceFile(g_recordingOutput, g_currentTraceParams.fileLimit);
         }
         // Generate file name
         std::string outputFileName = GenerateTraceFileName(TRACE_RECORDING);
         if (DumpTraceLoop(outputFileName, true)) {
-            std::lock_guard<std::mutex> lock(g_outputFilesForCmdMutex);
-            g_outputFilesForCmd.push_back(outputFileName);
+            std::lock_guard<std::mutex> lock(g_recordingOutputMutex);
+            g_recordingOutput.push_back(outputFileName);
         } else {
             break;
         }
@@ -1337,11 +1337,8 @@ void CpuBufferBalanceTask()
     prctl(PR_SET_NAME, threadName.c_str());
     HILOG_INFO(LOG_CORE, "CpuBufferBalanceTask: monitor thread start.");
     const int intervalTime = 15;
-    while (true) {
+    while (IsTraceOpen() && CheckServiceRunning()) {
         sleep(intervalTime);
-        if (!IsTraceOpen() || !CheckServiceRunning()) {
-            break;
-        }
 
         const int cpuNums = GetCpuProcessors();
         std::vector<int> result;
@@ -1528,10 +1525,7 @@ bool ParseArgs(const std::string& args, TraceParams& traceParams, const std::map
             return false;
         }
     }
-    if (CheckTags(traceParams.tags, allTags) && CheckTagGroup(traceParams.tagGroups, tagGroupTable)) {
-        return true;
-    }
-    return false;
+    return CheckTags(traceParams.tags, allTags) && CheckTagGroup(traceParams.tagGroups, tagGroupTable);
 }
 
 void WriteCpuFreqTrace()
@@ -1642,10 +1636,10 @@ TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups)
         std::lock_guard<std::mutex> cacheLock(g_cacheTraceMutex);
         ClearCacheTraceFileByDuration(g_cacheFileVec);
     }
-    StartCpuBufferBalanceService();
     g_sysInitParamTags = GetSysParamTags();
     g_tags = tagGroups;
     HILOG_INFO(LOG_CORE, "OpenTrace: open by tag group success.");
+    StartCpuBufferBalanceService();
     return ret;
 }
 
@@ -1690,11 +1684,11 @@ TraceErrorCode OpenTrace(const std::string& args)
         HILOG_ERROR(LOG_CORE, "OpenTrace: open by args failed.");
         return FILE_ERROR;
     }
-    StartCpuBufferBalanceService();
     g_sysInitParamTags = GetSysParamTags();
     g_traceMode = TraceMode::OPEN;
     PreWriteEventsFormat(traceFormats);
     HILOG_INFO(LOG_CORE, "Hitrace OpenTrace: open by args success, args:%{public}s.", args.c_str());
+    StartCpuBufferBalanceService();
     return ret;
 }
 
@@ -1799,7 +1793,8 @@ TraceErrorCode RecordTraceOn()
     std::lock_guard<std::mutex> lock(g_traceMutex);
     // check current trace status
     if (g_traceMode != TraceMode::OPEN) {
-        HILOG_ERROR(LOG_CORE, "RecordTraceOn: WRONG_TRACE_MODE, current trace mode: %{public}u.", static_cast<uint32_t>(g_traceMode));
+        HILOG_ERROR(LOG_CORE, "RecordTraceOn: WRONG_TRACE_MODE, current trace mode: %{public}u.",
+            static_cast<uint32_t>(g_traceMode));
         return WRONG_TRACE_MODE;
     }
 
@@ -1830,8 +1825,8 @@ TraceRetInfo RecordTraceOff()
             static_cast<uint32_t>(g_traceMode));
         ret.errorCode = WRONG_TRACE_MODE;
 
-        std::lock_guard<std::mutex> lock(g_outputFilesForCmdMutex);
-        ret.outputFiles = g_outputFilesForCmd;
+        std::lock_guard<std::mutex> lock(g_recordingOutputMutex);
+        ret.outputFiles = g_recordingOutput;
         return ret;
     }
 
@@ -1842,8 +1837,8 @@ TraceRetInfo RecordTraceOff()
     }
     ret.errorCode = SUCCESS;
 
-    std::lock_guard<std::mutex> outputFileslock(g_outputFilesForCmdMutex);
-    ret.outputFiles = g_outputFilesForCmd;
+    std::lock_guard<std::mutex> outputFileslock(g_recordingOutputMutex);
+    ret.outputFiles = g_recordingOutput;
     HILOG_INFO(LOG_CORE, "Recording trace off.");
     g_traceMode &= ~TraceMode::RECORD;
     return ret;
