@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "hitrace_dump.h"
 
 #include <fstream>
 #include <gtest/gtest.h>
@@ -23,6 +24,7 @@
 #include "common_define.h"
 #include "common_utils.h"
 #include "test_utils.h"
+#include "securec.h"
 
 namespace OHOS {
 namespace HiviewDFX {
@@ -31,6 +33,27 @@ using namespace testing::ext;
 namespace {
 const int TIME_COUNT = 10000;
 const int CMD_OUTPUT_BUF = 1024;
+const int BYTE_PER_MB = 1024 * 1024;
+constexpr uint64_t S_TO_MS = 1000;
+const std::string TRACE_SNAPSHOT_PREFIX = "trace_";
+const std::string TRACE_RECORDING_PREFIX = "record_trace_";
+const std::string TRACE_CACHE_PREFIX = "cache_trace_";
+struct FileWithInfo {
+    std::string filename;
+    time_t ctime;
+    uint64_t fileSize;
+    uint64_t duration;
+};
+enum TRACE_TYPE : uint8_t {
+    TRACE_SNAPSHOT = 0,
+    TRACE_RECORDING = 1,
+    TRACE_CACHE = 2,
+};
+std::map<TRACE_TYPE, std::string> tracePrefixMap = {
+    {TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
+    {TRACE_RECORDING, TRACE_RECORDING_PREFIX},
+    {TRACE_CACHE, TRACE_CACHE_PREFIX},
+};
 }
 class HitraceSystemTest : public testing::Test {
 public:
@@ -172,6 +195,65 @@ std::string ReadBufferSizeKB()
         return line;
     }
     return "Unknown";
+}
+
+bool GetDurationFromFileName(const std::string& fileName, uint64_t& duration)
+{
+    auto index = fileName.find("-");
+    if (index == std::string::npos) {
+        return false;
+    }
+    uint32_t number;
+    if (sscanf_s(fileName.substr(index, fileName.size() - index).c_str(), "-%u.sys", &number) != 1) {
+        GTEST_LOG_(INFO) << "sscanf_s failed.";
+        return false;
+    }
+    duration = static_cast<uint64_t>(number);
+    return true;
+}
+
+bool GetFileInfo(const TRACE_TYPE& traceType, const std::vector<std::string>& outputFiles,
+    std::vector<FileWithInfo>& fileList)
+{
+    struct stat fileStat;
+    for (auto i = 0; i < outputFiles.size(); i++) {
+        if (outputFiles[i].substr(TRACE_FILE_DEFAULT_DIR.size(), tracePrefixMap[traceType].size()) ==
+            tracePrefixMap[traceType]) {
+            uint64_t duration = 0;
+            if (GetDurationFromFileName(outputFiles[i].substr(TRACE_FILE_DEFAULT_DIR.size(),
+                outputFiles[i].size() - TRACE_FILE_DEFAULT_DIR.size()), duration)) {
+                if (stat(outputFiles[i].c_str(), &fileStat) == 0) {
+                    fileList.push_back({outputFiles[i], fileStat.st_ctime, static_cast<uint64_t>(fileStat.st_size),
+                        duration});
+                } else {
+                    GTEST_LOG_(INFO) << "stat file failed, file is " << outputFiles[i].c_str();
+                    return false;
+                }
+            } else {
+                GTEST_LOG_(INFO) << "GetDurationFromFileName failed, file is " << outputFiles[i].c_str();
+                return false;
+            }
+        }
+    }
+    std::sort(fileList.begin(), fileList.end(), [](const FileWithInfo& a, const FileWithInfo& b) {
+        return a.ctime < b.ctime;
+    });
+    return true;
+}
+
+std::vector<std::string> GetTraceFilesInDir(const TRACE_TYPE& traceType)
+{
+    std::vector<std::string> fileVec;
+    for (const auto &entry : std::filesystem::directory_iterator(TRACE_FILE_DEFAULT_DIR)) {
+        if (!entry.is_regular_file()) {
+            continue;
+        }
+        std::string fileName = entry.path().filename().string();
+        if (fileName.substr(0, tracePrefixMap[traceType].size()) == tracePrefixMap[traceType]) {
+            fileVec.push_back(TRACE_FILE_DEFAULT_DIR + fileName);
+        }
+    }
+    return fileVec;
 }
 
 /**
@@ -394,6 +476,121 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest011, TestSize.Level1)
         {"SNAPSHOT_START", "OpenSnapshot failed", "errorCode(1002)"}, traceLists));
     ASSERT_TRUE(traceLists.empty());
     ASSERT_TRUE(RunCmd("hitrace --trace_finish --record"));
+}
+
+/**
+ * @tc.name: CacheModeTest001
+ * @tc.desc: test dumptrace when cache trace was opened.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSystemTest, CacheModeTest001, TestSize.Level1)
+{
+    const std::vector<std::string> tagGroups = {"default"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    // total cache filesize limit: 800MB, sliceduration: 20s
+    ASSERT_TRUE(CacheTraceOn(800, 5) == TraceErrorCode::SUCCESS);
+    sleep(8); // wait 8s
+    TraceRetInfo ret = DumpTrace();
+    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
+    std::vector<FileWithInfo> fileList;
+    ASSERT_TRUE(GetFileInfo(TRACE_CACHE, ret.outputFiles, fileList));
+    ASSERT_GE(fileList.size(), 2); // cache_trace_ file count > 2
+    uint64_t totalDuartion = 0;
+    for (auto i = 0; i < fileList.size(); i++) {
+        GTEST_LOG_(INFO) << "file: " << fileList[i].filename.c_str() << ", size: " << fileList[i].fileSize
+            << ", duration:" << fileList[i].duration;
+        ASSERT_LE(fileList[i].fileSize, 17 * BYTE_PER_MB); // 17: single cache trace file max size limit(MB)
+        totalDuartion += fileList[i].duration;
+        ASSERT_TRUE(IsFileIncludeAllKeyWords(fileList[i].filename, {"name: sched_wakeup"}));
+    }
+    totalDuartion /= S_TO_MS;
+    ASSERT_GE(totalDuartion, 8); // total trace duration over 8s
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: CacheModeTest002
+ * @tc.desc: test dumptrace when cache trace was closed.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSystemTest, CacheModeTest002, TestSize.Level1)
+{
+    const std::vector<std::string> tagGroups = {"default"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    // total cache filesize limit: 800MB, sliceduration: 20s
+    ASSERT_TRUE(CacheTraceOn(800, 5) == TraceErrorCode::SUCCESS);
+    sleep(8); // wait 8s
+    ASSERT_TRUE(CacheTraceOff() == TraceErrorCode::SUCCESS);
+    sleep(2); // wait 2s
+    TraceRetInfo ret = DumpTrace();
+    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
+    std::vector<FileWithInfo> cacheFileList;
+    std::vector<FileWithInfo> traceFileList;
+    ASSERT_TRUE(GetFileInfo(TRACE_CACHE, ret.outputFiles, cacheFileList));
+    ASSERT_TRUE(GetFileInfo(TRACE_SNAPSHOT, ret.outputFiles, traceFileList));
+    uint64_t totalDuartion = 0;
+    ASSERT_GE(cacheFileList.size(), 2); // cache_trace_ file count > 2
+    for (auto i = 0; i < cacheFileList.size(); i++) {
+        GTEST_LOG_(INFO) << "file: " << cacheFileList[i].filename.c_str() << ", size: " << cacheFileList[i].fileSize
+            << ", duration:" << cacheFileList[i].duration;
+        ASSERT_LE(cacheFileList[i].fileSize, 17 * BYTE_PER_MB); // 17: single cache trace file max size limit(MB)
+        totalDuartion += cacheFileList[i].duration;
+        ASSERT_TRUE(IsFileIncludeAllKeyWords(cacheFileList[i].filename, {"name: sched_wakeup"}));
+    }
+    ASSERT_GE(traceFileList.size(), 1); // cache_trace_ file count > 1
+    for (auto i = 0; i < traceFileList.size(); i++) {
+        GTEST_LOG_(INFO) << "file: " << traceFileList[i].filename.c_str() << ", size: " << traceFileList[i].fileSize
+            << ", duration:" << traceFileList[i].duration;
+        totalDuartion += traceFileList[i].duration;
+        ASSERT_TRUE(IsFileIncludeAllKeyWords(traceFileList[i].filename, {"name: sched_wakeup"}));
+    }
+    totalDuartion /= S_TO_MS;
+    ASSERT_GE(totalDuartion, 10); // total trace duration over 10s
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: CacheModeTest003
+ * @tc.desc: Test aging cache trace file when OpenTrace over 30s.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSystemTest, CacheModeTest003, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"default"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    // total cache filesize limit: 800MB, sliceduration: 5s
+    ASSERT_TRUE(CacheTraceOn(800, 5) == TraceErrorCode::SUCCESS);
+    sleep(8); // wait 8s
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+    sleep(30); // wait 30s: start aging file
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    ASSERT_EQ(GetTraceFilesInDir(TRACE_CACHE).size(), 0); // no cache trace file
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: CacheModeTest004
+ * @tc.desc: Test aging cache trace file when file size overflow
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSystemTest, CacheModeTest004, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"default"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    // total cache filesize limit: 5MB, sliceduration: 2s
+    ASSERT_TRUE(CacheTraceOn(5, 2) == TraceErrorCode::SUCCESS);
+    sleep(10); // wait 10s
+    ASSERT_TRUE(CacheTraceOff() == TraceErrorCode::SUCCESS);
+    std::vector<std::string> fileVec = GetTraceFilesInDir(TRACE_CACHE);
+    std::vector<FileWithInfo> cacheFileList;
+    ASSERT_TRUE(GetFileInfo(TRACE_CACHE, fileVec, cacheFileList));
+    uint64_t totalFileSize = 0;
+    for (auto i = 0; i < cacheFileList.size(); i++) {
+        GTEST_LOG_(INFO) << "file: " << cacheFileList[i].filename.c_str() << ", size: " << cacheFileList[i].fileSize;
+        totalFileSize += cacheFileList[i].fileSize;
+    }
+    ASSERT_LT(totalFileSize, 6 * BYTE_PER_MB); // aging file in 5MB - 6MB
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
 /**
