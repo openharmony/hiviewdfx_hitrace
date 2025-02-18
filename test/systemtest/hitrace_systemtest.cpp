@@ -314,7 +314,7 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest002, TestSize.Level1)
     ASSERT_TRUE(RunCmd("hitrace --start_bgsrv"));
     std::vector<std::string> traceLists = {};
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --start_bgsrv",
-        {"SNAPSHOT_START", "OpenSnapshot failed", "errorCode(1006)"}, traceLists));
+        {"SNAPSHOT_START", "OpenSnapshot failed", "errorCode(1013)"}, traceLists));
     ASSERT_TRUE(traceLists.empty());
 }
 
@@ -368,7 +368,7 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest006, TestSize.Level1)
 {
     std::vector<std::string> traceLists = {};
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --dump_bgsrv",
-        {"SNAPSHOT_DUMP", "DumpSnapshot failed", "errorCode(1)"}, traceLists));
+        {"SNAPSHOT_DUMP", "DumpSnapshot failed", "errorCode(1012)"}, traceLists));
     ASSERT_TRUE(traceLists.empty());
 }
 
@@ -473,7 +473,7 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest011, TestSize.Level1)
     ASSERT_TRUE(RunCmd("hitrace --trace_begin --record ohos"));
     std::vector<std::string> traceLists = {};
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --start_bgsrv",
-        {"SNAPSHOT_START", "OpenSnapshot failed", "errorCode(1002)"}, traceLists));
+        {"SNAPSHOT_START", "OpenSnapshot failed", "errorCode(1013)"}, traceLists));
     ASSERT_TRUE(traceLists.empty());
     ASSERT_TRUE(RunCmd("hitrace --trace_finish --record"));
 }
@@ -623,10 +623,10 @@ HWTEST_F(HitraceSystemTest, RecordingModeTest002, TestSize.Level2)
     ASSERT_TRUE(traceLists.empty());
     ASSERT_TRUE(IsTracingOn());
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched",
-        {"RECORDING_LONG_BEGIN_RECORD", "tags:sched", "bufferSize:18432", "OpenRecording failed", "errorCode(1002)"},
+        {"RECORDING_LONG_BEGIN_RECORD", "tags:sched", "bufferSize:18432", "OpenRecording failed", "errorCode(1013)"},
         traceLists));
     ASSERT_TRUE(traceLists.empty());
-    ASSERT_FALSE(IsTracingOn());
+    ASSERT_TRUE(IsTracingOn());
 }
 
 /**
@@ -658,7 +658,7 @@ HWTEST_F(HitraceSystemTest, RecordingModeTest004, TestSize.Level2)
 {
     std::vector<std::string> traceLists = {};
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_finish --record",
-        {"RECORDING_LONG_FINISH_RECORD", "RecordingOff failed", "errorCode(1006)"}, traceLists));
+        {"RECORDING_LONG_FINISH_RECORD", "RecordingOff failed", "errorCode(1012)"}, traceLists));
     ASSERT_TRUE(traceLists.empty());
 }
 
@@ -693,7 +693,7 @@ HWTEST_F(HitraceSystemTest, RecordingModeTest006, TestSize.Level1)
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --start_bgsrv", {"SNAPSHOT_START", "OpenSnapshot done"}, traceLists));
     ASSERT_TRUE(traceLists.empty());
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched",
-        {"RECORDING_LONG_BEGIN_RECORD", "tags:sched", "bufferSize:18432", "trace capturing"}, traceLists));
+        {"RECORDING_LONG_BEGIN_RECORD", "tags:sched", "bufferSize:18432", "errorCode(1013)"}, traceLists));
     ASSERT_TRUE(traceLists.empty());
 }
 

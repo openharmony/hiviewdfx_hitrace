@@ -250,8 +250,8 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_001, TestSize.Level0)
     sleep(1); // wait 1s
     int maxDuration = 1;
     TraceRetInfo ret = DumpTrace(maxDuration);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
-    ASSERT_TRUE(ret.outputFiles.size() > 0);
+    ASSERT_EQ(static_cast<int>(ret.errorCode), static_cast<int>(TraceErrorCode::SUCCESS));
+    ASSERT_GT(ret.outputFiles.size(), 0);
     ASSERT_EQ(ret.tags, tagGroups);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
@@ -359,7 +359,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_005, TestSize.Level0)
     InitFileFromDir();
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     sleep(1); // wait 1s
-    traceEndTime = 10;
+    traceEndTime = 10; // 1970-01-01 08:00:10
     uint64_t maxDuration = 10;
     ret = DumpTrace(maxDuration, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::OUT_OF_TIME);
@@ -469,7 +469,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_009, TestSize.Level0)
 
 /**
  * @tc.name: DumpTraceTest_010
- * @tc.desc: Test DumpTrace() result in cache_on is opening 50s and slice time is 10s.
+ * @tc.desc: Test DumpTrace() result in cache_on is opening 40s and slice time is 10s.
  * The no arg version DumpTrace() is implicitly tested in other tests.
  * @tc.type: FUNC
  */
@@ -477,7 +477,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_010, TestSize.Level0)
 {
     const std::vector<std::string> tagGroups = {"default"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    // total cache filesize limit: 800MB, sliceduration: 5s
+    // total cache filesize limit: 800MB, sliceduration: 10s
     ASSERT_TRUE(CacheTraceOn(800, 10) == TraceErrorCode::SUCCESS);
     sleep(40); // wait 40s, over 30s
     TraceRetInfo ret = DumpTrace();
@@ -610,7 +610,7 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_005, TestSize.Level0)
 
 /**
  * @tc.name: DumpForServiceMode_006
- * @tc.desc: Test mix calling DumpTraceOn & DumpTraceOff in opening cache and closing cache.
+ * @tc.desc: Test mix calling RecordTraceOn & RecordTraceOff in opening cache and closing cache.
  * The no arg version DumpTrace() is implicitly tested in other tests.
  * @tc.type: FUNC
  */
@@ -624,7 +624,7 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_006, TestSize.Level0)
     TraceRetInfo ret = RecordTraceOff();
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::WRONG_TRACE_MODE);
     ASSERT_TRUE(CacheTraceOff() == TraceErrorCode::SUCCESS);
-    ASSERT_TRUE(CacheTraceOff() == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(CacheTraceOff() == TraceErrorCode::WRONG_TRACE_MODE);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(CacheTraceOn() == TraceErrorCode::WRONG_TRACE_MODE);
     ASSERT_TRUE(CacheTraceOff() == TraceErrorCode::WRONG_TRACE_MODE);

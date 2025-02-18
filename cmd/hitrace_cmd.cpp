@@ -702,6 +702,7 @@ static bool HandleRecordingShortRaw()
     auto recOnRet = g_traceCollector->RecordingOn();
     if (recOnRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: RecordingOn failed, errorCode(" + std::to_string(recOnRet.retCode) +")");
+        g_traceCollector->Close();
         return false;
     }
     ConsoleLog("start capture, please wait " + std::to_string(g_traceArgs.duration) + "s ...");
@@ -710,11 +711,16 @@ static bool HandleRecordingShortRaw()
     auto recOffRet = g_traceCollector->RecordingOff();
     if (recOffRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: RecordingOff failed, errorCode(" + std::to_string(recOffRet.retCode) +")");
+        g_traceCollector->Close();
         return false;
     }
     ConsoleLog("capture done, output files:");
     for (std::string item : recOffRet.data) {
         std::cout << "    " << item << std::endl;
+    }
+    auto closeRet = g_traceCollector->Close();
+    if (closeRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
+         ConsoleLog("error: Trace Close failed, errorCode(" + std::to_string(closeRet.retCode) +")");
     }
     return true;
 }
@@ -799,16 +805,22 @@ static bool HandleRecordingLongFinish()
     DumpTrace();
     auto closeRet = g_traceCollector->Close();
     if (closeRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
-        ConsoleLog("error: TraceFinish failed, errorCode(" + std::to_string(closeRet.retCode) +")");
+        ConsoleLog("error: Trace Close failed, errorCode(" + std::to_string(closeRet.retCode) +")");
     } else {
-        ConsoleLog("TraceFinish done.");
+        ConsoleLog("Trace Closed.");
     }
     return true;
 }
 
 static bool HandleRecordingLongFinishNodump()
 {
-    ConsoleLog("end capture trace.");
+    auto closeRet = g_traceCollector->Close();
+    if (closeRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
+        ConsoleLog("error: Trace Close failed, errorCode(" + std::to_string(closeRet.retCode) +")");
+    } else {
+        ConsoleLog("end capture trace.");
+    }
+
     return true;
 }
 
@@ -828,6 +840,7 @@ static bool HandleRecordingLongBeginRecord()
     auto recOnRet = g_traceCollector->RecordingOn();
     if (recOnRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: RecordingOn failed, errorCode(" + std::to_string(recOnRet.retCode) +")");
+        g_traceCollector->Close();
         return false;
     }
     ConsoleLog("trace capturing. ");
@@ -844,6 +857,10 @@ static bool HandleRecordingLongFinishRecord()
     ConsoleLog("capture done, output files:");
     for (std::string item : recOffRet.data) {
         std::cout << "    " << item << std::endl;
+    }
+    auto closeRet = g_traceCollector->Close();
+    if (closeRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
+        ConsoleLog("error: Trace Close failed, errorCode(" + std::to_string(closeRet.retCode) +")");
     }
     return true;
 }

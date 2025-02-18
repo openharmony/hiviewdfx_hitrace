@@ -74,6 +74,7 @@ TraceErrorCode OpenTrace(const std::string& args);
 
 /**
  * Open trace by tag groups using default parameters.
+ * Default parameters: buffersize = 144MB, clockType = boot, overwrite = true.
 */
 TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups);
 
