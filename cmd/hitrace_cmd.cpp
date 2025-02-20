@@ -720,7 +720,7 @@ static bool HandleRecordingShortRaw()
     }
     auto closeRet = g_traceCollector->Close();
     if (closeRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
-         ConsoleLog("error: Trace Close failed, errorCode(" + std::to_string(closeRet.retCode) +")");
+        ConsoleLog("error: Trace Close failed, errorCode(" + std::to_string(closeRet.retCode) +")");
     }
     return true;
 }

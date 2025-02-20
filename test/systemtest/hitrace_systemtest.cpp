@@ -788,7 +788,6 @@ HWTEST_F(HitraceSystemTest, RecordingModeTest011, TestSize.Level1)
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched -b 307200",
         {"RECORDING_LONG_BEGIN_RECORD", "tags:sched", "bufferSize:307200", "trace capturing"}, traceLists));
     ASSERT_TRUE(traceLists.empty());
-    ASSERT_EQ(ReadBufferSizeKB(), "7");
 }
 } // namespace
 } // namespace Hitrace

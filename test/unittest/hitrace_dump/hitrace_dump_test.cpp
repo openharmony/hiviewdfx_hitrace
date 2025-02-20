@@ -280,7 +280,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_002, TestSize.Level0)
  */
 HWTEST_F(HitraceDumpTest, DumpTraceTest_003, TestSize.Level0)
 {
-    const std::vector<std::string> tagGroups = {"default"};
+    const std::vector<std::string> tagGroups = {"scene_performance"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     sleep(TWO_SEC); // need at least one second of trace in cpu due to the input unit of 1 second to avoid OUT_OF_TIME.
     uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr));
@@ -346,7 +346,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
  */
 HWTEST_F(HitraceDumpTest, DumpTraceTest_005, TestSize.Level0)
 {
-    const std::vector<std::string> tagGroups = {"default"};
+    const std::vector<std::string> tagGroups = {"scene_performance"};
     InitFileFromDir();
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     sleep(1); // wait 1s
@@ -392,7 +392,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_005, TestSize.Level0)
  */
 HWTEST_F(HitraceDumpTest, DumpTraceTest_006, TestSize.Level0)
 {
-    const std::vector<std::string> tagGroups = {"default"};
+    const std::vector<std::string> tagGroups = {"scene_performance"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     sleep(TWO_SEC);
     uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr)); // current time
