@@ -352,18 +352,6 @@ void SetAllTags(const TraceParams& traceParams, const std::map<std::string, Trac
         readyEnableTagList.insert(tagName);
     }
 
-    // if set tagGroup, need to append default group
-    if (traceParams.tagGroups.size() > 0) {
-        auto iter = tagGroupTable.find("default");
-        if (iter == tagGroupTable.end()) {
-            HILOG_ERROR(LOG_CORE, "SetAllTags: default group is wrong.");
-        } else {
-            for (auto defaultTag : iter->second) {
-                readyEnableTagList.insert(defaultTag);
-            }
-        }
-    }
-
     for (std::string groupName : traceParams.tagGroups) {
         auto iter = tagGroupTable.find(groupName);
         if (iter == tagGroupTable.end()) {
@@ -1063,8 +1051,6 @@ bool RecordTraceLoop(const std::string& outputFileName, bool isLimited)
 */
 void ProcessRecordTask()
 {
-    g_recordFlag.store(true);
-    g_recordEnd.store(false);
     {
         std::lock_guard<std::mutex> lock(g_recordingOutputMutex);
         g_recordingOutput = {};
@@ -1795,6 +1781,8 @@ TraceErrorCode RecordTraceOn()
     }
 
     // start task thread
+    g_recordFlag.store(true);
+    g_recordEnd.store(false);
     auto it = []() {
         ProcessRecordTask();
     };

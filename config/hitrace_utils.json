@@ -580,6 +580,8 @@
                     "hdf", "virse"],
         "scene_performance": ["net", "dsched", "graphic", "multimodalinput", "dinput", "ark", "ace", "window",
                               "zaudio", "daudio", "zmedia", "dcamera", "zcamera", "dhfwk", "app", "gresource",
-                              "ability", "power", "samgr", "ffrt", "ufs", "nweb"]
+                              "ability", "power", "samgr", "ffrt", "ufs", "nweb", "hdf", "virse", "workq", "ipa",
+                            "sched", "freq", "disk", "sync", "binder", "mmc", "membus", "load", "pagecache"],
+        "telemetry": [ "ace", "app", "ark", "binder", "freq", "graphic", "multimodalinput", "nweb", "sched", "window"]
     }
 }

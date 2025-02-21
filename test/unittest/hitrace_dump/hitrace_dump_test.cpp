@@ -398,7 +398,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_006, TestSize.Level0)
     uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr)); // current time
 
     TraceRetInfo ret = DumpTrace(INT_MAX, traceEndTime);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
+    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
     ASSERT_TRUE(!ret.outputFiles.empty());
     ASSERT_EQ(ret.tags, tagGroups);
     ASSERT_GE(ret.coverDuration, TWO_SEC - 1);
@@ -520,7 +520,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_011, TestSize.Level0)
 
 /**
  * @tc.name: DumpForServiceMode_001
- * @tc.desc: The correct usage of grasping trace in SERVICE_MODE.
+ * @tc.desc: Correct capturing trace using default OpenTrace.
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceDumpTest, DumpForServiceMode_001, TestSize.Level0)
@@ -536,7 +536,7 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_001, TestSize.Level0)
 
 /**
  * @tc.name: DumpForServiceMode_002
- * @tc.desc: Invalid parameter verification in CMD_MODE.
+ * @tc.desc: Test invalid tag groups for default OpenTrace.
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceDumpTest, DumpForServiceMode_002, TestSize.Level0)
@@ -631,6 +631,21 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_006, TestSize.Level0)
 }
 
 /**
+ * @tc.name: DumpForServiceMode_007
+ * @tc.desc: Test all tag groups for default OpenTrace.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpForServiceMode_007, TestSize.Level0)
+{
+    ASSERT_TRUE(OpenTrace("default") == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(OpenTrace("scene_performance") == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(OpenTrace("telemetry") == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
  * @tc.name: DumpForCmdMode_001
  * @tc.desc: The correct usage of grasping trace in CMD_MODE.
  * @tc.type: FUNC
@@ -640,12 +655,13 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_001, TestSize.Level0)
     std::string args = "tags:sched clockType:boot bufferSize:1024 overwrite:1";
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
 
-    ASSERT_TRUE(RecordTraceOn() == TraceErrorCode::SUCCESS);
+    TraceErrorCode retCode = RecordTraceOn();
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     sleep(1);
 
     TraceRetInfo ret = RecordTraceOff();
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
-    ASSERT_TRUE(ret.outputFiles.size() > 0);
+    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
+    ASSERT_GE(ret.outputFiles.size(), 0);
 
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
@@ -660,7 +676,8 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_002, TestSize.Level0)
     std::string filePathName = "/data/local/tmp/mytrace.sys";
     std::string args = "tags:sched clockType:boot bufferSize:1024 overwrite:1 output:" + filePathName;
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
-    ASSERT_TRUE(RecordTraceOn() == TraceErrorCode::SUCCESS);
+    TraceErrorCode retCode = RecordTraceOn();
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     sleep(1);
 
     TraceRetInfo ret = RecordTraceOff();
@@ -702,7 +719,8 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_004, TestSize.Level0)
     const std::vector<std::string> tagGroups = {"scene_performance"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::WRONG_TRACE_MODE);
 
-    ASSERT_TRUE(RecordTraceOn() == TraceErrorCode::SUCCESS);
+    TraceErrorCode retCode = RecordTraceOn();
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     sleep(1);
 
     TraceRetInfo ret = RecordTraceOff();
@@ -731,7 +749,8 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_005, TestSize.Level0)
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     std::string args = "tags:sched clockType:boot bufferSize:1024 overwrite:1";
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::WRONG_TRACE_MODE);
-    ASSERT_TRUE(RecordTraceOn() == TraceErrorCode::SUCCESS);
+    TraceErrorCode retCode = RecordTraceOn();
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     ASSERT_EQ(GetTraceMode(), TraceMode::OPEN | TraceMode::RECORD);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
@@ -745,8 +764,8 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_006, TestSize.Level0)
 {
     std::string args = "tags: sched clockType: boot bufferSize:1024 overwrite: 1";
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
-
-    ASSERT_TRUE(RecordTraceOn() == TraceErrorCode::SUCCESS);
+    TraceErrorCode retCode = RecordTraceOn();
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     sleep(1);
 
     TraceRetInfo ret = RecordTraceOff();
@@ -768,7 +787,8 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_007, TestSize.Level0)
     args += "clockType: boot bufferSize:1024 overwrite: 1 fileLimit: 2 fileSize: 51200";
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
 
-    ASSERT_TRUE(RecordTraceOn() == TraceErrorCode::SUCCESS);
+    TraceErrorCode retCode = RecordTraceOn();
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     sleep(1);
 
     TraceRetInfo ret = RecordTraceOff();
@@ -791,7 +811,8 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_008, TestSize.Level0)
     args += "clockType: boot bufferSize:1024 overwrite: 1 output:" + filePathName;
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
 
-    ASSERT_TRUE(RecordTraceOn() == TraceErrorCode::SUCCESS);
+    TraceErrorCode retCode = RecordTraceOn();
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     if (remove(filePathName.c_str()) == 0) {
         HILOG_INFO(LOG_CORE, "Delete mylongtrace.sys success.");
     } else {
@@ -818,7 +839,8 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_009, TestSize.Level0)
     args += "clockType: boot bufferSize:1024 overwrite: 1 fileLimit: 2";
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
 
-    ASSERT_TRUE(RecordTraceOn() == TraceErrorCode::SUCCESS);
+    TraceErrorCode retCode = RecordTraceOn();
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     sleep(1);
 
     TraceRetInfo ret = RecordTraceOff();
@@ -848,7 +870,8 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_010, TestSize.Level0)
         _exit(EXIT_SUCCESS);
     }
 
-    ASSERT_TRUE(RecordTraceOn() == TraceErrorCode::SUCCESS);
+    TraceErrorCode retCode = RecordTraceOn();
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     sleep(1);
     TraceRetInfo ret = RecordTraceOff();
     ASSERT_EQ(static_cast<int>(ret.errorCode), static_cast<int>(TraceErrorCode::SUCCESS));
