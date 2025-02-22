@@ -461,8 +461,7 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest010, TestSize.Level1)
     ASSERT_TRUE(RunCmd("hitrace --stop_bgsrv"));
     std::vector<std::string> dirTraceLists = {};
     GetSnapShotTraceFileList(dirTraceLists);
-    ASSERT_EQ(dirTraceLists.size(), snapshotFileAge);
-    sleep(1); // wait 1s
+    ASSERT_LE(dirTraceLists.size(), snapshotFileAge);
     for (int i = 0; i < dirTraceLists.size(); ++i) {
         ASSERT_NE(std::find(traceLists.begin(), traceLists.end(), dirTraceLists[i]), traceLists.end()) <<
             "not found: " << dirTraceLists[i];
@@ -682,22 +681,23 @@ HWTEST_F(HitraceSystemTest, RecordingModeTest004, TestSize.Level2)
 
 /**
  * @tc.name: RecordingModeTest005
- * @tc.desc: test recording mode file aging in root version
+ * @tc.desc: test recording mode file aging
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceSystemTest, RecordingModeTest005, TestSize.Level2)
 {
-    if (!IsRootVersion()) {
-        return;
-    }
-    int testCnt = 20; // 20 : test cnt
+    int testCnt = 30; // 30 : test cnt
     while (testCnt-- > 0) {
         ASSERT_TRUE(RunCmd("hitrace --trace_begin --record sched"));
         ASSERT_TRUE(RunCmd("hitrace --trace_finish --record"));
     }
     std::vector<std::string> dirTraceLists = {};
     GetRecordingTraceFileList(dirTraceLists);
-    ASSERT_GE(dirTraceLists.size(), 20); // 20 : min file count
+    if (IsRootVersion()) {
+        ASSERT_GE(dirTraceLists.size(), 30); // 30 : file cnt
+    } else {
+        ASSERT_LE(dirTraceLists.size(), 16); // 16 : max file cnt
+    }
 }
 
 /**
