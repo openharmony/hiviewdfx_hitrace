@@ -44,7 +44,11 @@ namespace Hitrace {
 #define LOG_TAG "HitraceUtils"
 #endif
 namespace {
+#if defined(RECORD_FILE_LIMIT) && (RECORD_FILE_LIMIT != 0)
+const size_t DEFAULT_TRACE_FILE_LIMIT = RECORD_FILE_LIMIT;
+#else
 const size_t DEFAULT_TRACE_FILE_LIMIT = 15;
+#endif
 const int TIME_BUFFER_SIZE = 16;
 const int DEFAULT_TRACE_DURATION = 30;
 const int TIME_INIT = 1900;

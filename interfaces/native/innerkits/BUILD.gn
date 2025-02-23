@@ -110,10 +110,17 @@ ohos_shared_library("hitrace_dump") {
     "$hitrace_frameworks_path/native/dynamic_buffer.cpp",
     "src/hitrace_dump.cpp",
   ]
+  defines = []
 
   if (hitrace_snapshot_tracebuffer_size != 0) {
-    defines =
+    defines +=
         [ "SNAPSHOT_TRACEBUFFER_SIZE=${hitrace_snapshot_tracebuffer_size}" ]
+  }
+  if (hitrace_snapshot_file_limit != 0) {
+    defines += [ "SNAPSHOT_FILE_LIMIT=${hitrace_snapshot_file_limit}" ]
+  }
+  if (hitrace_record_file_limit != 0) {
+    defines += [ "RECORD_FILE_LIMIT=${hitrace_record_file_limit}" ]
   }
 
   deps = [
