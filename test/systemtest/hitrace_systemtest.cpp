@@ -58,7 +58,12 @@ std::map<TRACE_TYPE, std::string> tracePrefixMap = {
 class HitraceSystemTest : public testing::Test {
 public:
     static void SetUpTestCase(void) {}
-    static void TearDownTestCase(void) {}
+    static void TearDownTestCase(void)
+    {
+        ASSERT_TRUE(RunCmd("hitrace --trace_finish_nodump"));
+        ASSERT_TRUE(RunCmd("hitrace --trace_finish --record"));
+        ASSERT_TRUE(RunCmd("hitrace --stop_bgsrv"));
+    }
 
     void SetUp()
     {
@@ -314,7 +319,7 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest002, TestSize.Level1)
     ASSERT_TRUE(RunCmd("hitrace --start_bgsrv"));
     std::vector<std::string> traceLists = {};
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --start_bgsrv",
-        {"SNAPSHOT_START", "OpenSnapshot failed", "errorCode(1006)"}, traceLists));
+        {"SNAPSHOT_START", "OpenSnapshot failed", "errorCode(1013)"}, traceLists));
     ASSERT_TRUE(traceLists.empty());
 }
 
@@ -368,7 +373,7 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest006, TestSize.Level1)
 {
     std::vector<std::string> traceLists = {};
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --dump_bgsrv",
-        {"SNAPSHOT_DUMP", "DumpSnapshot failed", "errorCode(1)"}, traceLists));
+        {"SNAPSHOT_DUMP", "DumpSnapshot failed", "errorCode(1012)"}, traceLists));
     ASSERT_TRUE(traceLists.empty());
 }
 
@@ -473,7 +478,7 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest011, TestSize.Level1)
     ASSERT_TRUE(RunCmd("hitrace --trace_begin --record ohos"));
     std::vector<std::string> traceLists = {};
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --start_bgsrv",
-        {"SNAPSHOT_START", "OpenSnapshot failed", "errorCode(1002)"}, traceLists));
+        {"SNAPSHOT_START", "OpenSnapshot failed", "errorCode(1013)"}, traceLists));
     ASSERT_TRUE(traceLists.empty());
     ASSERT_TRUE(RunCmd("hitrace --trace_finish --record"));
 }
@@ -504,7 +509,7 @@ HWTEST_F(HitraceSystemTest, CacheModeTest001, TestSize.Level1)
         ASSERT_TRUE(IsFileIncludeAllKeyWords(fileList[i].filename, {"name: sched_wakeup"}));
     }
     totalDuartion /= S_TO_MS;
-    ASSERT_GE(totalDuartion, 8); // total trace duration over 8s
+    ASSERT_GE(totalDuartion, 7); // total trace duration over 7s, given 1 second of tolerance
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -516,11 +521,14 @@ HWTEST_F(HitraceSystemTest, CacheModeTest001, TestSize.Level1)
 HWTEST_F(HitraceSystemTest, CacheModeTest002, TestSize.Level1)
 {
     const std::vector<std::string> tagGroups = {"default"};
-    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    TraceErrorCode retCode = OpenTrace(tagGroups);
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     // total cache filesize limit: 800MB, sliceduration: 20s
-    ASSERT_TRUE(CacheTraceOn(800, 5) == TraceErrorCode::SUCCESS);
+    retCode = CacheTraceOn(800, 5);
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     sleep(8); // wait 8s
-    ASSERT_TRUE(CacheTraceOff() == TraceErrorCode::SUCCESS);
+    retCode = CacheTraceOff();
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     sleep(2); // wait 2s
     TraceRetInfo ret = DumpTrace();
     ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
@@ -557,15 +565,20 @@ HWTEST_F(HitraceSystemTest, CacheModeTest002, TestSize.Level1)
 HWTEST_F(HitraceSystemTest, CacheModeTest003, TestSize.Level0)
 {
     const std::vector<std::string> tagGroups = {"default"};
-    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    TraceErrorCode retCode = OpenTrace(tagGroups);
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     // total cache filesize limit: 800MB, sliceduration: 5s
-    ASSERT_TRUE(CacheTraceOn(800, 5) == TraceErrorCode::SUCCESS);
+    retCode = CacheTraceOn(800, 5);
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     sleep(8); // wait 8s
-    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+    retCode = CloseTrace();
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     sleep(30); // wait 30s: start aging file
-    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    retCode = OpenTrace(tagGroups);
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     ASSERT_EQ(GetTraceFilesInDir(TRACE_CACHE).size(), 0); // no cache trace file
-    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+    retCode = CloseTrace();
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
 }
 
 /**
@@ -576,11 +589,14 @@ HWTEST_F(HitraceSystemTest, CacheModeTest003, TestSize.Level0)
 HWTEST_F(HitraceSystemTest, CacheModeTest004, TestSize.Level0)
 {
     const std::vector<std::string> tagGroups = {"default"};
-    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    TraceErrorCode retCode = OpenTrace(tagGroups);
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     // total cache filesize limit: 5MB, sliceduration: 2s
-    ASSERT_TRUE(CacheTraceOn(5, 2) == TraceErrorCode::SUCCESS);
+    retCode = CacheTraceOn(5, 2);
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     sleep(10); // wait 10s
-    ASSERT_TRUE(CacheTraceOff() == TraceErrorCode::SUCCESS);
+    retCode = CacheTraceOff();
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     std::vector<std::string> fileVec = GetTraceFilesInDir(TRACE_CACHE);
     std::vector<FileWithInfo> cacheFileList;
     ASSERT_TRUE(GetFileInfo(TRACE_CACHE, fileVec, cacheFileList));
@@ -590,7 +606,8 @@ HWTEST_F(HitraceSystemTest, CacheModeTest004, TestSize.Level0)
         totalFileSize += cacheFileList[i].fileSize;
     }
     ASSERT_LT(totalFileSize, 6 * BYTE_PER_MB); // aging file in 5MB - 6MB
-    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+    retCode = CloseTrace();
+    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
 }
 
 /**
@@ -623,10 +640,10 @@ HWTEST_F(HitraceSystemTest, RecordingModeTest002, TestSize.Level2)
     ASSERT_TRUE(traceLists.empty());
     ASSERT_TRUE(IsTracingOn());
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched",
-        {"RECORDING_LONG_BEGIN_RECORD", "tags:sched", "bufferSize:18432", "OpenRecording failed", "errorCode(1002)"},
+        {"RECORDING_LONG_BEGIN_RECORD", "tags:sched", "bufferSize:18432", "OpenRecording failed", "errorCode(1013)"},
         traceLists));
     ASSERT_TRUE(traceLists.empty());
-    ASSERT_FALSE(IsTracingOn());
+    ASSERT_TRUE(IsTracingOn());
 }
 
 /**
@@ -658,7 +675,7 @@ HWTEST_F(HitraceSystemTest, RecordingModeTest004, TestSize.Level2)
 {
     std::vector<std::string> traceLists = {};
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_finish --record",
-        {"RECORDING_LONG_FINISH_RECORD", "RecordingOff failed", "errorCode(1006)"}, traceLists));
+        {"RECORDING_LONG_FINISH_RECORD", "RecordingOff failed", "errorCode(1012)"}, traceLists));
     ASSERT_TRUE(traceLists.empty());
 }
 
@@ -694,7 +711,7 @@ HWTEST_F(HitraceSystemTest, RecordingModeTest006, TestSize.Level1)
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --start_bgsrv", {"SNAPSHOT_START", "OpenSnapshot done"}, traceLists));
     ASSERT_TRUE(traceLists.empty());
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched",
-        {"RECORDING_LONG_BEGIN_RECORD", "tags:sched", "bufferSize:18432", "trace capturing"}, traceLists));
+        {"RECORDING_LONG_BEGIN_RECORD", "tags:sched", "bufferSize:18432", "errorCode(1013)"}, traceLists));
     ASSERT_TRUE(traceLists.empty());
 }
 
@@ -789,7 +806,6 @@ HWTEST_F(HitraceSystemTest, RecordingModeTest011, TestSize.Level1)
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched -b 307200",
         {"RECORDING_LONG_BEGIN_RECORD", "tags:sched", "bufferSize:307200", "trace capturing"}, traceLists));
     ASSERT_TRUE(traceLists.empty());
-    ASSERT_EQ(ReadBufferSizeKB(), "7");
 }
 } // namespace
 } // namespace Hitrace

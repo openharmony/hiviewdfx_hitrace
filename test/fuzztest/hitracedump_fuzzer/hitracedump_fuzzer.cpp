@@ -40,9 +40,9 @@ void HitraceDumpCmdModeTest(const uint8_t* data, size_t size)
     std::cout << "trace mode : " << GetTraceMode() << std::endl;
     (void)OpenTrace(hitraceTags);
     std::cout << "trace mode : " << GetTraceMode() << std::endl;
-    (void)DumpTraceOn();
+    (void)RecordTraceOn();
     sleep(1);
-    (void)DumpTraceOff();
+    (void)RecordTraceOff();
     (void)CloseTrace();
     std::cout << "trace mode : " << GetTraceMode() << std::endl;
 }
