@@ -28,4 +28,6 @@ declare_args() {
       defined(global_parts_info.hiviewdfx_hiview)) {
     hiview_enable = true
   }
+  hitrace_snapshot_file_limit = 0
+  hitrace_record_file_limit = 0
 }

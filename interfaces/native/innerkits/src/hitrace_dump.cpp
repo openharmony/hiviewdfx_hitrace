@@ -94,7 +94,12 @@ constexpr uint64_t S_TO_MS = 1000;
 constexpr int32_t MAX_RATIO_UNIT = 1000;
 const int MAX_NEW_TRACE_FILE_LIMIT = 5;
 const int JUDGE_FILE_EXIST = 10;  // Check whether the trace file exists every 10 times.
+#if defined(SNAPSHOT_FILE_LIMIT) && (SNAPSHOT_FILE_LIMIT != 0)
+const int SNAPSHOT_FILE_MAX_COUNT = SNAPSHOT_FILE_LIMIT;
+#else
 const int SNAPSHOT_FILE_MAX_COUNT = 20;
+#endif
+
 constexpr int DEFAULT_FULL_TRACE_LENGTH = 30;
 
 struct alignas(ALIGNMENT_COEFFICIENT) TraceFileHeader {
