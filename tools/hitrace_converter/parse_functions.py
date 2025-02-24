@@ -103,7 +103,9 @@ def parse_sched_switch_hm_new(data, one_event):
     group = (ninfo[5] & 0b00110000) >> 4
     restricted = (ninfo[5] & 0b00001000) >> 3
     expel = ninfo[5] & 0b00000111
-    next_info = affinity + ',' + str(load) + ',' + str(group) + ',' + str(restricted) + ',' + str(expel)
+    cgid = (ninfo[6] & 0b11111000) >> 3
+    next_info = affinity + ',' + str(load) + ',' + str(group) + ',' + str(restricted) + ',' + str(expel) + \
+        ',' + str(cgid)
 
     pstate_map = {0x0: 'R', 0x1: 'S', 0x2: 'D', 0x10: 'X', 0x100: 'R+'}
     prev_state = pstate_map.get(pstate, '?')
