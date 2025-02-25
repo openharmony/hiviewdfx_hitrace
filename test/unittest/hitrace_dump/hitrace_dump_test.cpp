@@ -942,4 +942,21 @@ HWTEST_F(HitraceDumpTest, ParammeterCheck_001, TestSize.Level0)
     uint64_t closeTags = OHOS::system::GetUintParameter<uint64_t>(TRACE_TAG_ENABLE_FLAGS, 0);
     ASSERT_TRUE(closeTags == 0);
 }
+
+/**
+ * @tc.name: TraceFilesTableTest_001
+ * @tc.desc: Check files table.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, TraceFilesTableTest_001, TestSize.Level0)
+{
+    std::vector<std::pair<std::string, int>> data = {{"1", 1}, {"2", 2}, {"3", 3}};
+    SetTraceFilesTable(data);
+    std::vector<std::pair<std::string, int>> traceFilesTable = GetTraceFilesTable();
+    ASSERT_EQ(data.size(), traceFilesTable.size());
+    for (size_t index = 0; index < data.size() - 1; index++) {
+        EXPECT_EQ(data[index].first, traceFilesTable[index].first);
+        EXPECT_EQ(data[index].second, traceFilesTable[index].second);
+    }
+}
 } // namespace
