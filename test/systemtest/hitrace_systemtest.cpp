@@ -807,6 +807,78 @@ HWTEST_F(HitraceSystemTest, RecordingModeTest011, TestSize.Level1)
         {"RECORDING_LONG_BEGIN_RECORD", "tags:sched", "bufferSize:307200", "trace capturing"}, traceLists));
     ASSERT_TRUE(traceLists.empty());
 }
+
+/**
+ * @tc.name: HitraceSystemTestErr001
+ * @tc.desc: when excute hitrace record command failed, -b abc
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSystemTest, HitraceSystemTestErr001, TestSize.Level2)
+{
+    EXPECT_TRUE(RunCmd("hitrace --trace_begin ace -b abc"));
+}
+
+/**
+ * @tc.name: HitraceSystemTestErr002
+ * @tc.desc: when excute hitrace record command failed, -t abc
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSystemTest, HitraceSystemTestErr002, TestSize.Level2)
+{
+    EXPECT_TRUE(RunCmd("hitrace --trace_begin ace -t abc"));
+}
+
+/**
+ * @tc.name: HitraceSystemTestErr003
+ * @tc.desc: when excute hitrace record command failed, -t 0
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSystemTest, HitraceSystemTestErr003, TestSize.Level2)
+{
+    EXPECT_TRUE(RunCmd("hitrace --trace_begin ace -t 0"));
+}
+
+/**
+ * @tc.name: HitraceSystemTestErr004
+ * @tc.desc: when excute hitrace record command failed, --abc
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSystemTest, HitraceSystemTestErr004, TestSize.Level2)
+{
+    EXPECT_TRUE(RunCmd("hitrace --abc"));
+}
+
+/**
+ * @tc.name: HitraceSystemHelpTest
+ * @tc.desc: excute hitrace help command
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSystemTest, HitraceSystemHelpTest, TestSize.Level2)
+{
+    EXPECT_TRUE(RunCmd("hitrace -h"));
+}
+
+/**
+ * @tc.name: HitraceSystemCompressesTest
+ * @tc.desc: when excute hitrace record command with -z
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSystemTest, HitraceSystemCompressesTest, TestSize.Level2)
+{
+    ASSERT_TRUE(RunCmd("hitrace --trace_begin app"));
+    ASSERT_TRUE(RunCmd("hitrace --trace_dump"));
+    ASSERT_TRUE(RunCmd("hitrace --trace_finish -z"));
+}
+
+/**
+ * @tc.name: HitraceSystemRawTest
+ * @tc.desc: when excute hitrace command with --raw
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSystemTest, HitraceSystemRawTest, TestSize.Level2)
+{
+    ASSERT_TRUE(RunCmd("hitrace -t 2 app --raw"));
+}
 } // namespace
 } // namespace Hitrace
 } // namespace HiviewDFX
