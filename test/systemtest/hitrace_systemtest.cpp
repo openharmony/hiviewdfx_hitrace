@@ -815,7 +815,10 @@ HWTEST_F(HitraceSystemTest, RecordingModeTest011, TestSize.Level1)
  */
 HWTEST_F(HitraceSystemTest, HitraceSystemTestErr001, TestSize.Level2)
 {
-    EXPECT_TRUE(RunCmd("hitrace --trace_begin ace -b abc"));
+    std::vector<std::string> traceLists = {};
+    EXPECT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin ace -b abc",
+                                        {"buffer size is illegal input"}, traceLists));
+    ASSERT_TRUE(traceLists.empty());
 }
 
 /**
@@ -825,7 +828,10 @@ HWTEST_F(HitraceSystemTest, HitraceSystemTestErr001, TestSize.Level2)
  */
 HWTEST_F(HitraceSystemTest, HitraceSystemTestErr002, TestSize.Level2)
 {
-    EXPECT_TRUE(RunCmd("hitrace --trace_begin ace -t abc"));
+    std::vector<std::string> traceLists = {};
+    EXPECT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin ace -t abc",
+                                        {"the time is illegal input"}, traceLists));
+    ASSERT_TRUE(traceLists.empty());
 }
 
 /**
@@ -835,7 +841,10 @@ HWTEST_F(HitraceSystemTest, HitraceSystemTestErr002, TestSize.Level2)
  */
 HWTEST_F(HitraceSystemTest, HitraceSystemTestErr003, TestSize.Level2)
 {
-    EXPECT_TRUE(RunCmd("hitrace --trace_begin ace -t 0"));
+    std::vector<std::string> traceLists = {};
+    EXPECT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin ace -t 0",
+                                        {"to be greater than zero"}, traceLists));
+    ASSERT_TRUE(traceLists.empty());
 }
 
 /**
@@ -845,7 +854,9 @@ HWTEST_F(HitraceSystemTest, HitraceSystemTestErr003, TestSize.Level2)
  */
 HWTEST_F(HitraceSystemTest, HitraceSystemTestErr004, TestSize.Level2)
 {
-    EXPECT_TRUE(RunCmd("hitrace --abc"));
+    std::vector<std::string> traceLists = {};
+    EXPECT_TRUE(CheckTraceCommandOutput("hitrace --abc", {"parsing args failed"}, traceLists));
+    ASSERT_TRUE(traceLists.empty());
 }
 
 /**
@@ -855,7 +866,9 @@ HWTEST_F(HitraceSystemTest, HitraceSystemTestErr004, TestSize.Level2)
  */
 HWTEST_F(HitraceSystemTest, HitraceSystemHelpTest, TestSize.Level2)
 {
-    EXPECT_TRUE(RunCmd("hitrace -h"));
+    std::vector<std::string> traceLists = {};
+    EXPECT_TRUE(CheckTraceCommandOutput("hitrace -h", {"trace_begin", "trace_finish"}, traceLists));
+    ASSERT_TRUE(traceLists.empty());
 }
 
 /**
@@ -865,9 +878,11 @@ HWTEST_F(HitraceSystemTest, HitraceSystemHelpTest, TestSize.Level2)
  */
 HWTEST_F(HitraceSystemTest, HitraceSystemCompressesTest, TestSize.Level2)
 {
+    std::vector<std::string> traceLists = {};
     ASSERT_TRUE(RunCmd("hitrace --trace_begin app"));
     ASSERT_TRUE(RunCmd("hitrace --trace_dump"));
-    ASSERT_TRUE(RunCmd("hitrace --trace_finish -z"));
+    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_finish -z", {"start to read trace."}, traceLists));
+    ASSERT_TRUE(traceLists.empty());
 }
 
 /**
@@ -877,7 +892,10 @@ HWTEST_F(HitraceSystemTest, HitraceSystemCompressesTest, TestSize.Level2)
  */
 HWTEST_F(HitraceSystemTest, HitraceSystemRawTest, TestSize.Level2)
 {
-    ASSERT_TRUE(RunCmd("hitrace -t 2 app --raw"));
+    std::vector<std::string> traceLists = {};
+    ASSERT_TRUE(CheckTraceCommandOutput("hitrace -t 2 app --raw",
+                                        {"RECORDING_SHORT_RAW", "capture done, output files:"}, traceLists));
+    ASSERT_FALSE(traceLists.empty());
 }
 } // namespace
 } // namespace Hitrace
