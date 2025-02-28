@@ -17,7 +17,10 @@ import("//build/ohos.gni")
 config("libhitrace_pub_config") {
   visibility = [ ":*" ]
 
-  include_dirs = [ "include" ]
+  include_dirs = [
+    "include",
+    "include/hitrace",
+  ]
 }
 
 ohos_shared_library("libhitracechain") {
@@ -35,11 +38,7 @@ ohos_shared_library("libhitracechain") {
   }
 
   output_extension = "so"
-  if (build_public_version) {
-    install_enable = true
-  } else {
-    install_enable = false
-  }
+  install_enable = true
 
   innerapi_tags = [
     "chipsetsdk",
