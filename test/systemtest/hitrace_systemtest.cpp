@@ -881,7 +881,7 @@ HWTEST_F(HitraceSystemTest, HitraceSystemCompressesTest, TestSize.Level2)
     std::vector<std::string> traceLists = {};
     ASSERT_TRUE(RunCmd("hitrace --trace_begin app"));
     ASSERT_TRUE(RunCmd("hitrace --trace_dump"));
-    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_finish -z", {"start to read trace."}, traceLists));
+    ASSERT_FALSE(CheckTraceCommandOutput("hitrace --trace_finish -z", {"TASK-PID"}, traceLists));
     ASSERT_TRUE(traceLists.empty());
 }
 
@@ -896,6 +896,10 @@ HWTEST_F(HitraceSystemTest, HitraceSystemRawTest, TestSize.Level2)
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace -t 2 app --raw",
                                         {"RECORDING_SHORT_RAW", "capture done, output files:"}, traceLists));
     ASSERT_FALSE(traceLists.empty());
+    for (size_t i = 0; i < traceLists.size(); i++) {
+        std::string traceFilePath = "/data/log/hitrace/" + traceLists[i];
+        ASSERT_TRUE(access(traceFilePath.c_str(), F_OK) != -1);
+    }
 }
 } // namespace
 } // namespace Hitrace
