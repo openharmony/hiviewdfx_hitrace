@@ -73,6 +73,7 @@ constexpr uint8_t HM_FILE_RAW_TRACE = 1;
 constexpr uint64_t CACHE_TRACE_LOOP_SLEEP_TIME = 1;
 constexpr int UNIT_TIME = 100000;
 constexpr int ALIGNMENT_COEFFICIENT = 4;
+constexpr int RECORD_LOOP_SLEEP = 1;
 
 const int DEFAULT_BUFFER_SIZE = 12 * 1024;
 const int DEFAULT_FILE_SIZE = 100 * 1024;
@@ -194,6 +195,13 @@ bool IsRecordOn()
 bool IsCacheOn()
 {
     return (g_traceMode & TraceMode::CACHE) != 0;
+}
+
+uint64_t GetCurBootTime()
+{
+    struct timespec bts = {0, 0};
+    clock_gettime(CLOCK_BOOTTIME, &bts);
+    return static_cast<uint64_t>(bts.tv_sec * S_TO_NS + bts.tv_nsec);
 }
 
 std::vector<std::string> Split(const std::string& str, char delimiter)
@@ -610,7 +618,7 @@ bool WriteFile(uint8_t contentType, const std::string& src, int outFd, const std
         int bytes = 0;
         bool endFlag = false;
         /* Write 1M at a time */
-        while (bytes < BUFFER_SIZE) {
+        while (bytes <= (BUFFER_SIZE - PAGE_SIZE)) {
             ssize_t readBytes = TEMP_FAILURE_RETRY(read(srcFd, g_buffer + bytes, PAGE_SIZE));
             if (readBytes == 0) {
                 endFlag = true;
@@ -669,6 +677,8 @@ bool WriteFile(uint8_t contentType, const std::string& src, int outFd, const std
         }
 
         if (IsWriteFileOverflow(isCpuRaw, g_outputFileSize, writeLen, fileSizeThreshold)) {
+            HILOG_WARN(LOG_CORE, "Write file over flow, fileZise: %{public}d, writeLen: %{public}zd, "
+                "FullLen: %{public}d.", g_outputFileSize, writeRet, bytes);
             break;
         }
 
@@ -997,8 +1007,6 @@ void ProcessCacheTask()
 
 bool RecordTraceLoop(const std::string& outputFileName, bool isLimited)
 {
-    constexpr int sleepTime = 1;
-
     g_outputFileSize = 0;
     std::string outPath = CanonicalizeSpecPath(outputFileName.c_str());
     int outFd = open(outPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644:-rw-r--r--
@@ -1026,7 +1034,8 @@ bool RecordTraceLoop(const std::string& outputFileName, bool isLimited)
             if (isLimited && g_outputFileSize > fileSizeThreshold) {
                 break;
             }
-            sleep(sleepTime);
+            sleep(RECORD_LOOP_SLEEP);
+            g_traceEndTime = GetCurBootTime();
             if (!WriteCpuRaw(outFd, outPath)) {
                 break;
             }
@@ -1044,6 +1053,7 @@ bool RecordTraceLoop(const std::string& outputFileName, bool isLimited)
         }
     } while (g_needGenerateNewTraceFile);
     close(outFd);
+    g_traceEndTime = std::numeric_limits<uint64_t>::max();
     return true;
 }
 
