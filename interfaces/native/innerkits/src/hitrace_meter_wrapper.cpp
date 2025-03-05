@@ -13,41 +13,72 @@
  * limitations under the License.
  */
 
-#include "hitrace_meter_wrapper.h"
 #include "hitrace_meter.h"
+#include "hitrace_meter_wrapper.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void StartTraceCwrapper(uint64_t tag, const char *value)
+void StartTraceCwrapper(uint64_t tag, const char* name)
 {
-    StartTrace(tag, value);
+    StartTraceEx(HITRACE_LEVEL_INFO, tag, name, "");
 }
 
 void FinishTraceCwrapper(uint64_t tag)
 {
-    FinishTrace(tag);
+    FinishTraceEx(HITRACE_LEVEL_INFO, tag);
 }
 
-void StartAsyncTraceCwrapper(uint64_t tag, const char *value, int32_t taskId)
+void StartAsyncTraceCwrapper(uint64_t tag, const char* name, int32_t taskId)
 {
-    StartAsyncTrace(tag, value, taskId);
+    StartAsyncTraceEx(HITRACE_LEVEL_INFO, tag, name, taskId, "", "");
 }
 
-void FinishAsyncTraceCwrapper(uint64_t tag, const char *value, int32_t taskId)
+void FinishAsyncTraceCwrapper(uint64_t tag, const char* name, int32_t taskId)
 {
-    FinishAsyncTrace(tag, value, taskId);
+    FinishAsyncTraceEx(HITRACE_LEVEL_INFO, tag, name, taskId);
 }
 
-void CountTraceCwrapper(uint64_t tag, const char *value, int64_t count)
+void CountTraceCwrapper(uint64_t tag, const char* name, int64_t count)
 {
-    CountTrace(tag, value, count);
+    CountTraceEx(HITRACE_LEVEL_INFO, tag, name, count);
 }
 
-void StartTraceChainPoint(const struct HiTraceIdStruct* hiTraceId, const char *value)
+void StartTraceChainPoint(const struct HiTraceIdStruct* hiTraceId, const char* value)
 {
     StartTraceChain(HITRACE_TAG_OHOS, hiTraceId, value);
+}
+
+void StartTraceExCwrapper(HiTraceOutputLevel level, uint64_t tag, const char* name, const char* customArgs)
+{
+    StartTraceEx(level, tag, name, customArgs);
+}
+
+void FinishTraceExCwrapper(HiTraceOutputLevel level, uint64_t tag)
+{
+    FinishTraceEx(level, tag);
+}
+
+void StartAsyncTraceExCwrapper(HiTraceOutputLevel level, uint64_t tag, const char* name, int32_t taskId,
+    const char* customCategory, const char* customArgs)
+{
+    StartAsyncTraceEx(level, tag, name, taskId, customCategory, customArgs);
+}
+
+void FinishAsyncTraceExCwrapper(HiTraceOutputLevel level, uint64_t tag, const char* name, int32_t taskId)
+{
+    FinishAsyncTraceEx(level, tag, name, taskId);
+}
+
+void CountTraceExCwrapper(HiTraceOutputLevel level, uint64_t tag, const char* name, int64_t count)
+{
+    CountTraceEx(level, tag, name, count);
+}
+
+bool IsTagEnabledCwrapper(uint64_t tag)
+{
+    return IsTagEnabled(tag);
 }
 
 #ifdef __cplusplus

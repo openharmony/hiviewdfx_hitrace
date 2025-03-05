@@ -13,3 +13,4 @@
 
 debug.hitrace.tags.enableflags=0
 debug.hitrace.app_pid=-1
+persist.hitrace.level.threshold=1

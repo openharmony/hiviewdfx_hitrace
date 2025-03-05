@@ -41,6 +41,7 @@
 static const int BUFF_ZERO_NUMBER = 0;
 static const int BUFF_ONE_NUMBER = 1;
 static const int BUFF_TWO_NUMBER = 2;
+static const uint64_t HITRACE_TAG_OHOS = (1ULL << 30);
 
 typedef struct HiTraceChainIdStruct {
     union {

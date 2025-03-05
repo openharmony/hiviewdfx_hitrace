@@ -27,7 +27,7 @@
 #include <sched.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
-#include <unistd.h>
+#include <unordered_map>
 #include <vector>
 #include <string>
 
@@ -35,7 +35,6 @@
 #include "securec.h"
 #include "hilog/log.h"
 #include "param/sys_param.h"
-#include "parameter.h"
 #include "parameters.h"
 #include "hitrace_meter.h"
 #include "hitrace/tracechain.h"
@@ -58,6 +57,7 @@ std::once_flag g_onceFlag;
 std::once_flag g_onceWriteMarkerFailedFlag;
 std::atomic<CachedHandle> g_cachedHandle;
 std::atomic<CachedHandle> g_appPidCachedHandle;
+std::atomic<CachedHandle> g_levelThresholdCachedHandle;
 
 std::atomic<bool> g_isHitraceMeterDisabled(false);
 std::atomic<bool> g_isHitraceMeterInit(false);
@@ -67,18 +67,20 @@ std::atomic<bool> g_pidHasReload(false);
 std::atomic<uint64_t> g_tagsProperty(HITRACE_TAG_NOT_READY);
 std::atomic<uint64_t> g_appTag(HITRACE_TAG_NOT_READY);
 std::atomic<int64_t> g_appTagMatchPid(-1);
+std::atomic<HiTraceOutputLevel> g_levelThreshold(HITRACE_LEVEL_MAX);
 
 const std::string SANDBOX_PATH = "/data/storage/el2/log/";
 const std::string PHYSICAL_PATH = "/data/app/el2/100/log/";
+const char* const EMPTY = "";
 
 constexpr int VAR_NAME_MAX_SIZE = 400;
 constexpr int NAME_NORMAL_LEN = 512;
-constexpr int BUFFER_LEN = 640;
-constexpr int HITRACEID_LEN = 64;
+constexpr int RECORD_SIZE_MAX = 512;
+constexpr int NAME_SIZE_MAX = 320;
+constexpr int CATEGORY_SIZE_MAX = 64;
 
 static const int PID_BUF_SIZE = 6;
 static char g_pid[PID_BUF_SIZE];
-static const std::string EMPTY_TRACE_NAME;
 static char g_appName[NAME_NORMAL_LEN + 1] = {0};
 static std::string g_appTracePrefix = "";
 constexpr const int COMM_STR_MAX = 14;
@@ -99,7 +101,32 @@ std::unique_ptr<char[]> g_traceBuffer;
 std::recursive_mutex g_appTraceMutex;
 
 static char g_markTypes[5] = {'B', 'E', 'S', 'F', 'C'};
-enum MarkerType { MARKER_BEGIN, MARKER_END, MARKER_ASYNC_BEGIN, MARKER_ASYNC_END, MARKER_INT, MARKER_MAX };
+enum MarkerType { MARKER_BEGIN, MARKER_END, MARKER_ASYNC_BEGIN, MARKER_ASYNC_END, MARKER_INT };
+
+static char g_traceLevel[4] = {'D', 'I', 'C', 'M'};
+
+static const std::unordered_map<uint64_t, const char* const> hitraceTags = {
+    {HITRACE_TAG_DRM, "06"}, {HITRACE_TAG_SECURITY, "07"},
+    {HITRACE_TAG_ANIMATION, "09"}, {HITRACE_TAG_PUSH, "10"}, {HITRACE_TAG_VIRSE, "11"},
+    {HITRACE_TAG_MUSL, "12"}, {HITRACE_TAG_FFRT, "13"}, {HITRACE_TAG_CLOUD, "14"},
+    {HITRACE_TAG_DEV_AUTH, "15"}, {HITRACE_TAG_COMMONLIBRARY, "16"}, {HITRACE_TAG_HDCD, "17"},
+    {HITRACE_TAG_HDF, "18"}, {HITRACE_TAG_USB, "19"}, {HITRACE_TAG_INTERCONNECTION, "20"},
+    {HITRACE_TAG_DLP_CREDENTIAL, "21"}, {HITRACE_TAG_ACCESS_CONTROL, "22"}, {HITRACE_TAG_NET, "23"},
+    {HITRACE_TAG_NWEB, "24"}, {HITRACE_TAG_HUKS, "25"}, {HITRACE_TAG_USERIAM, "26"},
+    {HITRACE_TAG_DISTRIBUTED_AUDIO, "27"}, {HITRACE_TAG_DLSM, "28"}, {HITRACE_TAG_FILEMANAGEMENT, "29"},
+    {HITRACE_TAG_OHOS, "30"}, {HITRACE_TAG_ABILITY_MANAGER, "31"}, {HITRACE_TAG_ZCAMERA, "32"},
+    {HITRACE_TAG_ZMEDIA, "33"}, {HITRACE_TAG_ZIMAGE, "34"}, {HITRACE_TAG_ZAUDIO, "35"},
+    {HITRACE_TAG_DISTRIBUTEDDATA, "36"}, {HITRACE_TAG_MDFS, "37"}, {HITRACE_TAG_GRAPHIC_AGP, "38"},
+    {HITRACE_TAG_ACE, "39"}, {HITRACE_TAG_NOTIFICATION, "40"}, {HITRACE_TAG_MISC, "41"},
+    {HITRACE_TAG_MULTIMODALINPUT, "42"}, {HITRACE_TAG_SENSORS, "43"}, {HITRACE_TAG_MSDP, "44"},
+    {HITRACE_TAG_DSOFTBUS, "45"}, {HITRACE_TAG_RPC, "46"}, {HITRACE_TAG_ARK, "47"},
+    {HITRACE_TAG_WINDOW_MANAGER, "48"}, {HITRACE_TAG_ACCOUNT_MANAGER, "49"}, {HITRACE_TAG_DISTRIBUTED_SCREEN, "50"},
+    {HITRACE_TAG_DISTRIBUTED_CAMERA, "51"}, {HITRACE_TAG_DISTRIBUTED_HARDWARE_FWK, "52"},
+    {HITRACE_TAG_GLOBAL_RESMGR, "53"}, {HITRACE_TAG_DEVICE_MANAGER, "54"}, {HITRACE_TAG_SAMGR, "55"},
+    {HITRACE_TAG_POWER, "56"}, {HITRACE_TAG_DISTRIBUTED_SCHEDULE, "57"}, {HITRACE_TAG_DEVICE_PROFILE, "58"},
+    {HITRACE_TAG_DISTRIBUTED_INPUT, "59"}, {HITRACE_TAG_BLUETOOTH, "60"},
+    {HITRACE_TAG_ACCESSIBILITY_MANAGER, "61"}, {HITRACE_TAG_APP, "62"}
+};
 
 const uint64_t VALID_TAGS = HITRACE_TAG_FFRT | HITRACE_TAG_COMMONLIBRARY | HITRACE_TAG_HDF | HITRACE_TAG_NET |
     HITRACE_TAG_NWEB | HITRACE_TAG_DISTRIBUTED_AUDIO | HITRACE_TAG_FILEMANAGEMENT | HITRACE_TAG_OHOS |
@@ -123,31 +150,49 @@ const std::string TRACE_TXT_HEADER_FORMAT = R"(# tracer: nop
 #              | |           |       |   ||||      |         |
 )";
 
+struct TraceMarker {
+    const MarkerType type;
+    HiTraceOutputLevel level;
+    uint64_t tag;
+    const int64_t value;
+    const char* name;
+    const char* customCategory;
+    const char* customArgs;
+    const HiTraceIdStruct* hiTraceIdStruct = nullptr;
+};
+
 inline void CreateCacheHandle()
 {
     const char* devValue = "true";
     g_cachedHandle = CachedParameterCreate(TRACE_TAG_ENABLE_FLAGS.c_str(), devValue);
     g_appPidCachedHandle = CachedParameterCreate(TRACE_KEY_APP_PID.c_str(), devValue);
+    g_levelThresholdCachedHandle = CachedParameterCreate(TRACE_LEVEL_THRESHOLD.c_str(), devValue);
 }
 
-inline void UpdateSysParamTags()
+static void UpdateSysParamTags()
 {
     // Get the system parameters of TRACE_TAG_ENABLE_FLAGS.
-    int changed = 0;
-    if (UNEXPECTANTLY(g_cachedHandle == nullptr || g_appPidCachedHandle == nullptr)) {
+    if (UNEXPECTANTLY(g_cachedHandle == nullptr || g_appPidCachedHandle == nullptr ||
+        g_levelThresholdCachedHandle == nullptr)) {
         CreateCacheHandle();
         return;
     }
-    const char *paramValue = CachedParameterGetChanged(g_cachedHandle, &changed);
+    int changed = 0;
+    const char* paramValue = CachedParameterGetChanged(g_cachedHandle, &changed);
     if (UNEXPECTANTLY(changed == 1) && paramValue != nullptr) {
         uint64_t tags = 0;
         tags = strtoull(paramValue, nullptr, 0);
         g_tagsProperty = (tags | HITRACE_TAG_ALWAYS) & HITRACE_TAG_VALID_MASK;
     }
     int appPidChanged = 0;
-    const char *paramPid = CachedParameterGetChanged(g_appPidCachedHandle, &appPidChanged);
+    const char* paramPid = CachedParameterGetChanged(g_appPidCachedHandle, &appPidChanged);
     if (UNEXPECTANTLY(appPidChanged == 1) && paramPid != nullptr) {
         g_appTagMatchPid = strtoll(paramPid, nullptr, 0);
+    }
+    int levelThresholdChanged = 0;
+    const char* paramLevel = CachedParameterGetChanged(g_levelThresholdCachedHandle, &levelThresholdChanged);
+    if (UNEXPECTANTLY(levelThresholdChanged == 1) && paramLevel != nullptr) {
+        g_levelThreshold = static_cast<HiTraceOutputLevel>(strtoll(paramLevel, nullptr, 0));
     }
 }
 
@@ -212,12 +257,34 @@ void OpenTraceMarkerFile()
             return;
         }
     }
-    // get tags and pid
+    // get tags, level threshold and pid
     g_tagsProperty = OHOS::system::GetUintParameter<uint64_t>(TRACE_TAG_ENABLE_FLAGS, 0);
+    g_levelThreshold = static_cast<HiTraceOutputLevel>(OHOS::system::GetIntParameter<int>(TRACE_LEVEL_THRESHOLD,
+        HITRACE_LEVEL_MAX, HITRACE_LEVEL_DEBUG, HITRACE_LEVEL_COMMERCIAL));
     CreateCacheHandle();
     InitPid();
 
     g_isHitraceMeterInit = true;
+}
+
+__attribute__((always_inline)) bool PrepareTraceMarker()
+{
+    if (UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+        return false;
+    }
+    // attention: if appspawn encounters a crash exception, we should reload pid.
+    if (UNEXPECTANTLY(g_needReloadPid && !g_pidHasReload)) {
+        ReloadPid();
+    }
+    if (UNEXPECTANTLY(!g_isHitraceMeterInit)) {
+        struct timespec ts = { 0, 0 };
+        if (clock_gettime(CLOCK_MONOTONIC, &ts) == -1 || ts.tv_sec < 25) { // 25 : register after boot 25s
+            return false;
+        }
+        std::call_once(g_onceFlag, OpenTraceMarkerFile);
+    }
+    UpdateSysParamTags();
+    return true;
 }
 
 void WriteFailedLog()
@@ -225,39 +292,11 @@ void WriteFailedLog()
     HILOG_ERROR(LOG_CORE, "write trace_marker failed, %{public}d", errno);
 }
 
-void WriteToTraceMarker(const char* buf, const int count)
+void WriteToTraceMarker(const char* buf, int bytes)
 {
-    if (UNEXPECTANTLY(count <= 0 || count >= BUFFER_LEN)) {
-        HILOG_INFO(LOG_CORE, "Write trace canceled, buf size is greater than the BUFFER_LEN");
-        return;
-    }
-    if (write(g_markerFd, buf, count) < 0) {
+    if (write(g_markerFd, buf, bytes) < 0) {
         std::call_once(g_onceWriteMarkerFailedFlag, WriteFailedLog);
     }
-}
-
-void AddTraceMarkerLarge(const std::string& name, MarkerType type, const int64_t value)
-{
-    std::string record;
-    record += g_markTypes[type];
-    record += "|";
-    record += g_pid;
-    record += "|H:";
-    HiTraceId hiTraceId = HiTraceChain::GetId();
-    if (hiTraceId.IsValid()) {
-        char buf[HITRACEID_LEN] = {0};
-        int bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "[%llx,%llx,%llx]#",
-            hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId());
-        if (EXPECTANTLY(bytes > 0)) {
-            record += buf;
-        }
-    }
-    record += name;
-    record += " ";
-    if (value != 0) {
-        record += std::to_string(value);
-    }
-    WriteToTraceMarker(record.c_str(), record.size());
 }
 
 void WriteOnceLog(LogLevel loglevel, const std::string& logStr, bool& isWrite)
@@ -469,7 +508,23 @@ bool SetAllThreadInfo(const int& tid)
     return true;
 }
 
-int SetAppTraceBuffer(char* buf, const int len, MarkerType type, const std::string& name, const int64_t value)
+static std::string ParseTagBits(const uint64_t tag)
+{
+    auto it = hitraceTags.find(tag & (~HITRACE_TAG_COMMERCIAL));
+    if (EXPECTANTLY(it != hitraceTags.end())) {
+        return it->second;
+    } else {
+        std::string bitsStr;
+        for (auto& [hitraceTag, bitStr] : hitraceTags) {
+            if ((tag & hitraceTag) != 0) {
+                bitsStr += bitStr;
+            }
+        }
+        return bitsStr;
+    }
+}
+
+int SetAppTraceBuffer(char* buf, const int len, const TraceMarker& traceMarker)
 {
     struct timespec ts = { 0, 0 };
     clock_gettime(CLOCK_BOOTTIME, &ts);
@@ -480,26 +535,33 @@ int SetAppTraceBuffer(char* buf, const int len, MarkerType type, const std::stri
         return -1;
     }
 
+    std::string bitsStr = ParseTagBits(traceMarker.tag);
     int bytes = 0;
-    if (type == MARKER_BEGIN) {
-        bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: B|%s|H:%s \n",
-            g_appTracePrefix.c_str(), cpu, static_cast<long>(ts.tv_sec),
-            static_cast<long>(ts.tv_nsec / NS_TO_MS), g_pid, name.c_str());
-    } else if (type == MARKER_END) {
-        bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: E|%s|\n",
-            g_appTracePrefix.c_str(), cpu, static_cast<long>(ts.tv_sec),
-            static_cast<long>(ts.tv_nsec / NS_TO_MS), g_pid);
+    if (traceMarker.type == MARKER_BEGIN) {
+        bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: B|%s|H:%s|%c%s|%s\n",
+            g_appTracePrefix.c_str(), cpu, static_cast<long>(ts.tv_sec), static_cast<long>(ts.tv_nsec / NS_TO_MS),
+            g_pid, traceMarker.name, g_traceLevel[traceMarker.level], bitsStr.c_str(), traceMarker.customArgs);
+    } else if (traceMarker.type == MARKER_END) {
+        bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: E|%s|%c%s\n",
+            g_appTracePrefix.c_str(), cpu, static_cast<long>(ts.tv_sec), static_cast<long>(ts.tv_nsec / NS_TO_MS),
+            g_pid, g_traceLevel[traceMarker.level], bitsStr.c_str());
+    } else if (traceMarker.type == MARKER_ASYNC_BEGIN) {
+        bytes = snprintf_s(buf, len, len - 1,
+            "  %s [%03d] .... %lu.%06lu: tracing_mark_write: S|%s|H:%s|%lld|%c%s|%s|%s\n",
+            g_appTracePrefix.c_str(), cpu, static_cast<long>(ts.tv_sec), static_cast<long>(ts.tv_nsec / NS_TO_MS),
+            g_pid, traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitsStr.c_str(),
+            traceMarker.customCategory, traceMarker.customArgs);
     } else {
-        char marktypestr = g_markTypes[type];
-        bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: %c|%s|H:%s %lld\n",
-            g_appTracePrefix.c_str(), cpu, static_cast<long>(ts.tv_sec),
-            static_cast<long>(ts.tv_nsec / NS_TO_MS), marktypestr, g_pid, name.c_str(), value);
+        bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: %c|%s|H:%s|%lld|%c%s\n",
+            g_appTracePrefix.c_str(), cpu, static_cast<long>(ts.tv_sec), static_cast<long>(ts.tv_nsec / NS_TO_MS),
+            g_markTypes[traceMarker.type], g_pid, traceMarker.name, traceMarker.value,
+            g_traceLevel[traceMarker.level], bitsStr.c_str());
     }
 
     return bytes;
 }
 
-void SetAppTrace(const int len, MarkerType type, const std::string& name, const int64_t value)
+void SetAppTrace(const int len, const TraceMarker& traceMarker)
 {
     // get buffer
     char* buf = GetTraceBuffer(len);
@@ -507,14 +569,14 @@ void SetAppTrace(const int len, MarkerType type, const std::string& name, const 
         return;
     }
 
-    int bytes = SetAppTraceBuffer(buf, len, type, name, value);
+    int bytes = SetAppTraceBuffer(buf, len, traceMarker);
     if (bytes > 0) {
         g_traceEventNum += 1;
         g_writeOffset += bytes;
     }
 }
 
-void WriteAppTraceLong(const int len, MarkerType type, const std::string& name, const int64_t value)
+void WriteAppTraceLong(const int len, const TraceMarker& traceMarker)
 {
     // 1 write cache data.
     if (!WriteTraceToFile(g_traceBuffer.get(), g_writeOffset)) {
@@ -529,7 +591,7 @@ void WriteAppTraceLong(const int len, MarkerType type, const std::string& name, 
         return;
     }
 
-    int bytes = SetAppTraceBuffer(buffer.get(), len, type, name, value);
+    int bytes = SetAppTraceBuffer(buffer.get(), len, traceMarker);
     if (bytes > 0) {
         if (!WriteTraceToFile(buffer.get(), bytes)) {
             return;
@@ -550,10 +612,11 @@ bool CheckFileSize(int len)
     return true;
 }
 
-void WriteAppTrace(MarkerType type, const std::string& name, const int64_t value)
+void WriteAppTrace(const TraceMarker& traceMarker)
 {
     int tid = getproctid();
-    int len = PREFIX_MAX_SIZE + name.length();
+    int len = PREFIX_MAX_SIZE + strlen(traceMarker.name) + strlen(traceMarker.customArgs) +
+              strlen(traceMarker.customCategory);
     if (g_appFlag == FLAG_MAIN_THREAD && g_tgid == tid) {
         if (!CheckFileSize(len)) {
             return;
@@ -564,9 +627,9 @@ void WriteAppTrace(MarkerType type, const std::string& name, const int64_t value
         }
 
         if (len <= DEFAULT_CACHE_SIZE) {
-            SetAppTrace(len, type, name, value);
+            SetAppTrace(len, traceMarker);
         } else {
-            WriteAppTraceLong(len, type, name, value);
+            WriteAppTraceLong(len, traceMarker);
         }
     } else if (g_appFlag == FLAG_ALL_THREAD) {
         std::unique_lock<std::recursive_mutex> lock(g_appTraceMutex);
@@ -577,68 +640,131 @@ void WriteAppTrace(MarkerType type, const std::string& name, const int64_t value
         SetAllThreadInfo(tid);
 
         if (len <= DEFAULT_CACHE_SIZE) {
-            SetAppTrace(len, type, name, value);
+            SetAppTrace(len, traceMarker);
         } else {
-            WriteAppTraceLong(len, type, name, value);
+            WriteAppTraceLong(len, traceMarker);
         }
     }
 }
 
-void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& name, const int64_t value,
-    const HiTraceIdStruct* hiTraceIdStruct = nullptr)
+static int FmtSyncBeginRecord(TraceMarker& traceMarker, const char* bitsStr,
+    char* record, int size)
 {
-    if (UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+    int bytes = 0;
+    HiTraceId hiTraceId = (traceMarker.hiTraceIdStruct == nullptr) ?
+                          HiTraceChain::GetId() :
+                          HiTraceId(*traceMarker.hiTraceIdStruct);
+    if (hiTraceId.IsValid()) {
+        bytes = snprintf_s(record, size, size - 1, "B|%s|H:[%llx,%llx,%llx]#%.*s|%c%s|%s", g_pid,
+            hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), NAME_SIZE_MAX,
+            traceMarker.name, g_traceLevel[traceMarker.level], bitsStr, traceMarker.customArgs);
+    } else {
+        bytes = snprintf_s(record, size, size - 1, "B|%s|H:%.*s|%c%s|%s", g_pid,
+            NAME_SIZE_MAX, traceMarker.name, g_traceLevel[traceMarker.level], bitsStr, traceMarker.customArgs);
+    }
+    if (bytes == -1) {
+        bytes = RECORD_SIZE_MAX;
+        HILOG_INFO(LOG_CORE, "Trace record buffer may be truncated");
+    }
+    return bytes;
+}
+
+static int FmtAyncBeginRecord(TraceMarker& traceMarker, const char* bitsStr,
+    char* record, int size)
+{
+    int bytes = 0;
+    HiTraceId hiTraceId = (traceMarker.hiTraceIdStruct == nullptr) ?
+                          HiTraceChain::GetId() :
+                          HiTraceId(*traceMarker.hiTraceIdStruct);
+    if (hiTraceId.IsValid()) {
+        bytes = snprintf_s(record, size, size - 1, "S|%s|H:[%llx,%llx,%llx]#%.*s|%lld|%c%s|%.*s|%s", g_pid,
+            hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
+            NAME_SIZE_MAX, traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitsStr,
+            CATEGORY_SIZE_MAX, traceMarker.customCategory, traceMarker.customArgs); 
+    } else {
+        bytes = snprintf_s(record, size, size - 1, "S|%s|H:%.*s|%lld|%c%s|%.*s|%s", g_pid, NAME_SIZE_MAX, traceMarker.name,
+            traceMarker.value, g_traceLevel[traceMarker.level], bitsStr, CATEGORY_SIZE_MAX, traceMarker.customCategory,
+            traceMarker.customArgs);
+    }
+    if (bytes == -1) {
+        bytes = RECORD_SIZE_MAX;
+        HILOG_INFO(LOG_CORE, "Trace record buffer may be truncated");
+    }
+    return bytes;
+}
+
+static int FmtOtherTypeRecord(TraceMarker& traceMarker, const char* bitsStr,
+    char* record, int size)
+{
+    int bytes = 0;
+    HiTraceId hiTraceId = (traceMarker.hiTraceIdStruct == nullptr) ?
+                          HiTraceChain::GetId() :
+                          HiTraceId(*traceMarker.hiTraceIdStruct);
+    if (hiTraceId.IsValid()) {
+        bytes = snprintf_s(record, size, size - 1, "%c|%s|H:[%llx,%llx,%llx]#%.*s|%lld|%c%s",
+            g_markTypes[traceMarker.type], g_pid, hiTraceId.GetChainId(), hiTraceId.GetSpanId(),
+            hiTraceId.GetParentSpanId(), NAME_SIZE_MAX, traceMarker.name, traceMarker.value,
+            g_traceLevel[traceMarker.level], bitsStr);
+    } else {
+        bytes = snprintf_s(record, size, size - 1, "%c|%s|H:%.*s|%lld|%c%s",
+            g_markTypes[traceMarker.type], g_pid, NAME_SIZE_MAX, traceMarker.name,
+            traceMarker.value, g_traceLevel[traceMarker.level], bitsStr);
+    }
+    if (bytes == -1) {
+        bytes = RECORD_SIZE_MAX;
+        HILOG_INFO(LOG_CORE, "Trace record buffer may be truncated");
+    }
+    return bytes;
+}
+
+void SetNullptrToEmpty(TraceMarker& traceMarker)
+{
+    if (traceMarker.name == nullptr) {
+        traceMarker.name = EMPTY;
+    }
+    if (traceMarker.customCategory == nullptr) {
+        traceMarker.customCategory = EMPTY;
+    }
+    if (traceMarker.customArgs == nullptr) {
+        traceMarker.customArgs = EMPTY;
+    }
+}
+
+void AddHitraceMeterMarker(TraceMarker& traceMarker)
+{
+    if (traceMarker.level < HITRACE_LEVEL_DEBUG || traceMarker.level > HITRACE_LEVEL_MAX || !PrepareTraceMarker()) {
         return;
     }
-    // attention: if appspawn encounters a crash exception, we should reload pid.
-    if (UNEXPECTANTLY(g_needReloadPid && !g_pidHasReload)) {
-        ReloadPid();
-    }
-    if (UNEXPECTANTLY(!g_isHitraceMeterInit)) {
-        struct timespec ts = { 0, 0 };
-        if (clock_gettime(CLOCK_MONOTONIC, &ts) == -1 || ts.tv_sec < 25) { // 25 : register after boot 25s
+    SetNullptrToEmpty(traceMarker);
+    if (UNEXPECTANTLY(g_tagsProperty & traceMarker.tag) && g_markerFd != -1) {
+        if (traceMarker.tag & HITRACE_TAG_COMMERCIAL) {
+            traceMarker.level = HITRACE_LEVEL_COMMERCIAL;
+        }
+        if ((traceMarker.level < g_levelThreshold) ||
+            (traceMarker.tag == HITRACE_TAG_APP && g_appTagMatchPid > 0 && g_appTagMatchPid != std::stoi(g_pid))) {
             return;
         }
-        std::call_once(g_onceFlag, OpenTraceMarkerFile);
-    }
-    UpdateSysParamTags();
-    if (UNEXPECTANTLY(g_tagsProperty & tag) && g_markerFd != -1) {
-        if (tag == HITRACE_TAG_APP && g_appTagMatchPid > 0 && g_appTagMatchPid != std::stoi(g_pid)) {
-            return;
+        char record[RECORD_SIZE_MAX + 1] = {0};
+        int bytes = 0;
+        std::string bitsStr = ParseTagBits(traceMarker.tag);
+        if (traceMarker.type == MARKER_BEGIN) {
+            bytes = FmtSyncBeginRecord(traceMarker, bitsStr.c_str(), record, sizeof(record));
+        } else if (traceMarker.type == MARKER_END) {
+            bytes = snprintf_s(record, sizeof(record), sizeof(record) - 1, "E|%s|%c%s",
+                g_pid, g_traceLevel[traceMarker.level], bitsStr.c_str());
+        } else if (traceMarker.type == MARKER_ASYNC_BEGIN) {
+            bytes = FmtAyncBeginRecord(traceMarker, bitsStr.c_str(), record, sizeof(record));
+        } else {
+            bytes = FmtOtherTypeRecord(traceMarker, bitsStr.c_str(), record, sizeof(record));
         }
-        // record fomart: "type|pid|name value".
-        char buf[BUFFER_LEN] = {0};
-        int len = name.length();
-        if (EXPECTANTLY(len <= NAME_NORMAL_LEN)) {
-            HiTraceId hiTraceId = (hiTraceIdStruct == nullptr) ? HiTraceChain::GetId() : HiTraceId(*hiTraceIdStruct);
-            bool isHiTraceIdValid = hiTraceId.IsValid();
-            int bytes = 0;
-            if (type == MARKER_BEGIN) {
-                bytes = isHiTraceIdValid ? snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                    "B|%s|H:[%llx,%llx,%llx]#%s ", g_pid, hiTraceId.GetChainId(),
-                    hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str())
-                    : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "B|%s|H:%s ", g_pid, name.c_str());
-            } else if (type == MARKER_END) {
-                bytes = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "E|%s|", g_pid);
-            } else {
-                char marktypestr = g_markTypes[type];
-                bytes = isHiTraceIdValid ? snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                    "%c|%s|H:[%llx,%llx,%llx]#%s %lld", marktypestr, g_pid,
-                    hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), name.c_str(), value)
-                    : snprintf_s(buf, sizeof(buf), sizeof(buf) - 1,
-                    "%c|%s|H:%s %lld", marktypestr, g_pid, name.c_str(), value);
-            }
-            WriteToTraceMarker(buf, bytes);
-        } else if (EXPECTANTLY(len < BUFFER_LEN)) {
-            AddTraceMarkerLarge(name, type, value);
-        }
+        WriteToTraceMarker(record, bytes);
     }
     auto appTagload = g_appTag.load();
 #ifdef HITRACE_UNITTEST
     appTagload = HITRACE_TAG_APP;
 #endif
     if (UNEXPECTANTLY(appTagload != HITRACE_TAG_NOT_READY) && g_appFd != -1) {
-        WriteAppTrace(type, name, value);
+        WriteAppTrace(traceMarker);
     }
 }
 }; // namespace
@@ -674,14 +800,10 @@ void SetTraceBuffer(int size)
     GetTraceBuffer(size);
 }
 
-void SetAddTraceMarkerLarge(const std::string& name, const int64_t value)
+void SetAddHitraceMeterMarker(uint64_t tag, const std::string& name)
 {
-    AddTraceMarkerLarge(name, MARKER_BEGIN, value);
-}
-
-void SetAddHitraceMeterMarker(uint64_t label, const std::string& value)
-{
-    AddHitraceMeterMarker(MARKER_BEGIN, label, value, 0);
+    TraceMarker traceMarker = {MARKER_BEGIN, HITRACE_LEVEL_INFO, tag, 0, name.c_str(), EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
 void SetWriteToTraceMarker(const char* buf, const int count)
@@ -694,20 +816,19 @@ void SetGetProcData(const char* file)
     GetProcData(file, g_appName, NAME_NORMAL_LEN);
 }
 
-void HitracePerfScoped::SetHitracePerfScoped(int fd1st, int fd2nd)
-{
-    if (fd1st == -1 && fd2nd == -1) {
-        fd1st_ = fd1st;
-        fd2nd_ = fd2nd;
-    }
-    GetInsCount();
-    GetCycleCount();
-}
-
 void SetCachedHandleAndAppPidCachedHandle(CachedHandle cachedHandle, CachedHandle appPidCachedHandle)
 {
     g_cachedHandle = cachedHandle;
     g_appPidCachedHandle = appPidCachedHandle;
+    UpdateSysParamTags();
+}
+
+void SetCachedHandle(CachedHandle cachedHandle, CachedHandle appPidCachedHandle,
+    CachedHandle levelThresholdCachedHandle)
+{
+    g_cachedHandle = cachedHandle;
+    g_appPidCachedHandle = appPidCachedHandle;
+    g_levelThresholdCachedHandle = levelThresholdCachedHandle;
     UpdateSysParamTags();
 }
 
@@ -724,7 +845,8 @@ void SetWriteAppTrace(TraceFlag appFlag, const std::string& name, const int64_t 
         g_tgid = getproctid();
     }
     g_appFlag = appFlag;
-    WriteAppTrace(MARKER_BEGIN, name, value);
+    TraceMarker traceMarker = {MARKER_BEGIN, HITRACE_LEVEL_INFO, HITRACE_TAG_APP, value, name.c_str(), EMPTY, EMPTY};
+    WriteAppTrace(traceMarker);
 }
 
 void SetWriteOnceLog(LogLevel loglevel, const std::string& logStr, bool& isWrite)
@@ -743,12 +865,15 @@ void SetMarkerType(TraceFlag appFlag, const std::string& name, const int64_t val
         g_tgid = getproctid();
     }
     g_appFlag = appFlag;
-    WriteAppTrace(MARKER_ASYNC_BEGIN, name, value);
+    TraceMarker traceMarker = {MARKER_ASYNC_BEGIN, HITRACE_LEVEL_INFO, HITRACE_TAG_APP,
+                               value, name.c_str(), EMPTY, EMPTY};
+    WriteAppTrace(traceMarker);
 }
 
 void SetWriteAppTraceLong(const int len, const std::string& name, const int64_t value)
 {
-    WriteAppTraceLong(len, MARKER_BEGIN, name, value);
+    TraceMarker traceMarker = {MARKER_BEGIN, HITRACE_LEVEL_INFO, HITRACE_TAG_APP, value, name.c_str(), EMPTY, EMPTY};
+    WriteAppTraceLong(len, traceMarker);
 }
 #endif
 void UpdateTraceLabel(void)
@@ -764,29 +889,37 @@ void SetTraceDisabled(bool disable)
     g_isHitraceMeterDisabled = disable;
 }
 
-void StartTraceWrapper(uint64_t label, const char *value)
+void StartTraceWrapper(uint64_t tag, const char* name)
 {
-    std::string traceValue = value;
-    StartTrace(label, traceValue);
+    TraceMarker traceMarker = {MARKER_BEGIN, HITRACE_LEVEL_INFO, tag, 0, name, EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-void StartTrace(uint64_t label, const std::string& value, float limit UNUSED_PARAM)
+void StartTrace(uint64_t tag, const std::string& name, float limit UNUSED_PARAM)
 {
-    AddHitraceMeterMarker(MARKER_BEGIN, label, value, 0);
+    TraceMarker traceMarker = {MARKER_BEGIN, HITRACE_LEVEL_INFO, tag, 0, name.c_str(), EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-void StartTraceDebug(bool isDebug, uint64_t label, const std::string& value, float limit UNUSED_PARAM)
+void StartTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, const char* customArgs)
+{
+    TraceMarker traceMarker = {MARKER_BEGIN, level, tag, 0, name, EMPTY, customArgs};
+    AddHitraceMeterMarker(traceMarker);
+}
+
+void StartTraceDebug(bool isDebug, uint64_t tag, const std::string& name, float limit UNUSED_PARAM)
 {
     if (!isDebug) {
         return;
     }
-    AddHitraceMeterMarker(MARKER_BEGIN, label, value, 0);
+    TraceMarker traceMarker = {MARKER_BEGIN, HITRACE_LEVEL_INFO, tag, 0, name.c_str(), EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-void StartTraceArgs(uint64_t label, const char *fmt, ...)
+void StartTraceArgs(uint64_t tag, const char* fmt, ...)
 {
     UpdateSysParamTags();
-    if (!(label & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+    if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
         return;
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
@@ -798,13 +931,14 @@ void StartTraceArgs(uint64_t label, const char *fmt, ...)
         HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
         return;
     }
-    AddHitraceMeterMarker(MARKER_BEGIN, label, name, 0);
+    TraceMarker traceMarker = {MARKER_BEGIN, HITRACE_LEVEL_INFO, tag, 0, name, EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-void StartTraceArgsDebug(bool isDebug, uint64_t label, const char *fmt, ...)
+void StartTraceArgsDebug(bool isDebug, uint64_t tag, const char* fmt, ...)
 {
     UpdateSysParamTags();
-    if (!isDebug || !(label & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+    if (!isDebug || !(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
         return;
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
@@ -817,51 +951,70 @@ void StartTraceArgsDebug(bool isDebug, uint64_t label, const char *fmt, ...)
         HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
         return;
     }
-    AddHitraceMeterMarker(MARKER_BEGIN, label, name, 0);
+    TraceMarker traceMarker = {MARKER_BEGIN, HITRACE_LEVEL_INFO, tag, 0, name, EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-void FinishTrace(uint64_t label)
+void FinishTrace(uint64_t tag)
 {
-    AddHitraceMeterMarker(MARKER_END, label, EMPTY_TRACE_NAME, 0);
+    TraceMarker traceMarker = {MARKER_END, HITRACE_LEVEL_INFO, tag, 0, EMPTY, EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-void FinishTraceDebug(bool isDebug, uint64_t label)
+void FinishTraceEx(HiTraceOutputLevel level, uint64_t tag)
+{
+    TraceMarker traceMarker = {MARKER_END, level, tag, 0, EMPTY, EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
+}
+
+void FinishTraceDebug(bool isDebug, uint64_t tag)
 {
     if (!isDebug) {
         return;
     }
-    AddHitraceMeterMarker(MARKER_END, label, EMPTY_TRACE_NAME, 0);
+    TraceMarker traceMarker = {MARKER_END, HITRACE_LEVEL_INFO, tag, 0, EMPTY, EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-void StartAsyncTrace(uint64_t label, const std::string& value, int32_t taskId, float limit UNUSED_PARAM)
+void StartAsyncTrace(uint64_t tag, const std::string& name, int32_t taskId, float limit UNUSED_PARAM)
 {
-    AddHitraceMeterMarker(MARKER_ASYNC_BEGIN, label, value, taskId);
+    TraceMarker traceMarker = {MARKER_ASYNC_BEGIN, HITRACE_LEVEL_INFO, tag, taskId, name.c_str(), EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-void StartAsyncTraceWrapper(uint64_t label, const char *value, int32_t taskId)
+void StartAsyncTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, int32_t taskId,
+    const char* customCategory, const char* customArgs)
 {
-    std::string traceValue = value;
-    StartAsyncTrace(label, traceValue, taskId);
+    TraceMarker traceMarker = {MARKER_ASYNC_BEGIN, level, tag, taskId, name, customCategory, customArgs};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-void StartTraceChain(uint64_t label, const struct HiTraceIdStruct* hiTraceId, const char *value)
+void StartAsyncTraceWrapper(uint64_t tag, const char* name, int32_t taskId)
 {
-    AddHitraceMeterMarker(MARKER_BEGIN, label, value, 0, hiTraceId);
+    TraceMarker traceMarker = {MARKER_ASYNC_BEGIN, HITRACE_LEVEL_INFO, tag, taskId, name, EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-void StartAsyncTraceDebug(bool isDebug, uint64_t label, const std::string& value, int32_t taskId,
+void StartTraceChain(uint64_t tag, const struct HiTraceIdStruct* hiTraceId, const char* name)
+{
+    TraceMarker traceMarker = {MARKER_BEGIN, HITRACE_LEVEL_INFO, tag, 0, name, EMPTY, EMPTY, hiTraceId};
+    AddHitraceMeterMarker(traceMarker);
+}
+
+void StartAsyncTraceDebug(bool isDebug, uint64_t tag, const std::string& name, int32_t taskId,
     float limit UNUSED_PARAM)
 {
     if (!isDebug) {
         return;
     }
-    AddHitraceMeterMarker(MARKER_ASYNC_BEGIN, label, value, taskId);
+    TraceMarker traceMarker = {MARKER_ASYNC_BEGIN, HITRACE_LEVEL_INFO, tag, taskId, name.c_str(), EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-void StartAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...)
+void StartAsyncTraceArgs(uint64_t tag, int32_t taskId, const char* fmt, ...)
 {
     UpdateSysParamTags();
-    if (!(label & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+    if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
         return;
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
@@ -874,13 +1027,14 @@ void StartAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...)
         HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
         return;
     }
-    AddHitraceMeterMarker(MARKER_ASYNC_BEGIN, label, name, taskId);
+    TraceMarker traceMarker = {MARKER_ASYNC_BEGIN, HITRACE_LEVEL_INFO, tag, taskId, name, EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-void StartAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, const char *fmt, ...)
+void StartAsyncTraceArgsDebug(bool isDebug, uint64_t tag, int32_t taskId, const char* fmt, ...)
 {
     UpdateSysParamTags();
-    if (!isDebug || !(label & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+    if (!isDebug || !(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
         return;
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
@@ -893,32 +1047,41 @@ void StartAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, cons
         HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
         return;
     }
-    AddHitraceMeterMarker(MARKER_ASYNC_BEGIN, label, name, taskId);
+    TraceMarker traceMarker = {MARKER_ASYNC_BEGIN, HITRACE_LEVEL_INFO, tag, taskId, name, EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-void FinishAsyncTrace(uint64_t label, const std::string& value, int32_t taskId)
+void FinishAsyncTrace(uint64_t tag, const std::string& name, int32_t taskId)
 {
-    AddHitraceMeterMarker(MARKER_ASYNC_END, label, value, taskId);
+    TraceMarker traceMarker = {MARKER_ASYNC_END, HITRACE_LEVEL_INFO, tag, taskId, name.c_str(), EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-void FinishAsyncTraceWrapper(uint64_t label, const char *value, int32_t taskId)
+void FinishAsyncTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, int32_t taskId)
 {
-    std::string traceValue = value;
-    FinishAsyncTrace(label, traceValue, taskId);
+    TraceMarker traceMarker = {MARKER_ASYNC_END, level, tag, taskId, name, EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-void FinishAsyncTraceDebug(bool isDebug, uint64_t label, const std::string& value, int32_t taskId)
+void FinishAsyncTraceWrapper(uint64_t tag, const char* name, int32_t taskId)
+{
+    TraceMarker traceMarker = {MARKER_ASYNC_END, HITRACE_LEVEL_INFO, tag, taskId, name, EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
+}
+
+void FinishAsyncTraceDebug(bool isDebug, uint64_t tag, const std::string& name, int32_t taskId)
 {
     if (!isDebug) {
         return;
     }
-    AddHitraceMeterMarker(MARKER_ASYNC_END, label, value, taskId);
+    TraceMarker traceMarker = {MARKER_ASYNC_END, HITRACE_LEVEL_INFO, tag, taskId, name.c_str(), EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-void FinishAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...)
+void FinishAsyncTraceArgs(uint64_t tag, int32_t taskId, const char* fmt, ...)
 {
     UpdateSysParamTags();
-    if (!(label & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+    if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
         return;
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
@@ -931,13 +1094,14 @@ void FinishAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...)
         HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
         return;
     }
-    AddHitraceMeterMarker(MARKER_ASYNC_END, label, name, taskId);
+    TraceMarker traceMarker = {MARKER_ASYNC_END, HITRACE_LEVEL_INFO, tag, taskId, name, EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-void FinishAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, const char *fmt, ...)
+void FinishAsyncTraceArgsDebug(bool isDebug, uint64_t tag, int32_t taskId, const char* fmt, ...)
 {
     UpdateSysParamTags();
-    if (!isDebug || !(label & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+    if (!isDebug || !(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
         return;
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
@@ -950,48 +1114,61 @@ void FinishAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, con
         HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
         return;
     }
-    AddHitraceMeterMarker(MARKER_ASYNC_END, label, name, taskId);
+    TraceMarker traceMarker = {MARKER_ASYNC_END, HITRACE_LEVEL_INFO, tag, taskId, name, EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-void MiddleTrace(uint64_t label, const std::string& beforeValue UNUSED_PARAM, const std::string& afterValue)
+void MiddleTrace(uint64_t tag, const std::string& beforeValue UNUSED_PARAM, const std::string& afterValue)
 {
-    AddHitraceMeterMarker(MARKER_END, label, EMPTY_TRACE_NAME, 0);
-    AddHitraceMeterMarker(MARKER_BEGIN, label, afterValue, 0);
+    TraceMarker traceMarkerEnd = {MARKER_END, HITRACE_LEVEL_INFO, tag, 0, EMPTY, EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarkerEnd);
+    TraceMarker traceMarkerBegin = {MARKER_BEGIN, HITRACE_LEVEL_INFO, tag, 0, afterValue.c_str(), EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarkerBegin);
 }
 
-void MiddleTraceDebug(bool isDebug, uint64_t label, const std::string& beforeValue UNUSED_PARAM,
+void MiddleTraceDebug(bool isDebug, uint64_t tag, const std::string& beforeValue UNUSED_PARAM,
     const std::string& afterValue)
 {
     if (!isDebug) {
         return;
     }
-    AddHitraceMeterMarker(MARKER_END, label, EMPTY_TRACE_NAME, 0);
-    AddHitraceMeterMarker(MARKER_BEGIN, label, afterValue, 0);
+    TraceMarker traceMarkerEnd = {MARKER_END, HITRACE_LEVEL_INFO, tag, 0, EMPTY, EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarkerEnd);
+    TraceMarker traceMarkerBegin = {MARKER_BEGIN, HITRACE_LEVEL_INFO, tag, 0, afterValue.c_str(), EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarkerBegin);
 }
 
-void CountTrace(uint64_t label, const std::string& name, int64_t count)
+void CountTrace(uint64_t tag, const std::string& name, int64_t count)
 {
-    AddHitraceMeterMarker(MARKER_INT, label, name, count);
+    TraceMarker traceMarker = {MARKER_INT, HITRACE_LEVEL_INFO, tag, count, name.c_str(), EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-void CountTraceDebug(bool isDebug, uint64_t label, const std::string& name, int64_t count)
+void CountTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, int64_t count)
+{
+    TraceMarker traceMarker = {MARKER_INT, level, tag, count, name, EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
+}
+
+void CountTraceDebug(bool isDebug, uint64_t tag, const std::string& name, int64_t count)
 {
     if (!isDebug) {
         return;
     }
-    AddHitraceMeterMarker(MARKER_INT, label, name, count);
+    TraceMarker traceMarker = {MARKER_INT, HITRACE_LEVEL_INFO, tag, count, name.c_str(), EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-void CountTraceWrapper(uint64_t label, const char *name, int64_t count)
+void CountTraceWrapper(uint64_t tag, const char* name, int64_t count)
 {
-    std::string traceName = name;
-    CountTrace(label, traceName, count);
+    TraceMarker traceMarker = {MARKER_INT, HITRACE_LEVEL_INFO, tag, count, name, EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
-HitraceMeterFmtScoped::HitraceMeterFmtScoped(uint64_t label, const char *fmt, ...) : mTag(label)
+HitraceMeterFmtScoped::HitraceMeterFmtScoped(uint64_t tag, const char* fmt, ...) : mTag(tag)
 {
     UpdateSysParamTags();
-    if (!(label & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+    if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
         return;
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
@@ -1004,7 +1181,8 @@ HitraceMeterFmtScoped::HitraceMeterFmtScoped(uint64_t label, const char *fmt, ..
         HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
         return;
     }
-    AddHitraceMeterMarker(MARKER_BEGIN, label, name, 0);
+    TraceMarker traceMarker = {MARKER_BEGIN, HITRACE_LEVEL_INFO, tag, 0, name, EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
 }
 
 bool IsTagEnabled(uint64_t tag)
@@ -1106,7 +1284,7 @@ int StopCaptureAppTrace()
     return RET_SUCC;
 }
 
-HitracePerfScoped::HitracePerfScoped(bool isDebug, uint64_t tag, const std::string &name) : mTag_(tag), mName_(name)
+HitracePerfScoped::HitracePerfScoped(bool isDebug, uint64_t tag, const std::string& name) : mTag_(tag), mName_(name)
 {
     if (!isDebug) {
         return;
@@ -1157,22 +1335,4 @@ HitracePerfScoped::~HitracePerfScoped()
         close(fd2nd_);
         CountTrace(mTag_, mName_ + "-Cycle", countCycles_);
     }
-}
-
-inline long long HitracePerfScoped::GetInsCount()
-{
-    if (fd1st_ == -1) {
-        return err_;
-    }
-    read(fd1st_, &countIns_, sizeof(long long));
-    return countIns_;
-}
-
-inline long long HitracePerfScoped::GetCycleCount()
-{
-    if (fd2nd_ == -1) {
-        return err_;
-    }
-    read(fd2nd_, &countCycles_, sizeof(long long));
-    return countCycles_;
 }

@@ -22,7 +22,9 @@
 #include <fcntl.h>
 #include <fstream>
 #include <getopt.h>
+#include <iostream>
 #include <map>
+#include <memory>
 #include <regex>
 #include <sstream>
 #include <string>
@@ -30,9 +32,8 @@
 #include <sys/types.h>
 #include <thread>
 #include <unistd.h>
+#include <unordered_map>
 #include <vector>
-#include <memory>
-#include <iostream>
 #include <zlib.h>
 
 #include "common_define.h"
@@ -40,6 +41,7 @@
 #include "hilog/log.h"
 #include "hisysevent.h"
 #include "hitrace_meter.h"
+#include "parameters.h"
 #include "securec.h"
 #include "trace_collector_client.h"
 #include "trace_json_parser.h"
@@ -60,6 +62,7 @@ struct TraceArgs {
     std::string tags;
     std::string tagGroups;
     std::string clockType;
+    std::string level;
     int bufferSize = 0;
     int fileSize = 0;
     bool overwrite = true;
@@ -90,25 +93,28 @@ enum RunningState {
     STATE_NULL = 0,
 
     /* Record a short trace */
-    RECORDING_SHORT_TEXT = 1,  // --text
+    RECORDING_SHORT_TEXT = 1, // --text
     RECORDING_SHORT_RAW = 2,  // --raw
 
     /* Record a long trace */
-    RECORDING_LONG_BEGIN = 10,  // --trace_begin
-    RECORDING_LONG_DUMP = 11,  // --trace_dump
-    RECORDING_LONG_FINISH = 12,  // --trace_finish
-    RECORDING_LONG_FINISH_NODUMP = 13,  // --trace_finish_nodump
+    RECORDING_LONG_BEGIN = 10,         // --trace_begin
+    RECORDING_LONG_DUMP = 11,          // --trace_dump
+    RECORDING_LONG_FINISH = 12,        // --trace_finish
+    RECORDING_LONG_FINISH_NODUMP = 13, // --trace_finish_nodump
     RECORDING_LONG_BEGIN_RECORD = 14,  // --trace_begin --record
-    RECORDING_LONG_FINISH_RECORD = 15,  // --trace_finish --record
+    RECORDING_LONG_FINISH_RECORD = 15, // --trace_finish --record
 
     /* Manipulating trace services in snapshot mode */
-    SNAPSHOT_START = 20,  // --start_bgsrv
+    SNAPSHOT_START = 20, // --start_bgsrv
     SNAPSHOT_DUMP = 21,  // --dump_bgsrv
     SNAPSHOT_STOP = 22,  // --stop_bgsrv
 
     /* Help Info */
-    SHOW_HELP = 31,  // -h, --help
-    SHOW_LIST_CATEGORY = 32,  // -l, --list_categories
+    SHOW_HELP = 31,          // -h, --help
+    SHOW_LIST_CATEGORY = 32, // -l, --list_categories
+
+    /* Set system parameter */
+    SET_TRACE_LEVEL = 33,    // --trace_level
 };
 
 enum CmdErrorCode {
@@ -131,28 +137,30 @@ const std::map<RunningState, std::string> STATE_INFO = {
     { SNAPSHOT_STOP, "SNAPSHOT_STOP" },
     { SHOW_HELP, "SHOW_HELP" },
     { SHOW_LIST_CATEGORY, "SHOW_LIST_CATEGORY" },
+    { SET_TRACE_LEVEL, "SET_TRACE_LEVEL"},
 };
 
 constexpr struct option LONG_OPTIONS[] = {
-    { "buffer_size",       required_argument, nullptr, 0 },
-    { "trace_clock",       required_argument, nullptr, 0 },
-    { "help",              no_argument,       nullptr, 0 },
-    { "output",            required_argument, nullptr, 0 },
-    { "time",              required_argument, nullptr, 0 },
-    { "text",              no_argument,       nullptr, 0 },
-    { "raw",               no_argument,       nullptr, 0 },
-    { "trace_begin",       no_argument,       nullptr, 0 },
-    { "trace_finish",      no_argument,       nullptr, 0 },
-    { "trace_finish_nodump",      no_argument,       nullptr, 0 },
-    { "record",            no_argument,       nullptr, 0 },
-    { "trace_dump",        no_argument,       nullptr, 0 },
-    { "list_categories",   no_argument,       nullptr, 0 },
-    { "overwrite",         no_argument,       nullptr, 0 },
-    { "start_bgsrv",       no_argument,       nullptr, 0 },
-    { "dump_bgsrv",        no_argument,       nullptr, 0 },
-    { "stop_bgsrv",        no_argument,       nullptr, 0 },
-    { "file_size",         required_argument, nullptr, 0 },
-    { nullptr,             0,                 nullptr, 0 },
+    { "buffer_size",         required_argument, nullptr, 0 },
+    { "trace_clock",         required_argument, nullptr, 0 },
+    { "help",                no_argument,       nullptr, 0 },
+    { "output",              required_argument, nullptr, 0 },
+    { "time",                required_argument, nullptr, 0 },
+    { "text",                no_argument,       nullptr, 0 },
+    { "raw",                 no_argument,       nullptr, 0 },
+    { "trace_begin",         no_argument,       nullptr, 0 },
+    { "trace_finish",        no_argument,       nullptr, 0 },
+    { "trace_finish_nodump", no_argument,       nullptr, 0 },
+    { "record",              no_argument,       nullptr, 0 },
+    { "trace_dump",          no_argument,       nullptr, 0 },
+    { "list_categories",     no_argument,       nullptr, 0 },
+    { "overwrite",           no_argument,       nullptr, 0 },
+    { "start_bgsrv",         no_argument,       nullptr, 0 },
+    { "dump_bgsrv",          no_argument,       nullptr, 0 },
+    { "stop_bgsrv",          no_argument,       nullptr, 0 },
+    { "file_size",           required_argument, nullptr, 0 },
+    { "trace_level",         required_argument, nullptr, 0 },
+    { nullptr,               0,                 nullptr, 0 },
 };
 const unsigned int CHUNK_SIZE = 65536;
 
@@ -256,39 +264,69 @@ static void ShowHelp(const std::string& cmd)
     g_traceSysEventParams.opt = "ShowHelp";
     printf("usage: %s [options] [categories...]\n", cmd.c_str());
     printf("options include:\n"
-           "  -b N               Sets the size of the buffer (KB) for storing and reading traces. The default \n"
-           "                     buffer size is 18432 KB.\n"
-           "  --buffer_size N    Like \"-b N\".\n"
-           "  -l                 Lists available hitrace categories.\n"
-           "  --list_categories  Like \"-l\".\n"
-           "  -t N               Sets the hitrace running duration in seconds (5s by default), which depends on \n"
-           "                     the time required for analysis.\n"
-           "  --time N           Like \"-t N\".\n"
-           "  --trace_clock clock\n"
-           "                     Sets the type of the clock for adding a timestamp to a trace, which can be\n"
-           "                     boot (default), global, mono, uptime, or perf.\n"
-           "  --trace_begin      Starts capturing traces.\n"
-           "  --trace_dump       Dumps traces to a specified path (stdout by default).\n"
-           "  --trace_finish     Stops capturing traces and dumps traces to a specified path (stdout by default).\n"
-           "  --trace_finish_nodump\n"
-           "                     Stops capturing traces and not dumps traces.\n"
-           "  --record           Enable or disable long-term trace collection tasks in conjunction with\n"
-           "                    \"--trace_begin\" and \"--trace_finish\".\n"
-           "  --overwrite        Sets the action to take when the buffer is full. If this option is used,\n"
-           "                     the latest traces are discarded; if this option is not used (default setting),\n"
-           "                     the earliest traces are discarded.\n"
-           "  -o filename        Specifies the name of the target file (stdout by default).\n"
-           "  --output filename\n"
-           "                     Like \"-o filename\".\n"
-           "  -z                 Compresses a captured trace.\n"
-           "  --text             Specify the output format of trace as text.\n"
-           "  --raw              Specify the output format of trace as raw trace, the default format is text.\n"
-           "  --start_bgsrv      Enable trace_service in snapshot mode.\n"
-           "  --dump_bgsrv       Trigger the dump trace task of the trace_service.\n"
-           "  --stop_bgsrv       Disable trace_service in snapshot mode.\n"
-           "  --file_size        Sets the size of the raw trace (KB). The default file size is 102400 KB.\n"
-           "                     Only effective in raw trace mode\n"
+           "  -b N                   Set the size of the buffer (KB) for storing and reading traces.\n"
+           "                         The default buffer size is 18432 KB.\n"
+           "  --buffer_size N        Like \"-b N\".\n"
+           "  -l                     List available hitrace categories.\n"
+           "  --list_categories      Like \"-l\".\n"
+           "  -t N                   Set the hitrace running duration in seconds (5s by default), which depends on\n"
+           "                         the time required for analysis.\n"
+           "  --time N               Like \"-t N\".\n"
+           "  --trace_clock clock    Sets the type of the clock for adding a timestamp to a trace, which can be\n"
+           "                         boot (default), global, mono, uptime, or perf.\n"
+           "  --trace_begin          Start capturing traces.\n"
+           "  --trace_dump           Dump traces to a specified path (stdout by default).\n"
+           "  --trace_finish         Stop capturing traces and dumps traces to a specified path (stdout by default).\n"
+           "  --trace_finish_nodump  Stop capturing traces and not dumps traces.\n"
+           "  --record               Enable or disable long-term trace collection tasks in conjunction with\n"
+           "                         \"--trace_begin\" and \"--trace_finish\".\n"
+           "  --overwrite            Set the action to take when the buffer is full. If this option is used,\n"
+           "                         the latest traces are discarded; if this option is not used (default setting),\n"
+           "                         the earliest traces are discarded.\n"
+           "  -o filename            Specifies the name of the target file (stdout by default).\n"
+           "  --output filename      Like \"-o filename\".\n"
+           "  -z                     Compresses a captured trace.\n"
+           "  --text                 Specify the output format of trace as text.\n"
+           "  --raw                  Specify the output format of trace as raw trace, the default format is text.\n"
+           "  --start_bgsrv          Enable trace_service in snapshot mode.\n"
+           "  --dump_bgsrv           Trigger the dump trace task of the trace_service.\n"
+           "  --stop_bgsrv           Disable trace_service in snapshot mode.\n"
+           "  --file_size            Sets the size of the raw trace (KB). The default file size is 102400 KB.\n"
+           "                         Only effective in raw trace mode\n"
+           "  --trace_level level    Set the system parameter \"persist.hitrace.level.threshold\", which can control\n"
+           "                         the level threshold of trace dotting. Valid values for \"level\" include\n"
+           "                         D or Debug, I or Info, C or Critical, M or Commercial.\n"
     );
+}
+
+bool CheckTraceLevel(const std::string& arg)
+{
+    static const std::unordered_map<std::string, std::string> traceLevels = {
+        {"D", "0"}, {"Debug", "0"},
+        {"I", "1"}, {"Info", "1"},
+        {"C", "2"}, {"Critical", "2"},
+        {"M", "3"}, {"Commercial", "3"}
+    };
+
+    auto it = traceLevels.find(arg);
+    if (it != traceLevels.end()) {
+        g_traceArgs.level = it->second;
+        return true;
+    } else {
+        ConsoleLog("error: trace level is illegal input. eg: \"--trace_level I\", \"--trace_level Info\".");
+        return false;
+    }
+}
+
+bool SetTraceLevel()
+{
+    bool isSuccess = OHOS::system::SetParameter(TRACE_LEVEL_THRESHOLD, g_traceArgs.level);
+    if (!isSuccess) {
+        ConsoleLog("error: failed to set trace level.");
+    } else {
+        ConsoleLog("success to set trace level.");
+    }
+    return isSuccess;
 }
 
 template <typename T>
@@ -402,6 +440,11 @@ static bool ParseLongOpt(const std::string& cmd, int optionIndex)
             isTrue = false;
         }
         g_traceArgs.fileSize = fileSizeKB;
+    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_level")) {
+        if (!CheckTraceLevel(optarg)) {
+            isTrue = false;
+        }
+        isTrue = SetRunningState(SET_TRACE_LEVEL);
     }
 
     return isTrue;
@@ -843,7 +886,7 @@ static bool HandleRecordingLongBeginRecord()
         g_traceCollector->Close();
         return false;
     }
-    ConsoleLog("trace capturing. ");
+    ConsoleLog("trace capturing.");
     return true;
 }
 
@@ -1026,6 +1069,9 @@ int main(int argc, char **argv)
             break;
         case SHOW_LIST_CATEGORY:
             ShowListCategory();
+            break;
+        case SET_TRACE_LEVEL:
+            isSuccess = SetTraceLevel();
             break;
         default:
             ShowHelp(argv[0]);
