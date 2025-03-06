@@ -897,8 +897,10 @@ void GetTraceFileFromVec(const uint64_t& inputTraceStartTime, const uint64_t& in
              ((*it).traceEndTime >= inputTraceStartTime && (*it).traceEndTime <= inputTraceEndTime) ||
              ((*it).traceStartTime <= inputTraceStartTime && (*it).traceEndTime >= inputTraceEndTime)) &&
              ((*it).traceEndTime - (*it).traceStartTime < 2000)) { // 2000 : max trace duration 2000s
-            outputFiles.push_back((*it).filename);
-            HILOG_INFO(LOG_CORE, "Put file: %{public}s into outputFiles.", (*it).filename.c_str());
+            if (std::find(outputFiles.begin(), outputFiles.end(), (*it).filename) == outputFiles.end()) {
+                outputFiles.push_back((*it).filename);
+                HILOG_INFO(LOG_CORE, "Put file: %{public}s into outputFiles.", (*it).filename.c_str());
+            }
         }
     }
 }
@@ -1211,7 +1213,6 @@ TraceErrorCode DumpTraceInner(std::vector<std::string>& outputFiles)
         HILOG_ERROR(LOG_CORE, "pipe creation error.");
         return TraceErrorCode::PIPE_CREATE_ERROR;
     }
-
     std::string outputFileName = GenerateTraceFileName(TRACE_SNAPSHOT);
     std::string reOutPath = CanonicalizeSpecPath(outputFileName.c_str());
     g_dumpStatus = TraceErrorCode::UNSET;
@@ -1230,15 +1231,6 @@ TraceErrorCode DumpTraceInner(std::vector<std::string>& outputFiles)
         usleep(waitTime);
         if (ReadRawTrace(reOutPath)) {
             g_dumpStatus = TraceErrorCode::SUCCESS;
-        }
-        if (g_traceJsonParser == nullptr) {
-            g_traceJsonParser = std::make_shared<TraceJsonParser>();
-        }
-        if (!g_traceJsonParser->ParseTraceJson(TRACE_SNAPSHOT_FILE_AGE)) {
-            HILOG_WARN(LOG_CORE, "DumpTraceInner: Failed to parse TRACE_SNAPSHOT_FILE_AGE.");
-        }
-        if ((!IsRootVersion()) || g_traceJsonParser->GetSnapShotFileAge()) {
-            DelSnapshotTraceFile(SNAPSHOT_FILE_MAX_COUNT, g_traceFileVec);
         }
         HILOG_DEBUG(LOG_CORE, "%{public}s exit.", processName.c_str());
         ChildProcessRet retVal;
@@ -1272,11 +1264,21 @@ TraceErrorCode DumpTraceInner(std::vector<std::string>& outputFiles)
             RemoveFile(reOutPath);
         } else { // success
             g_traceFileVec.push_back(traceFileInfo);
+            outputFiles.push_back(traceFileInfo.filename);
         }
+    }
+    if (g_traceJsonParser == nullptr) {
+        g_traceJsonParser = std::make_shared<TraceJsonParser>();
+    }
+    if (!g_traceJsonParser->ParseTraceJson(TRACE_SNAPSHOT_FILE_AGE)) {
+        HILOG_WARN(LOG_CORE, "DumpTraceInner: Failed to parse TRACE_SNAPSHOT_FILE_AGE.");
+    }
+    if ((!IsRootVersion()) || g_traceJsonParser->GetSnapShotFileAge()) {
+        DelSnapshotTraceFile(SNAPSHOT_FILE_MAX_COUNT, g_traceFileVec);
     }
     SearchTraceFiles(g_utDestTraceStartTime, g_utDestTraceEndTime, outputFiles);
     if (outputFiles.empty()) {
-        return static_cast<TraceErrorCode>(g_dumpStatus.load());
+        return (g_dumpStatus != 0) ? static_cast<TraceErrorCode>(g_dumpStatus.load()) : TraceErrorCode::FILE_ERROR;
     }
     return TraceErrorCode::SUCCESS;
 }

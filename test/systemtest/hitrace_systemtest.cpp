@@ -428,9 +428,10 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest008, TestSize.Level1)
 HWTEST_F(HitraceSystemTest, SnapShotModeTest009, TestSize.Level1)
 {
     ASSERT_TRUE(RunCmd("hitrace --start_bgsrv"));
-    const int snapshotFileAge = 21;
-    for (int i = 0; i < snapshotFileAge - 1; ++i) {
+    const int snapshotFileAge = 20;
+    for (int i = 0; i < snapshotFileAge; ++i) {
         ASSERT_TRUE(RunCmd("hitrace --dump_bgsrv"));
+        sleep(1); // wait 1s
     }
     std::vector<std::string> traceLists = {};
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --dump_bgsrv", {"SNAPSHOT_DUMP", "DumpSnapshot done"}, traceLists));
@@ -454,7 +455,7 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest010, TestSize.Level1)
         ASSERT_TRUE(RunCmd("hitrace --dump_bgsrv"));
         sleep(1); // wait 1s
     }
-    const int snapshotFileAge = 21;
+    const int snapshotFileAge = 20;
     std::vector<std::string> traceLists = {};
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --dump_bgsrv", {"SNAPSHOT_DUMP", "DumpSnapshot done"}, traceLists));
     ASSERT_GE(traceLists.size(), snapshotFileAge);

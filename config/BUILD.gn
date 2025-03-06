@@ -14,7 +14,11 @@
 import("//build/ohos.gni")
 
 ohos_prebuilt_etc("hitrace_tags") {
-  source = "hitrace_utils.json"
+  if (build_variant == "root") {
+    source = "hitrace_utils_user.json"
+  } else {
+    source = "hitrace_utils_root.json"
+  }
   relative_install_dir = "hiview"
   subsystem_name = "hiviewdfx"
   part_name = "hitrace"
