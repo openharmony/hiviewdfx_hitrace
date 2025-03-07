@@ -34,7 +34,8 @@
         "hiview",
         "init",
         "napi",
-        "zlib"
+        "zlib",
+        "runtime_core"
       ]
     },
     "build": {
@@ -48,7 +49,8 @@
         "//base/hiviewdfx/hitrace/interfaces/cj/kits:hitrace_ffi",
         "//base/hiviewdfx/hitrace/interfaces/rust/innerkits/hitracechain:hitracechain_rust",
         "//base/hiviewdfx/hitrace/interfaces/rust/innerkits/hitrace_meter:hitrace_meter_rust",
-        "//base/hiviewdfx/hitrace/frameworks/hitrace_ndk:hitrace_ndk"
+        "//base/hiviewdfx/hitrace/frameworks/hitrace_ndk:hitrace_ndk",
+        "//base/hiviewdfx/hitrace/interfaces/ani:ani_hitrace_package"
       ],
       "inner_kits": [
         {
