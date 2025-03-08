@@ -16,43 +16,11 @@ import("//build/config/components/ets_frontend/ets2abc_config.gni")
 import("//build/ohos.gni")
 
 group("ani_hitrace_package") {
-  deps = [
-    ":ani_hitrace_meter",
-    ":hitrace_meter_abc_etc",
-  ]
-}
-
-ohos_shared_library("ani_hitrace_meter") {
-  sources = [ "hitracemeter_ani.cpp" ]
-  deps = [ "$hitrace_interfaces_path/native/innerkits:hitrace_meter" ]
-
-  external_deps = [
-    "bounds_checking_function:libsec_shared",
-    "runtime_core:ani",
-  ]
-  if (defined(ohos_lite)) {
-    external_deps += [ "hilog_lite:hilog_lite" ]
-  } else {
-    external_deps += [ "hilog:libhilog" ]
+  deps = []
+  if (support_jsapi) {
+    deps += [
+      "ets:ani_hitrace_meter",
+      "ets:hitrace_meter_abc_etc",
+    ]
   }
-
-  subsystem_name = "hiviewdfx"
-  part_name = "hitrace"
-  output_extension = "so"
-}
-
-generate_static_abc("hitrace_meter_abc") {
-  arktsconfig = "./arktsconfig.json"
-  dst_file = "$target_out_dir/hitrace_meter.abc"
-  out_puts = [ "$target_out_dir/hitrace_meter.abc" ]
-  is_boot_abc = "True"
-  device_dst_file = "/system/framework/hitrace_meter.abc"
-}
-
-ohos_prebuilt_etc("hitrace_meter_abc_etc") {
-  source = "$target_out_dir/hitrace_meter.abc"
-  module_install_dir = "framework"
-  subsystem_name = "hiviewdfx"
-  part_name = "hitrace"
-  deps = [ ":hitrace_meter_abc" ]
 }

@@ -21,7 +21,7 @@
 #include "hilog/log_cpp.h"
 
 using namespace OHOS::HiviewDFX;
-const std::string CLASS_NAME_HITRACEMETER = "L@ohos/hitracemeter/HiTraceMeter;";
+const std::string CLASS_NAME_HITRACEMETER = "L@ohos/hiTraceMeter/HiTraceMeter;";
 constexpr size_t MIN_SIZE = 1;
 constexpr size_t MAX_SIZE = 1024;
 
