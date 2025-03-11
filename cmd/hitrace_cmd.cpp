@@ -441,10 +441,10 @@ static bool ParseLongOpt(const std::string& cmd, int optionIndex)
         }
         g_traceArgs.fileSize = fileSizeKB;
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_level")) {
+        isTrue = SetRunningState(SET_TRACE_LEVEL);
         if (!CheckTraceLevel(optarg)) {
             isTrue = false;
         }
-        isTrue = SetRunningState(SET_TRACE_LEVEL);
     }
 
     return isTrue;

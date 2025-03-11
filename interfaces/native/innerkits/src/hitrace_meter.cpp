@@ -680,11 +680,11 @@ static int FmtAyncBeginRecord(TraceMarker& traceMarker, const char* bitsStr,
         bytes = snprintf_s(record, size, size - 1, "S|%s|H:[%llx,%llx,%llx]#%.*s|%lld|%c%s|%.*s|%s", g_pid,
             hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
             NAME_SIZE_MAX, traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitsStr,
-            CATEGORY_SIZE_MAX, traceMarker.customCategory, traceMarker.customArgs); 
+            CATEGORY_SIZE_MAX, traceMarker.customCategory, traceMarker.customArgs);
     } else {
-        bytes = snprintf_s(record, size, size - 1, "S|%s|H:%.*s|%lld|%c%s|%.*s|%s", g_pid, NAME_SIZE_MAX, traceMarker.name,
-            traceMarker.value, g_traceLevel[traceMarker.level], bitsStr, CATEGORY_SIZE_MAX, traceMarker.customCategory,
-            traceMarker.customArgs);
+        bytes = snprintf_s(record, size, size - 1, "S|%s|H:%.*s|%lld|%c%s|%.*s|%s", g_pid, NAME_SIZE_MAX,
+            traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitsStr, CATEGORY_SIZE_MAX,
+            traceMarker.customCategory, traceMarker.customArgs);
     }
     if (bytes == -1) {
         bytes = RECORD_SIZE_MAX;
