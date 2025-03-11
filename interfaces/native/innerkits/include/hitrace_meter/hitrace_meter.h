@@ -175,7 +175,9 @@ void CountTrace(uint64_t tag, const std::string& name, int64_t count);
 void CountTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, int64_t count);
 void CountTraceDebug(bool isDebug, uint64_t tag, const std::string& name, int64_t count);
 void CountTraceWrapper(uint64_t tag, const char* name, int64_t count);
+
 bool IsTagEnabled(uint64_t tag);
+void ParseTagBits(const uint64_t tag, std::string& bitStrs);
 
 enum RetType {
     RET_SUCC = 0, // Successful

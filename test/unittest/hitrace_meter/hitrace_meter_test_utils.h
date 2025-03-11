@@ -19,11 +19,11 @@
 #include <fstream>
 #include <hilog/log.h>
 
-#ifndef HITRACE_METER_SDK_C
+#ifdef HITRACE_METER_SDK_C
+#include "trace.h"
+#else
 #include "hitrace_meter.h"
 #include "hitrace/hitraceid.h"
-#else
-#include "trace.h"
 #endif
 
 namespace OHOS {

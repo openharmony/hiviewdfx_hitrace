@@ -299,7 +299,7 @@ static void ShowHelp(const std::string& cmd)
     );
 }
 
-bool CheckTraceLevel(const std::string& arg)
+static bool CheckTraceLevel(const std::string& arg)
 {
     static const std::unordered_map<std::string, std::string> traceLevels = {
         {"D", "0"}, {"Debug", "0"},
@@ -318,7 +318,7 @@ bool CheckTraceLevel(const std::string& arg)
     }
 }
 
-bool SetTraceLevel()
+static bool SetTraceLevel()
 {
     bool isSuccess = OHOS::system::SetParameter(TRACE_LEVEL_THRESHOLD, g_traceArgs.level);
     if (!isSuccess) {
