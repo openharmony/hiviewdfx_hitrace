@@ -1241,15 +1241,6 @@ TraceErrorCode DumpTraceInner(std::vector<std::string>& outputFiles)
         if (ReadRawTrace(reOutPath)) {
             g_dumpStatus = TraceErrorCode::SUCCESS;
         }
-        if (g_traceJsonParser == nullptr) {
-            g_traceJsonParser = std::make_shared<TraceJsonParser>();
-        }
-        if (!g_traceJsonParser->ParseTraceJson(TRACE_SNAPSHOT_FILE_AGE)) {
-            HILOG_WARN(LOG_CORE, "DumpTraceInner: Failed to parse TRACE_SNAPSHOT_FILE_AGE.");
-        }
-        if ((!IsRootVersion()) || g_traceJsonParser->GetSnapShotFileAge()) {
-            DelSnapshotTraceFile(SNAPSHOT_FILE_MAX_COUNT, g_traceFileVec);
-        }
         HILOG_DEBUG(LOG_CORE, "%{public}s exit.", processName.c_str());
         ChildProcessRet retVal;
         retVal.dumpStatus = g_dumpStatus;
@@ -1265,6 +1256,7 @@ TraceErrorCode DumpTraceInner(std::vector<std::string>& outputFiles)
         return TraceErrorCode::EPOLL_WAIT_ERROR;
     }
 
+    SearchTraceFiles(g_utDestTraceStartTime, g_utDestTraceEndTime, outputFiles);
     if (g_dumpStatus) { // trace generation error
         if (remove(reOutPath.c_str()) == 0) {
             HILOG_INFO(LOG_CORE, "Delete outpath:%{public}s success.", reOutPath.c_str());
@@ -1282,11 +1274,21 @@ TraceErrorCode DumpTraceInner(std::vector<std::string>& outputFiles)
             RemoveFile(reOutPath);
         } else { // success
             g_traceFileVec.push_back(traceFileInfo);
+            outputFiles.push_back(traceFileInfo.filename);
         }
     }
-    SearchTraceFiles(g_utDestTraceStartTime, g_utDestTraceEndTime, outputFiles);
+    if (g_traceJsonParser == nullptr) {
+        g_traceJsonParser = std::make_shared<TraceJsonParser>();
+    }
+    if (!g_traceJsonParser->ParseTraceJson(TRACE_SNAPSHOT_FILE_AGE)) {
+        HILOG_WARN(LOG_CORE, "DumpTraceInner: Failed to parse TRACE_SNAPSHOT_FILE_AGE.");
+    }
+    if ((!IsRootVersion()) || g_traceJsonParser->GetSnapShotFileAge()) {
+        DelSnapshotTraceFile(SNAPSHOT_FILE_MAX_COUNT, g_traceFileVec);
+    }
+
     if (outputFiles.empty()) {
-        return static_cast<TraceErrorCode>(g_dumpStatus.load());
+        return (g_dumpStatus != 0) ? static_cast<TraceErrorCode>(g_dumpStatus.load()) : TraceErrorCode::FILE_ERROR;
     }
     return TraceErrorCode::SUCCESS;
 }
