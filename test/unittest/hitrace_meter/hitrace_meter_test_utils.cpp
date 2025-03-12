@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
+#include <algorithm>
 #include <fcntl.h>
 #include <sstream>
 #include <unistd.h>
-#include <unordered_map>
 #include "common_define.h"
 #include "hitrace_meter_test_utils.h"
 #include "securec.h"
@@ -39,31 +39,7 @@ constexpr int HITRACEID_LEN = 64;
 const char g_traceLevel[4] = {'D', 'I', 'C', 'M'};
 static std::string g_traceRootPath;
 static char g_pid[6];
-
-#ifndef HITRACE_METER_SDK_C
-static const std::unordered_map<uint64_t, const char* const> hitraceTags = {
-    {HITRACE_TAG_DRM, "06"}, {HITRACE_TAG_SECURITY, "07"},
-    {HITRACE_TAG_ANIMATION, "09"}, {HITRACE_TAG_PUSH, "10"}, {HITRACE_TAG_VIRSE, "11"},
-    {HITRACE_TAG_MUSL, "12"}, {HITRACE_TAG_FFRT, "13"}, {HITRACE_TAG_CLOUD, "14"},
-    {HITRACE_TAG_DEV_AUTH, "15"}, {HITRACE_TAG_COMMONLIBRARY, "16"}, {HITRACE_TAG_HDCD, "17"},
-    {HITRACE_TAG_HDF, "18"}, {HITRACE_TAG_USB, "19"}, {HITRACE_TAG_INTERCONNECTION, "20"},
-    {HITRACE_TAG_DLP_CREDENTIAL, "21"}, {HITRACE_TAG_ACCESS_CONTROL, "22"}, {HITRACE_TAG_NET, "23"},
-    {HITRACE_TAG_NWEB, "24"}, {HITRACE_TAG_HUKS, "25"}, {HITRACE_TAG_USERIAM, "26"},
-    {HITRACE_TAG_DISTRIBUTED_AUDIO, "27"}, {HITRACE_TAG_DLSM, "28"}, {HITRACE_TAG_FILEMANAGEMENT, "29"},
-    {HITRACE_TAG_OHOS, "30"}, {HITRACE_TAG_ABILITY_MANAGER, "31"}, {HITRACE_TAG_ZCAMERA, "32"},
-    {HITRACE_TAG_ZMEDIA, "33"}, {HITRACE_TAG_ZIMAGE, "34"}, {HITRACE_TAG_ZAUDIO, "35"},
-    {HITRACE_TAG_DISTRIBUTEDDATA, "36"}, {HITRACE_TAG_MDFS, "37"}, {HITRACE_TAG_GRAPHIC_AGP, "38"},
-    {HITRACE_TAG_ACE, "39"}, {HITRACE_TAG_NOTIFICATION, "40"}, {HITRACE_TAG_MISC, "41"},
-    {HITRACE_TAG_MULTIMODALINPUT, "42"}, {HITRACE_TAG_SENSORS, "43"}, {HITRACE_TAG_MSDP, "44"},
-    {HITRACE_TAG_DSOFTBUS, "45"}, {HITRACE_TAG_RPC, "46"}, {HITRACE_TAG_ARK, "47"},
-    {HITRACE_TAG_WINDOW_MANAGER, "48"}, {HITRACE_TAG_ACCOUNT_MANAGER, "49"}, {HITRACE_TAG_DISTRIBUTED_SCREEN, "50"},
-    {HITRACE_TAG_DISTRIBUTED_CAMERA, "51"}, {HITRACE_TAG_DISTRIBUTED_HARDWARE_FWK, "52"},
-    {HITRACE_TAG_GLOBAL_RESMGR, "53"}, {HITRACE_TAG_DEVICE_MANAGER, "54"}, {HITRACE_TAG_SAMGR, "55"},
-    {HITRACE_TAG_POWER, "56"}, {HITRACE_TAG_DISTRIBUTED_SCHEDULE, "57"}, {HITRACE_TAG_DEVICE_PROFILE, "58"},
-    {HITRACE_TAG_DISTRIBUTED_INPUT, "59"}, {HITRACE_TAG_BLUETOOTH, "60"},
-    {HITRACE_TAG_ACCESSIBILITY_MANAGER, "61"}, {HITRACE_TAG_APP, "62"}
-};
-#endif
+const std::string SEPARATOR = "|";
 
 bool Init(const char (&pid)[6])
 {
@@ -172,23 +148,6 @@ bool FindResult(std::string record, const std::vector<std::string>& list)
     return false;
 }
 
-#ifndef HITRACE_METER_SDK_C
-static std::string ParseTagBits(const uint64_t tag)
-{
-    auto it = hitraceTags.find(tag & (~HITRACE_TAG_COMMERCIAL));
-    if (EXPECTANTLY(it != hitraceTags.end())) {
-        return it->second;
-    }
-    std::string result;
-    for (auto& [hitraceTag, bitStr] : hitraceTags) {
-        if ((tag & hitraceTag) != 0) {
-            result += bitStr;
-        }
-    }
-    return result;
-}
-#endif
-
 static std::string GetRecord(const HiTraceId* hiTraceId)
 {
     std::string record = "";
@@ -207,22 +166,8 @@ static std::string GetRecord(const HiTraceId* hiTraceId)
     return record;
 }
 
-bool GetTraceResult(TraceInfo& traceInfo, const std::vector<std::string>& list,
-    char (&record)[RECORD_SIZE_MAX + 1])
+static void SetNullptrToEmpty(TraceInfo& traceInfo)
 {
-    if (list.empty()) {
-        return false;
-    }
-
-#ifdef HITRACE_METER_SDK_C
-    std::string bitsStr = "62";
-#else
-    std::string bitsStr = ParseTagBits(traceInfo.tag);
-#endif
-    std::string chainStr = "";
-    if (traceInfo.hiTraceId != nullptr) {
-        chainStr = GetRecord(traceInfo.hiTraceId);
-    }
     if (traceInfo.name == nullptr) {
         traceInfo.name = "";
     }
@@ -232,24 +177,54 @@ bool GetTraceResult(TraceInfo& traceInfo, const std::vector<std::string>& list,
     if (traceInfo.customArgs == nullptr) {
         traceInfo.customArgs = "";
     }
+}
 
-    if (traceInfo.type == 'B') {
-        (void)snprintf_s(record, sizeof(record), sizeof(record) - 1, "B|%s|H:%s%.*s|%c%s|%s",
-            g_pid, chainStr.c_str(), NAME_SIZE_MAX, traceInfo.name, g_traceLevel[traceInfo.level],
-            bitsStr.c_str(), traceInfo.customArgs);
-    } else if (traceInfo.type == 'E') {
-        (void)snprintf_s(record, sizeof(record), sizeof(record) - 1, "E|%s|%c%s",
-            g_pid, g_traceLevel[traceInfo.level], bitsStr.c_str());
-    } else if (traceInfo.type == 'S') {
-        (void)snprintf_s(record, sizeof(record), sizeof(record) - 1, "S|%s|H:%s%.*s|%lld|%c%s|%.*s|%s", g_pid,
-            chainStr.c_str(), NAME_SIZE_MAX, traceInfo.name, traceInfo.value, g_traceLevel[traceInfo.level],
-            bitsStr.c_str(), CATEGORY_SIZE_MAX, traceInfo.customCategory, traceInfo.customArgs);
-    } else {
-        (void)snprintf_s(record, sizeof(record), sizeof(record) - 1, "%c|%s|H:%s%.*s|%lld|%c%s",
-            traceInfo.type, g_pid, chainStr.c_str(), NAME_SIZE_MAX, traceInfo.name,
-            traceInfo.value, g_traceLevel[traceInfo.level], bitsStr.c_str());
+bool GetTraceResult(TraceInfo& traceInfo, const std::vector<std::string>& list,
+    char (&record)[RECORD_SIZE_MAX + 1])
+{
+    if (list.empty()) {
+        return false;
     }
-
+#ifdef HITRACE_METER_SDK_C
+    std::string bitsStr = "62";
+#else
+    std::string bitsStr;
+    ParseTagBits(traceInfo.tag, bitsStr);
+#endif
+    std::string chainStr = "";
+    if (traceInfo.hiTraceId != nullptr) {
+        chainStr = GetRecord(traceInfo.hiTraceId);
+    }
+    SetNullptrToEmpty(traceInfo);
+    std::string name = std::string(traceInfo.name).substr(0, NAME_SIZE_MAX);
+    std::string customCategory = std::string(traceInfo.customCategory).substr(0, CATEGORY_SIZE_MAX);
+    std::string recordStr = std::string(1, traceInfo.type) + SEPARATOR + g_pid + SEPARATOR;
+    std::string customArgs = std::string(traceInfo.customArgs);
+    if (traceInfo.type == 'E') {
+        recordStr += g_traceLevel[traceInfo.level] + bitsStr;
+    } else {
+        recordStr += "H:" + chainStr + name + SEPARATOR;
+        if (traceInfo.type == 'B') {
+            recordStr += g_traceLevel[traceInfo.level] + bitsStr;
+            if (customArgs != "") {
+                recordStr += SEPARATOR + customArgs;
+            }
+        } else if (traceInfo.type == 'S') {
+            recordStr += std::to_string(traceInfo.value) + SEPARATOR + g_traceLevel[traceInfo.level] + bitsStr;
+            if (customArgs != "") {
+                recordStr += SEPARATOR + customCategory + SEPARATOR + customArgs;
+            } else if (customCategory != "") {
+                recordStr += SEPARATOR + customCategory;
+            }
+        } else {
+            recordStr += std::to_string(traceInfo.value) + SEPARATOR + g_traceLevel[traceInfo.level] + bitsStr;
+        }
+    }
+    recordStr = recordStr.substr(0, sizeof(record) - 1);
+    int bytes = snprintf_s(record, sizeof(record), sizeof(record) - 1, "%s", recordStr.c_str());
+    if (bytes == -1) {
+        HILOG_INFO(LOG_CORE, "GetTraceResult: recordStr may be truncated");
+    }
     return FindResult(std::string(record), list);
 }
 }

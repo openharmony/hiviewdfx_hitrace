@@ -329,7 +329,7 @@ static napi_value JSIsTraceEnabled(napi_env env, napi_callback_info info)
     return val;
 }
 
-napi_value TraceLevelConstructor(napi_env env, napi_callback_info info)
+static napi_value TraceLevelConstructor(napi_env env, napi_callback_info info)
 {
     napi_value thisArg = nullptr;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisArg, nullptr);
@@ -337,7 +337,7 @@ napi_value TraceLevelConstructor(napi_env env, napi_callback_info info)
     return thisArg;
 }
 
-void InitTraceLevelEnum(napi_env env, napi_value exports)
+static void InitTraceLevelEnum(napi_env env, napi_value exports)
 {
     napi_value debug = nullptr;
     napi_value info = nullptr;

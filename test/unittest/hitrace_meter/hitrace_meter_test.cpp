@@ -1072,6 +1072,60 @@ HWTEST_F(HitraceMeterTest, AsyncTraceInterfaceTest009, TestSize.Level1)
 }
 
 /**
+ * @tc.name: AsyncTraceInterfaceTest010
+ * @tc.desc: Testing innerkits_c interfaces: HiTraceStartAsyncTrace and HiTraceFinishAsyncTrace
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, AsyncTraceInterfaceTest010, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AsyncTraceInterfaceTest010: start.";
+
+    const char* name = "AsyncTraceInterfaceTest010";
+    const char* customCategory = "test";
+    const char* customArgs = "key=value";
+    int32_t taskId = 10;
+
+    StartAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId, nullptr, nullptr);
+    FinishAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId);
+
+    std::vector<std::string> list = ReadTrace();
+    char record[RECORD_SIZE_MAX + 1] = {0};
+    TraceInfo traceInfo = {'S', HITRACE_LEVEL_COMMERCIAL, TAG, taskId, name, nullptr, nullptr};
+    bool isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+
+    ASSERT_TRUE(CleanTrace());
+    StartAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId, customCategory, "");
+    FinishAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId);
+
+    traceInfo.customCategory = customCategory;
+    traceInfo.customArgs = "";
+    list = ReadTrace();
+    isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+
+    ASSERT_TRUE(CleanTrace());
+    StartAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId, customCategory, customArgs);
+    FinishAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId);
+
+    traceInfo.customArgs = customArgs;
+    list = ReadTrace();
+    isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+
+    ASSERT_TRUE(CleanTrace());
+    StartAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId, "", customArgs);
+    FinishAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId);
+
+    traceInfo.customCategory = "";
+    list = ReadTrace();
+    isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+
+    GTEST_LOG_(INFO) << "AsyncTraceInterfaceTest010: end.";
+}
+
+/**
  * @tc.name: CountTraceInterfaceTest001
  * @tc.desc: Testing CountTraceEx
  * @tc.type: FUNC
@@ -1345,14 +1399,14 @@ HWTEST_F(HitraceMeterTest, CaptureAppTraceTest003, TestSize.Level2)
 
 /**
  * @tc.name: CaptureAppTraceTest004
- * @tc.desc: Testing normal StartCaptureAppTrace
+ * @tc.desc: Testing normal StartCaptureAppTrace with FLAG_MAIN_THREAD
  * @tc.type: FUNC
  */
-HWTEST_F(HitraceMeterTest, CaptureAppTraceTest004, TestSize.Level2)
+HWTEST_F(HitraceMeterTest, CaptureAppTraceTest004, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "CaptureAppTraceTest004: start.";
 
-    int fileSize = 600 * 1024 * 1024; // 600M
+    int fileSize = 600 * 1024 * 1024; // 600MB
     std::string filePath = "/data/test.ftrace";
 
     int ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, TAG, fileSize, filePath);
@@ -1390,6 +1444,154 @@ HWTEST_F(HitraceMeterTest, CaptureAppTraceTest004, TestSize.Level2)
     ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
 
     GTEST_LOG_(INFO) << "CaptureAppTraceTest004: end.";
+}
+
+/**
+ * @tc.name: CaptureAppTraceTest005
+ * @tc.desc: Testing normal StartCaptureAppTrace with FLAG_ALL_THREAD
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, CaptureAppTraceTest005, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CaptureAppTraceTest005: start.";
+
+    int fileSize = 600 * 1024 * 1024; // 600MB
+    std::string filePath = "/data/test.ftrace";
+
+    int ret = StartCaptureAppTrace(FLAG_ALL_THREAD, TAG, fileSize, filePath);
+    ASSERT_EQ(ret, RetType::RET_SUCC);
+
+    const char* name = "CaptureAppTraceTest005";
+    const char* customArgs = "key=value";
+    StartTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, customArgs);
+    FinishTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG);
+
+    ret = StopCaptureAppTrace();
+    ASSERT_EQ(ret, RetType::RET_SUCC);
+
+    std::vector<std::string> list = ReadTrace(filePath);
+    char record[RECORD_SIZE_MAX + 1] = {0};
+    TraceInfo traceInfo = {'B', HITRACE_LEVEL_COMMERCIAL, TAG, 0, name, "", customArgs};
+    bool isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+    traceInfo.type = 'E';
+    bool isFinishSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isFinishSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+
+    GTEST_LOG_(INFO) << "CaptureAppTraceTest005: end.";
+}
+
+/**
+ * @tc.name: CaptureAppTraceTest006
+ * @tc.desc: Testing fileLimitSize in FLAG_MAIN_THREAD and FLAG_ALL_THREAD mode
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, CaptureAppTraceTest006, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CaptureAppTraceTest006: start.";
+
+    int fileSize = 1 * 1024 * 1024; // 1MB
+    std::string filePath = "/data/test.ftrace";
+    const char* name = "CaptureAppTraceTest006";
+
+    int ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, TAG, fileSize, filePath);
+    ASSERT_EQ(ret, RetType::RET_SUCC);
+    for (int loopCount = 10000, number = 0; loopCount > 0; --loopCount, ++number) {
+        CountTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, number);
+    }
+    ret = StopCaptureAppTrace();
+    ASSERT_EQ(ret, RetType::RET_STOPPED);
+
+    ret = StartCaptureAppTrace(FLAG_ALL_THREAD, TAG, fileSize, filePath);
+    ASSERT_EQ(ret, RetType::RET_SUCC);
+    for (int loopCount = 10000, number = 0; loopCount > 0; --loopCount, ++number) {
+        CountTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, number);
+    }
+    ret = StopCaptureAppTrace();
+    ASSERT_EQ(ret, RetType::RET_STOPPED);
+
+    GTEST_LOG_(INFO) << "CaptureAppTraceTest006: end.";
+}
+
+/**
+ * @tc.name: CaptureAppTraceTest007
+ * @tc.desc: Testing WriteAppTraceLong in StartCaptureAppTrace
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, CaptureAppTraceTest007, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "CaptureAppTraceTest007: start.";
+
+    int nameSize = 32 * 1024; // 32KB
+    int fileSize = 600 * 1024 * 1024; // 600MB
+    std::string filePath = "/data/test.ftrace";
+    std::string name(nameSize, 'K');
+    int64_t number = 7;
+
+    int ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, TAG, fileSize, filePath);
+    ASSERT_EQ(ret, RetType::RET_SUCC);
+    CountTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name.c_str(), number);
+    ret = StopCaptureAppTrace();
+    ASSERT_EQ(ret, RetType::RET_SUCC);
+
+    ret = StartCaptureAppTrace(FLAG_ALL_THREAD, TAG, fileSize, filePath);
+    ASSERT_EQ(ret, RetType::RET_SUCC);
+    CountTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name.c_str(), number);
+    ret = StopCaptureAppTrace();
+    ASSERT_EQ(ret, RetType::RET_SUCC);
+
+    GTEST_LOG_(INFO) << "CaptureAppTraceTest007: end.";
+}
+
+/**
+ * @tc.name: CaptureAppTraceTest008
+ * @tc.desc: Testing trace with empty string args in StartCaptureAppTrace
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, CaptureAppTraceTest008, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CaptureAppTraceTest008: start.";
+
+    int fileSize = 600 * 1024 * 1024; // 600MB
+    std::string filePath = "/data/test.ftrace";
+
+    int ret = StartCaptureAppTrace(FLAG_ALL_THREAD, TAG, fileSize, filePath);
+    ASSERT_EQ(ret, RetType::RET_SUCC);
+
+    const char* name = "CaptureAppTraceTest008";
+    const char* customArgs = "key=value";
+    const char* customCategory = "test";
+    int taskId = 8;
+    StartTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, "");
+    FinishTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG);
+    StartAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId, "", "");
+    FinishAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId);
+    StartAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId, "", customArgs);
+    FinishAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId);
+    StartAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId, customCategory, "");
+    FinishAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId);
+
+    ret = StopCaptureAppTrace();
+    ASSERT_EQ(ret, RetType::RET_SUCC);
+
+    std::vector<std::string> list = ReadTrace(filePath);
+    char record[RECORD_SIZE_MAX + 1] = {0};
+    TraceInfo traceInfo = {'B', HITRACE_LEVEL_COMMERCIAL, TAG, taskId, name, "", ""};
+    bool isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+
+    traceInfo.type = 'S';
+    isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+    traceInfo.customArgs = customArgs;
+    isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+    traceInfo.customArgs = "";
+    traceInfo.customCategory = customCategory;
+    isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+
+    GTEST_LOG_(INFO) << "CaptureAppTraceTest008: end.";
 }
 
 /**
@@ -1640,6 +1842,7 @@ HWTEST_F(HitraceMeterTest, HitraceMeterTest007, TestSize.Level2)
 
     const char* name = "HitraceMeterTest007";
     const char* customArgs = "key=value";
+
     StartTraceEx(static_cast<HiTraceOutputLevel>(-1), TAG, name, customArgs);
     FinishTraceEx(static_cast<HiTraceOutputLevel>(-1), TAG);
     StartTraceEx(static_cast<HiTraceOutputLevel>(4), TAG, name, customArgs);
@@ -1663,6 +1866,162 @@ HWTEST_F(HitraceMeterTest, HitraceMeterTest007, TestSize.Level2)
     ASSERT_TRUE(isFinishSuc) << "Hitrace can't find \"" << record << "\" from trace.";
 
     GTEST_LOG_(INFO) << "HitraceMeterTest007: end.";
+}
+
+/**
+ * @tc.name: HitraceMeterTest008
+ * @tc.desc: Testing MiddleTrace interface
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, HitraceMeterTest008, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HitraceMeterTest008: start.";
+
+    std::string nameBefore = "HitraceMeterTest008-before";
+    std::string nameAfter = "HitraceMeterTest008-after";
+
+    StartTrace(TAG, nameBefore);
+    MiddleTrace(TAG, nameBefore, nameAfter);
+
+    std::vector<std::string> list = ReadTrace();
+    char record[RECORD_SIZE_MAX + 1] = {0};
+    TraceInfo traceInfo = {'B', HITRACE_LEVEL_INFO, TAG, 0, nameBefore.c_str(), "", ""};
+    bool isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+    traceInfo.name = nameAfter.c_str();
+    isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+    traceInfo.type = 'E';
+    bool isFinishSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isFinishSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+
+    FinishTrace(TAG);
+
+    GTEST_LOG_(INFO) << "HitraceMeterTest008: end.";
+}
+
+/**
+ * @tc.name: HitraceMeterTest009
+ * @tc.desc: Testing MiddleTraceDebug interface
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, HitraceMeterTest009, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HitraceMeterTest009: start.";
+
+    std::string nameBefore = "HitraceMeterTest009-before";
+    std::string nameAfter = "HitraceMeterTest009-after";
+
+    StartTrace(TAG, nameBefore);
+    MiddleTraceDebug(false, TAG, nameBefore, nameAfter);
+
+    std::vector<std::string> list = ReadTrace();
+    char record[RECORD_SIZE_MAX + 1] = {0};
+    TraceInfo traceInfo = {'B', HITRACE_LEVEL_INFO, TAG, 0, nameBefore.c_str(), "", ""};
+    bool isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+    traceInfo.name = nameAfter.c_str();
+    isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_FALSE(isStartSuc) << "Hitrace shouldn't find \"" << record << "\" from trace.";
+    traceInfo.type = 'E';
+    bool isFinishSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_FALSE(isFinishSuc) << "Hitrace shouldn't find \"" << record << "\" from trace.";
+
+    MiddleTraceDebug(true, TAG, nameBefore, nameAfter);
+
+    list = ReadTrace();
+    traceInfo.type = 'B';
+    isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+    traceInfo.type = 'E';
+    isFinishSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isFinishSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+
+    FinishTrace(TAG);
+
+    GTEST_LOG_(INFO) << "HitraceMeterTest009: end.";
+}
+
+/**
+ * @tc.name: HitraceMeterTest010
+ * @tc.desc: Testing WriteOnceLog function
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, HitraceMeterTest010, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HitraceMeterTest010: start.";
+
+    bool isWrite = true;
+    std::string logStr = "HitraceMeterTest010";
+
+    SetWriteOnceLog(LOG_INFO, logStr, isWrite);
+    ASSERT_TRUE(isWrite);
+
+    isWrite = false;
+    SetWriteOnceLog(LOG_INFO, logStr, isWrite);
+    ASSERT_TRUE(isWrite);
+
+    isWrite = false;
+    SetWriteOnceLog(LOG_ERROR, logStr, isWrite);
+    ASSERT_TRUE(isWrite);
+
+    isWrite = false;
+    SetWriteOnceLog(LOG_DEBUG, logStr, isWrite);
+    ASSERT_TRUE(isWrite);
+
+    GTEST_LOG_(INFO) << "HitraceMeterTest010: end.";
+}
+
+/**
+ * @tc.name: HitraceMeterTest011
+ * @tc.desc: Testing MiddleTraceDebug interface
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, HitraceMeterTest011, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HitraceMeterTest011: start.";
+
+    const char* name = "HitraceMeterTest011";
+    int64_t count = 11;
+
+    SetReloadPid(true);
+    SetpidHasReload(true);
+    CountTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, count);
+
+    std::vector<std::string> list = ReadTrace();
+    char record[RECORD_SIZE_MAX + 1] = {0};
+    TraceInfo traceInfo = {'C', HITRACE_LEVEL_COMMERCIAL, TAG, count, name, "", ""};
+    bool isSuccess = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isSuccess) << "Hitrace can't find \"" << record << "\" from trace.";
+
+    ASSERT_TRUE(CleanTrace());
+    SetReloadPid(false);
+    SetpidHasReload(false);
+    CountTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, count);
+
+    list = ReadTrace();
+    isSuccess = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isSuccess) << "Hitrace can't find \"" << record << "\" from trace.";
+
+    ASSERT_TRUE(CleanTrace());
+    SetReloadPid(true);
+    SetpidHasReload(false);
+    CountTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, count);
+
+    list = ReadTrace();
+    isSuccess = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isSuccess) << "Hitrace can't find \"" << record << "\" from trace.";
+
+    ASSERT_TRUE(CleanTrace());
+    SetReloadPid(false);
+    SetpidHasReload(true);
+    CountTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, count);
+
+    list = ReadTrace();
+    isSuccess = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isSuccess) << "Hitrace can't find \"" << record << "\" from trace.";
+
+    GTEST_LOG_(INFO) << "HitraceMeterTest011: end.";
 }
 }
 }
