@@ -228,7 +228,6 @@ void GetArchWordSize(TraceFileHeader& header)
     } else if (sizeof(void*) == sizeof(uint32_t)) {
         header.reserved |= 1;
     }
-    HILOG_INFO(LOG_CORE, "reserved with arch word info is %{public}d.", header.reserved);
 }
 
 void GetCpuNums(TraceFileHeader& header)
@@ -240,7 +239,6 @@ void GetCpuNums(TraceFileHeader& header)
         return;
     }
     header.reserved |= (static_cast<uint64_t>(cpuNums) << 1);
-    HILOG_INFO(LOG_CORE, "reserved with cpu number info is %{public}d.", header.reserved);
 }
 
 TraceFileHeader GenerateTraceHeaderContent()
