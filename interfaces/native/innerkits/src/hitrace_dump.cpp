@@ -616,7 +616,7 @@ bool WriteFile(uint8_t contentType, const std::string& src, int outFd, const std
         int bytes = 0;
         bool endFlag = false;
         /* Write 1M at a time */
-        while (bytes <= (BUFFER_SIZE - PAGE_SIZE)) {
+        while (bytes <= (BUFFER_SIZE - static_cast<int>(PAGE_SIZE))) {
             ssize_t readBytes = TEMP_FAILURE_RETRY(read(srcFd, g_buffer + bytes, PAGE_SIZE));
             if (readBytes == 0) {
                 endFlag = true;
