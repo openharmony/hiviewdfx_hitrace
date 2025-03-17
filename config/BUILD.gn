@@ -21,10 +21,7 @@ ohos_prebuilt_etc("hitrace_tags") {
   }
   relative_install_dir = "hiview"
   output = "hitrace_utils.json"
-  install_images = [
-    "system",
-    "updater",
-  ]
+  install_images = [ "system" ]
   install_enable = true
   subsystem_name = "hiviewdfx"
   part_name = "hitrace"
@@ -38,10 +35,7 @@ ohos_prebuilt_etc("hitrace.cfg") {
   }
   relative_install_dir = "init"
   output = "hitrace.cfg"
-  install_images = [
-    "system",
-    "updater",
-  ]
+  install_images = [ "system" ]
   install_enable = true
   subsystem_name = "hiviewdfx"
   part_name = "hitrace"
