@@ -36,8 +36,8 @@ struct FileWithTime {
 
 struct TraceFileInfo {
     std::string filename;
-    uint64_t traceStartTime;
-    uint64_t traceEndTime;
+    uint64_t traceStartTime; // in ms
+    uint64_t traceEndTime; // in ms
     uint64_t fileSize;
 };
 
@@ -50,7 +50,8 @@ void DelSavedEventsFormat();
 void ClearCacheTraceFileByDuration(std::vector<TraceFileInfo>& cacheFileVec);
 void ClearCacheTraceFileBySize(std::vector<TraceFileInfo>& cacheFileVec, const uint64_t& fileSizeLimit);
 bool GetFileSize(const std::string& filePath, uint64_t& fileSize);
-bool ConvertPageTraceTimeToUtTime(const uint64_t& pageTraceTime, time_t& utPageTraceTime);
+uint64_t GetCurUnixTimeMs();
+uint64_t ConvertPageTraceTimeToUtTimeMs(const uint64_t& pageTraceTime);
 bool RenameTraceFile(const std::string& fileName, std::string& newFileName,
     const uint64_t& firstPageTraceTime, const uint64_t& lastPageTraceTime);
 void RefreshTraceVec(std::vector<TraceFileInfo>& traceVec, const TRACE_TYPE traceType);

@@ -583,6 +583,6 @@
                               "zaudio", "daudio", "zmedia", "dcamera", "zcamera", "dhfwk", "app", "gresource",
                               "ability", "power", "samgr", "ffrt", "ufs", "nweb", "hdf", "virse", "workq", "ipa",
                             "sched", "freq", "disk", "sync", "binder", "mmc", "membus", "load", "pagecache"],
-        "telemetry": [ "ace", "app", "ark", "binder", "freq", "graphic", "multimodalinput", "nweb", "sched", "window"]
+        "telemetry": ["ace", "app", "ark", "binder", "freq", "graphic", "multimodalinput", "nweb", "sched", "window"]
     }
 }

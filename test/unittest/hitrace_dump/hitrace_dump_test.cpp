@@ -50,6 +50,7 @@ const int BUFFER_SIZE = 255;
 constexpr uint32_t SLEEP_TIME = 10; // sleep 10ms
 constexpr uint32_t TWO_SEC = 2;
 constexpr uint32_t TEN_SEC = 10;
+constexpr uint32_t S_TO_MS = 1000;
 constexpr uint32_t MAX_RATIO_UNIT = 1000;
 constexpr int DEFAULT_FULL_TRACE_LENGTH = 30;
 const std::string TRACE_SNAPSHOT_PREFIX = "trace_";
@@ -401,7 +402,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_006, TestSize.Level0)
     ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
     ASSERT_TRUE(!ret.outputFiles.empty());
     ASSERT_EQ(ret.tags, tagGroups);
-    ASSERT_GE(ret.coverDuration, TWO_SEC - 1);
+    ASSERT_GE(ret.coverDuration, (TWO_SEC - 1) * S_TO_MS);
     ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT * (TWO_SEC - 1) / DEFAULT_FULL_TRACE_LENGTH);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
@@ -463,7 +464,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_009, TestSize.Level0)
     for (int i = 0; i < ret.outputFiles.size(); i++) {
         GTEST_LOG_(INFO) << "outputFiles:" << ret.outputFiles[i].c_str();
     }
-    ASSERT_TRUE(ret.outputFiles.size() >= 3); // compare file count
+    ASSERT_GE(ret.outputFiles.size(), 3); // compare file count
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -475,17 +476,19 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_009, TestSize.Level0)
  */
 HWTEST_F(HitraceDumpTest, DumpTraceTest_010, TestSize.Level0)
 {
-    const std::vector<std::string> tagGroups = {"default"};
+    const std::vector<std::string> tagGroups = {"scene_performance"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     // total cache filesize limit: 800MB, sliceduration: 10s
     ASSERT_TRUE(CacheTraceOn(800, 10) == TraceErrorCode::SUCCESS);
     sleep(40); // wait 40s, over 30s
     TraceRetInfo ret = DumpTrace();
-    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(ret.errorCode);
+    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS_WITH_CACHE) << "errorCode: " << static_cast<int>(ret.errorCode);
     for (int i = 0; i < ret.outputFiles.size(); i++) {
         GTEST_LOG_(INFO) << "outputFiles:" << ret.outputFiles[i].c_str();
     }
-    ASSERT_TRUE(ret.outputFiles.size() >= 3); // compare file count
+    ASSERT_GE(ret.outputFiles.size(), 3); // at least 3 slices
+    ASSERT_EQ(ret.coverDuration, DEFAULT_FULL_TRACE_LENGTH * S_TO_MS); // full cover max 30s guaranteed duration
+    ASSERT_EQ(ret.coverRatio, MAX_RATIO_UNIT);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -497,24 +500,75 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_010, TestSize.Level0)
  */
 HWTEST_F(HitraceDumpTest, DumpTraceTest_011, TestSize.Level0)
 {
-    const std::vector<std::string> tagGroups = {"default"};
+    const std::vector<std::string> tagGroups = {"scene_performance"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     // total cache filesize limit: 800MB, sliceduration: 5s
     ASSERT_TRUE(CacheTraceOn(800, 5) == TraceErrorCode::SUCCESS);
     sleep(8); // wait 8s
     TraceRetInfo ret = DumpTrace();
-    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
+    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS_WITH_CACHE) << "errorCode: " <<
+        static_cast<int>(ret.errorCode);
     for (int i = 0; i < ret.outputFiles.size(); i++) {
         GTEST_LOG_(INFO) << "outputFiles:" << ret.outputFiles[i].c_str();
     }
-    ASSERT_TRUE(ret.outputFiles.size() >= 2); // compare file count
+    ASSERT_GE(ret.outputFiles.size(), 2); // compare file count
+    ASSERT_GE(ret.coverDuration, 7 * S_TO_MS); // coverDuration >= 7s
+    ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT * 7 / DEFAULT_FULL_TRACE_LENGTH); // coverRatio >= 7/30
     sleep(1);
     TraceRetInfo retNext = DumpTrace();
-    ASSERT_EQ(retNext.errorCode, TraceErrorCode::SUCCESS);
+    ASSERT_EQ(retNext.errorCode, TraceErrorCode::SUCCESS_WITH_CACHE) << "errorCode: " <<
+        static_cast<int>(ret.errorCode);
     for (int i = 0; i < retNext.outputFiles.size(); i++) {
         GTEST_LOG_(INFO) << "outputFiles:" << retNext.outputFiles[i].c_str();
     }
     ASSERT_TRUE(retNext.outputFiles.size() >= 3); // compare file count
+    ASSERT_GE(ret.coverDuration, 8 * S_TO_MS); // coverDuration >= 8s
+    ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT * 8 / DEFAULT_FULL_TRACE_LENGTH); // coverRatio >= 8/30
+    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpTraceTest_012
+ * @tc.desc: Test correct calculation of coverDuration and coverRatio for regular DumpTrace.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpTraceTest_012, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    sleep(TEN_SEC + 1); // wait 11s before OpenTrace
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    sleep(TEN_SEC); // wait 10s
+    TraceRetInfo retNext = DumpTrace(TEN_SEC * 2); // get passed 20s trace
+    ASSERT_EQ(retNext.errorCode, TraceErrorCode::SUCCESS) << "errorCode: " <<
+        static_cast<int>(retNext.errorCode);
+    ASSERT_GE(retNext.outputFiles.size(), 1);
+    ASSERT_GE(retNext.coverDuration, (TEN_SEC - 1) * S_TO_MS); // coverDuration >= 9s
+    ASSERT_LE(retNext.coverDuration, (TEN_SEC + 2) * S_TO_MS); // coverDuration <= 12s
+    ASSERT_GE(retNext.coverRatio, MAX_RATIO_UNIT * (TEN_SEC - 1) / (TEN_SEC * 2)); // coverRatio >= 9/20
+    ASSERT_LE(retNext.coverRatio, MAX_RATIO_UNIT * (TEN_SEC + 2) / (TEN_SEC * 2)); // coverRatio <= 12/20
+    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpTraceTest_013
+ * @tc.desc: Test correct calculation of coverDuration and coverRatio for DumpTrace during cache.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpTraceTest_013, TestSize.Level0)
+{
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    sleep(TEN_SEC + 1); // wait 11s before OpenTrace and CacheTraceOn
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(CacheTraceOn(800, 10) == TraceErrorCode::SUCCESS);
+    sleep(TEN_SEC); // wait 10s
+    TraceRetInfo retNext = DumpTrace(TEN_SEC * 2); // get passed 20s trace
+    ASSERT_EQ(retNext.errorCode, TraceErrorCode::SUCCESS_WITH_CACHE) << "errorCode: " <<
+        static_cast<int>(retNext.errorCode);
+    ASSERT_GE(retNext.outputFiles.size(), 1);
+    ASSERT_GE(retNext.coverDuration, (TEN_SEC - 1) * S_TO_MS); // coverDuration >= 9s
+    ASSERT_LE(retNext.coverDuration, (TEN_SEC + 2) * S_TO_MS); // coverDuration <= 12s
+    ASSERT_GE(retNext.coverRatio, MAX_RATIO_UNIT * (TEN_SEC - 1) / (TEN_SEC * 2)); // coverRatio >= 9/20
+    ASSERT_LE(retNext.coverRatio, MAX_RATIO_UNIT * (TEN_SEC + 2) / (TEN_SEC * 2)); // coverRatio <= 12/20
     ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
 }
 

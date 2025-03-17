@@ -279,11 +279,11 @@ HWTEST_F(HitraceSystemTest, HitraceSystemTest001, TestSize.Level2)
 }
 
 /**
- * @tc.name: HitraceSystemTest003
+ * @tc.name: HitraceSystemTest002
  * @tc.desc: when excute hitrace record command, check record file aging rules.
  * @tc.type: FUNC
  */
-HWTEST_F(HitraceSystemTest, HitraceSystemTest003, TestSize.Level2)
+HWTEST_F(HitraceSystemTest, HitraceSystemTest002, TestSize.Level2)
 {
     if (IsRootVersion()) {
         const int recordCnt = 20;
@@ -497,9 +497,9 @@ HWTEST_F(HitraceSystemTest, CacheModeTest001, TestSize.Level1)
     ASSERT_TRUE(CacheTraceOn(800, 5) == TraceErrorCode::SUCCESS);
     sleep(8); // wait 8s
     TraceRetInfo ret = DumpTrace();
-    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
+    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS_WITH_CACHE);
     std::vector<FileWithInfo> fileList;
-    ASSERT_TRUE(GetFileInfo(TRACE_CACHE, ret.outputFiles, fileList));
+    ASSERT_TRUE(GetFileInfo(TRACE_SNAPSHOT, ret.outputFiles, fileList));
     ASSERT_GE(fileList.size(), 2); // cache_trace_ file count > 2
     uint64_t totalDuartion = 0;
     for (auto i = 0; i < fileList.size(); i++) {
@@ -535,7 +535,7 @@ HWTEST_F(HitraceSystemTest, CacheModeTest002, TestSize.Level1)
     ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
     std::vector<FileWithInfo> cacheFileList;
     std::vector<FileWithInfo> traceFileList;
-    ASSERT_TRUE(GetFileInfo(TRACE_CACHE, ret.outputFiles, cacheFileList));
+    ASSERT_TRUE(GetFileInfo(TRACE_SNAPSHOT, ret.outputFiles, cacheFileList));
     ASSERT_TRUE(GetFileInfo(TRACE_SNAPSHOT, ret.outputFiles, traceFileList));
     uint64_t totalDuartion = 0;
     ASSERT_GE(cacheFileList.size(), 2); // cache_trace_ file count > 2
