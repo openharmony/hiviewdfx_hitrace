@@ -45,11 +45,11 @@ class DataType:
     }
 
     @staticmethod
-    def getDataBytes(dataTypes: str) -> int:
+    def get_data_bytes(dataTypes: str) -> int:
         return struct.calcsize(dataTypes)
 
     @staticmethod
-    def toFormat(dataTypes: List) -> str:
+    def to_format(dataTypes: List) -> str:
         return "".join(dataTypes)
 
 
@@ -78,28 +78,35 @@ class Field:
     """
     功能描述: field为一个复合的结构，该结构包含多少item，每个item都有自已的类型
     """
-    def __init__(self, type: int, size: int, format: str, itemTypes: List) -> None:
-        self.fieldType = type
-        self.fieldSize = size
+    def __init__(self, type: int, size: int, format: str, item_types: List) -> None:
+        self.field_type = type
+        self.field_size = size
         self.format = format
-        self.itemTypes = itemTypes
+        self.item_types = item_types
         pass
 
 
 class TraceParseContext:
     CONTEXT_CPU_NUM = 1
-    def __init__(self):
-        self.cpuNum = 1
+    CONTEXT_CMD_LINES = 1
+    def __init__(self) -> None:
+        self.cpu_num = 1
         pass
 
-    def setParam(self, key: int, value: Any) -> None:
+    def set_param(self, key: int, value: Any) -> None:
         if TraceParseContext.CONTEXT_CPU_NUM == key:
-            self.cpuNum = 1
+            self.cpu_num = 1
+            return
+        if TraceParseContext.CONTEXT_CMD_LINES == key:
+            self.cmd_lines = 1
+            return
         pass
 
-    def getParam(self, key: int) -> Any:
+    def get_param(self, key: int) -> Any:
         if TraceParseContext.CONTEXT_CPU_NUM == key:
-            return self.cpuNum
+            return self.cpu_num
+        if TraceParseContext.CONTEXT_CMD_LINES == key:
+            return self.cmd_lines
         pass
 
 
@@ -108,15 +115,15 @@ class TraceFileParserInterface(metaclass = ABCMeta):
     功能描述: 声明解析HiTrace文件的接口
     """
     @abstractmethod
-    def parseField(self, field: Field) -> tuple:
+    def parse_field(self, field: Field) -> tuple:
         return ()
 
     @abstractmethod
-    def getContext(self) -> TraceParseContext:
+    def get_context(self) -> TraceParseContext:
         return None
 
     @abstractmethod
-    def getSegmentData(self, segmentSize) -> List:
+    def get_segment_data(self, segment_size) -> List:
         return None
 
 class TraceFileFormatInterface(metaclass = ABCMeta):
@@ -142,8 +149,8 @@ class OperatorInterface(metaclass = ABCMeta):
 
 
 class FieldOperator(Field, OperatorInterface):
-    def __init__(self, type, size, format, itemTypes):
-        Field.__init__(self, type, size, format, itemTypes)
+    def __init__(self, type, size, format, item_types) -> None:
+        Field.__init__(self, type, size, format, item_types)
     pass
 
     def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
@@ -152,8 +159,8 @@ class FieldOperator(Field, OperatorInterface):
 
 class FileHeader(FieldOperator):
     FIELD_TYPE = FieldType.TRACE_FILE_HEADER
-    FILED_FORMAT = DataType.toFormat([DataType.H, DataType.B, DataType.H, DataType.L])
-    FIELD_SIZE = DataType.getDataBytes(FILED_FORMAT)
+    FILED_FORMAT = DataType.to_format([DataType.H, DataType.B, DataType.H, DataType.L])
+    FIELD_SIZE = DataType.get_data_bytes(FILED_FORMAT)
 
     ITEM_MAGIC_NUMBER = 0
     ITEM_FILE_TYPE = 1
@@ -162,7 +169,7 @@ class FileHeader(FieldOperator):
     """"
     功能描述: 声明HiTrace文件的头部格式
     """
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             FileHeader.FIELD_TYPE,
             FileHeader.FIELD_SIZE,
@@ -176,12 +183,12 @@ class FileHeader(FieldOperator):
         )
 
     def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
-        values = parser.parseField(self)
+        values = parser.parse_field(self)
         if len(values) == 0:
             return False
-        cpuNum = (values[FileHeader.ITEM_RESERVED] >> 1) & 0b00011111
-        context = parser.getContext()
-        context.setParam(TraceParseContext.CONTEXT_CPU_NUM, cpuNum)
+        cpu_num = (values[FileHeader.ITEM_RESERVED] >> 1) & 0b00011111
+        context = parser.get_context()
+        context.set_param(TraceParseContext.CONTEXT_CPU_NUM, cpu_num)
         return True
 
 
@@ -190,8 +197,8 @@ class RawTraceSegment(Field):
     功能描述: 声明HiTrace文件raw trace的段
     """
 
-    def __init__(self):
-        # super().__init__(type, size, format, itemTypes)
+    def __init__(self) -> None:
+        # super().__init__(type, size, format, item_types)
         pass
 
 
@@ -200,8 +207,8 @@ class EventFormatSegment(Field):
     功能描述: 声明HiTrace文件event格式的段
     """
 
-    def __init__(self):
-        # super().__init__(type, size, format, itemTypes)
+    def __init__(self) -> None:
+        # super().__init__(type, size, format, item_types)
         pass
 
 
@@ -213,7 +220,7 @@ class CmdLinesSegment(FieldOperator):
     FILED_FORMAT = ""
     FIELD_SIZE = -1
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             CmdLinesSegment.FIELD_TYPE,
             CmdLinesSegment.FIELD_SIZE,
@@ -224,7 +231,14 @@ class CmdLinesSegment(FieldOperator):
         pass
 
     def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
-        print("CmdLinesSegment")
+        cmd_lines = {}
+        cmd_lines_list = segment.decode('utf-8').split("\n")
+        for cmd_line in cmd_lines_list:
+            pos = cmd_line.find(" ")
+            if pos == -1:
+                continue
+            cmd_lines[int(cmd_line[:pos])] = cmd_line[pos + 1:]
+        print(cmd_lines)
         return True
 
 
@@ -233,8 +247,8 @@ class TidGroupsSegment(Field):
     功能描述: 声明HiTrace文件event格式的段
     """
 
-    def __init__(self):
-        # super().__init__(type, size, format, itemTypes)
+    def __init__(self) -> None:
+        # super().__init__(type, size, format, item_types)
         pass
 
 
@@ -243,8 +257,8 @@ class PrintkFormatSegment(Field):
     功能描述: 声明HiTrace文件event格式的段
     """
 
-    def __init__(self):
-        # super().__init__(type, size, format, itemTypes)
+    def __init__(self) -> None:
+        # super().__init__(type, size, format, item_types)
         pass
 
 
@@ -253,8 +267,8 @@ class KallSymsSegment(Field):
     功能描述: 声明HiTrace文件event格式的段
     """
 
-    def __init__(self):
-        # super().__init__(type, size, format, itemTypes)
+    def __init__(self) -> None:
+        # super().__init__(type, size, format, item_types)
         pass
 
 
@@ -263,10 +277,11 @@ class UnSupportSegment(FieldOperator):
     """"
     功能描述: 声明HiTrace文件还不支持解析的段
     """
-    def __init__(self):
-        # super().__init__(type, size, format, itemTypes)
+    def __init__(self) -> None:
+        # super().__init__(type, size, format, item_types)
         pass
-    def accept(self, parser, segment = 0) -> bool:
+
+    def accept(self, parser, segment: List = []) -> bool:
         print("unsupport")
         return True
 
@@ -276,12 +291,12 @@ class SegmentWrapper(FieldOperator):
     功能描述: 声明HiTrace文件包含所有段的格式
     """
     FIELD_TYPE = FieldType.SEGMENT_SEGMENTS
-    FILED_FORMAT = DataType.toFormat([DataType.I, DataType.I])
-    FIELD_SIZE = DataType.getDataBytes(FILED_FORMAT)
+    FILED_FORMAT = DataType.to_format([DataType.I, DataType.I])
+    FIELD_SIZE = DataType.get_data_bytes(FILED_FORMAT)
 
     ITEM_SEGMENT_TYPE = 0
     ITEM_SEGMENT_SIZE = 1
-    def __init__(self, fields: List):
+    def __init__(self, fields: List) -> None:
         super().__init__(
             SegmentWrapper.FIELD_TYPE,
             SegmentWrapper.FIELD_SIZE,
@@ -295,26 +310,26 @@ class SegmentWrapper(FieldOperator):
         pass
 
 
-    def _getSegment(self, segmentType: int, cpuNum: int) -> FieldOperator:
+    def _getSegment(self, segment_type: int, cpu_num: int) -> FieldOperator:
         for field in self.fields:
-            if field.FIELD_TYPE == segmentType:
+            if field.FIELD_TYPE == segment_type:
                 return field
-            if (segmentType >= field.FIELD_TYPE) and (segmentType < field.FIELD_TYPE + cpuNum):
+            if (segment_type >= field.FIELD_TYPE) and (segment_type < field.FIELD_TYPE + cpu_num):
                 return field
         return UnSupportSegment()
 
 
     def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
         while True:
-            values = parser.parseField(self)
+            values = parser.parse_field(self)
             if len(values) == 0:
                 break
-            segmentType = values[SegmentWrapper.ITEM_SEGMENT_TYPE]
-            segmentSize = values[SegmentWrapper.ITEM_SEGMENT_SIZE]
-            conext = parser.getContext()
-            segment = self._getSegment(segmentType, conext.getParam(TraceParseContext.CONTEXT_CPU_NUM))
-            segmentData = parser.getSegmentData(segmentSize)
-            segment.accept(parser, segmentData)
+            segment_type = values[SegmentWrapper.ITEM_SEGMENT_TYPE]
+            segment_size = values[SegmentWrapper.ITEM_SEGMENT_SIZE]
+            conext = parser.get_context()
+            segment = self._getSegment(segment_type, conext.get_param(TraceParseContext.CONTEXT_CPU_NUM))
+            segment_data = parser.get_segment_data(segment_size)
+            segment.accept(parser, segment_data)
             pass
 
 
@@ -328,19 +343,19 @@ class TraceFile:
         mode = stat.S_IRUSR
         self.file = os.fdopen(os.open(name, flags, mode), 'rb')
         self.size = os.path.getsize(name)
-        self.curPost = 0
+        self.cur_post = 0
         pass
 
-    def readData(self, blockSize: int) -> List:
+    def read_data(self, block_size: int) -> List:
         """"
         功能描述: 从文件当前位置读取blockSize字节的内容
         参数: 读取字节数
         返回值: 文件内容
         """
-        if (self.curPost + blockSize) > self.size:
+        if (self.cur_post + block_size) > self.size:
             return None
-        self.curPost = self.curPost + blockSize
-        return self.file.read(blockSize)
+        self.cur_post = self.cur_post + block_size
+        return self.file.read(block_size)
 
 
 class TraceFileFormat(TraceFileFormatInterface, OperatorInterface):
@@ -373,28 +388,28 @@ class TraceViewer(TraceViewerInterface):
 
 class TraceFileParser(TraceFileParserInterface):
     def __init__(self, file: TraceFile, format: TraceFileFormat, viewer: TraceViewer, context: TraceParseContext) -> None:
-        self.traceFile = file
-        self.traceFormat = format
-        self.traceViewer = viewer
+        self.trace_file = file
+        self.trace_format = format
+        self.trace_viewer = viewer
         self.context = context
         pass
 
     def parse(self) -> None:
-        self.traceFormat.accept(self)
+        self.trace_format.accept(self)
         pass
 
-    def parseField(self, field: Field) -> tuple:
-        data = self.traceFile.readData(field.fieldSize)
+    def parse_field(self, field: Field) -> tuple:
+        data = self.trace_file.read_data(field.field_size)
         if data is None:
             return ()
-        unpackValue = struct.unpack(field.format, data)
-        return unpackValue
+        unpack_value = struct.unpack(field.format, data)
+        return unpack_value
 
-    def getContext(self) -> TraceParseContext:
+    def get_context(self) -> TraceParseContext:
         return self.context
 
-    def getSegmentData(self, segmentSize) -> List:
-        return self.traceFile.readData(segmentSize)
+    def get_segment_data(self, segment_size) -> List:
+        return self.trace_file.read_data(segment_size)
 
 
 def main() -> None:
