@@ -15,7 +15,7 @@ import("//base/hiviewdfx/hitrace/hitrace.gni")
 import("//build/ohos.gni")
 import("//build/test.gni")
 
-module_output_path = "hiviewdfx/hitrace"
+module_output_path = "hitrace/hitrace"
 
 config("module_private_config") {
   visibility = [ ":*" ]
