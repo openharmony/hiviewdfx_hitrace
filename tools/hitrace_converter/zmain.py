@@ -123,6 +123,10 @@ class TraceFileParserInterface(metaclass = ABCMeta):
         return {}
 
     @abstractmethod
+    def parse_tid_gropus(self, data: List) -> dict:
+        return {}
+
+    @abstractmethod
     def get_context(self) -> TraceParseContext:
         return None
 
@@ -240,15 +244,19 @@ class CmdLinesSegment(SegmentOperator):
         return True
 
 
-class TidGroupsSegment(Field):
+class TidGroupsSegment(SegmentOperator):
     """"
     功能描述: 声明HiTrace文件event格式的段
     """
+    FIELD_TYPE = FieldType.SEGMENT_TGIDS
 
     def __init__(self) -> None:
-        # super().__init__(type, size, format, item_types)
+        super().__init__(CmdLinesSegment.FIELD_TYPE)
         pass
 
+    def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
+        parser.parse_cmd_lines(segment)
+        return True
 
 class PrintkFormatSegment(Field):
     """"
@@ -362,7 +370,7 @@ class TraceFileFormat(TraceFileFormatInterface, OperatorInterface):
             FileHeader(),
             SegmentWrapper([
                 CmdLinesSegment(),
-                # TidGroupsSegment(),
+                TidGroupsSegment(),
                 # EventFormatSegment(),
                 # PrintkFormatSegment(),
                 # KallSymsSegment(),
@@ -413,6 +421,17 @@ class TraceFileParser(TraceFileParserInterface):
             cmd_lines[int(cmd_line[:pos])] = cmd_line[pos + 1:]
         print(cmd_lines)
         return cmd_lines
+
+    def parse_tid_gropus(self, data: List) -> dict:
+        tgids = {}
+        tgids_lines_list = data.decode('utf-8').split("\n")
+        for tgids_line in tgids_lines_list:
+            pos = tgids_line.find(" ")
+            if pos == -1:
+                continue
+            tgids[int(tgids_line[:pos])] = tgids_line[pos + 1:]
+        print(tgids)
+        return tgids
 
     def get_context(self) -> TraceParseContext:
         return self.context
