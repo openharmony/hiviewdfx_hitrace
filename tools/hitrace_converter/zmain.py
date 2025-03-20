@@ -137,7 +137,7 @@ class TraceViewerInterface(metaclass = ABCMeta):
 
 class OperatorInterface(metaclass = ABCMeta):
     @abstractmethod
-    def accept(self, parser: TraceFileParserInterface, segment: int | List = 0) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
         return True
 
 
@@ -146,7 +146,7 @@ class FieldOperator(Field, OperatorInterface):
         Field.__init__(self, type, size, format, itemTypes)
     pass
 
-    def accept(self, parser: TraceFileParserInterface, segment: int | List = 0) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
         return True
 
 
@@ -175,7 +175,7 @@ class FileHeader(FieldOperator):
             ]
         )
 
-    def accept(self, parser: TraceFileParserInterface, segment: int | List = 0) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
         values = parser.parseField(self)
         if len(values) == 0:
             return False
@@ -223,7 +223,7 @@ class CmdLinesSegment(FieldOperator):
         )
         pass
 
-    def accept(self, parser: TraceFileParserInterface, segment: int | List = 0) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
         print("CmdLinesSegment")
         return True
 
@@ -304,7 +304,7 @@ class SegmentWrapper(FieldOperator):
         return UnSupportSegment()
 
 
-    def accept(self, parser: TraceFileParserInterface, segment: int | List = 0) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
         while True:
             values = parser.parseField(self)
             if len(values) == 0:
@@ -359,7 +359,7 @@ class TraceFileFormat(TraceFileFormatInterface, OperatorInterface):
         pass
 
 
-    def accept(self, parser: TraceFileParserInterface, segment = 0) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
         for field in self.fields:
             if field.accept(parser) is False:
                 return False
@@ -390,7 +390,7 @@ class TraceFileParser(TraceFileParserInterface):
         unpackValue = struct.unpack(field.format, data)
         return unpackValue
 
-    def getContext(self):
+    def getContext(self) -> TraceParseContext:
         return self.context
 
     def getSegmentData(self, segmentSize) -> List:
@@ -398,7 +398,7 @@ class TraceFileParser(TraceFileParserInterface):
 
 
 def main() -> None:
-    file = TraceFile(r"C:\source\gitee\OpenHarmony\hiviewdfx_hitrace\test\unittest\tools\sample\record_trace_20250320101116@2500-814308989.sys")
+    file = TraceFile(r"F:\source\gitee\MyOpenHarmony\hiviewdfx_hitrace\test\unittest\tools\sample\record_trace_20250320101116@2500-814308989.sys")
     format = TraceFileFormat()
     viewer = TraceViewer()
     context = TraceParseContext()
