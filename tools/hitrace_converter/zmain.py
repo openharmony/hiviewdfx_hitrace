@@ -119,6 +119,10 @@ class TraceFileParserInterface(metaclass = ABCMeta):
         return ()
 
     @abstractmethod
+    def parse_cmd_lines(self, data: List) -> dict:
+        return {}
+
+    @abstractmethod
     def get_context(self) -> TraceParseContext:
         return None
 
@@ -151,6 +155,15 @@ class OperatorInterface(metaclass = ABCMeta):
 class FieldOperator(Field, OperatorInterface):
     def __init__(self, type, size, format, item_types) -> None:
         Field.__init__(self, type, size, format, item_types)
+    pass
+
+    def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
+        return True
+
+
+class SegmentOperator(Field, OperatorInterface):
+    def __init__(self, type) -> None:
+        Field.__init__(self, type, -1, "", [])
     pass
 
     def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
@@ -212,33 +225,18 @@ class EventFormatSegment(Field):
         pass
 
 
-class CmdLinesSegment(FieldOperator):
+class CmdLinesSegment(SegmentOperator):
     """"
     功能描述: 声明HiTrace文件event格式的段
     """
     FIELD_TYPE = FieldType.SEGMENT_CMDLINES
-    FILED_FORMAT = ""
-    FIELD_SIZE = -1
 
     def __init__(self) -> None:
-        super().__init__(
-            CmdLinesSegment.FIELD_TYPE,
-            CmdLinesSegment.FIELD_SIZE,
-            CmdLinesSegment.FILED_FORMAT,
-            [
-            ]
-        )
+        super().__init__(CmdLinesSegment.FIELD_TYPE)
         pass
 
     def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
-        cmd_lines = {}
-        cmd_lines_list = segment.decode('utf-8').split("\n")
-        for cmd_line in cmd_lines_list:
-            pos = cmd_line.find(" ")
-            if pos == -1:
-                continue
-            cmd_lines[int(cmd_line[:pos])] = cmd_line[pos + 1:]
-        print(cmd_lines)
+        parser.parse_cmd_lines(segment)
         return True
 
 
@@ -404,6 +402,17 @@ class TraceFileParser(TraceFileParserInterface):
             return ()
         unpack_value = struct.unpack(field.format, data)
         return unpack_value
+
+    def parse_cmd_lines(self, data: List) -> dict:
+        cmd_lines = {}
+        cmd_lines_list = data.decode('utf-8').split("\n")
+        for cmd_line in cmd_lines_list:
+            pos = cmd_line.find(" ")
+            if pos == -1:
+                continue
+            cmd_lines[int(cmd_line[:pos])] = cmd_line[pos + 1:]
+        print(cmd_lines)
+        return cmd_lines
 
     def get_context(self) -> TraceParseContext:
         return self.context
