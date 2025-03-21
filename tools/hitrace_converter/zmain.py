@@ -21,7 +21,20 @@ from typing import List, Any
 import os
 import struct
 import stat
-import copy
+import parse_functions
+
+TRACE_TXT_HEADER_FORMAT = """# tracer: nop
+#
+# entries-in-buffer/entries-written: %lu/%lu   #P:%d
+#
+#                                      _-----=> irqs-off
+#                                     / _----=> need-resched
+#                                    | / _---=> hardirq/softirq
+#                                    || / _--=> preempt-depth
+#                                    ||| /     delay
+#           TASK-PID    TGID   CPU#  ||||    TIMESTAMP  FUNCTION
+#              | |        |      |   ||||       |         |
+"""
 
 class DataType:
     # 数据类型
@@ -48,10 +61,6 @@ class DataType:
     @staticmethod
     def get_data_bytes(dataTypes: str) -> int:
         return struct.calcsize(dataTypes)
-
-    @staticmethod
-    def to_format(dataTypes: List) -> str:
-        return "".join(dataTypes)
 
 
 @unique
@@ -91,34 +100,48 @@ class TraceParseContext:
     CONTEXT_CPU_NUM = 1
     CONTEXT_CMD_LINES = 2
     CONTEXT_EVENT_SIZE = 3
+    CONTEXT_CORE_ID = 5
+    CONTEXT_TIMESTAMP = 6
+    CONTEXT_TIMESTAMP_OFFSET = 7
+    CONTEXT_TID_GROUPS = 8
+    CONTEXT_EVENT_FORMAT = 9
 
     def __init__(self) -> None:
-        self.cpu_num = 1
-        self.cmd_lines = []
-        self.event_size = 0
+        self.values = {}
+        self.defaultValues = {
+            TraceParseContext.CONTEXT_CPU_NUM: 1,
+            TraceParseContext.CONTEXT_CMD_LINES: {},
+            TraceParseContext.CONTEXT_EVENT_SIZE: 0,
+            TraceParseContext.CONTEXT_CORE_ID: 0,
+            TraceParseContext.CONTEXT_TIMESTAMP: 0,
+            TraceParseContext.CONTEXT_TIMESTAMP_OFFSET: 0,
+            TraceParseContext.CONTEXT_TID_GROUPS: {},
+            TraceParseContext.CONTEXT_EVENT_FORMAT: {},
+        }
         pass
 
     def set_param(self, key: int, value: Any) -> None:
-        if TraceParseContext.CONTEXT_CPU_NUM == key:
-            self.cpu_num = value
-            return
-        if TraceParseContext.CONTEXT_CMD_LINES == key:
-            self.cmd_lines = value
-            return
-        if TraceParseContext.CONTEXT_EVENT_SIZE == key:
-            self.event_size = value
-            return
+        self.values[key] = value
         pass
 
     def get_param(self, key: int) -> Any:
-        if TraceParseContext.CONTEXT_CPU_NUM == key:
-            return self.cpu_num
-        if TraceParseContext.CONTEXT_CMD_LINES == key:
-            return self.cmd_lines
-        if TraceParseContext.CONTEXT_EVENT_SIZE == key:
-            return self.event_size
+        value = self.values.get(key)
+        if value is None:
+            return self.defaultValues.get(key)
+        return value
+
+
+class TraceViewerInterface(metaclass = ABCMeta):
+    """
+    功能描述: 声明解析HiTrace结果的接口
+    """
+    @abstractmethod
+    def append_trace_event(self, trace_event: List) -> None:
         pass
 
+    @abstractmethod
+    def calcuate(self, context: TraceParseContext) -> None:
+        pass
 
 class TraceFileParserInterface(metaclass = ABCMeta):
     """
@@ -145,16 +168,12 @@ class TraceFileParserInterface(metaclass = ABCMeta):
         return None
 
     @abstractmethod
-    def get_segment_data(self, segment_size) -> List:
+    def get_viewer(self) -> TraceViewerInterface:
         return None
 
-
-class TraceViewerInterface(metaclass = ABCMeta):
-    """
-    功能描述: 声明解析HiTrace结果的接口
-    """
-    def __init__(self) -> None:
-        pass
+    @abstractmethod
+    def get_segment_data(self, segment_size) -> List:
+        return None
 
 
 class OperatorInterface(metaclass = ABCMeta):
@@ -222,27 +241,26 @@ class PageHeader(FieldOperator):
     ITEM_TIMESTAMP = 0
     ITEM_LENGTH = 1
     ITEM_CORE_ID = 2
-    def __init__(self) -> None:
+    def __init__(self, item_types: List) -> None:
         super().__init__(
             FieldType.TRACE_EVENT_PAGE_HEADER,
             DataType.get_data_bytes(PageHeader.FORMAT),
             PageHeader.FORMAT,
-            [
-                PageHeader.ITEM_TIMESTAMP,
-                PageHeader.ITEM_LENGTH,
-                PageHeader.ITEM_CORE_ID,
-            ]
+            item_types
         )
 
     def accept(self, parser: TraceFileParserInterface, segment = []) -> bool:
         value = parser.parse_simple_field(self.format, segment)
+        context = parser.get_context()
+        context.set_param(TraceParseContext.CONTEXT_TIMESTAMP, value[PageHeader.ITEM_TIMESTAMP])
+        context.set_param(TraceParseContext.CONTEXT_CORE_ID, value[PageHeader.ITEM_CORE_ID])
         return True
     pass
 
 
 class TraceEventHeader(FieldOperator):
     """
-    功能描述: 声明HiTrace文件的第个 trace event 头部格式
+    功能描述: 声明HiTrace文件的trace event头部格式
     """
     # 描述HiTrace文件trace event的pack格式
     FORMAT = "LH"
@@ -250,16 +268,12 @@ class TraceEventHeader(FieldOperator):
 
     ITEM_TIMESTAMP_OFFSET = 0
     ITEM_EVENT_SIZE = 1
-
-    def __init__(self) -> None:
+    def __init__(self, item_types: List) -> None:
         super().__init__(
             FieldType.TRACE_EVENT_HEADER,
             DataType.get_data_bytes(TraceEventHeader.FORMAT),
             TraceEventHeader.FORMAT,
-            [
-                TraceEventHeader.ITEM_TIMESTAMP_OFFSET,
-                TraceEventHeader.ITEM_EVENT_SIZE
-            ]
+            item_types
         )
 
     def accept(self, parser: TraceFileParserInterface, segment = []) -> bool:
@@ -267,20 +281,45 @@ class TraceEventHeader(FieldOperator):
         if len(value) == 0:
             return False
         event_size = value[TraceEventHeader.ITEM_EVENT_SIZE]
-        event_size = ((event_size + TraceEventHeader.RMQ_ENTRY_ALIGN_MASK) & (~TraceEventHeader.RMQ_ENTRY_ALIGN_MASK))
+        align_event_size = ((event_size + TraceEventHeader.RMQ_ENTRY_ALIGN_MASK) & (~TraceEventHeader.RMQ_ENTRY_ALIGN_MASK))
+
         context = parser.get_context()
-        context.set_param(TraceParseContext.CONTEXT_EVENT_SIZE, event_size)
+        context.set_param(TraceParseContext.CONTEXT_EVENT_SIZE, (event_size, align_event_size))
+        context.set_param(TraceParseContext.CONTEXT_TIMESTAMP_OFFSET, value[TraceEventHeader.ITEM_TIMESTAMP_OFFSET])
         return True
     pass
 
 
-class TraceEventContent(OperatorInterface):
+class TraceEventContent(SegmentOperator):
+    """
+    功能描述: 声明HiTrace文件的trace event的内容格式
+    """
+    def __init__(self) -> None:
+        super().__init__(FieldType.TRACE_EVENT_CONTENT)
+        pass
+
     def accept(self, parser: TraceFileParserInterface, segment = []) -> bool:
+        context = parser.get_context()
+        timestamp = context.get_param(TraceParseContext.CONTEXT_TIMESTAMP)
+        timestamp = timestamp + context.get_param(TraceParseContext.CONTEXT_TIMESTAMP_OFFSET)
+        core_id = context.get_param(TraceParseContext.CONTEXT_CORE_ID)
+
+        format = 'H'
+        data_bytes = DataType.get_data_bytes(format)
+        event_id = parser.parse_simple_field(format, segment[0:data_bytes])
+        if len(event_id) == 0:
+            return False
+        trace_event = [timestamp, core_id, event_id[0], segment]
+        viewer = parser.get_viewer()
+        viewer.append_trace_event(trace_event)
         return True
     pass
 
 
 class TraceEventWrapper(OperatorInterface):
+    """
+    功能描述: 声明HiTrace文件的1条trace event的格式
+    """
     def __init__(self, event_header: TraceEventHeader, event_content: TraceEventContent) -> None:
         self.event_header = event_header
         self.event_content = event_content
@@ -294,9 +333,9 @@ class TraceEventWrapper(OperatorInterface):
 
     def _nextEventContent(self, cur_post: int, segment: List, parser: TraceFileParserInterface) -> tuple:
         context = parser.get_context()
-        event_size = context.get_param(TraceParseContext.CONTEXT_EVENT_SIZE)
+        (event_size, align_event_size) = context.get_param(TraceParseContext.CONTEXT_EVENT_SIZE)
         data = segment[cur_post: cur_post + event_size]
-        next_post = cur_post + event_size
+        next_post = cur_post + align_event_size
         return (next_post, data)
         pass
 
@@ -314,6 +353,9 @@ class TraceEventWrapper(OperatorInterface):
 
 
 class PageWrapper(OperatorInterface):
+    """
+    功能描述: 声明HiTrace文件的1个page的格式
+    """
     TRACE_PAGE_SIZE = 4096
 
     def __init__(self, page_header: PageHeader, trace_event: TraceEventWrapper) -> None:
@@ -325,8 +367,8 @@ class PageWrapper(OperatorInterface):
         if (cur_post + PageWrapper.TRACE_PAGE_SIZE) > len(segment):
             return (-1, None)
         data = segment[cur_post: cur_post + PageWrapper.TRACE_PAGE_SIZE]
-        nextPost = cur_post + PageWrapper.TRACE_PAGE_SIZE
-        return (nextPost, data)
+        next_post = cur_post + PageWrapper.TRACE_PAGE_SIZE
+        return (next_post, data)
 
     def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
         cur_post = 0
@@ -348,9 +390,16 @@ class RawTraceSegment(SegmentOperator):
     def __init__(self) -> None:
         super().__init__(FieldType.SEGMENT_RAW_TRACE)
         self.field = PageWrapper(
-            PageHeader(),
+            PageHeader([
+                PageHeader.ITEM_TIMESTAMP,
+                PageHeader.ITEM_LENGTH,
+                PageHeader.ITEM_CORE_ID,
+            ]),
             TraceEventWrapper(
-                TraceEventHeader(),
+                TraceEventHeader([
+                    TraceEventHeader.ITEM_TIMESTAMP_OFFSET,
+                    TraceEventHeader.ITEM_EVENT_SIZE
+                ]),
                 TraceEventContent(),
             )
         )
@@ -373,7 +422,9 @@ class EventFormatSegment(SegmentOperator):
 
     def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
         print("event format segment")
-        parser.parse_event_format(segment)
+        events_format = parser.parse_event_format(segment)
+        context = parser.get_context()
+        context.set_param(TraceParseContext.CONTEXT_EVENT_FORMAT, events_format)
         return True
 
 
@@ -387,7 +438,9 @@ class CmdLinesSegment(SegmentOperator):
 
     def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
         print("cmd lines segment")
-        parser.parse_cmd_lines(segment)
+        cmd_lines = parser.parse_cmd_lines(segment)
+        context = parser.get_context()
+        context.set_param(TraceParseContext.CONTEXT_CMD_LINES, cmd_lines)
         return True
 
 
@@ -401,7 +454,9 @@ class TidGroupsSegment(SegmentOperator):
 
     def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
         print("tid groups segment")
-        parser.parse_tid_gropus(segment)
+        tid_groups = parser.parse_tid_gropus(segment)
+        context = parser.get_context()
+        context.set_param(TraceParseContext.CONTEXT_TID_GROUPS, tid_groups)
         return True
 
 
@@ -472,9 +527,12 @@ class SegmentWrapper(FieldOperator):
             if field.field_type == segment_type:
                 return field
 
-        for field in self.fields:
-            if (segment_type >= field.field_type) and (segment_type < field.field_type + cpu_num):
-                return field
+            if field.field_type < FieldType.SEGMENT_RAW_TRACE:
+                continue
+
+            if field.field_type > FieldType.SEGMENT_RAW_TRACE + cpu_num:
+                continue
+            return field
         return UnSupportSegment()
 
 
@@ -522,6 +580,9 @@ class TraceFile:
 
 
 class TraceFileFormat(OperatorInterface):
+    """
+    功能描述: 声明整个HiTrace文件的二进制格式
+    """
     def __init__(self) -> None:
         self.fields = [
             FileHeader([
@@ -549,8 +610,204 @@ class TraceFileFormat(OperatorInterface):
         return True
 
 
+class Viewer:
+    @abstractmethod
+    def set_context(self, context: TraceParseContext) -> None:
+        pass
+
+    @abstractmethod
+    def calcuate(self, timestamp: int, core_id: int, event_id: int, segment: List) -> None:
+        pass
+
+    @abstractmethod
+    def show(self) -> None:
+        pass
+
+class SysTraceViewer(Viewer):
+    COMM_STR_MAX = 16
+    PID_STR_MAX = 6
+    TGID_STR_MAX = 5
+    CPU_STR_MAX = 3
+    TS_SECS_MIN = 5
+    TS_MICRO_SECS = 6
+
+    TRACE_FLAG_IRQS_OFF = 0x01
+    TRACE_FLAG_IRQS_NOSUPPORT = 0x02
+    TRACE_FLAG_NEED_RESCHED = 0x04
+    TRACE_FLAG_HARDIRQ = 0x08
+    TRACE_FLAG_SOFTIRQ = 0x10
+    TRACE_FLAG_PREEMPT_RESCHED = 0x20
+    TRACE_FLAG_NMI = 0x40
+
+    def __init__(self, out_file: str):
+        self.out_file = out_file
+        self.format_miss_cnt = 0
+        self.format_miss_set = set()
+        self.trace_event_count_dict = {} # trace event count dict
+        self.trace_event_mem_dict = {} # trace event mem dict
+        self.get_not_found_format = set()
+        self.systrace = []
+        pass
+
+    def set_context(self, context: TraceParseContext) -> None:
+        self.context = context
+        self.events_format = context.get_param(TraceParseContext.CONTEXT_EVENT_FORMAT)
+        self.cmd_lines = context.get_param(TraceParseContext.CONTEXT_CMD_LINES)
+        self.tgids = context.get_param(TraceParseContext.CONTEXT_TID_GROUPS)
+        pass
+
+    def _trace_flags_to_str(self, flags: int, preempt_count: int) -> str:
+        result = ""
+        irqs_off = '.'
+        if flags & SysTraceViewer.TRACE_FLAG_IRQS_OFF != 0:
+            irqs_off = 'd'
+        elif flags & SysTraceViewer.TRACE_FLAG_IRQS_NOSUPPORT != 0:
+            irqs_off = 'X'
+        result += irqs_off
+
+        need_resched = '.'
+        is_need_resched = flags & SysTraceViewer.TRACE_FLAG_NEED_RESCHED
+        is_preempt_resched = flags & SysTraceViewer.TRACE_FLAG_PREEMPT_RESCHED
+        if is_need_resched != 0 and is_preempt_resched != 0:
+            need_resched = 'N'
+        elif is_need_resched != 0:
+            need_resched = 'n'
+        elif is_preempt_resched != 0:
+            need_resched = 'p'
+        result += need_resched
+
+        nmi_flag = flags & SysTraceViewer.TRACE_FLAG_NMI
+        hard_irq = flags & SysTraceViewer.TRACE_FLAG_HARDIRQ
+        soft_irq = flags & SysTraceViewer.TRACE_FLAG_SOFTIRQ
+        irq_char = '.'
+        if nmi_flag != 0 and hard_irq != 0:
+            irq_char = 'Z'
+        elif nmi_flag != 0:
+            irq_char = 'z'
+        elif hard_irq != 0 and soft_irq != 0:
+            irq_char = 'H'
+        elif hard_irq != 0:
+            irq_char = 'h'
+        elif soft_irq != 0:
+            irq_char = 's'
+        result += irq_char
+
+        if preempt_count != 0:
+            result += "0123456789abcdef"[preempt_count & 0x0F]
+        else:
+            result += "."
+
+        return result
+
+    def _generate_one_event_str(self, data: List, cpu_id: int, time_stamp: int, one_event: dict) -> str:
+        pid = int.from_bytes(one_event["fields"]["common_pid"], byteorder='little')
+        event_str = ""
+
+        cmd_line = self.cmd_lines.get(pid, "")
+        if pid == 0:
+            event_str += "<idle>"
+        elif cmd_line != "":
+            event_str += cmd_line
+        else:
+            event_str += "<...>"
+        event_str = event_str.rjust(SysTraceViewer.COMM_STR_MAX)
+        event_str += "-"
+
+        event_str += str(pid).ljust(SysTraceViewer.PID_STR_MAX)
+
+        tgid = self.tgids.get(pid)
+        if tgid is not None:
+            tgid = "%d" % tgid
+            event_str += "(" + tgid.rjust(SysTraceViewer.TGID_STR_MAX) + ")"
+        else:
+            event_str += "(-----)"
+
+        event_str += " [" + str(cpu_id).zfill(SysTraceViewer.CPU_STR_MAX) + "] "
+
+        flags = int.from_bytes(one_event["fields"]["common_flags"], byteorder='little')
+        preempt_count = int.from_bytes(one_event["fields"]["common_preempt_count"], byteorder='little')
+        if flags | preempt_count != 0:
+            event_str += self._trace_flags_to_str(flags, preempt_count) + " "
+        else:
+            event_str += ".... "
+
+        if time_stamp % 1000 >= 500:
+            time_stamp_str = str((time_stamp // 1000) + 1)
+        else:
+            time_stamp_str = str(time_stamp // 1000)
+        ts_secs = time_stamp_str[:-6].rjust(SysTraceViewer.TS_SECS_MIN)
+        ts_micro_secs = time_stamp_str[-6:]
+        event_str += ts_secs + "." + ts_micro_secs + ": "
+
+        parse_result = parse_functions.parse(one_event["print_fmt"], data, one_event)
+        if parse_result is None:
+            self.get_not_found_format.add(str(one_event["name"]))
+        else:
+            event_str += str(one_event["name"]) + ": " + parse_result
+
+        return event_str
+
+    def calcuate(self, timestamp: int, core_id: int, event_id: int, segment: List, context: TraceParseContext) -> None:
+        if event_id in self.trace_event_count_dict:
+            self.trace_event_count_dict[event_id] += 1
+        else:
+            self.trace_event_count_dict[event_id] = 1
+
+        event_format = self.events_format.get(event_id, "")
+        if event_format == "":
+            # current event format is not found in trace file format data.
+            self.format_miss_cnt = self.format_miss_cnt + 1
+            self.format_miss_set.add(event_id)
+            return
+
+        fields = event_format["fields"]
+        one_event = {}
+        one_event["id"] = event_id
+        one_event["name"] = event_format["name"]
+        one_event["print_fmt"] = event_format["print_fmt"]
+        one_event["fields"] = {}
+        for field in fields:
+            offset = field["offset"]
+            size = field["size"]
+            one_event["fields"][field["name"]] = segment[offset:offset + size]
+
+        systrace = self._generate_one_event_str(segment, core_id, timestamp, one_event)
+        self.systrace.append([timestamp, systrace])
+        pass
+
+    def show(self) -> None:
+        outfile_flags = os.O_RDWR | os.O_CREAT
+        outfile_mode = stat.S_IRUSR | stat.S_IWUSR
+
+        result = sorted(self.systrace, key=lambda x: x[0])
+        outfile = os.fdopen(os.open(self.out_file, outfile_flags, outfile_mode), 'w', encoding="utf-8")
+        outfile.write(TRACE_TXT_HEADER_FORMAT)
+        for line in result:
+            outfile.write("{}\n".format(line[1]))
+        outfile.close()
+        pass
+
 class TraceViewer(TraceViewerInterface):
-    def __init__(self) -> None:
+    def __init__(self, viewers: List) -> None:
+        self.trace_events = []
+        self.viewers = viewers
+        pass
+
+    def append_trace_event(self, trace_event: List) -> None:
+        self.trace_events.append(trace_event)
+        pass
+
+    def calcuate(self, context: TraceParseContext):
+        for viewer in self.viewers:
+            viewer.set_context(context)
+
+        for timestamp, core_id, event_id, segment in self.trace_events:
+            #print("timestamp=%d, cpuid=%d, eventid=%d, segment size=%d"%(timestamp, core_id, event_id, len(segment)))
+            for viewer in self.viewers:
+                viewer.calcuate(timestamp, core_id, event_id, segment, context)
+
+        for viewer in self.viewers:
+            viewer.show()
         pass
 
 
@@ -560,10 +817,6 @@ class TraceFileParser(TraceFileParserInterface):
         self.trace_format = format
         self.trace_viewer = viewer
         self.context = context
-        pass
-
-    def parse(self) -> None:
-        self.trace_format.accept(self)
         pass
 
     def parse_simple_field(self, format: str, data: List) -> tuple:
@@ -612,9 +865,7 @@ class TraceFileParser(TraceFileParserInterface):
                 event_format["print_fmt"] = line[len(print_fmt_line_prefix):]
                 events_format[event_format["id"]] = event_format
                 event_format = {"fields": []}
-        # print(events_format)
         return events_format
-
 
     def parse_cmd_lines(self, data: List) -> dict:
         cmd_lines = {}
@@ -637,17 +888,27 @@ class TraceFileParser(TraceFileParserInterface):
             tgids[int(tgids_line[:pos])] = int(tgids_line[pos + 1:])
         return tgids
 
+    def get_segment_data(self, segment_size) -> List:
+        return self.trace_file.read_data(segment_size)
+
     def get_context(self) -> TraceParseContext:
         return self.context
 
-    def get_segment_data(self, segment_size) -> List:
-        return self.trace_file.read_data(segment_size)
+    def get_viewer(self) -> TraceViewerInterface:
+        return self.trace_viewer
+
+    def parse(self) -> None:
+        self.trace_format.accept(self)
+        self.trace_viewer.calcuate(self.context)
+        pass
 
 
 def main() -> None:
     file = TraceFile(r"test\unittest\tools\sample\record_trace_20250320101116@2500-814308989.sys")
     format = TraceFileFormat()
-    viewer = TraceViewer()
+    viewer = TraceViewer([
+        SysTraceViewer("my.new.trace")
+    ])
     context = TraceParseContext()
     parser = TraceFileParser(file, format, viewer, context)
     parser.parse()
