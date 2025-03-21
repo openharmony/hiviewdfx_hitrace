@@ -89,17 +89,24 @@ class Field:
 
 class TraceParseContext:
     CONTEXT_CPU_NUM = 1
-    CONTEXT_CMD_LINES = 1
+    CONTEXT_CMD_LINES = 2
+    CONTEXT_EVENT_SIZE = 3
+
     def __init__(self) -> None:
         self.cpu_num = 1
+        self.cmd_lines = []
+        self.event_size = 0
         pass
 
     def set_param(self, key: int, value: Any) -> None:
         if TraceParseContext.CONTEXT_CPU_NUM == key:
-            self.cpu_num = 1
+            self.cpu_num = value
             return
         if TraceParseContext.CONTEXT_CMD_LINES == key:
-            self.cmd_lines = 1
+            self.cmd_lines = value
+            return
+        if TraceParseContext.CONTEXT_EVENT_SIZE == key:
+            self.event_size = value
             return
         pass
 
@@ -108,6 +115,8 @@ class TraceParseContext:
             return self.cpu_num
         if TraceParseContext.CONTEXT_CMD_LINES == key:
             return self.cmd_lines
+        if TraceParseContext.CONTEXT_EVENT_SIZE == key:
+            return self.event_size
         pass
 
 
@@ -199,6 +208,7 @@ class FileHeader(FieldOperator):
         cpu_num = (values[FileHeader.ITEM_RESERVED] >> 1) & 0b00011111
         context = parser.get_context()
         context.set_param(TraceParseContext.CONTEXT_CPU_NUM, cpu_num)
+        print("cup number %d" % (cpu_num))
         return True
 
 
@@ -225,14 +235,41 @@ class PageHeader(FieldOperator):
         )
 
     def accept(self, parser: TraceFileParserInterface, segment = []) -> bool:
-        # value = parser.parse_simple_field(self)
-        # print(value)
+        value = parser.parse_simple_field(self.format, segment)
         return True
     pass
 
 
-class TraceEventHeader(OperatorInterface):
+class TraceEventHeader(FieldOperator):
+    """
+    功能描述: 声明HiTrace文件的第个 trace event 头部格式
+    """
+    # 描述HiTrace文件trace event的pack格式
+    FORMAT = "LH"
+    RMQ_ENTRY_ALIGN_MASK = 3
+
+    ITEM_TIMESTAMP_OFFSET = 0
+    ITEM_EVENT_SIZE = 1
+
+    def __init__(self) -> None:
+        super().__init__(
+            FieldType.TRACE_EVENT_HEADER,
+            DataType.get_data_bytes(TraceEventHeader.FORMAT),
+            TraceEventHeader.FORMAT,
+            [
+                TraceEventHeader.ITEM_TIMESTAMP_OFFSET,
+                TraceEventHeader.ITEM_EVENT_SIZE
+            ]
+        )
+
     def accept(self, parser: TraceFileParserInterface, segment = []) -> bool:
+        value  = parser.parse_simple_field(self.format, segment)
+        if len(value) == 0:
+            return False
+        event_size = value[TraceEventHeader.ITEM_EVENT_SIZE]
+        event_size = ((event_size + TraceEventHeader.RMQ_ENTRY_ALIGN_MASK) & (~TraceEventHeader.RMQ_ENTRY_ALIGN_MASK))
+        context = parser.get_context()
+        context.set_param(TraceParseContext.CONTEXT_EVENT_SIZE, event_size)
         return True
     pass
 
@@ -249,7 +286,29 @@ class TraceEventWrapper(OperatorInterface):
         self.event_content = event_content
         pass
 
-    def accept(self, parser: TraceFileParserInterface, segment = []) -> bool:
+    def _nextEventHeader(self, cur_post: int, segment: List) -> tuple:
+        data = segment[cur_post: cur_post + self.event_header.field_size]
+        next_post = cur_post + self.event_header.field_size
+        return (next_post, data)
+        pass
+
+    def _nextEventContent(self, cur_post: int, segment: List, parser: TraceFileParserInterface) -> tuple:
+        context = parser.get_context()
+        event_size = context.get_param(TraceParseContext.CONTEXT_EVENT_SIZE)
+        data = segment[cur_post: cur_post + event_size]
+        next_post = cur_post + event_size
+        return (next_post, data)
+        pass
+
+    def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
+        cur_post = 0
+        while cur_post < len(segment):
+            (cur_post, data) = self._nextEventHeader(cur_post, segment)
+            if self.event_header.accept(parser, data) is False:
+                break
+            (cur_post, data) = self._nextEventContent(cur_post, segment, parser)
+            if self.event_content.accept(parser, data) is False:
+                break
         return True
     pass
 
@@ -412,6 +471,8 @@ class SegmentWrapper(FieldOperator):
         for field in self.fields:
             if field.field_type == segment_type:
                 return field
+
+        for field in self.fields:
             if (segment_type >= field.field_type) and (segment_type < field.field_type + cpu_num):
                 return field
         return UnSupportSegment()
@@ -507,6 +568,8 @@ class TraceFileParser(TraceFileParserInterface):
 
     def parse_simple_field(self, format: str, data: List) -> tuple:
         if data is None:
+            return ()
+        if DataType.get_data_bytes(format) != len(data):
             return ()
         unpack_value = struct.unpack(format, data)
         return unpack_value
