@@ -313,7 +313,7 @@ HWTEST_F(HitraceMeterTest, SyncTraceInterfaceTest005, TestSize.Level1)
 
     std::vector<std::string> list = ReadTrace();
     char record[RECORD_SIZE_MAX + 1] = {0};
-    TraceInfo traceInfo = {'B', HITRACE_LEVEL_COMMERCIAL, TAG, 0, name, "", customArgs};
+    TraceInfo traceInfo = {'B', HITRACE_LEVEL_COMMERCIAL, multipleTags, 0, name, "", customArgs};
     bool isStartSuc = GetTraceResult(traceInfo, list, record);
     ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
     traceInfo.type = 'E';
