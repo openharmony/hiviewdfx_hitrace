@@ -93,18 +93,12 @@ std::string RegenerateTraceFileName(const std::string& fileName, const uint64_t&
         return "";
     }
     namePrefix = fileName.substr(0, index);
-    time_t utFirstPageTraceTime;
-    if (!ConvertPageTraceTimeToUtTime(firstPageTraceTime, utFirstPageTraceTime)) {
-        HILOG_ERROR(LOG_CORE,
-            "RegenerateTraceFileName: ConvertPageTraceTimeToUtTime failed. firstPageTraceTime:(%{public}" PRIu64
-            "), utFirstPageTraceTime:(%{public}" PRIu64 ").",
-            firstPageTraceTime, static_cast<uint64_t>(utFirstPageTraceTime));
-        return "";
-    }
+    uint64_t utFirstPageTraceTimeMs = ConvertPageTraceTimeToUtTimeMs(firstPageTraceTime);
     struct tm timeInfo = {};
     char timeBuf[TIME_BUFFER_SIZE] = {0};
-    if (localtime_r(&utFirstPageTraceTime, &timeInfo) == nullptr) {
-        HILOG_ERROR(LOG_CORE, "RegenerateTraceFileName: get loacl time failed");
+    time_t utFirstPageTraceTimeSec = static_cast<time_t>(utFirstPageTraceTimeMs / S_TO_MS);
+    if (localtime_r(&utFirstPageTraceTimeSec, &timeInfo) == nullptr) {
+        HILOG_ERROR(LOG_CORE, "RegenerateTraceFileName: get local time failed");
         return "";
     }
     (void)strftime(timeBuf, TIME_BUFFER_SIZE, "%Y%m%d%H%M%S", &timeInfo);
@@ -126,18 +120,18 @@ bool GetStartAndEndTraceUtTimeFromFileName(const std::string& fileName, uint64_t
                  &timeInfo.tm_year, &timeInfo.tm_mon, &timeInfo.tm_mday,
                  &timeInfo.tm_hour, &timeInfo.tm_min, &timeInfo.tm_sec,
                  &number) != 7) { // 7 : check sscanf_s return value
-        HILOG_ERROR(LOG_CORE, "sscanf_s failed.");
+        HILOG_ERROR(LOG_CORE, "sscanf_s for trace file name failed.");
         return false;
     }
     timeInfo.tm_year -= TIME_INIT;
     timeInfo.tm_mon -= 1;
     time_t timestamp = mktime(&timeInfo);
     if (timestamp == -1) {
-        HILOG_ERROR(LOG_CORE, "mktime failed");
+        HILOG_ERROR(LOG_CORE, "mktime failed to generate trace name timestamp.");
         return false;
     }
-    traceStartTime = static_cast<uint64_t>(timestamp);
-    traceEndTime = traceStartTime + static_cast<uint64_t>(number) / S_TO_MS;
+    traceStartTime = static_cast<uint64_t>(timestamp) * S_TO_MS;
+    traceEndTime = traceStartTime + static_cast<uint64_t>(number);
     return true;
 }
 }
@@ -204,9 +198,6 @@ void DelSnapshotTraceFile(const int& keepFileCount, std::vector<TraceFileInfo>& 
         return;
     }
 
-    std::sort(traceFileVec.begin(), traceFileVec.end(), [](const TraceFileInfo& a, const TraceFileInfo& b) {
-        return a.traceStartTime < b.traceStartTime;
-    });
     int deleteFileCnt = vecSize - keepFileCount;
     for (int i = 0; i < deleteFileCnt; i++) {
         auto it = traceFileVec.begin();
@@ -294,9 +285,6 @@ void ClearCacheTraceFileByDuration(std::vector<TraceFileInfo>& cacheFileVec)
         HILOG_INFO(LOG_CORE, "ClearCacheTraceFileByDuration: no cache file need to be deleted.");
         return;
     }
-    std::sort(cacheFileVec.begin(), cacheFileVec.end(), [](const TraceFileInfo& a, const TraceFileInfo& b) {
-        return a.traceStartTime < b.traceStartTime;
-    });
     uint64_t currentTime = static_cast<uint64_t>(std::time(nullptr));
     int index = 0;
     while (index < static_cast<int>(cacheFileVec.size())) {
@@ -324,9 +312,6 @@ void ClearCacheTraceFileBySize(std::vector<TraceFileInfo>& cacheFileVec, const u
         HILOG_INFO(LOG_CORE, "ClearCacheTraceFileBySize: no cache file need to be deleted.");
         return;
     }
-    std::sort(cacheFileVec.begin(), cacheFileVec.end(), [](const TraceFileInfo& a, const TraceFileInfo& b) {
-        return a.traceStartTime < b.traceStartTime;
-    });
     uint64_t totalCacheFileSize = 0;
     for (size_t i = 0; i < cacheFileVec.size(); ++i) {
         totalCacheFileSize += cacheFileVec[i].fileSize;
@@ -366,15 +351,19 @@ bool GetFileSize(const std::string& filePath, uint64_t& fileSize)
     return true;
 }
 
-bool ConvertPageTraceTimeToUtTime(const uint64_t& pageTraceTime, time_t& utPageTraceTime)
+uint64_t GetCurUnixTimeMs()
+{
+    auto now = std::chrono::system_clock::now();
+    return std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+}
+
+uint64_t ConvertPageTraceTimeToUtTimeMs(const uint64_t& pageTraceTime)
 {
     struct timespec bts = {0, 0};
     clock_gettime(CLOCK_BOOTTIME, &bts);
-    uint64_t btNow = static_cast<uint64_t>(bts.tv_sec) + (static_cast<uint64_t>(bts.tv_nsec) != 0 ? 1 : 0);
-    uint64_t utNow = static_cast<uint64_t>(std::time(nullptr));
-    uint64_t utBootTime = utNow - btNow;
-    utPageTraceTime = static_cast<time_t>(utBootTime + pageTraceTime / S_TO_NS);
-    return true;
+    uint64_t btNowMs = static_cast<uint64_t>(bts.tv_sec) * S_TO_MS + static_cast<uint64_t>(bts.tv_nsec) / MS_TO_NS;
+    uint64_t utNowMs = static_cast<uint64_t>(std::time(nullptr)) * S_TO_MS;
+    return utNowMs - btNowMs + pageTraceTime / MS_TO_NS;
 }
 
 bool RenameTraceFile(const std::string& fileName, std::string& newFileName,
