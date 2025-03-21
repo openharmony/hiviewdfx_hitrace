@@ -15,13 +15,23 @@
 # limitations under the License.
 #
 
-from enum import IntEnum, unique
 from abc import ABCMeta, abstractmethod
+from enum import IntEnum, unique
 from typing import List, Any
+import optparse
 import os
-import struct
 import stat
+import struct
+import re
+
 import parse_functions
+
+TRACE_REGEX_ASYNC = "\s*(\d+)\s+(.*?)\|\d+\|[SFC]\s+:(.*?)\s+:(.*?)\s+(.*?)\s+\]\d+\[\s+\)(\d+)\s*\(\s+(\d+?)-(.*?)\s+"
+TRACE_REGEX_SYNC = "\s*\|\d+\|E\s+:(.*?)\s+:(.*?)\s+(.*?)\s+\]\d+\[\s+\)(\d+)\s*\(\s+(\d+?)-(.*?)\s+"
+text_file = ""
+binary_file = ""
+out_file = ""
+file_dir = ""
 
 TRACE_TXT_HEADER_FORMAT = """# tracer: nop
 #
@@ -36,28 +46,86 @@ TRACE_TXT_HEADER_FORMAT = """# tracer: nop
 #              | |        |      |   ||||       |         |
 """
 
+
+def parse_options() -> None:
+    global text_file
+    global binary_file
+    global out_file
+    global file_dir
+
+    usage = "Usage: %prog -t text_file -o out_file or\n%prog -b binary_file -o out_file"
+    desc = "Example: %prog -t my_trace_file.htrace -o my_trace_file.systrace"
+
+    parser = optparse.OptionParser(usage=usage, description=desc)
+    parser.add_option('-t', '--text_file', dest='text_file',
+        help='Name of the text file to be parsed.', metavar='FILE')
+    parser.add_option('-b', '--binary_file', dest='binary_file',
+        help='Name of the binary file to be parsed.', metavar='FILE')
+    parser.add_option('-o', '--out_file', dest='out_file',
+        help='File name after successful parsing.', metavar='FILE')
+    parser.add_option('-d', '--file_dir', dest='file_dir',
+        help='Folder to be parsed.', metavar='FILE')
+
+    options, args = parser.parse_args()
+
+    if options.file_dir is None:
+        if options.out_file is not None:
+            out_file = options.out_file
+        else:
+            print("Error: out_file must be specified")
+            exit(-1)
+        if options.text_file is not None:
+            text_file = options.text_file
+        if options.binary_file is not None:
+            binary_file = options.binary_file
+
+        if text_file == '' and binary_file == '':
+            print("Error: You must specify a text or binary file")
+            exit(-1)
+        if text_file != '' and binary_file != '':
+            print("Error: Only one parsed file can be specified")
+            exit(-1)
+    else:
+        folder = os.path.exists(options.file_dir)
+        if not folder:
+            print("Error: file_dir does not exist")
+            exit(-1)
+        else:
+            file_dir = options.file_dir
+
+
+def parse_text_trace_file() -> None:
+    print("start processing text trace file")
+    pattern_async = re.compile(TRACE_REGEX_ASYNC)
+    pattern_sync = re.compile(TRACE_REGEX_SYNC)
+    match_num = 0
+
+    infile_flags = os.O_RDONLY
+    infile_mode = stat.S_IRUSR
+    infile = os.fdopen(os.open(text_file, infile_flags, infile_mode), "r", encoding="utf-8")
+    outfile_flags = os.O_RDWR | os.O_CREAT
+    outfile_mode = stat.S_IRUSR | stat.S_IWUSR
+    outfile = os.fdopen(os.open(out_file, outfile_flags, outfile_mode), "w+", encoding="utf-8")
+
+    for line in infile:
+        reverse_line = line[::-1]
+        trace_match_async = pattern_async.match(reverse_line)
+        trace_match_sync = pattern_sync.match(reverse_line)
+        if trace_match_async:
+            line = line.rstrip(' ')
+            pos = line.rfind(' ')
+            line = "%s%s%s" % (line[:pos], '|', line[pos + 1:])
+            match_num += 1
+        elif trace_match_sync:
+            line = "%s\n" % (line.rstrip()[:-1])
+            match_num += 1
+        outfile.write(line)
+    infile.close()
+    outfile.close()
+    print("total matched and modified lines: ", match_num)
+
+
 class DataType:
-    # 数据类型
-    B = "B"
-    H = "H"
-    I = "I"
-    L = "L"
-    Q = "Q"
-
-    # 数据类型字节数
-    DATA_BYTE_INT8 = 1
-    DATA_BYTE_INT16 = 2
-    DATA_BYTE_INT32 = 4
-    DATA_BYTE_INT64 = 8
-
-    dataTypes = {
-        B : DATA_BYTE_INT8,
-        H : DATA_BYTE_INT16,
-        I : DATA_BYTE_INT32,
-        L : DATA_BYTE_INT32,
-        Q : DATA_BYTE_INT64,
-    }
-
     @staticmethod
     def get_data_bytes(dataTypes: str) -> int:
         return struct.calcsize(dataTypes)
@@ -97,6 +165,9 @@ class Field:
 
 
 class TraceParseContext:
+    """
+    功能描述: 解析过程的中间数据，需要缓存到上下文中，解决段与段间的数据依赖问题
+    """
     CONTEXT_CPU_NUM = 1
     CONTEXT_CMD_LINES = 2
     CONTEXT_EVENT_SIZE = 3
@@ -185,7 +256,7 @@ class OperatorInterface(metaclass = ABCMeta):
 class FieldOperator(Field, OperatorInterface):
     def __init__(self, type, size, format, item_types) -> None:
         Field.__init__(self, type, size, format, item_types)
-    pass
+        pass
 
     def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
         return True
@@ -194,7 +265,7 @@ class FieldOperator(Field, OperatorInterface):
 class SegmentOperator(Field, OperatorInterface):
     def __init__(self, type) -> None:
         Field.__init__(self, type, -1, "", [])
-    pass
+        pass
 
     def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
         return True
@@ -207,6 +278,7 @@ class FileHeader(FieldOperator):
     # 描述HiTrace文件头的pack格式
     FORMAT = "HBHL"
 
+    # HiTrace文件头包含的字段
     ITEM_MAGIC_NUMBER = 0
     ITEM_FILE_TYPE = 1
     ITEM_VERSION_NUMBER = 2
@@ -227,7 +299,10 @@ class FileHeader(FieldOperator):
         cpu_num = (values[FileHeader.ITEM_RESERVED] >> 1) & 0b00011111
         context = parser.get_context()
         context.set_param(TraceParseContext.CONTEXT_CPU_NUM, cpu_num)
-        print("cup number %d" % (cpu_num))
+
+        version = values[FileHeader.ITEM_VERSION_NUMBER]
+        file_type = values[FileHeader.ITEM_FILE_TYPE]
+        print("version is %d, file type is %d, cpu number %d" % (version, file_type, cpu_num))
         return True
 
 
@@ -235,11 +310,14 @@ class PageHeader(FieldOperator):
     """
     功能描述: 声明HiTrace文件的第个 raw event 页头部格式
     """
-    # 描述HiTrace文件头的pack格式
+    # 描述HiTrace文件的page header的pack格式
     FORMAT = "QQB"
 
+    # HiTrace文件的page header包含的字段，每一页是同一个CPU核产生的数据，每一页都是固定大小4096字节
+    # page内trace event的时间基准点
     ITEM_TIMESTAMP = 0
     ITEM_LENGTH = 1
+    # page所属的CPU核
     ITEM_CORE_ID = 2
     def __init__(self, item_types: List) -> None:
         super().__init__(
@@ -266,7 +344,9 @@ class TraceEventHeader(FieldOperator):
     FORMAT = "LH"
     RMQ_ENTRY_ALIGN_MASK = 3
 
+    # HiTrace文件的trace event header包含的字段，事件的打点时间是基于page header的时间做偏移可计算出来
     ITEM_TIMESTAMP_OFFSET = 0
+    # trace event的大小，实际占用内存的大小还需要考虑内存对齐的因素
     ITEM_EVENT_SIZE = 1
     def __init__(self, item_types: List) -> None:
         super().__init__(
@@ -356,6 +436,7 @@ class PageWrapper(OperatorInterface):
     """
     功能描述: 声明HiTrace文件的1个page的格式
     """
+    # trace event的page是固定大小, trace event的内容大小，应该是4096的整数倍，trace event需要按页进行解析
     TRACE_PAGE_SIZE = 4096
 
     def __init__(self, page_header: PageHeader, trace_event: TraceEventWrapper) -> None:
@@ -385,7 +466,7 @@ class PageWrapper(OperatorInterface):
 
 class RawTraceSegment(SegmentOperator):
     """
-    功能描述: 声明HiTrace文件 trace_pipe_raw 内容的段格式
+    功能描述: 声明HiTrace文件trace_pipe_raw内容的段格式
     """
     def __init__(self) -> None:
         super().__init__(FieldType.SEGMENT_RAW_TRACE)
@@ -406,22 +487,19 @@ class RawTraceSegment(SegmentOperator):
         pass
 
     def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
-        print("raw event segment")
         self.field.accept(parser, segment)
         return True
 
 
-
 class EventFormatSegment(SegmentOperator):
     """
-    功能描述: 声明HiTrace文件 event/format 内容的段格式
+    功能描述: 声明HiTrace文件event/format内容的段格式
     """
     def __init__(self) -> None:
         super().__init__(FieldType.SEGMENT_EVENTS_FORMAT)
         pass
 
     def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
-        print("event format segment")
         events_format = parser.parse_event_format(segment)
         context = parser.get_context()
         context.set_param(TraceParseContext.CONTEXT_EVENT_FORMAT, events_format)
@@ -430,14 +508,13 @@ class EventFormatSegment(SegmentOperator):
 
 class CmdLinesSegment(SegmentOperator):
     """
-    功能描述: 声明HiTrace文件 saved_cmdlines 内容的段格式
+    功能描述: 声明HiTrace文件/sys/kernel/tracing/saved_cmdlines内容的段格式
     """
     def __init__(self) -> None:
         super().__init__(FieldType.SEGMENT_CMDLINES)
         pass
 
     def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
-        print("cmd lines segment")
         cmd_lines = parser.parse_cmd_lines(segment)
         context = parser.get_context()
         context.set_param(TraceParseContext.CONTEXT_CMD_LINES, cmd_lines)
@@ -446,14 +523,13 @@ class CmdLinesSegment(SegmentOperator):
 
 class TidGroupsSegment(SegmentOperator):
     """
-    功能描述: 声明HiTrace文件 saved_tgids 内容的段格式
+    功能描述: 声明HiTrace文件/sys/kernel/tracing/saved_tgids内容的段格式
     """
     def __init__(self) -> None:
         super().__init__(FieldType.SEGMENT_TGIDS)
         pass
 
     def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
-        print("tid groups segment")
         tid_groups = parser.parse_tid_gropus(segment)
         context = parser.get_context()
         context.set_param(TraceParseContext.CONTEXT_TID_GROUPS, tid_groups)
@@ -462,27 +538,40 @@ class TidGroupsSegment(SegmentOperator):
 
 class PrintkFormatSegment(SegmentOperator):
     """
-    功能描述: 声明HiTrace文件 printk_formats 内容的段格式
+    功能描述: 声明HiTrace文件/sys/kernel/tracing/printk_formats内容的段格式
     """
     def __init__(self) -> None:
         super().__init__(FieldType.SEGMENT_PRINTK_FORMATS)
         pass
 
     def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
-        print("printk format segment")
+        print("in parse_printk_formats")
         return True
 
 
 class KallSymsSegment(SegmentOperator):
     """
-    功能描述: 声明HiTrace文件 Kall Sysms 内容的段格式
+    功能描述: 声明HiTrace文件Kall Sysms内容的段格式
     """
     def __init__(self) -> None:
         super().__init__(FieldType.SEGMENT_KALLSYMS)
         pass
 
     def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
-        print("kall sysms segment")
+        print("in parse_kallsyms")
+        return True
+
+
+class HeaderPageSegment(SegmentOperator):
+    """
+    功能描述: 声明HiTrace文件header page内容的段格式
+    """
+    def __init__(self) -> None:
+        super().__init__(FieldType.SEGMENT_HEADER_PAGE)
+        pass
+
+    def accept(self, parser: TraceFileParserInterface, segment: List = []) -> bool:
+        print("in parse_header_page")
         return True
 
 
@@ -546,7 +635,6 @@ class SegmentWrapper(FieldOperator):
             segment_size = values[SegmentWrapper.ITEM_SEGMENT_SIZE]
             conext = parser.get_context()
 
-            print("segment type=%d, size=%d"%(segment_type, segment_size))
             segment = self._getSegment(segment_type, conext.get_param(TraceParseContext.CONTEXT_CPU_NUM))
             segment_data = parser.get_segment_data(segment_size)
             segment.accept(parser, segment_data)
@@ -595,9 +683,10 @@ class TraceFileFormat(OperatorInterface):
                 CmdLinesSegment(),
                 TidGroupsSegment(),
                 EventFormatSegment(),
+                RawTraceSegment(),
                 PrintkFormatSegment(),
                 KallSymsSegment(),
-                RawTraceSegment()
+                HeaderPageSegment(),
             ])
         ]
         pass
@@ -753,6 +842,11 @@ class SysTraceViewer(Viewer):
         else:
             self.trace_event_count_dict[event_id] = 1
 
+        if event_id in self.trace_event_mem_dict:
+            self.trace_event_mem_dict[event_id] += len(segment)
+        else:
+            self.trace_event_mem_dict[event_id] = len(segment)
+
         event_format = self.events_format.get(event_id, "")
         if event_format == "":
             # current event format is not found in trace file format data.
@@ -775,7 +869,23 @@ class SysTraceViewer(Viewer):
         self.systrace.append([timestamp, systrace])
         pass
 
-    def show(self) -> None:
+    def _showStat(self) -> None:
+        for name in self.get_not_found_format:
+            print("Error: function parse_%s not found" % name)
+        print("Trace format miss count: %d" % self.format_miss_cnt)
+        print("Trace format id missed set:")
+        print(self.format_miss_set)
+
+        count_total = sum(self.trace_event_count_dict.values())
+        mem_total = sum(self.trace_event_mem_dict.values()) / 1024 # KB
+        print(f"Trace counter: total count({count_total}), total mem({mem_total:.3f}KB)")
+        for format_id, count in self.trace_event_count_dict.items():
+            count_percentage = count / count_total * 100
+            mem = self.trace_event_mem_dict.get(format_id, 0) / 1024
+            mem_percentage = mem / mem_total * 100
+            print(f"ID {format_id}: count={count}, count percentage={count_percentage:.5f}%, mem={mem:.3f}KB, mem percentage={mem_percentage:.5f}%")
+
+    def _save_systrace(self) -> None:
         outfile_flags = os.O_RDWR | os.O_CREAT
         outfile_mode = stat.S_IRUSR | stat.S_IWUSR
 
@@ -785,7 +895,12 @@ class SysTraceViewer(Viewer):
         for line in result:
             outfile.write("{}\n".format(line[1]))
         outfile.close()
+
+    def show(self) -> None:
+        self._save_systrace()
+        self._showStat()
         pass
+
 
 class TraceViewer(TraceViewerInterface):
     def __init__(self, viewers: List) -> None:
@@ -802,7 +917,6 @@ class TraceViewer(TraceViewerInterface):
             viewer.set_context(context)
 
         for timestamp, core_id, event_id, segment in self.trace_events:
-            #print("timestamp=%d, cpuid=%d, eventid=%d, segment size=%d"%(timestamp, core_id, event_id, len(segment)))
             for viewer in self.viewers:
                 viewer.calcuate(timestamp, core_id, event_id, segment, context)
 
@@ -842,7 +956,6 @@ class TraceFileParser(TraceFileParserInterface):
             field["offset"] = int(field_info[1][len("offset:"):])
             field["size"] = int(field_info[2][len("size:"):])
             field["signed"] = field_info[3][len("signed:"):]
-
             return field
 
         events_format = {}
@@ -875,7 +988,6 @@ class TraceFileParser(TraceFileParserInterface):
             if pos == -1:
                 continue
             cmd_lines[int(cmd_line[:pos])] = cmd_line[pos + 1:]
-        # print(cmd_lines)
         return cmd_lines
 
     def parse_tid_gropus(self, data: List) -> dict:
@@ -903,17 +1015,36 @@ class TraceFileParser(TraceFileParserInterface):
         pass
 
 
-def main() -> None:
-    file = TraceFile(r"test\unittest\tools\sample\record_trace_20250320101116@2500-814308989.sys")
+def parse_binary_trace_file() -> None:
+    file = TraceFile(binary_file)
     format = TraceFileFormat()
     viewer = TraceViewer([
-        SysTraceViewer("my.new.trace")
+        SysTraceViewer(out_file)
     ])
     context = TraceParseContext()
     parser = TraceFileParser(file, format, viewer, context)
     parser.parse()
     pass
 
+
+def main() -> None:
+    parse_options()
+
+    if file_dir == '':
+        if text_file != '':
+            parse_text_trace_file()
+        else:
+            parse_binary_trace_file()
+    else:
+        for file in os.listdir(file_dir):
+            if file.find('.sys') != -1:
+                print(file)
+                global binary_file
+                global out_file
+                binary_file = os.path.join(file_dir, file)
+                out_file = os.path.join(os.path.split(binary_file)[0],
+                                        os.path.split(binary_file)[-1].split('.')[0] + '.ftrace')
+                parse_binary_trace_file()
 
 
 if __name__ == '__main__':
