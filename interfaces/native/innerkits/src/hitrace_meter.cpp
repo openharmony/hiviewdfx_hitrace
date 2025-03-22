@@ -108,7 +108,8 @@ struct HitraceTagPair {
     uint64_t tag;
     const char* bitStr;
 };
-static const HitraceTagPair HITRACE_TAGS[] = {
+static const HitraceTagPair ORDERED_HITRACE_TAGS[] = {
+    {HITRACE_TAG_ALWAYS, "00"}, {HITRACE_TAG_COMMERCIAL, "05"},
     {HITRACE_TAG_DRM, "06"}, {HITRACE_TAG_SECURITY, "07"},
     {HITRACE_TAG_ANIMATION, "09"}, {HITRACE_TAG_PUSH, "10"}, {HITRACE_TAG_VIRSE, "11"},
     {HITRACE_TAG_MUSL, "12"}, {HITRACE_TAG_FFRT, "13"}, {HITRACE_TAG_CLOUD, "14"},
@@ -915,14 +916,13 @@ struct CompareTag {
 
 void ParseTagBits(const uint64_t tag, std::string& bitsStr)
 {
-    uint64_t maskedTag = tag & (~HITRACE_TAG_COMMERCIAL);
-    auto it = std::lower_bound(std::begin(HITRACE_TAGS), std::end(HITRACE_TAGS), maskedTag, CompareTag());
-    if (it != std::end(HITRACE_TAGS) && it->tag == maskedTag) {
+    auto it = std::lower_bound(std::begin(ORDERED_HITRACE_TAGS), std::end(ORDERED_HITRACE_TAGS), tag, CompareTag());
+    if (it != std::end(ORDERED_HITRACE_TAGS) && it->tag == tag) {
         bitsStr = it->bitStr;
         return;
     }
 
-    for (const auto& pair : HITRACE_TAGS) {
+    for (const auto& pair : ORDERED_HITRACE_TAGS) {
         if ((tag & pair.tag) != 0) {
             bitsStr += pair.bitStr;
         }
