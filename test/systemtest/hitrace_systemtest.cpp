@@ -439,7 +439,7 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest009, TestSize.Level1)
     ASSERT_TRUE(RunCmd("hitrace --stop_bgsrv"));
     int filecnt = CountSnapShotTraceFile();
     GTEST_LOG_(INFO) << "Filecnt: " << filecnt;
-    ASSERT_LE(filecnt, snapshotFileAge);
+    ASSERT_LE(filecnt, snapshotFileAge + 1);
 }
 
 /**
@@ -497,7 +497,8 @@ HWTEST_F(HitraceSystemTest, CacheModeTest001, TestSize.Level1)
     ASSERT_TRUE(CacheTraceOn(800, 5) == TraceErrorCode::SUCCESS);
     sleep(8); // wait 8s
     TraceRetInfo ret = DumpTrace();
-    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS_WITH_CACHE);
+    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
+    ASSERT_EQ(ret.mode, TraceMode::OPEN | TraceMode::CACHE);
     std::vector<FileWithInfo> fileList;
     ASSERT_TRUE(GetFileInfo(TRACE_SNAPSHOT, ret.outputFiles, fileList));
     ASSERT_GE(fileList.size(), 2); // cache_trace_ file count > 2

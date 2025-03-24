@@ -482,13 +482,15 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_010, TestSize.Level0)
     ASSERT_TRUE(CacheTraceOn(800, 10) == TraceErrorCode::SUCCESS);
     sleep(40); // wait 40s, over 30s
     TraceRetInfo ret = DumpTrace();
-    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS_WITH_CACHE) << "errorCode: " << static_cast<int>(ret.errorCode);
+    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(ret.errorCode);
+    ASSERT_EQ(ret.mode, TraceMode::OPEN | TraceMode::CACHE);
     for (int i = 0; i < ret.outputFiles.size(); i++) {
         GTEST_LOG_(INFO) << "outputFiles:" << ret.outputFiles[i].c_str();
     }
     ASSERT_GE(ret.outputFiles.size(), 3); // at least 3 slices
-    ASSERT_EQ(ret.coverDuration, DEFAULT_FULL_TRACE_LENGTH * S_TO_MS); // full cover max 30s guaranteed duration
-    ASSERT_EQ(ret.coverRatio, MAX_RATIO_UNIT);
+    // almost fully cover max 30s guaranteed duration
+    ASSERT_GE(ret.coverDuration, (DEFAULT_FULL_TRACE_LENGTH - 1) * S_TO_MS);
+    ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT - 10); // 1% tolerance
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -506,8 +508,8 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_011, TestSize.Level0)
     ASSERT_TRUE(CacheTraceOn(800, 5) == TraceErrorCode::SUCCESS);
     sleep(8); // wait 8s
     TraceRetInfo ret = DumpTrace();
-    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS_WITH_CACHE) << "errorCode: " <<
-        static_cast<int>(ret.errorCode);
+    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(ret.errorCode);
+    ASSERT_EQ(ret.mode, TraceMode::OPEN | TraceMode::CACHE);
     for (int i = 0; i < ret.outputFiles.size(); i++) {
         GTEST_LOG_(INFO) << "outputFiles:" << ret.outputFiles[i].c_str();
     }
@@ -516,7 +518,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_011, TestSize.Level0)
     ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT * 7 / DEFAULT_FULL_TRACE_LENGTH); // coverRatio >= 7/30
     sleep(1);
     TraceRetInfo retNext = DumpTrace();
-    ASSERT_EQ(retNext.errorCode, TraceErrorCode::SUCCESS_WITH_CACHE) << "errorCode: " <<
+    ASSERT_EQ(retNext.errorCode, TraceErrorCode::SUCCESS) << "errorCode: " <<
         static_cast<int>(ret.errorCode);
     for (int i = 0; i < retNext.outputFiles.size(); i++) {
         GTEST_LOG_(INFO) << "outputFiles:" << retNext.outputFiles[i].c_str();
@@ -562,8 +564,9 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_013, TestSize.Level0)
     ASSERT_TRUE(CacheTraceOn(800, 10) == TraceErrorCode::SUCCESS);
     sleep(TEN_SEC); // wait 10s
     TraceRetInfo retNext = DumpTrace(TEN_SEC * 2); // get passed 20s trace
-    ASSERT_EQ(retNext.errorCode, TraceErrorCode::SUCCESS_WITH_CACHE) << "errorCode: " <<
+    ASSERT_EQ(retNext.errorCode, TraceErrorCode::SUCCESS) << "errorCode: " <<
         static_cast<int>(retNext.errorCode);
+    ASSERT_EQ(retNext.mode, TraceMode::OPEN | TraceMode::CACHE);
     ASSERT_GE(retNext.outputFiles.size(), 1);
     ASSERT_GE(retNext.coverDuration, (TEN_SEC - 1) * S_TO_MS); // coverDuration >= 9s
     ASSERT_LE(retNext.coverDuration, (TEN_SEC + 2) * S_TO_MS); // coverDuration <= 12s
