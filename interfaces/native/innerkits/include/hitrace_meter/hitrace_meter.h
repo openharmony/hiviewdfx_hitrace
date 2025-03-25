@@ -17,14 +17,10 @@
 #define INTERFACES_INNERKITS_NATIVE_HITRACE_METER_H
 
 #include <string>
-#include <unistd.h>
-
-#include "hitrace_meter_c.h"
 #ifdef HITRACE_UNITTEST
 #include <hilog/log.h>
 #include "param/sys_param.h"
 #endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -121,63 +117,55 @@ void SetTraceDisabled(bool disable);
 /**
  * Track the beginning of a context.
  */
-void StartTrace(uint64_t tag, const std::string& name, float limit = -1);
-void StartTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, const char* customArgs = "");
-void StartTraceDebug(bool isDebug, uint64_t tag, const std::string& name, float limit = -1);
-void StartTraceArgs(uint64_t tag, const char* fmt, ...);
-void StartTraceArgsDebug(bool isDebug, uint64_t tag, const char* fmt, ...);
-void StartTraceWrapper(uint64_t tag, const char* name);
+void StartTrace(uint64_t label, const std::string& value, float limit = -1);
+void StartTraceDebug(bool isDebug, uint64_t label, const std::string& value, float limit = -1);
+void StartTraceArgs(uint64_t label, const char *fmt, ...);
+void StartTraceArgsDebug(bool isDebug, uint64_t label, const char *fmt, ...);
+void StartTraceWrapper(uint64_t label, const char *value);
 
 /**
  * Track the end of a context.
  */
-void FinishTrace(uint64_t tag);
-void FinishTraceEx(HiTraceOutputLevel level, uint64_t tag);
-void FinishTraceDebug(bool isDebug, uint64_t tag);
+void FinishTrace(uint64_t label);
+void FinishTraceDebug(bool isDebug, uint64_t label);
 
 /**
  * Track the beginning of an asynchronous event.
  */
-void StartAsyncTrace(uint64_t tag, const std::string& name, int32_t taskId, float limit = -1);
-void StartAsyncTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, int32_t taskId,
-    const char* customCategory, const char* customArgs = "");
-void StartAsyncTraceDebug(bool isDebug, uint64_t tag, const std::string& name, int32_t taskId, float limit = -1);
-void StartAsyncTraceArgs(uint64_t tag, int32_t taskId, const char* fmt, ...);
-void StartAsyncTraceArgsDebug(bool isDebug, uint64_t tag, int32_t taskId, const char* fmt, ...);
-void StartAsyncTraceWrapper(uint64_t tag, const char* name, int32_t taskId);
+void StartAsyncTrace(uint64_t label, const std::string& value, int32_t taskId, float limit = -1);
+void StartAsyncTraceDebug(bool isDebug, uint64_t label, const std::string& value, int32_t taskId, float limit = -1);
+void StartAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...);
+void StartAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, const char *fmt, ...);
+void StartAsyncTraceWrapper(uint64_t label, const char *value, int32_t taskId);
 
 /**
  * Track the beginning of an hitrace chain event.
  */
 struct HiTraceIdStruct;
-void StartTraceChain(uint64_t tag, const struct HiTraceIdStruct* hiTraceId, const char* name);
+void StartTraceChain(uint64_t label, const struct HiTraceIdStruct* hiTraceId, const char *value);
 
 /**
  * Track the end of an asynchronous event.
  */
-void FinishAsyncTrace(uint64_t tag, const std::string& name, int32_t taskId);
-void FinishAsyncTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, int32_t taskId);
-void FinishAsyncTraceDebug(bool isDebug, uint64_t tag, const std::string& name, int32_t taskId);
-void FinishAsyncTraceArgs(uint64_t tag, int32_t taskId, const char* fmt, ...);
-void FinishAsyncTraceArgsDebug(bool isDebug, uint64_t tag, int32_t taskId, const char* fmt, ...);
-void FinishAsyncTraceWrapper(uint64_t tag, const char* name, int32_t taskId);
+void FinishAsyncTrace(uint64_t label, const std::string& value, int32_t taskId);
+void FinishAsyncTraceDebug(bool isDebug, uint64_t label, const std::string& value, int32_t taskId);
+void FinishAsyncTraceArgs(uint64_t label, int32_t taskId, const char *fmt, ...);
+void FinishAsyncTraceArgsDebug(bool isDebug, uint64_t label, int32_t taskId, const char *fmt, ...);
+void FinishAsyncTraceWrapper(uint64_t label, const char *value, int32_t taskId);
 
 /**
  * Track the middle of a context. Match the previous function of StartTrace before it.
  */
-void MiddleTrace(uint64_t tag, const std::string& beforeValue, const std::string& afterValue);
-void MiddleTraceDebug(bool isDebug, uint64_t tag, const std::string& beforeValue, const std::string& afterValue);
+void MiddleTrace(uint64_t label, const std::string& beforeValue, const std::string& afterValue);
+void MiddleTraceDebug(bool isDebug, uint64_t label, const std::string& beforeValue, const std::string& afterValue);
 
 /**
  * Track the 64-bit integer counter value.
  */
-void CountTrace(uint64_t tag, const std::string& name, int64_t count);
-void CountTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, int64_t count);
-void CountTraceDebug(bool isDebug, uint64_t tag, const std::string& name, int64_t count);
-void CountTraceWrapper(uint64_t tag, const char* name, int64_t count);
-
+void CountTrace(uint64_t label, const std::string& name, int64_t count);
+void CountTraceDebug(bool isDebug, uint64_t label, const std::string& name, int64_t count);
+void CountTraceWrapper(uint64_t label, const char *name, int64_t count);
 bool IsTagEnabled(uint64_t tag);
-void ParseTagBits(const uint64_t tag, std::string& bitStrs);
 
 enum RetType {
     RET_SUCC = 0, // Successful
@@ -200,12 +188,11 @@ void SetReloadPid(bool isReloadPid);
 void SetpidHasReload(bool ispidHasReload);
 void SetAppFd(int appFd);
 void SetMarkerFd(int markerFd);
-void SetAddHitraceMeterMarker(uint64_t tag, const std::string& name);
+void SetAddHitraceMeterMarker(uint64_t label, const std::string& value);
+void SetAddTraceMarkerLarge(const std::string& name, const int64_t value);
 void SetWriteAppTrace(TraceFlag appFlag, const std::string& name, const int64_t value, bool tid);
 void SetWriteToTraceMarker(const char* buf, const int count);
 void SetCachedHandleAndAppPidCachedHandle(CachedHandle cachedHandle, CachedHandle appPidCachedHandle);
-void SetCachedHandle(CachedHandle cachedHandle, CachedHandle appPidCachedHandle,
-    CachedHandle levelThresholdCachedHandle);
 void SetGetProcData(const char* file);
 void GetSetMainThreadInfo();
 void GetSetCommStr();
@@ -219,28 +206,11 @@ void SetWriteAppTraceLong(const int len, const std::string& name, const int64_t 
 int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std::string& fileName);
 int StopCaptureAppTrace(void);
 
-class HitraceScopedEx {
-public:
-    inline HitraceScopedEx(HiTraceOutputLevel level, uint64_t tag, const char* name,
-        const char* customArgs = "") : tag_(tag), level_(level)
-    {
-        StartTraceEx(level_, tag_, name, customArgs);
-    }
-
-    inline ~HitraceScopedEx()
-    {
-        FinishTraceEx(level_, tag_);
-    }
-private:
-    uint64_t tag_;
-    HiTraceOutputLevel level_;
-};
-
 class HitraceScoped {
 public:
-    inline HitraceScoped(uint64_t tag, const std::string& name) : mTag(tag)
+    inline HitraceScoped(uint64_t tag, const std::string &value) : mTag(tag)
     {
-        StartTrace(mTag, name);
+        StartTrace(mTag, value);
     }
 
     inline ~HitraceScoped()
@@ -253,27 +223,16 @@ private:
 
 class HitracePerfScoped {
 public:
-    HitracePerfScoped(bool isDebug, uint64_t tag, const std::string& name);
+    HitracePerfScoped(bool isDebug, uint64_t tag, const std::string &name);
 
     ~HitracePerfScoped();
 
-    inline long long GetInsCount()
-    {
-        if (fd1st_ == -1) {
-            return err_;
-        }
-        read(fd1st_, &countIns_, sizeof(long long));
-        return countIns_;
-    }
+    inline long long GetInsCount();
 
-    inline long long GetCycleCount()
-    {
-        if (fd2nd_ == -1) {
-            return err_;
-        }
-        read(fd2nd_, &countCycles_, sizeof(long long));
-        return countCycles_;
-    }
+    inline long long GetCycleCount();
+#ifdef HITRACE_UNITTEST
+    void SetHitracePerfScoped(int fd1st, int fd2nd);
+#endif
 private:
     uint64_t mTag_;
     std::string mName_;
@@ -286,7 +245,7 @@ private:
 
 class HitraceMeterFmtScoped {
 public:
-    HitraceMeterFmtScoped(uint64_t tag, const char* fmt, ...);
+    HitraceMeterFmtScoped(uint64_t tag, const char *fmt, ...);
 
     ~HitraceMeterFmtScoped()
     {

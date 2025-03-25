@@ -29,7 +29,6 @@ TRACE_REGEX_SYNC = "\s*\|\d+\|E\s+:(.*?)\s+:(.*?)\s+(.*?)\s+\]\d+\[\s+\)(\d+)\s*
 text_file = ""
 binary_file = ""
 out_file = ""
-file_dir = ""
 
 CONTENT_TYPE_DEFAULT = 0
 CONTENT_TYPE_EVENTS_FORMAT = 1
@@ -76,7 +75,6 @@ def parse_options():
     global text_file
     global binary_file
     global out_file
-    global file_dir
 
     usage = "Usage: %prog -t text_file -o out_file or\n%prog -b binary_file -o out_file"
     desc = "Example: %prog -t my_trace_file.htrace -o my_trace_file.systrace"
@@ -88,35 +86,25 @@ def parse_options():
         help='Name of the binary file to be parsed.', metavar='FILE')
     parser.add_option('-o', '--out_file', dest='out_file',
         help='File name after successful parsing.', metavar='FILE')
-    parser.add_option('-d', '--file_dir', dest='file_dir',
-        help='Folder to be parsed.', metavar='FILE')
 
     options, args = parser.parse_args()
 
-    if options.file_dir is None:
-        if options.out_file is not None:
-            out_file = options.out_file
-        else:
-            print("Error: out_file must be specified")
-            exit(-1)
-        if options.text_file is not None:
-            text_file = options.text_file
-        if options.binary_file is not None:
-            binary_file = options.binary_file
-
-        if text_file == '' and binary_file == '':
-            print("Error: You must specify a text or binary file")
-            exit(-1)
-        if text_file != '' and binary_file != '':
-            print("Error: Only one parsed file can be specified")
-            exit(-1)
+    if options.out_file is not None:
+        out_file = options.out_file
     else:
-        folder = os.path.exists(options.file_dir)
-        if not folder:
-            print("Error: file_dir does not exist")
-            exit(-1)
-        else:
-            file_dir = options.file_dir
+        print("Error: out_file must be specified")
+        exit(-1)
+    if options.text_file is not None:
+        text_file = options.text_file
+    if options.binary_file is not None:
+        binary_file = options.binary_file
+
+    if text_file == '' and binary_file == '':
+        print("Error: You must specify a text or binary file")
+        exit(-1)
+    if text_file != '' and binary_file != '':
+        print("Error: Only one parsed file can be specified")
+        exit(-1)
 
 
 def parse_text_trace_file():
@@ -528,21 +516,10 @@ def parse_binary_trace_file():
 def main():
     parse_options()
 
-    if file_dir == '':
-        if text_file != '':
-            parse_text_trace_file()
-        else:
-            parse_binary_trace_file()
+    if text_file != '':
+        parse_text_trace_file()
     else:
-        for file in os.listdir(file_dir):
-            if file.find('.sys') != -1:
-                print(file)
-                global binary_file
-                global out_file
-                binary_file = os.path.join(file_dir, file)
-                out_file = os.path.join(os.path.split(binary_file)[0],
-                                        os.path.split(binary_file)[-1].split('.')[0] + '.ftrace')
-                parse_binary_trace_file()
+        parse_binary_trace_file()
 
 
 if __name__ == '__main__':

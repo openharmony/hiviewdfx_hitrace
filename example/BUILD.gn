@@ -40,8 +40,7 @@ ohos_rust_executable("hitrace_example_rust") {
 }
 
 group("hitrace_example_target") {
-  if (device_company != "qemu" && hitrace_support_executable_file &&
-      hiview_enable) {
+  if (device_company != "qemu" && hitrace_support_executable_file) {
     deps = [
       ":hitrace_example",
       ":hitrace_example_rust",

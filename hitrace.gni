@@ -23,11 +23,6 @@ hitrace_example_path = "$hitrace_path/example"
 declare_args() {
   hitrace_support_executable_file = true
   hitrace_snapshot_tracebuffer_size = 0
-  hiview_enable = false
-  if (defined(global_parts_info) &&
-      defined(global_parts_info.hiviewdfx_hiview)) {
-    hiview_enable = true
-  }
   hitrace_snapshot_file_limit = 0
   hitrace_record_file_limit = 0
 }

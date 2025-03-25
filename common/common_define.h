@@ -24,7 +24,6 @@
 
 const std::string TRACE_TAG_ENABLE_FLAGS = "debug.hitrace.tags.enableflags";
 const std::string TRACE_KEY_APP_PID = "debug.hitrace.app_pid";
-const std::string TRACE_LEVEL_THRESHOLD = "persist.hitrace.level.threshold";
 
 const std::string DEBUGFS_TRACING_DIR = "/sys/kernel/debug/tracing/";
 const std::string TRACEFS_DIR = "/sys/kernel/tracing/";

@@ -16,9 +16,9 @@
 #include "hitrace_meter_c.h"
 #include "hitrace_meter_wrapper.h"
 
-void HiTraceStartTrace(uint64_t tag, const char* name)
+void HiTraceStartTrace(uint64_t tag, const char* value)
 {
-    StartTraceCwrapper(tag, name);
+    StartTraceCwrapper(tag, value);
 }
 
 void HiTraceFinishTrace(uint64_t tag)
@@ -26,44 +26,17 @@ void HiTraceFinishTrace(uint64_t tag)
     FinishTraceCwrapper(tag);
 }
 
-void HiTraceStartAsyncTrace(uint64_t tag, const char* name, int32_t taskId)
+void HiTraceStartAsyncTrace(uint64_t tag, const char* value, int32_t taskId)
 {
-    StartAsyncTraceCwrapper(tag, name, taskId);
+    StartAsyncTraceCwrapper(tag, value, taskId);
 }
 
-void HiTraceFinishAsyncTrace(uint64_t tag, const char* name, int32_t taskId)
+void HiTraceFinishAsyncTrace(uint64_t tag, const char* value, int32_t taskId)
 {
-    FinishAsyncTraceCwrapper(tag, name, taskId);
+    FinishAsyncTraceCwrapper(tag, value, taskId);
 }
 
-void HiTraceCountTrace(uint64_t tag, const char* name, int64_t count)
+void HiTraceCountTrace(uint64_t tag, const char* value, int32_t count)
 {
-    CountTraceCwrapper(tag, name, count);
-}
-
-void HiTraceStartTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, const char* customArgs)
-{
-    StartTraceExCwrapper(level, tag, name, customArgs);
-}
-
-void HiTraceFinishTraceEx(HiTraceOutputLevel level, uint64_t tag)
-{
-    FinishTraceExCwrapper(level, tag);
-}
-void HiTraceStartAsyncTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, int32_t taskId,
-    const char* customCategory, const char* customArgs)
-{
-    StartAsyncTraceExCwrapper(level, tag, name, taskId, customCategory, customArgs);
-}
-void HiTraceFinishAsyncTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, int32_t taskId)
-{
-    FinishAsyncTraceExCwrapper(level, tag, name, taskId);
-}
-void HiTraceCountTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, int64_t count)
-{
-    CountTraceExCwrapper(level, tag, name, count);
-}
-bool HiTraceIsTagEnabled(uint64_t tag)
-{
-    return IsTagEnabledCwrapper(tag);
+    CountTraceCwrapper(tag, value, count);
 }

@@ -228,6 +228,7 @@ void GetArchWordSize(TraceFileHeader& header)
     } else if (sizeof(void*) == sizeof(uint32_t)) {
         header.reserved |= 1;
     }
+    HILOG_INFO(LOG_CORE, "reserved with arch word info is %{public}d.", header.reserved);
 }
 
 void GetCpuNums(TraceFileHeader& header)
@@ -239,6 +240,7 @@ void GetCpuNums(TraceFileHeader& header)
         return;
     }
     header.reserved |= (static_cast<uint64_t>(cpuNums) << 1);
+    HILOG_INFO(LOG_CORE, "reserved with cpu number info is %{public}d.", header.reserved);
 }
 
 TraceFileHeader GenerateTraceHeaderContent()
@@ -616,7 +618,7 @@ bool WriteFile(uint8_t contentType, const std::string& src, int outFd, const std
         int bytes = 0;
         bool endFlag = false;
         /* Write 1M at a time */
-        while (bytes <= (BUFFER_SIZE - PAGE_SIZE)) {
+        while (bytes <= (BUFFER_SIZE - static_cast<int>(PAGE_SIZE))) {
             ssize_t readBytes = TEMP_FAILURE_RETRY(read(srcFd, g_buffer + bytes, PAGE_SIZE));
             if (readBytes == 0) {
                 endFlag = true;

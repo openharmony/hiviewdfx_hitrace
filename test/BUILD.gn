@@ -27,8 +27,7 @@ group("hitrace_unittest") {
     "unittest:HitraceCppTest",
     "unittest:HitraceDumpTest",
     "unittest:HitraceEventTest",
-    "unittest:HitraceMeterNDKTest",
-    "unittest:HitraceMeterTest",
+    "unittest:HitraceNDKTest",
     "unittest:HitraceUtilsTest",
   ]
   if (support_jsapi) {
@@ -44,6 +43,5 @@ group("hitrace_fuzztest") {
   deps = [
     "fuzztest:HitraceCmdFuzzTest",
     "fuzztest:HitraceDumpFuzzTest",
-    "fuzztest:HitraceMeterFuzzTest",
   ]
 }

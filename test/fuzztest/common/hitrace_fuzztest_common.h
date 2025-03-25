@@ -27,7 +27,7 @@
 namespace OHOS {
 namespace HiviewDFX {
 template<typename T>
-void StreamToValueInfo(const uint8_t* data, T& value)
+void StreamToValueInfo(const uint8_t* data, T value)
 {
     do {
         errno_t err = memcpy_s(&(value), sizeof(value), (data), sizeof(value));
