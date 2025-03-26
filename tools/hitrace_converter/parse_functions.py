@@ -94,16 +94,25 @@ def parse_sched_switch_hm_new(data, one_event):
     nprio = parse_int_field(one_event, "nprio", True)
     ninfo = one_event["fields"]["ninfo[8]"]
 
-    tmp_affinity = [hex(int.from_bytes(ninfo[value : value + 1], byteorder='big')) for value in range(len(ninfo))]
-    tmp_affinity = tmp_affinity[:4]
-    affinity = ''.join(value[2:] for value in tmp_affinity)
-    affinity = re.sub("0+", "", affinity)
+    tmp_affinity = int.from_bytes(ninfo[:4], byteorder="little")
+    affinity = hex(tmp_affinity)[2:]
+    affinity = affinity.lstrip('0') or '0'
+    remaining = int.from_bytes(ninfo[4:], byteorder='little')
 
-    load = (((ninfo[4] << 8) | ninfo[5]) >> 6) << 1
-    group = (ninfo[5] & 0b00110000) >> 4
-    restricted = (ninfo[5] & 0b00001000) >> 3
-    expel = ninfo[5] & 0b00000111
-    cgid = (ninfo[6] & 0b11111000) >> 3
+    # 位域参数定义
+    load_mask = (1 << 10) - 1
+    group_mask = (1 << 2) - 1
+    restricted_mask = 1
+    expel_mask = (1 << 3) - 1
+    cgid_mask = (1 << 5) - 1
+
+    # 按位域偏移量解析
+    load = (remaining >> 0) & load_mask      # 0-9 bit
+    group = (remaining >> 10) & group_mask     # 10-11 bit
+    restricted = (remaining >> 12) & restricted_mask # 12 bit
+    expel = (remaining >> 13) & expel_mask     # 13-15 bit
+    cgid = (remaining >> 16) & cgid_mask      # 16-20 bit
+
     next_info = affinity + ',' + str(load) + ',' + str(group) + ',' + str(restricted) + ',' + str(expel) + \
         ',' + str(cgid)
 
