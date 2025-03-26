@@ -13,4 +13,3 @@
 
 debug.hitrace.tags.enableflags = root:shell:0775
 debug.hitrace.app_pid = root:shell:0775
-persist.hitrace.level.threshold = root:shell:0775

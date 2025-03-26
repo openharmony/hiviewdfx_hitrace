@@ -72,7 +72,7 @@ bool RunCmd(const string& cmdstr)
 
 /**
  * @tc.name: HitraceEventTest001
- * @tc.desc: test Report DumpTextTrace HitraceEvent in HandleRecordingLongFinish with tracing_on closed
+ * @tc.desc: test Report DumpTextTrace HitraceEvent in HandleRecordingLongFinish with tracing_on opened
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceEventTest, HitraceEventTest001, TestSize.Level2)
@@ -97,7 +97,7 @@ HWTEST_F(HitraceEventTest, HitraceEventTest001, TestSize.Level2)
 
 /**
  * @tc.name: HitraceEventTest002
- * @tc.desc: test Report DumpTextTrace HitraceEvent in HandleRecordingLongFinish with tracing_on opened
+ * @tc.desc: test Report DumpTextTrace HitraceEvent in HandleRecordingLongFinish  with tracing_on opened
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceEventTest, HitraceEventTest002, TestSize.Level2)

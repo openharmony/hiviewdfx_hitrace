@@ -234,11 +234,11 @@ bool GetTraceResult(const char type, const string& traceName, const HiTraceId* h
     } else if (type == 'S') {
         prefix = "tracing_mark_write: S|";
         str = prefix + std::to_string(g_pid) + LABEL_HEADER + chainStr
-        + traceName + " " + to_string(taskId);
+        + traceName + VERTICAL_LINE + to_string(taskId);
     } else if (type == 'F') {
         prefix = "tracing_mark_write: F|";
         str = prefix + std::to_string(g_pid) + LABEL_HEADER + chainStr
-        + traceName + " " + to_string(taskId);
+        + traceName + VERTICAL_LINE + to_string(taskId);
     } else if (type == 'C') {
         prefix = "tracing_mark_write: C|";
         str = prefix + std::to_string(g_pid) + LABEL_HEADER + chainStr + traceName;
@@ -375,6 +375,7 @@ HWTEST_F(HitraceNDKTest, AddHitraceMeterMarker_001, TestSize.Level0)
     SetReloadPid(false);
     SetpidHasReload(false);
     SetAddHitraceMeterMarker(TAG, traceName);
+    SetAddTraceMarkerLarge(traceName, 1);
     ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "Hitrace Setting tracing_on failed.";
     list.clear();
     list = ReadTrace();
@@ -1432,6 +1433,7 @@ HWTEST_F(HitraceNDKTest, HitracePerfScoped_001, TestSize.Level1)
     std::string traceName = "HitracePerfScoped001";
     ASSERT_TRUE(CleanTrace());
     HitracePerfScoped hitrace(true, TAG, traceName);
+    hitrace.SetHitracePerfScoped(-1, -1);
     HitracePerfScoped(true, TAG, traceName);
     HitracePerfScoped(false, TAG, traceName);
 }
@@ -1446,6 +1448,7 @@ HWTEST_F(HitraceNDKTest, HitracePerfScoped_002, TestSize.Level1)
     std::string traceName = "HitracePerfScoped002";
     ASSERT_TRUE(CleanTrace());
     HitracePerfScoped hitrace(true, TAG, traceName);
+    hitrace.SetHitracePerfScoped(0, 0);
 }
 
 /**

@@ -280,7 +280,7 @@ class TestHitraceCmd:
     @pytest.mark.L0
     def test_capture_trace_with_wrong_buffersize(self):
         word_cmds = {
-            'hdc shell hitrace sched --trace_begin -b -10240 -t 5 --trace_clock global --overwrite': 'error: buffer size must be from 256 KB to 300 MB. eg: "--buffer_size 18432"',
+            'hdc shell hitrace sched --trace_begin -b -10240 -t 5 --trace_clock global --overwrite': 'parsing args failed, exit',
             'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '0',
         }
 

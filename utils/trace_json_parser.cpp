@@ -215,6 +215,7 @@ uint8_t UpdateParseItem(const uint8_t parseItem)
 bool TraceJsonParser::ParseTraceJson(const uint8_t policy)
 {
     if ((policy & parserState_) == policy) {
+        HILOG_INFO(LOG_CORE, "ParseTraceJson: Parser policy(%{public}d) already done.", policy);
         return true;
     }
 

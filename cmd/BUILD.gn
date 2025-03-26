@@ -35,7 +35,6 @@ ohos_executable("hitrace") {
   external_deps = [
     "bounds_checking_function:libsec_shared",
     "hisysevent:libhisysevent",
-    "init:libbegetutil",
     "zlib:libz",
   ]
 
@@ -56,8 +55,7 @@ ohos_executable("hitrace") {
 }
 
 group("hitrace_target") {
-  if (device_company != "qemu" && hitrace_support_executable_file &&
-      hiview_enable) {
+  if (device_company != "qemu" && hitrace_support_executable_file) {
     deps = [ ":hitrace" ]
   }
 }

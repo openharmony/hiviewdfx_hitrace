@@ -17,33 +17,19 @@
 #define HITRACE_METER_H
 
 #include <stdint.h>
-#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef enum HiTraceOutputLevel {
-    HITRACE_LEVEL_DEBUG = 0,
-    HITRACE_LEVEL_INFO = 1,
-    HITRACE_LEVEL_CRITICAL = 2,
-    HITRACE_LEVEL_COMMERCIAL = 3,
-    HITRACE_LEVEL_MAX = HITRACE_LEVEL_COMMERCIAL,
-} HiTraceOutputLevel;
+#define HITRACE_TAG_OHOS (1ULL << 30)
+#define HITRACE_TAG_DISTRIBUTEDDATA (1ULL << 36)
 
-void HiTraceStartTrace(uint64_t tag, const char* name);
+void HiTraceStartTrace(uint64_t tag, const char* value);
 void HiTraceFinishTrace(uint64_t tag);
-void HiTraceStartAsyncTrace(uint64_t tag, const char* name, int32_t taskId);
-void HiTraceFinishAsyncTrace(uint64_t tag, const char* name, int32_t taskId);
-void HiTraceCountTrace(uint64_t tag, const char* name, int64_t count);
-
-void HiTraceStartTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, const char* customArgs);
-void HiTraceFinishTraceEx(HiTraceOutputLevel level, uint64_t tag);
-void HiTraceStartAsyncTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, int32_t taskId,
-    const char* customCategory, const char* customArgs);
-void HiTraceFinishAsyncTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, int32_t taskId);
-void HiTraceCountTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, int64_t count);
-bool HiTraceIsTagEnabled(uint64_t tag);
+void HiTraceStartAsyncTrace(uint64_t tag, const char* value, int32_t taskId);
+void HiTraceFinishAsyncTrace(uint64_t tag, const char* value, int32_t taskId);
+void HiTraceCountTrace(uint64_t tag, const char* value, int32_t count);
 
 #ifdef __cplusplus
 }
