@@ -95,18 +95,10 @@
           }
         },
         {
-          "name": "//base/hiviewdfx/hitrace/interfaces/cj/kits/ffi:cj_hitracechain_ffi",
-          "header": {
-            "header_base": "//base/hiviewdfx/hitrace/interfaces/cj/kits/ffi/include/",
-            "header_files": []
-          }
+          "name": "//base/hiviewdfx/hitrace/interfaces/cj/kits/ffi:cj_hitracechain_ffi"
         },
         {
-          "name": "//base/hiviewdfx/hitrace/interfaces/cj/kits/ffi:cj_hitracemeter_ffi",
-          "header": {
-            "header_base": "//base/hiviewdfx/hitrace/interfaces/cj/kits/ffi/include/",
-            "header_files": []
-          }
+          "name": "//base/hiviewdfx/hitrace/interfaces/cj/kits/ffi:cj_hitracemeter_ffi"
         }
       ],
       "test": [
