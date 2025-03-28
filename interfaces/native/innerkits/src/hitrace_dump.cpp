@@ -927,6 +927,12 @@ std::string RenameCacheFile(const std::string& cacheFile)
 int32_t SearchTraceFiles(std::vector<std::string>& outputFiles, const uint64_t& inputTraceStartTime,
     const uint64_t& inputTraceEndTime)
 {
+    if (g_traceJsonParser == nullptr) {
+        g_traceJsonParser = std::make_shared<TraceJsonParser>();
+    }
+    if (!g_traceJsonParser->ParseTraceJson(TRACE_SNAPSHOT_FILE_AGE)) {
+        HILOG_WARN(LOG_CORE, "ProcessDump: Failed to parse TRACE_SNAPSHOT_FILE_AGE.");
+    }
     if ((!IsRootVersion()) || g_traceJsonParser->GetSnapShotFileAge()) {
         DelSnapshotTraceFile(SNAPSHOT_FILE_MAX_COUNT, g_traceFileVec);
     }
@@ -1279,12 +1285,6 @@ TraceErrorCode HandleDumpResult(TraceRetInfo& traceRetInfo, std::string& reOutPa
             traceRetInfo.coverDuration +=
                 static_cast<int32_t>(traceFileInfo.traceEndTime - traceFileInfo.traceStartTime);
         }
-    }
-    if (g_traceJsonParser == nullptr) {
-        g_traceJsonParser = std::make_shared<TraceJsonParser>();
-    }
-    if (!g_traceJsonParser->ParseTraceJson(TRACE_SNAPSHOT_FILE_AGE)) {
-        HILOG_WARN(LOG_CORE, "ProcessDump: Failed to parse TRACE_SNAPSHOT_FILE_AGE.");
     }
 
     if (traceRetInfo.outputFiles.empty()) {

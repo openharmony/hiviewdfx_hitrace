@@ -435,7 +435,7 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest009, TestSize.Level1)
     }
     std::vector<std::string> traceLists = {};
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --dump_bgsrv", {"SNAPSHOT_DUMP", "DumpSnapshot done"}, traceLists));
-    ASSERT_GE(traceLists.size(), snapshotFileAge);
+    ASSERT_GE(traceLists.size(), snapshotFileAge + 1);
     ASSERT_TRUE(RunCmd("hitrace --stop_bgsrv"));
     int filecnt = CountSnapShotTraceFile();
     GTEST_LOG_(INFO) << "Filecnt: " << filecnt;
@@ -458,11 +458,11 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest010, TestSize.Level1)
     const int snapshotFileAge = 20;
     std::vector<std::string> traceLists = {};
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --dump_bgsrv", {"SNAPSHOT_DUMP", "DumpSnapshot done"}, traceLists));
-    ASSERT_GE(traceLists.size(), snapshotFileAge);
+    ASSERT_GE(traceLists.size(), snapshotFileAge + 1);
     ASSERT_TRUE(RunCmd("hitrace --stop_bgsrv"));
     std::vector<std::string> dirTraceLists = {};
     GetSnapShotTraceFileList(dirTraceLists);
-    ASSERT_LE(dirTraceLists.size(), snapshotFileAge);
+    ASSERT_LE(dirTraceLists.size(), snapshotFileAge + 1);
     for (int i = 0; i < dirTraceLists.size(); ++i) {
         ASSERT_NE(std::find(traceLists.begin(), traceLists.end(), dirTraceLists[i]), traceLists.end()) <<
             "not found: " << dirTraceLists[i];

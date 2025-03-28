@@ -50,7 +50,7 @@ enum TraceMode : uint8_t {
 
 struct TraceRetInfo {
     TraceErrorCode errorCode;
-    uint8_t mode;
+    uint8_t mode = 0;
     std::vector<std::string> outputFiles;
     int32_t coverRatio = 0;
     int32_t coverDuration = 0;
