@@ -38,7 +38,6 @@ enum TraceErrorCode : uint8_t {
     EPOLL_WAIT_ERROR = 9,
     PIPE_CREATE_ERROR = 10,
     INVALID_MAX_DURATION = 11,
-    SUCCESS_WITH_CACHE = 254,
     UNSET = 255,
 };
 
@@ -51,6 +50,7 @@ enum TraceMode : uint8_t {
 
 struct TraceRetInfo {
     TraceErrorCode errorCode;
+    uint8_t mode = 0;
     std::vector<std::string> outputFiles;
     int32_t coverRatio = 0;
     int32_t coverDuration = 0;

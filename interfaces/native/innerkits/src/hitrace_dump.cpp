@@ -927,6 +927,15 @@ std::string RenameCacheFile(const std::string& cacheFile)
 int32_t SearchTraceFiles(std::vector<std::string>& outputFiles, const uint64_t& inputTraceStartTime,
     const uint64_t& inputTraceEndTime)
 {
+    if (g_traceJsonParser == nullptr) {
+        g_traceJsonParser = std::make_shared<TraceJsonParser>();
+    }
+    if (!g_traceJsonParser->ParseTraceJson(TRACE_SNAPSHOT_FILE_AGE)) {
+        HILOG_WARN(LOG_CORE, "ProcessDump: Failed to parse TRACE_SNAPSHOT_FILE_AGE.");
+    }
+    if ((!IsRootVersion()) || g_traceJsonParser->GetSnapShotFileAge()) {
+        DelSnapshotTraceFile(SNAPSHOT_FILE_MAX_COUNT, g_traceFileVec);
+    }
     HILOG_INFO(LOG_CORE, "target trace time: [%{public}" PRIu64 ", %{public}" PRIu64 "].",
         inputTraceStartTime, inputTraceEndTime);
     uint64_t curTime = GetCurUnixTimeMs();
@@ -951,7 +960,6 @@ int32_t SearchTraceFiles(std::vector<std::string>& outputFiles, const uint64_t& 
         HILOG_INFO(LOG_CORE, "dumptrace cache file is %{public}s, new file is %{public}s.",
             file.c_str(), newFile.c_str());
     }
-    DelSnapshotTraceFile(SNAPSHOT_FILE_MAX_COUNT, g_traceFileVec);
     return coverDuration;
 }
 
@@ -1278,15 +1286,6 @@ TraceErrorCode HandleDumpResult(TraceRetInfo& traceRetInfo, std::string& reOutPa
                 static_cast<int32_t>(traceFileInfo.traceEndTime - traceFileInfo.traceStartTime);
         }
     }
-    if (g_traceJsonParser == nullptr) {
-        g_traceJsonParser = std::make_shared<TraceJsonParser>();
-    }
-    if (!g_traceJsonParser->ParseTraceJson(TRACE_SNAPSHOT_FILE_AGE)) {
-        HILOG_WARN(LOG_CORE, "ProcessDump: Failed to parse TRACE_SNAPSHOT_FILE_AGE.");
-    }
-    if ((!IsRootVersion()) || g_traceJsonParser->GetSnapShotFileAge()) {
-        DelSnapshotTraceFile(SNAPSHOT_FILE_MAX_COUNT, g_traceFileVec);
-    }
 
     if (traceRetInfo.outputFiles.empty()) {
         return (g_dumpStatus != 0) ? static_cast<TraceErrorCode>(g_dumpStatus) : TraceErrorCode::FILE_ERROR;
@@ -1340,6 +1339,7 @@ TraceErrorCode ProcessDump(TraceRetInfo& traceRetInfo)
 
 void LoadDumpRet(TraceRetInfo& ret, int32_t committedDuration)
 {
+    ret.mode = g_traceMode;
     committedDuration = committedDuration <= 0 ? DEFAULT_FULL_TRACE_LENGTH : committedDuration;
     ret.coverRatio = ret.coverDuration / committedDuration;
     ret.tags.reserve(g_currentTraceParams.tagGroups.size() + g_currentTraceParams.tags.size());
@@ -1635,7 +1635,7 @@ void GetFileInCache(TraceRetInfo& traceRetInfo)
         for (const auto& file: traceRetInfo.outputFiles) {
             HILOG_INFO(LOG_CORE, "dumptrace file is %{public}s.", file.c_str());
         }
-        traceRetInfo.errorCode = SUCCESS_WITH_CACHE;
+        traceRetInfo.errorCode = SUCCESS;
     }
 }
 
@@ -1796,6 +1796,7 @@ TraceRetInfo DumpTrace(int maxDuration, uint64_t utTraceEndTime)
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
     TraceRetInfo ret;
+    ret.mode = g_traceMode;
     if (!IsTraceOpen() || IsRecordOn()) {
         HILOG_ERROR(LOG_CORE, "DumpTrace: WRONG_TRACE_MODE, current trace mode: %{public}u.",
             static_cast<uint32_t>(g_traceMode));
