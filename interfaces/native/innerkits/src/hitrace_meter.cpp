@@ -810,49 +810,6 @@ void SetpidHasReload(bool ispidHasReload)
     g_pidHasReload = ispidHasReload;
 }
 
-void SetAppFd(int appFd)
-{
-    g_appFd = appFd;
-}
-
-void GetSetMainThreadInfo()
-{
-    SetMainThreadInfo();
-}
-
-void GetSetCommStr()
-{
-    SetCommStr();
-}
-
-void SetTraceBuffer(int size)
-{
-    GetTraceBuffer(size);
-}
-
-void SetAddHitraceMeterMarker(uint64_t tag, const std::string& name)
-{
-    TraceMarker traceMarker = {MARKER_BEGIN, HITRACE_LEVEL_INFO, tag, 0, name.c_str(), EMPTY, EMPTY};
-    AddHitraceMeterMarker(traceMarker);
-}
-
-void SetWriteToTraceMarker(const char* buf, const int count)
-{
-    WriteToTraceMarker(buf, count);
-}
-
-void SetGetProcData(const char* file)
-{
-    GetProcData(file, g_appName, NAME_NORMAL_LEN);
-}
-
-void SetCachedHandleAndAppPidCachedHandle(CachedHandle cachedHandle, CachedHandle appPidCachedHandle)
-{
-    g_cachedHandle = cachedHandle;
-    g_appPidCachedHandle = appPidCachedHandle;
-    UpdateSysParamTags();
-}
-
 void SetCachedHandle(CachedHandle cachedHandle, CachedHandle appPidCachedHandle,
     CachedHandle levelThresholdCachedHandle)
 {
@@ -864,19 +821,7 @@ void SetCachedHandle(CachedHandle cachedHandle, CachedHandle appPidCachedHandle,
 
 void SetMarkerFd(int markerFd)
 {
-    if (markerFd != -1) {
-        g_markerFd = -1;
-    }
-}
-
-void SetWriteAppTrace(TraceFlag appFlag, const std::string& name, const int64_t value, bool tid)
-{
-    if (tid) {
-        g_tgid = getproctid();
-    }
-    g_appFlag = appFlag;
-    TraceMarker traceMarker = {MARKER_BEGIN, HITRACE_LEVEL_INFO, HITRACE_TAG_APP, value, name.c_str(), EMPTY, EMPTY};
-    WriteAppTrace(traceMarker);
+    g_markerFd = -1;
 }
 
 void SetWriteOnceLog(LogLevel loglevel, const std::string& logStr, bool& isWrite)
@@ -887,23 +832,6 @@ void SetWriteOnceLog(LogLevel loglevel, const std::string& logStr, bool& isWrite
 void SetappTracePrefix(const std::string& appTracePrefix)
 {
     g_appTracePrefix = appTracePrefix;
-}
-
-void SetMarkerType(TraceFlag appFlag, const std::string& name, const int64_t value, bool tid)
-{
-    if (tid) {
-        g_tgid = getproctid();
-    }
-    g_appFlag = appFlag;
-    TraceMarker traceMarker = {MARKER_ASYNC_BEGIN, HITRACE_LEVEL_INFO, HITRACE_TAG_APP,
-                               value, name.c_str(), EMPTY, EMPTY};
-    WriteAppTrace(traceMarker);
-}
-
-void SetWriteAppTraceLong(const int len, const std::string& name, const int64_t value)
-{
-    TraceMarker traceMarker = {MARKER_BEGIN, HITRACE_LEVEL_INFO, HITRACE_TAG_APP, value, name.c_str(), EMPTY, EMPTY};
-    WriteAppTraceLong(len, traceMarker);
 }
 #endif
 

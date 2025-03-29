@@ -14,6 +14,9 @@
  */
 
 #include <gtest/gtest.h>
+#include <vector>
+#include <string>
+#include <sys/stat.h>
 
 #include "common_define.h"
 #include "common_utils.h"
@@ -85,6 +88,41 @@ void HitraceMeterTest::TearDown(void)
     ASSERT_TRUE(SetPropertyInner(TRACE_TAG_ENABLE_FLAGS, "0")) << "TearDown: Setting enableflags failed.";
     ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "TearDown: Setting tracing_on failed.";
     ASSERT_TRUE(CleanTrace()) << "TearDown: Cleaning trace failed.";
+}
+
+static void GetLibPathsBySystemBits(std::vector<std::string> &filePaths)
+{
+    std::vector<std::string> lib64FilePaths = {
+        "/system/lib64/chipset-pub-sdk/libhitracechain.so",
+        "/system/lib64/chipset-pub-sdk/libhitrace_meter.so",
+        "/system/lib64/libhitrace_meter_rust.dylib.so",
+        "/system/lib64/libhitracechain.dylib.so",
+        "/system/lib64/libhitracechain_c_wrapper.so",
+        "/system/lib64/module/libhitracechain_napi.z.so",
+        "/system/lib64/module/libhitracemeter_napi.z.so",
+        "/system/lib64/ndk/libhitrace_ndk.z.so",
+        "/system/lib64/platformsdk/libcj_hitracechain_ffi.z.so",
+        "/system/lib64/platformsdk/libcj_hitracemeter_ffi.z.so",
+        "/system/lib64/platformsdk/libhitrace_dump.z.so"
+    };
+    std::vector<std::string> libFilePaths = {
+        "/system/lib/chipset-pub-sdk/libhitracechain.so",
+        "/system/lib/chipset-pub-sdk/libhitrace_meter.so",
+        "/system/lib/libhitrace_meter_rust.dylib.so",
+        "/system/lib/libhitracechain.dylib.so",
+        "/system/lib/libhitracechain_c_wrapper.so",
+        "/system/lib/module/libhitracechain_napi.z.so",
+        "/system/lib/module/libhitracemeter_napi.z.so",
+        "/system/lib/ndk/libhitrace_ndk.z.so",
+        "/system/lib/platformsdk/libcj_hitracechain_ffi.z.so",
+        "/system/lib/platformsdk/libcj_hitracemeter_ffi.z.so",
+        "/system/lib/platformsdk/libhitrace_dump.z.so"
+    };
+#ifdef __LP64__
+    filePaths.insert(filePaths.end(), lib64FilePaths.begin(), lib64FilePaths.end());
+#else
+    filePaths.insert(filePaths.end(), libFilePaths.begin(), libFilePaths.end());
+#endif
 }
 
 /**
@@ -694,6 +732,45 @@ HWTEST_F(HitraceMeterTest, SyncTraceInterfaceTest014, TestSize.Level1)
 }
 
 /**
+ * @tc.name: SyncTraceInterfaceTest015
+ * @tc.desc: Testing customArgs is empty string with HiTraceId
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, SyncTraceInterfaceTest015, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SyncTraceInterfaceTest015: start.";
+
+    const char* name = "SyncTraceInterfaceTest015";
+    const char* customArgs = "key=value";
+
+    HiTraceId hiTraceId = HiTraceChain::Begin(name, HiTraceFlag::HITRACE_FLAG_DEFAULT);
+    StartTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, "");
+    FinishTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG);
+    StartTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, customArgs);
+    FinishTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG);
+    HiTraceChain::End(hiTraceId);
+
+    std::vector<std::string> list = ReadTrace();
+    char record[RECORD_SIZE_MAX + 1] = {0};
+    TraceInfo traceInfo = {'B', HITRACE_LEVEL_COMMERCIAL, TAG, 0, name, "", "", &hiTraceId};
+    bool isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+    traceInfo.type = 'E';
+    bool isFinishSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isFinishSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+
+    traceInfo.customArgs = customArgs;
+    traceInfo.type = 'B';
+    isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+    traceInfo.type = 'E';
+    isFinishSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isFinishSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+
+    GTEST_LOG_(INFO) << "SyncTraceInterfaceTest015: end.";
+}
+
+/**
  * @tc.name: AsyncTraceInterfaceTest001
  * @tc.desc: Testing StartAsyncTraceEx and FinishAsyncTraceEx with HiTraceId
  * @tc.type: FUNC
@@ -1123,6 +1200,52 @@ HWTEST_F(HitraceMeterTest, AsyncTraceInterfaceTest010, TestSize.Level1)
     ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
 
     GTEST_LOG_(INFO) << "AsyncTraceInterfaceTest010: end.";
+}
+
+/**
+ * @tc.name: AsyncTraceInterfaceTest011
+ * @tc.desc: Testing customCategory and customArgs are empty strings with HiTraceId
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, AsyncTraceInterfaceTest011, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AsyncTraceInterfaceTest011: start.";
+
+    const char* name = "AsyncTraceInterfaceTest011";
+    const char* customCategory = "test";
+    const char* customArgs = "key=value";
+    int32_t taskId = 11;
+
+    ASSERT_TRUE(CleanTrace());
+    HiTraceId hiTraceId = HiTraceChain::Begin(name, HiTraceFlag::HITRACE_FLAG_DEFAULT);
+    StartAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId, customCategory, customArgs);
+    FinishAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId);
+    StartAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId, "", "");
+    FinishAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId);
+    StartAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId, "", customArgs);
+    FinishAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId);
+    StartAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId, customCategory, "");
+    FinishAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, taskId);
+    HiTraceChain::End(hiTraceId);
+
+    std::vector<std::string> list = ReadTrace();
+    char record[RECORD_SIZE_MAX + 1] = {0};
+    TraceInfo traceInfo = {'S', HITRACE_LEVEL_COMMERCIAL, TAG, taskId, name, customCategory, customArgs, &hiTraceId};
+    bool isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+    traceInfo.customCategory = "";
+    traceInfo.customArgs = "";
+    isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+    traceInfo.customArgs = customArgs;
+    isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+    traceInfo.customCategory = customCategory;
+    traceInfo.customArgs = "";
+    isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+
+    GTEST_LOG_(INFO) << "AsyncTraceInterfaceTest011: end.";
 }
 
 /**
@@ -1592,6 +1715,42 @@ HWTEST_F(HitraceMeterTest, CaptureAppTraceTest008, TestSize.Level1)
     ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
 
     GTEST_LOG_(INFO) << "CaptureAppTraceTest008: end.";
+}
+
+/**
+ * @tc.name: ROMBaselineTest001
+ * @tc.desc: test the ROM baseline of the hitrace component
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, ROMBaselineTest001, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "ROMBaselineTest001: start.";
+    std::vector<std::string> filePaths = {
+        "/system/etc/hiview/hitrace_utils.json",
+        "/system/etc/init/hitrace.cfg",
+        "/system/etc/param/hitrace.para",
+        "/system/etc/param/hitrace.para.dac",
+        "/system/bin/hitrace"
+    };
+    GetLibPathsBySystemBits(filePaths);
+    struct stat fileStat;
+    long long totalSize = 0;
+    constexpr long long sectorSize = 4;
+    for (const auto &filePath : filePaths) {
+        int ret = stat(filePath.c_str(), &fileStat);
+        if (ret != 0) {
+            EXPECT_EQ(ret, 0) << "Failed to get file size of " << filePath;
+        } else {
+            long long size = fileStat.st_size / 1024;
+            size = size + sectorSize - size % sectorSize;
+            GTEST_LOG_(INFO) << "File size of " << filePath << " is " << size << "KB";
+            totalSize += size;
+        }
+    }
+    printf("Total file size is %lldKB\n", totalSize);
+    constexpr long long baseline = 726;
+    EXPECT_LT(totalSize, baseline);
+    GTEST_LOG_(INFO) << "ROMBaselineTest001: end.";
 }
 
 /**
