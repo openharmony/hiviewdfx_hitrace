@@ -21,6 +21,7 @@ ohos_source_set("hitracechain_source") {
     "$hitrace_interfaces_path/native/innerkits/include",
     "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
     "$hitrace_frameworks_path/include",
+    "$hitrace_utils_path",
   ]
 
   sources = [
@@ -36,6 +37,8 @@ ohos_source_set("hitracechain_source") {
     "bounds_checking_function:libsec_shared",
     "init:libbegetutil",
   ]
+
+  deps = [ "$hitrace_utils_path:hitrace_common_utils" ]
 
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]

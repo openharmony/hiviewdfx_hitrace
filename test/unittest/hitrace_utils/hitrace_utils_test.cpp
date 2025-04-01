@@ -271,6 +271,128 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest007, TestSize.Level2)
     ASSERT_TRUE(jsonParser->ParseTraceJson(TRACE_SNAPSHOT_FILE_AGE));
     ASSERT_TRUE(jsonParser->GetSnapShotFileAge());
 }
+
+/**
+ * @tc.name: StringToIntTest
+ * @tc.desc: Test StringToInt/StringToInt64/StringToUint64 function.
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceUtilsTest, StringToIntTest, TestSize.Level2)
+{
+    std::string traceParamsStr = "123";
+    int paramsInt = 0;
+    EXPECT_TRUE(OHOS::HiviewDFX::Hitrace::StringToInt(traceParamsStr, paramsInt));
+    EXPECT_EQ(paramsInt, 123);  // 123: test value
+    traceParamsStr = "-123";
+    EXPECT_TRUE(OHOS::HiviewDFX::Hitrace::StringToInt(traceParamsStr, paramsInt));
+    EXPECT_EQ(paramsInt, -123);  // -123: test value
+    traceParamsStr = "2147483647";
+    EXPECT_TRUE(OHOS::HiviewDFX::Hitrace::StringToInt(traceParamsStr, paramsInt));
+    EXPECT_EQ(paramsInt, INT_MAX);
+    traceParamsStr = "-2147483648";
+    EXPECT_TRUE(OHOS::HiviewDFX::Hitrace::StringToInt(traceParamsStr, paramsInt));
+    EXPECT_EQ(paramsInt, INT_MIN);
+
+    traceParamsStr = "1234567890";
+    int64_t paramsInt64 = 0;
+    EXPECT_TRUE(OHOS::HiviewDFX::Hitrace::StringToInt64(traceParamsStr, paramsInt64));
+    EXPECT_EQ(paramsInt64, 1234567890); // 1234567890: test value
+    traceParamsStr = "-1234567890";
+    EXPECT_TRUE(OHOS::HiviewDFX::Hitrace::StringToInt64(traceParamsStr, paramsInt64));
+    EXPECT_EQ(paramsInt64, -1234567890); // -1234567890: test value
+    traceParamsStr = "9223372036854775807";
+    EXPECT_TRUE(OHOS::HiviewDFX::Hitrace::StringToInt64(traceParamsStr, paramsInt64));
+    EXPECT_EQ(paramsInt64, LLONG_MAX);
+    traceParamsStr = "-9223372036854775808";
+    EXPECT_TRUE(OHOS::HiviewDFX::Hitrace::StringToInt64(traceParamsStr, paramsInt64));
+    EXPECT_EQ(paramsInt64, LLONG_MIN);
+
+    traceParamsStr = "1234567890";
+    uint64_t paramsUint64 = 0;
+    EXPECT_TRUE(OHOS::HiviewDFX::Hitrace::StringToUint64(traceParamsStr, paramsUint64));
+    EXPECT_EQ(paramsUint64, 1234567890); // 1234567890: test value
+    traceParamsStr = "18446744073709551615";
+    EXPECT_TRUE(OHOS::HiviewDFX::Hitrace::StringToUint64(traceParamsStr, paramsUint64));
+    EXPECT_EQ(paramsUint64, ULLONG_MAX);
+}
+
+/**
+ * @tc.name: StringToIntErrorTest
+ * @tc.desc: Test StringToInt function.
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceUtilsTest, StringToIntErrorTest, TestSize.Level2)
+{
+    std::string traceParamsStr = "a123";
+    int paramsInt = 0;
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToInt(traceParamsStr, paramsInt));
+    traceParamsStr = "12a3";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToInt(traceParamsStr, paramsInt));
+    traceParamsStr = "";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToInt(traceParamsStr, paramsInt));
+    traceParamsStr = "abc";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToInt(traceParamsStr, paramsInt));
+    traceParamsStr = ".1";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToInt(traceParamsStr, paramsInt));
+    traceParamsStr = "1.1";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToInt(traceParamsStr, paramsInt));
+    traceParamsStr = "2147483648";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToInt(traceParamsStr, paramsInt));
+    traceParamsStr = "-2147483649";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToInt(traceParamsStr, paramsInt));
+}
+
+/**
+ * @tc.name: StringToInt64ErrorTest
+ * @tc.desc: Test StringToInt64 function.
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceUtilsTest, StringToInt64ErrorTest, TestSize.Level2)
+{
+    std::string traceParamsStr = "a123";
+    int64_t paramsInt64 = 0;
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToInt64(traceParamsStr, paramsInt64));
+    traceParamsStr = "12a3";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToInt64(traceParamsStr, paramsInt64));
+    traceParamsStr = "";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToInt64(traceParamsStr, paramsInt64));
+    traceParamsStr = "abc";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToInt64(traceParamsStr, paramsInt64));
+    traceParamsStr = ".1";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToInt64(traceParamsStr, paramsInt64));
+    traceParamsStr = "1.1";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToInt64(traceParamsStr, paramsInt64));
+    traceParamsStr = "9223372036854775808";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToInt64(traceParamsStr, paramsInt64));
+    traceParamsStr = "-9223372036854775809";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToInt64(traceParamsStr, paramsInt64));
+}
+
+/**
+ * @tc.name: StringToUint64ErrorTest
+ * @tc.desc: Test StringToUint64 function.
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceUtilsTest, StringToUint64ErrorTest, TestSize.Level2)
+{
+    std::string traceParamsStr = "-1234567890";
+    uint64_t paramsUint64 = 0;
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToUint64(traceParamsStr, paramsUint64));
+    traceParamsStr = "a123";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToUint64(traceParamsStr, paramsUint64));
+    traceParamsStr = "";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToUint64(traceParamsStr, paramsUint64));
+    traceParamsStr = "12a3";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToUint64(traceParamsStr, paramsUint64));
+    traceParamsStr = "abc";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToUint64(traceParamsStr, paramsUint64));
+    traceParamsStr = ".1";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToUint64(traceParamsStr, paramsUint64));
+    traceParamsStr = "1.1";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToUint64(traceParamsStr, paramsUint64));
+    traceParamsStr = "18446744073709551616";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToUint64(traceParamsStr, paramsUint64));
+}
 } // namespace
 } // namespace Hitrace
 } // namespace HiviewDFX
