@@ -422,24 +422,22 @@ HWTEST_F(HitraceMeterTest, SyncTraceInterfaceTest007, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "SyncTraceInterfaceTest007: start.";
 
-    // Each line contains 75 characters, and the longName has a total length of 325 characters.
+    // Each line contains 75 characters, and the longName has a total length of 525 characters.
     std::string longName = "SyncTraceInterfaceTest007SyncTraceInterfaceTest007SyncTraceInterfaceTest007";
     longName += "SyncTraceInterfaceTest007SyncTraceInterfaceTest007SyncTraceInterfaceTest007";
     longName += "SyncTraceInterfaceTest007SyncTraceInterfaceTest007SyncTraceInterfaceTest007";
     longName += "SyncTraceInterfaceTest007SyncTraceInterfaceTest007SyncTraceInterfaceTest007";
-    longName += "SyncTraceInterfaceTest007";
-    // Each line contains 50 characters, and the longCustomArgs has a total length of 199 characters.
+    longName += "SyncTraceInterfaceTest007SyncTraceInterfaceTest007SyncTraceInterfaceTest007";
+    longName += "SyncTraceInterfaceTest007SyncTraceInterfaceTest007SyncTraceInterfaceTest007";
+    longName += "SyncTraceInterfaceTest007SyncTraceInterfaceTest007SyncTraceInterfaceTest007";
     std::string longCustomArgs = "key=value,key=value,key=value,key=value,key=value,";
-    longCustomArgs += "key=value,key=value,key=value,key=value,key=value,";
-    longCustomArgs += "key=value,key=value,key=value,key=value,key=value,";
-    longCustomArgs += "key=value,key=value,key=value,key=value,key=value";
 
     StartTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, longName.c_str(), longCustomArgs.c_str());
     FinishTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG);
 
-    // Parameter name is limited to 320 characters in the trace output.
+    // Parameter name is limited to 490 characters with hitraceChain disabled in SyncTrace.
     // The total length of the trace output is limited to 512 characters.
-    std::string realName = longName.substr(0, 320);
+    std::string realName = longName.substr(0, 490);
     std::string expectRecord = std::string("B|") + g_pid + LABEL_HEADER + realName + std::string("|M30|");
     int remainLength = RECORD_SIZE_MAX - expectRecord.length();
     std::string realCustomArgs = longCustomArgs.substr(0, remainLength);
@@ -823,35 +821,31 @@ HWTEST_F(HitraceMeterTest, AsyncTraceInterfaceTest002, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "AsyncTraceInterfaceTest002: start.";
 
-    // Each line contains 78 characters, and the longName has a total length of 338 characters.
+    // Each line contains 78 characters, and the longName has a total length of 494 characters.
     std::string longName = "AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002";
     longName += "AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002";
     longName += "AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002";
     longName += "AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002";
+    longName += "AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002";
+    longName += "AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002";
     longName += "AsyncTraceInterfaceTest002";
-    // The longCustomCategory has a total length of 72 characters.
-    std::string longCustomCategory = "CategoryTestCategoryTestCategoryTestCategoryTestCategoryTestCategoryTest";
-    // Each line contains 50 characters, and the longCustomArgs has a total length of 199 characters.
-    std::string longCustomArgs = "key=value,key=value,key=value,key=value,key=value,";
-    longCustomArgs += "key=value,key=value,key=value,key=value,key=value,";
-    longCustomArgs += "key=value,key=value,key=value,key=value,key=value,";
-    longCustomArgs += "key=value,key=value,key=value,key=value,key=value";
+    std::string longCustomCategory = "CategoryTestCategoryTest";
+    std::string longCustomArgs = "key=value,key=value,key=value,key=value,key=value";
     int32_t taskId = 2;
 
     StartAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, longName.c_str(), taskId,
                       longCustomCategory.c_str(), longCustomArgs.c_str());
     FinishAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, longName.c_str(), taskId);
 
-    // Parameter name is limited to 320 characters in the trace output.
-    // Parameter customCategory is limited to 64 characters in the trace output.
+    // Parameter name is limited to 480 characters with hitraceChain disabled in AsyncTrace.
     // The total length of the trace output is limited to 512 characters.
-    std::string realName = longName.substr(0, 320);
-    std::string realCustomCategory = longCustomCategory.substr(0, 64);
+    std::string realName = longName.substr(0, 480);
+    std::string otherArgs = longCustomCategory + VERTICAL_LINE + longCustomArgs;
     std::string expectRecord = std::string("S|") + g_pid + LABEL_HEADER + realName + VERTICAL_LINE +
-                               std::to_string(taskId) + std::string("|M30|") + realCustomCategory + VERTICAL_LINE;
+                               std::to_string(taskId) + std::string("|M30|");
     int remainLength = RECORD_SIZE_MAX - expectRecord.length();
-    std::string realCustomArgs = longCustomArgs.substr(0, remainLength);
-    expectRecord += realCustomArgs;
+    std::string realOtherArgs = otherArgs.substr(0, remainLength);
+    expectRecord += realOtherArgs;
 
     std::vector<std::string> list = ReadTrace();
     char record[RECORD_SIZE_MAX + 1] = {0};

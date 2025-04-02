@@ -76,8 +76,12 @@ const char* const EMPTY = "";
 constexpr int VAR_NAME_MAX_SIZE = 400;
 constexpr int NAME_NORMAL_LEN = 512;
 constexpr int RECORD_SIZE_MAX = 512;
-constexpr int NAME_SIZE_MAX = 320;
-constexpr int CATEGORY_SIZE_MAX = 64;
+constexpr int NAME_SYNC_LEN_ENABLED_CHAIN = 440;
+constexpr int NAME_SYNC_LEN_DISABLED_CHAIN = 490;
+constexpr int NAME_ASYNC_LEN_ENABLED_CHAIN = 430;
+constexpr int NAME_ASYNC_LEN_DISABLED_CHAIN = 480;
+constexpr int NAME_OTHER_LEN_ENABLED_CHAIN = 430;
+constexpr int NAME_OTHER_LEN_DISABLED_CHAIN = 480;
 
 static const int PID_BUF_SIZE = 6;
 static char g_pid[PID_BUF_SIZE];
@@ -669,20 +673,20 @@ static int FmtSyncBeginRecord(TraceMarker& traceMarker, const char* bitsStr,
     if (hiTraceId.IsValid()) {
         if (*(traceMarker.customArgs) == '\0') {
             bytes = snprintf_s(record, size, size - 1, "B|%s|H:[%llx,%llx,%llx]#%.*s|%c%s", g_pid,
-                hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), NAME_SIZE_MAX,
+                hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), NAME_SYNC_LEN_ENABLED_CHAIN,
                 traceMarker.name, g_traceLevel[traceMarker.level], bitsStr);
         } else {
             bytes = snprintf_s(record, size, size - 1, "B|%s|H:[%llx,%llx,%llx]#%.*s|%c%s|%s", g_pid,
-                hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), NAME_SIZE_MAX,
+                hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(), NAME_SYNC_LEN_ENABLED_CHAIN,
                 traceMarker.name, g_traceLevel[traceMarker.level], bitsStr, traceMarker.customArgs);
         }
     } else {
         if (*(traceMarker.customArgs) == '\0') {
             bytes = snprintf_s(record, size, size - 1, "B|%s|H:%.*s|%c%s", g_pid,
-                NAME_SIZE_MAX, traceMarker.name, g_traceLevel[traceMarker.level], bitsStr);
+                NAME_SYNC_LEN_DISABLED_CHAIN, traceMarker.name, g_traceLevel[traceMarker.level], bitsStr);
         } else {
-            bytes = snprintf_s(record, size, size - 1, "B|%s|H:%.*s|%c%s|%s", g_pid,
-                NAME_SIZE_MAX, traceMarker.name, g_traceLevel[traceMarker.level], bitsStr, traceMarker.customArgs);
+            bytes = snprintf_s(record, size, size - 1, "B|%s|H:%.*s|%c%s|%s", g_pid, NAME_SYNC_LEN_DISABLED_CHAIN,
+                traceMarker.name, g_traceLevel[traceMarker.level], bitsStr, traceMarker.customArgs);
         }
     }
     if (bytes == -1) {
@@ -703,30 +707,31 @@ static int FmtAsyncBeginRecord(TraceMarker& traceMarker, const char* bitsStr,
         if (*(traceMarker.customCategory) == '\0' && *(traceMarker.customArgs) == '\0') {
             bytes = snprintf_s(record, size, size - 1, "S|%s|H:[%llx,%llx,%llx]#%.*s|%lld|%c%s", g_pid,
                 hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
-                NAME_SIZE_MAX, traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitsStr);
+                NAME_ASYNC_LEN_ENABLED_CHAIN, traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level],
+                bitsStr);
         } else if (*(traceMarker.customArgs) == '\0') {
-            bytes = snprintf_s(record, size, size - 1, "S|%s|H:[%llx,%llx,%llx]#%.*s|%lld|%c%s|%.*s", g_pid,
+            bytes = snprintf_s(record, size, size - 1, "S|%s|H:[%llx,%llx,%llx]#%.*s|%lld|%c%s|%s", g_pid,
                 hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
-                NAME_SIZE_MAX, traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitsStr,
-                CATEGORY_SIZE_MAX, traceMarker.customCategory);
+                NAME_ASYNC_LEN_ENABLED_CHAIN, traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level],
+                bitsStr, traceMarker.customCategory);
         } else {
-            bytes = snprintf_s(record, size, size - 1, "S|%s|H:[%llx,%llx,%llx]#%.*s|%lld|%c%s|%.*s|%s", g_pid,
+            bytes = snprintf_s(record, size, size - 1, "S|%s|H:[%llx,%llx,%llx]#%.*s|%lld|%c%s|%s|%s", g_pid,
                 hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
-                NAME_SIZE_MAX, traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitsStr,
-                CATEGORY_SIZE_MAX, traceMarker.customCategory, traceMarker.customArgs);
+                NAME_ASYNC_LEN_ENABLED_CHAIN, traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level],
+                bitsStr, traceMarker.customCategory, traceMarker.customArgs);
         }
     } else {
         if (*(traceMarker.customCategory) == '\0' && *(traceMarker.customArgs) == '\0') {
-            bytes = snprintf_s(record, size, size - 1, "S|%s|H:%.*s|%lld|%c%s", g_pid, NAME_SIZE_MAX,
+            bytes = snprintf_s(record, size, size - 1, "S|%s|H:%.*s|%lld|%c%s", g_pid, NAME_ASYNC_LEN_DISABLED_CHAIN,
                 traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitsStr);
         } else if (*(traceMarker.customArgs) == '\0') {
-            bytes = snprintf_s(record, size, size - 1, "S|%s|H:%.*s|%lld|%c%s|%.*s", g_pid, NAME_SIZE_MAX,
-                traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitsStr, CATEGORY_SIZE_MAX,
-                traceMarker.customCategory);
+            bytes = snprintf_s(record, size, size - 1, "S|%s|H:%.*s|%lld|%c%s|%s", g_pid,
+                NAME_ASYNC_LEN_DISABLED_CHAIN, traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level],
+                bitsStr, traceMarker.customCategory);
         } else {
-            bytes = snprintf_s(record, size, size - 1, "S|%s|H:%.*s|%lld|%c%s|%.*s|%s", g_pid, NAME_SIZE_MAX,
-                traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitsStr, CATEGORY_SIZE_MAX,
-                traceMarker.customCategory, traceMarker.customArgs);
+            bytes = snprintf_s(record, size, size - 1, "S|%s|H:%.*s|%lld|%c%s|%s|%s", g_pid,
+                NAME_ASYNC_LEN_DISABLED_CHAIN, traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level],
+                bitsStr, traceMarker.customCategory, traceMarker.customArgs);
         }
     }
     if (bytes == -1) {
@@ -746,11 +751,11 @@ static int FmtOtherTypeRecord(TraceMarker& traceMarker, const char* bitsStr,
     if (hiTraceId.IsValid()) {
         bytes = snprintf_s(record, size, size - 1, "%c|%s|H:[%llx,%llx,%llx]#%.*s|%lld|%c%s",
             g_markTypes[traceMarker.type], g_pid, hiTraceId.GetChainId(), hiTraceId.GetSpanId(),
-            hiTraceId.GetParentSpanId(), NAME_SIZE_MAX, traceMarker.name, traceMarker.value,
+            hiTraceId.GetParentSpanId(), NAME_OTHER_LEN_ENABLED_CHAIN, traceMarker.name, traceMarker.value,
             g_traceLevel[traceMarker.level], bitsStr);
     } else {
         bytes = snprintf_s(record, size, size - 1, "%c|%s|H:%.*s|%lld|%c%s",
-            g_markTypes[traceMarker.type], g_pid, NAME_SIZE_MAX, traceMarker.name,
+            g_markTypes[traceMarker.type], g_pid, NAME_OTHER_LEN_DISABLED_CHAIN, traceMarker.name,
             traceMarker.value, g_traceLevel[traceMarker.level], bitsStr);
     }
     if (bytes == -1) {
