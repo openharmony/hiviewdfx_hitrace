@@ -31,6 +31,7 @@
 #include <vector>
 
 #include "common_define.h"
+#include "common_utils.h"
 #include "securec.h"
 #include "hilog/log.h"
 #include "param/sys_param.h"
@@ -185,18 +186,31 @@ static void UpdateSysParamTags()
     const char* paramValue = CachedParameterGetChanged(g_cachedHandle, &changed);
     if (UNEXPECTANTLY(changed == 1) && paramValue != nullptr) {
         uint64_t tags = 0;
-        tags = strtoull(paramValue, nullptr, 0);
+        if (!OHOS::HiviewDFX::Hitrace::StringToUint64(paramValue, tags)) {
+            HILOG_ERROR(LOG_CORE, "get uint64_t failed, paramValue: %s", paramValue);
+            return;
+        }
         g_tagsProperty = (tags | HITRACE_TAG_ALWAYS) & HITRACE_TAG_VALID_MASK;
     }
     int appPidChanged = 0;
     const char* paramPid = CachedParameterGetChanged(g_appPidCachedHandle, &appPidChanged);
     if (UNEXPECTANTLY(appPidChanged == 1) && paramPid != nullptr) {
-        g_appTagMatchPid = strtoll(paramPid, nullptr, 0);
+        int64_t appTagMatchPid = -1;
+        if (!OHOS::HiviewDFX::Hitrace::StringToInt64(paramPid, appTagMatchPid)) {
+            HILOG_ERROR(LOG_CORE, "get int64_t failed, paramPid: %s", paramPid);
+            return;
+        }
+        g_appTagMatchPid = appTagMatchPid;
     }
     int levelThresholdChanged = 0;
     const char* paramLevel = CachedParameterGetChanged(g_levelThresholdCachedHandle, &levelThresholdChanged);
     if (UNEXPECTANTLY(levelThresholdChanged == 1) && paramLevel != nullptr) {
-        g_levelThreshold = static_cast<HiTraceOutputLevel>(strtoll(paramLevel, nullptr, 0));
+        int64_t levelThreshold = 0;
+        if (!OHOS::HiviewDFX::Hitrace::StringToInt64(paramLevel, levelThreshold)) {
+            HILOG_ERROR(LOG_CORE, "get int64_t failed, paramLevel: %s", paramLevel);
+            return;
+        }
+        g_levelThreshold = static_cast<HiTraceOutputLevel>(levelThreshold);
     }
 }
 
@@ -769,8 +783,13 @@ void AddHitraceMeterMarker(TraceMarker& traceMarker)
         if (traceMarker.tag & HITRACE_TAG_COMMERCIAL) {
             traceMarker.level = HITRACE_LEVEL_COMMERCIAL;
         }
+        int pid = 0;
+        if (!OHOS::HiviewDFX::Hitrace::StringToInt(g_pid, pid)) {
+            HILOG_ERROR(LOG_CORE, "get int failed, g_pid: %s", g_pid);
+            return;
+        }
         if ((traceMarker.level < g_levelThreshold) ||
-            (traceMarker.tag == HITRACE_TAG_APP && g_appTagMatchPid > 0 && g_appTagMatchPid != std::stoi(g_pid))) {
+            (traceMarker.tag == HITRACE_TAG_APP && g_appTagMatchPid > 0 && g_appTagMatchPid != pid)) {
             return;
         }
         char record[RECORD_SIZE_MAX + 1] = {0};

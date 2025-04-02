@@ -25,6 +25,7 @@ config("module_private_config") {
     "$hitrace_frameworks_path/include",
     "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
     "$hitrace_interfaces_path/native/innerkits/include/hitrace",
+    "$hitrace_utils_path",
   ]
 }
 
@@ -48,6 +49,9 @@ ohos_unittest("HitraceCTest") {
     "googletest:gtest_main",
     "init:libbegetutil",
   ]
+
+  deps = [ "$hitrace_utils_path:hitrace_common_utils" ]
+
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]
   } else {
@@ -75,6 +79,9 @@ ohos_unittest("HitraceCppTest") {
     "googletest:gtest_main",
     "init:libbegetutil",
   ]
+
+  deps = [ "$hitrace_utils_path:hitrace_common_utils" ]
+
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]
   } else {

@@ -58,7 +58,10 @@ ohos_shared_library("libhitracechain") {
 
 config("hitrace_meter_config") {
   visibility = [ ":*" ]
-  include_dirs = [ "include/hitrace_meter" ]
+  include_dirs = [
+    "include/hitrace_meter",
+    "$hitrace_utils_path",
+  ]
 }
 
 ohos_static_library("hitrace_inner") {
@@ -68,6 +71,7 @@ ohos_static_library("hitrace_inner") {
     "include/hitrace_meter",
     "include",
     "$hitrace_frameworks_path/include/",
+    "$hitrace_utils_path",
   ]
   sources = [
     "src/hitrace_meter.cpp",
@@ -153,6 +157,7 @@ ohos_shared_library("hitrace_meter") {
     ":hitrace_etc",
     ":hitrace_inner",
     ":libhitracechain",
+    "$hitrace_utils_path:hitrace_common_utils",
   ]
 
   external_deps = [ "bounds_checking_function:libsec_shared" ]
