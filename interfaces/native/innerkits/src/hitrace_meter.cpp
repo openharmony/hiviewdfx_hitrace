@@ -852,11 +852,6 @@ void SetWriteOnceLog(LogLevel loglevel, const std::string& logStr, bool& isWrite
 {
     WriteOnceLog(loglevel, logStr, isWrite);
 }
-
-void SetappTracePrefix(const std::string& appTracePrefix)
-{
-    g_appTracePrefix = appTracePrefix;
-}
 #endif
 
 struct CompareTag {

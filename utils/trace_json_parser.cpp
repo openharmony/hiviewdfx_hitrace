@@ -23,6 +23,7 @@
 #include <sstream>
 
 #include "common_define.h"
+#include "common_utils.h"
 #include "cJSON.h"
 #include "hilog/log.h"
 
@@ -142,6 +143,9 @@ bool ParseBaseFormatPath(cJSON* jsonNode, std::vector<std::string>& baseTraceFor
                 baseTraceFormats.push_back(formatItem->valuestring);
             }
         }
+    }
+    if (IsRootVersion()) {
+        baseTraceFormats.push_back("events/xaact/tracing_mark_write/format");
     }
     return true;
 }
