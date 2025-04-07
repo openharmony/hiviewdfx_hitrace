@@ -14,29 +14,15 @@
 import("//build/ohos.gni")
 
 ohos_prebuilt_etc("hitrace_tags") {
-  if (build_variant == "user") {
-    source = "hitrace_utils_user.json"
-  } else {
-    source = "hitrace_utils_root.json"
-  }
+  source = "hitrace_utils.json"
   relative_install_dir = "hiview"
-  output = "hitrace_utils.json"
-  install_images = [ "system" ]
-  install_enable = true
   subsystem_name = "hiviewdfx"
   part_name = "hitrace"
 }
 
 ohos_prebuilt_etc("hitrace.cfg") {
-  if (build_variant == "user") {
-    source = "hitrace_user.cfg"
-  } else {
-    source = "hitrace_root.cfg"
-  }
+  source = "hitrace.cfg"
   relative_install_dir = "init"
-  output = "hitrace.cfg"
-  install_images = [ "system" ]
-  install_enable = true
   subsystem_name = "hiviewdfx"
   part_name = "hitrace"
 }

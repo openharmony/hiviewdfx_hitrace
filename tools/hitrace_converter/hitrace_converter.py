@@ -211,7 +211,7 @@ class TraceViewerInterface(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def calcuate(self, context: TraceParseContext) -> None:
+    def calculate(self, context: TraceParseContext) -> None:
         pass
 
 
@@ -232,7 +232,7 @@ class TraceFileParserInterface(metaclass=ABCMeta):
         return {}
 
     @abstractmethod
-    def parse_tid_gropus(self, data: List) -> dict:
+    def parse_tid_groups(self, data: List) -> dict:
         return {}
 
     @abstractmethod
@@ -250,7 +250,7 @@ class TraceFileParserInterface(metaclass=ABCMeta):
 
 class OperatorInterface(metaclass=ABCMeta):
     @abstractmethod
-    def accept(self, parser: TraceFileParserInterface, segment = None) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment=None) -> bool:
         return True
 
 
@@ -259,7 +259,7 @@ class FieldOperator(Field, OperatorInterface):
         Field.__init__(self, vtype, size, vformat, item_types)
         pass
 
-    def accept(self, parser: TraceFileParserInterface, segment = None) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment=None) -> bool:
         return True
 
 
@@ -268,7 +268,7 @@ class SegmentOperator(Field, OperatorInterface):
         Field.__init__(self, vtype, -1, "", [])
         pass
 
-    def accept(self, parser: TraceFileParserInterface, segment = None) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment=None) -> bool:
         return True
 
 
@@ -294,7 +294,7 @@ class FileHeader(FieldOperator):
             item_types
         )
 
-    def accept(self, parser: TraceFileParserInterface, segment = None) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment=None) -> bool:
         data = parser.get_segment_data(self.field_size)
         values = parser.parse_simple_field(self.format, data)
         if len(values) == 0:
@@ -331,7 +331,7 @@ class PageHeader(FieldOperator):
             item_types
         )
 
-    def accept(self, parser: TraceFileParserInterface, segment = None) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment=None) -> bool:
         segment = segment or []
         value = parser.parse_simple_field(self.format, segment)
         context = parser.get_context()
@@ -362,7 +362,7 @@ class TraceEventHeader(FieldOperator):
             item_types
         )
 
-    def accept(self, parser: TraceFileParserInterface, segment = None) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment=None) -> bool:
         segment = segment or []
         value = parser.parse_simple_field(self.format, segment)
         if len(value) == 0:
@@ -385,7 +385,7 @@ class TraceEventContent(SegmentOperator):
         super().__init__(FieldType.TRACE_EVENT_CONTENT)
         pass
 
-    def accept(self, parser: TraceFileParserInterface, segment = None) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment=None) -> bool:
         segment = segment or []
         context = parser.get_context()
         timestamp = context.get_param(TraceParseContext.CONTEXT_TIMESTAMP)
@@ -413,7 +413,7 @@ class TraceEventWrapper(OperatorInterface):
         self.event_content = event_content
         pass
 
-    def accept(self, parser: TraceFileParserInterface, segment = None) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment=None) -> bool:
         segment = segment or []
         cur_post = 0
         while cur_post < len(segment):
@@ -462,7 +462,7 @@ class PageWrapper(OperatorInterface):
         next_post = cur_post + PageWrapper.TRACE_PAGE_SIZE
         return (next_post, data)
 
-    def accept(self, parser: TraceFileParserInterface, segment = None) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment=None) -> bool:
         segment = segment or []
         cur_post = 0
         while True:
@@ -498,7 +498,7 @@ class RawTraceSegment(SegmentOperator):
         )
         pass
 
-    def accept(self, parser: TraceFileParserInterface, segment = None) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment=None) -> bool:
         segment = segment or []
         self.field.accept(parser, segment)
         return True
@@ -512,7 +512,7 @@ class EventFormatSegment(SegmentOperator):
         super().__init__(FieldType.SEGMENT_EVENTS_FORMAT)
         pass
 
-    def accept(self, parser: TraceFileParserInterface, segment = None) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment=None) -> bool:
         segment = segment or []
         events_format = parser.parse_event_format(segment)
         context = parser.get_context()
@@ -528,7 +528,7 @@ class CmdLinesSegment(SegmentOperator):
         super().__init__(FieldType.SEGMENT_CMDLINES)
         pass
 
-    def accept(self, parser: TraceFileParserInterface, segment = None) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment=None) -> bool:
         segment = segment or []
         cmd_lines = parser.parse_cmd_lines(segment)
         context = parser.get_context()
@@ -544,9 +544,9 @@ class TidGroupsSegment(SegmentOperator):
         super().__init__(FieldType.SEGMENT_TGIDS)
         pass
 
-    def accept(self, parser: TraceFileParserInterface, segment = None) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment=None) -> bool:
         segment = segment or []
-        tid_groups = parser.parse_tid_gropus(segment)
+        tid_groups = parser.parse_tid_groups(segment)
         context = parser.get_context()
         context.set_param(TraceParseContext.CONTEXT_TID_GROUPS, tid_groups)
         return True
@@ -560,7 +560,7 @@ class PrintkFormatSegment(SegmentOperator):
         super().__init__(FieldType.SEGMENT_PRINTK_FORMATS)
         pass
 
-    def accept(self, parser: TraceFileParserInterface, segment = None) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment=None) -> bool:
         print("in parse_printk_formats")
         return True
 
@@ -573,7 +573,7 @@ class KallSymsSegment(SegmentOperator):
         super().__init__(FieldType.SEGMENT_KALLSYMS)
         pass
 
-    def accept(self, parser: TraceFileParserInterface, segment = None) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment=None) -> bool:
         print("in parse_kallsyms")
         return True
 
@@ -586,7 +586,7 @@ class HeaderPageSegment(SegmentOperator):
         super().__init__(FieldType.SEGMENT_HEADER_PAGE)
         pass
 
-    def accept(self, parser: TraceFileParserInterface, segment = None) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment=None) -> bool:
         print("in parse_header_page")
         return True
 
@@ -599,7 +599,7 @@ class UnSupportSegment(FieldOperator):
         super().__init__(FieldType.SEGMENT_UNSUPPORT, -1, "", [])
         pass
 
-    def accept(self, parser: TraceFileParserInterface, segment = None) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment=None) -> bool:
         print("unsupport segment")
         return True
 
@@ -627,7 +627,7 @@ class SegmentWrapper(FieldOperator):
         self.fields = fields
         pass
 
-    def accept(self, parser: TraceFileParserInterface, segment = None) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment=None) -> bool:
         segment = segment or []
         while True:
             data = parser.get_segment_data(self.field_size)
@@ -707,7 +707,7 @@ class TraceFileFormat(OperatorInterface):
         ]
         pass
 
-    def accept(self, parser: TraceFileParserInterface, segment = None) -> bool:
+    def accept(self, parser: TraceFileParserInterface, segment=None) -> bool:
         for field in self.fields:
             if field.accept(parser) is False:
                 return False
@@ -720,7 +720,7 @@ class Viewer:
         pass
 
     @abstractmethod
-    def calcuate(self, timestamp: int, core_id: int, event_id: int, segment: List) -> None:
+    def calculate(self, timestamp: int, core_id: int, event_id: int, segment: List) -> None:
         pass
 
     @abstractmethod
@@ -761,7 +761,7 @@ class SysTraceViewer(Viewer):
         self.tgids = context.get_param(TraceParseContext.CONTEXT_TID_GROUPS)
         pass
 
-    def calcuate(self, timestamp: int, core_id: int, event_id: int, segment: List, context: TraceParseContext) -> None:
+    def calculate(self, timestamp: int, core_id: int, event_id: int, segment: List, context: TraceParseContext) -> None:
         if event_id in self.trace_event_count_dict:
             self.trace_event_count_dict[event_id] += 1
         else:
@@ -928,13 +928,13 @@ class TraceViewer(TraceViewerInterface):
         self.trace_events.append(trace_event)
         pass
 
-    def calcuate(self, context: TraceParseContext):
+    def calculate(self, context: TraceParseContext):
         for viewer in self.viewers:
             viewer.set_context(context)
 
         for timestamp, core_id, event_id, segment in self.trace_events:
             for viewer in self.viewers:
-                viewer.calcuate(timestamp, core_id, event_id, segment, context)
+                viewer.calculate(timestamp, core_id, event_id, segment, context)
 
         for viewer in self.viewers:
             viewer.show()
@@ -1006,7 +1006,7 @@ class TraceFileParser(TraceFileParserInterface):
             cmd_lines[int(cmd_line[:pos])] = cmd_line[pos + 1:]
         return cmd_lines
 
-    def parse_tid_gropus(self, data: List) -> dict:
+    def parse_tid_groups(self, data: List) -> dict:
         tgids = {}
         tgids_lines_list = data.decode('utf-8').split("\n")
         for tgids_line in tgids_lines_list:
@@ -1027,7 +1027,7 @@ class TraceFileParser(TraceFileParserInterface):
 
     def parse(self) -> None:
         self.trace_format.accept(self)
-        self.trace_viewer.calcuate(self.context)
+        self.trace_viewer.calculate(self.context)
         pass
 
 

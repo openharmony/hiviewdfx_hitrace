@@ -203,7 +203,6 @@ void SetMarkerFd(int markerFd);
 void SetCachedHandle(CachedHandle cachedHandle, CachedHandle appPidCachedHandle,
     CachedHandle levelThresholdCachedHandle);
 void SetWriteOnceLog(LogLevel loglevel, const std::string& logStr, bool& isWrite);
-void SetMarkerType(TraceFlag appFlag, const std::string& name, const int64_t value, bool tid);
 #endif
 
 int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std::string& fileName);
