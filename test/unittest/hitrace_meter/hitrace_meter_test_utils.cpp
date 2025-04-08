@@ -33,10 +33,6 @@ namespace HitraceTest {
 #define LOG_TAG "HitraceTest"
 #endif
 
-constexpr int NAME_SYNC_LEN_ENABLED_CHAIN = 440;
-constexpr int NAME_SYNC_LEN_DISABLED_CHAIN = 490;
-constexpr int NAME_OTHER_LEN_ENABLED_CHAIN = 430;
-constexpr int NAME_OTHER_LEN_DISABLED_CHAIN = 480;
 constexpr int HITRACEID_LEN = 64;
 const char g_traceLevel[4] = {'D', 'I', 'C', 'M'};
 static std::string g_traceRootPath;
@@ -181,26 +177,6 @@ static void SetNullptrToEmpty(TraceInfo& traceInfo)
     }
 }
 
-static int GetNameSizeLimit(TraceInfo& traceInfo)
-{
-    int nameSizeLimit = 0;
-    std::string chainStr = "";
-    if (traceInfo.hiTraceId != nullptr) {
-        if (traceInfo.type == 'B') {
-            nameSizeLimit = NAME_SYNC_LEN_ENABLED_CHAIN;
-        } else {
-            nameSizeLimit = NAME_OTHER_LEN_ENABLED_CHAIN;
-        }
-    } else {
-        if (traceInfo.type == 'B') {
-            nameSizeLimit = NAME_SYNC_LEN_DISABLED_CHAIN;
-        } else {
-            nameSizeLimit = NAME_OTHER_LEN_DISABLED_CHAIN;
-        }
-    }
-    return nameSizeLimit;
-}
-
 bool GetTraceResult(TraceInfo& traceInfo, const std::vector<std::string>& list,
     char (&record)[RECORD_SIZE_MAX + 1])
 {
@@ -213,16 +189,15 @@ bool GetTraceResult(TraceInfo& traceInfo, const std::vector<std::string>& list,
     std::string bitsStr;
     ParseTagBits(traceInfo.tag, bitsStr);
 #endif
-    int nameSizeLimit = GetNameSizeLimit(traceInfo);
     std::string chainStr = "";
     if (traceInfo.hiTraceId != nullptr) {
         chainStr = GetRecord(traceInfo.hiTraceId);
     }
     SetNullptrToEmpty(traceInfo);
-    std::string name = std::string(traceInfo.name).substr(0, nameSizeLimit);
+    std::string name = std::string(traceInfo.name);
     std::string customCategory = std::string(traceInfo.customCategory);
-    std::string recordStr = std::string(1, traceInfo.type) + SEPARATOR + g_pid + SEPARATOR;
     std::string customArgs = std::string(traceInfo.customArgs);
+    std::string recordStr = std::string(1, traceInfo.type) + SEPARATOR + g_pid + SEPARATOR;
     if (traceInfo.type == 'E') {
         recordStr += g_traceLevel[traceInfo.level] + bitsStr;
     } else {

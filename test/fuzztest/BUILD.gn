@@ -15,7 +15,7 @@ import("//base/hiviewdfx/hitrace/hitrace.gni")
 import("//build/config/features.gni")
 import("//build/test.gni")
 
-module_output_path = "hiviewdfx/hitrace"
+module_output_path = "hitrace/hitrace"
 
 ohos_fuzztest("HitraceCmdFuzzTest") {
   module_out_path = module_output_path

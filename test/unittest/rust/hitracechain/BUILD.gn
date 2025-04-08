@@ -14,7 +14,7 @@
 import("//base/hiviewdfx/hitrace/hitrace.gni")
 import("//build/test.gni")
 
-module_output_path = "hiviewdfx/hitrace/rust/"
+module_output_path = "hitrace/rust"
 
 ohos_rust_unittest("rust_hitracechain_test") {
   module_out_path = module_output_path
@@ -24,7 +24,4 @@ ohos_rust_unittest("rust_hitracechain_test") {
   deps = [
     "$hitrace_interfaces_path/rust/innerkits/hitracechain:hitracechain_rust",
   ]
-
-  part_name = "hitrace"
-  subsystem_name = "hiviewdfx"
 }

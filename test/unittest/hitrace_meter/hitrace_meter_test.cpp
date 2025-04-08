@@ -430,18 +430,15 @@ HWTEST_F(HitraceMeterTest, SyncTraceInterfaceTest007, TestSize.Level1)
     longName += "SyncTraceInterfaceTest007SyncTraceInterfaceTest007SyncTraceInterfaceTest007";
     longName += "SyncTraceInterfaceTest007SyncTraceInterfaceTest007SyncTraceInterfaceTest007";
     longName += "SyncTraceInterfaceTest007SyncTraceInterfaceTest007SyncTraceInterfaceTest007";
-    std::string longCustomArgs = "key=value,key=value,key=value,key=value,key=value,";
+    std::string longCustomArgs = "key=value,key=value,key=value,key=value,key=value";
 
     StartTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, longName.c_str(), longCustomArgs.c_str());
     FinishTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG);
 
-    // Parameter name is limited to 490 characters with hitraceChain disabled in SyncTrace.
     // The total length of the trace output is limited to 512 characters.
-    std::string realName = longName.substr(0, 490);
-    std::string expectRecord = std::string("B|") + g_pid + LABEL_HEADER + realName + std::string("|M30|");
-    int remainLength = RECORD_SIZE_MAX - expectRecord.length();
-    std::string realCustomArgs = longCustomArgs.substr(0, remainLength);
-    expectRecord += realCustomArgs;
+    std::string expectRecord = std::string("B|") + g_pid + LABEL_HEADER + longName +
+                               std::string("|M30|") + longCustomArgs;
+    expectRecord = expectRecord.substr(0, 512);
 
     std::vector<std::string> list = ReadTrace();
     char record[RECORD_SIZE_MAX + 1] = {0};
@@ -837,15 +834,11 @@ HWTEST_F(HitraceMeterTest, AsyncTraceInterfaceTest002, TestSize.Level1)
                       longCustomCategory.c_str(), longCustomArgs.c_str());
     FinishAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, longName.c_str(), taskId);
 
-    // Parameter name is limited to 480 characters with hitraceChain disabled in AsyncTrace.
     // The total length of the trace output is limited to 512 characters.
-    std::string realName = longName.substr(0, 480);
-    std::string otherArgs = longCustomCategory + VERTICAL_LINE + longCustomArgs;
-    std::string expectRecord = std::string("S|") + g_pid + LABEL_HEADER + realName + VERTICAL_LINE +
-                               std::to_string(taskId) + std::string("|M30|");
-    int remainLength = RECORD_SIZE_MAX - expectRecord.length();
-    std::string realOtherArgs = otherArgs.substr(0, remainLength);
-    expectRecord += realOtherArgs;
+    std::string expectRecord = std::string("S|") + g_pid + LABEL_HEADER + longName + VERTICAL_LINE +
+                               std::to_string(taskId) + std::string("|M30|") + longCustomCategory +
+                               VERTICAL_LINE + longCustomArgs;
+    expectRecord = expectRecord.substr(0, 512);
 
     std::vector<std::string> list = ReadTrace();
     char record[RECORD_SIZE_MAX + 1] = {0};
@@ -1453,15 +1446,15 @@ HWTEST_F(HitraceMeterTest, CaptureAppTraceTest001, TestSize.Level2)
     GTEST_LOG_(INFO) << "CaptureAppTraceTest001: start.";
 
     int fileSize = 100 * 1024 * 1024; // 100M
-    std::string fileName = "";
+    std::string filePath = "/data/test.ftrace";
 
-    int ret = StartCaptureAppTrace(TraceFlag(0), TAG, fileSize, fileName);
+    int ret = StartCaptureAppTrace(TraceFlag(0), TAG, fileSize, filePath);
     ASSERT_EQ(ret, RetType::RET_FAIL_INVALID_ARGS);
-    ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, HITRACE_TAG_NOT_READY, fileSize, fileName);
+    ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, HITRACE_TAG_NOT_READY, fileSize, filePath);
     ASSERT_EQ(ret, RetType::RET_FAIL_INVALID_ARGS);
-    ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, HITRACE_TAG_USB, fileSize, fileName);
+    ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, HITRACE_TAG_USB, fileSize, filePath);
     ASSERT_EQ(ret, RetType::RET_FAIL_INVALID_ARGS);
-    ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, TAG, (1ULL << 63), fileName);
+    ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, TAG, (1ULL << 63), filePath);
     ASSERT_EQ(ret, RetType::RET_FAIL_INVALID_ARGS);
 
     GTEST_LOG_(INFO) << "CaptureAppTraceTest001: end.";
@@ -1477,11 +1470,11 @@ HWTEST_F(HitraceMeterTest, CaptureAppTraceTest002, TestSize.Level2)
     GTEST_LOG_(INFO) << "CaptureAppTraceTest002: start.";
 
     int fileSize = 100 * 1024 * 1024; // 100M
-    std::string fileName = "";
+    std::string filePath = "/data/test.ftrace";
 
-    int ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, TAG, fileSize, fileName);
+    int ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, TAG, fileSize, filePath);
     ASSERT_EQ(ret, RetType::RET_SUCC);
-    ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, TAG, fileSize, fileName);
+    ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, TAG, fileSize, filePath);
     ASSERT_EQ(ret, RetType::RET_STARTED);
 
     ret = StopCaptureAppTrace();
@@ -1573,10 +1566,16 @@ HWTEST_F(HitraceMeterTest, CaptureAppTraceTest005, TestSize.Level1)
     GTEST_LOG_(INFO) << "CaptureAppTraceTest005: start.";
 
     int fileSize = 600 * 1024 * 1024; // 600MB
-    std::string filePath = "/data/test.ftrace";
+    std::string filePath = "";
 
     int ret = StartCaptureAppTrace(FLAG_ALL_THREAD, TAG, fileSize, filePath);
     ASSERT_EQ(ret, RetType::RET_SUCC);
+    size_t lastSlashPos = filePath.rfind('/');
+    ASSERT_NE(lastSlashPos, std::string::npos);
+    if (lastSlashPos != std::string::npos) {
+        filePath = "/data/local/tmp/" + filePath.substr(lastSlashPos + 1);
+    }
+    GTEST_LOG_(INFO) << filePath.c_str();
 
     const char* name = "CaptureAppTraceTest005";
     const char* customArgs = "key=value";
