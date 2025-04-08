@@ -32,6 +32,7 @@
 #include <string>
 
 #include "common_define.h"
+#include "common_utils.h"
 #include "securec.h"
 #include "hilog/log.h"
 #include "param/sys_param.h"
@@ -141,13 +142,19 @@ inline void UpdateSysParamTags()
     const char *paramValue = CachedParameterGetChanged(g_cachedHandle, &changed);
     if (UNEXPECTANTLY(changed == 1) && paramValue != nullptr) {
         uint64_t tags = 0;
-        tags = strtoull(paramValue, nullptr, 0);
+        if (!OHOS::HiviewDFX::Hitrace::StringToUint64(paramValue, tags)) {
+            return;
+        }
         g_tagsProperty = (tags | HITRACE_TAG_ALWAYS) & HITRACE_TAG_VALID_MASK;
     }
     int appPidChanged = 0;
     const char *paramPid = CachedParameterGetChanged(g_appPidCachedHandle, &appPidChanged);
     if (UNEXPECTANTLY(appPidChanged == 1) && paramPid != nullptr) {
-        g_appTagMatchPid = strtoll(paramPid, nullptr, 0);
+        int64_t appTagMatchPid = -1;
+        if (!OHOS::HiviewDFX::Hitrace::StringToInt64(paramPid, appTagMatchPid)) {
+            return;
+        }
+        g_appTagMatchPid = appTagMatchPid;
     }
 }
 
@@ -603,7 +610,11 @@ void AddHitraceMeterMarker(MarkerType type, uint64_t tag, const std::string& nam
     }
     UpdateSysParamTags();
     if (UNEXPECTANTLY(g_tagsProperty & tag) && g_markerFd != -1) {
-        if (tag == HITRACE_TAG_APP && g_appTagMatchPid > 0 && g_appTagMatchPid != std::stoi(g_pid)) {
+        int pid = 0;
+        if (!OHOS::HiviewDFX::Hitrace::StringToInt(g_pid, pid)) {
+            return;
+        }
+        if (tag == HITRACE_TAG_APP && g_appTagMatchPid > 0 && g_appTagMatchPid != pid) {
             return;
         }
         // record fomart: "type|pid|name value".

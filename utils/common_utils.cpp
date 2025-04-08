@@ -254,6 +254,58 @@ bool IsTracingOn(const std::string& traceRootPath)
     HILOG_INFO(LOG_CORE, "tracing_on is 0.");
     return false;
 }
+
+bool StringToInt(const std::string &str, int &val)
+{
+    char *endPtr = nullptr;
+    errno = 0;
+    long num = std::strtol(str.c_str(), &endPtr, OHOS::HiviewDFX::Hitrace::DECIMAL_SCALE);
+    if (endPtr == str.c_str() || *endPtr != '\0' || errno != 0 || num > INT_MAX || num < INT_MIN) {
+        HILOG_ERROR(LOG_CORE, "get int failed, str: %s", str.c_str());
+        return false;
+    }
+    val = static_cast<int>(num);
+    return true;
+}
+
+bool StringToInt64(const std::string &str, int64_t &val)
+{
+    char *endPtr = nullptr;
+    errno = 0;
+    int64_t num = std::strtoll(str.c_str(), &endPtr, OHOS::HiviewDFX::Hitrace::DECIMAL_SCALE);
+    if (endPtr == str.c_str() || *endPtr != '\0' || errno != 0 || num > LLONG_MAX || num < LLONG_MIN) {
+        HILOG_ERROR(LOG_CORE, "get int64 failed, str: %s", str.c_str());
+        return false;
+    }
+    val = num;
+    return true;
+}
+
+bool StringToUint64(const std::string &str, uint64_t &val)
+{
+    char *endPtr = nullptr;
+    errno = 0;
+    uint64_t num = std::strtoull(str.c_str(), &endPtr, OHOS::HiviewDFX::Hitrace::DECIMAL_SCALE);
+    if (endPtr == str.c_str() || *endPtr != '\0' || errno != 0 || num > ULLONG_MAX || str.c_str()[0] == '-') {
+        HILOG_ERROR(LOG_CORE, "get uint64 failed, str: %s", str.c_str());
+        return false;
+    }
+    val = num;
+    return true;
+}
+
+bool StringToDouble(const std::string &str, double &val)
+{
+    char *endPtr = nullptr;
+    errno = 0;
+    double num = std::strtod(str.c_str(), &endPtr);
+    if (endPtr == str.c_str() || *endPtr != '\0' || errno != 0) {
+        HILOG_ERROR(LOG_CORE, "get double failed, str: %s", str.c_str());
+        return false;
+    }
+    val = num;
+    return true;
+}
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS
