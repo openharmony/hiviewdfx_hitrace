@@ -57,13 +57,22 @@ bool DynamicBuffer::GetPerCpuStatsInfo(const size_t cpuIndex, TraceStatsInfo& tr
     const size_t bytesPos = 7;
     while (std::getline(inFile, line)) {
         if ((line.find("oldest event ts: ")) != std::string::npos) {
-            traceStats.oldTs = std::stod(line.substr(oldTsPos));
+            if (!OHOS::HiviewDFX::Hitrace::StringToDouble(line.substr(oldTsPos).c_str(), traceStats.oldTs)) {
+                inFile.close();
+                return false;
+            }
         }
         if ((line.find("now ts: ")) != std::string::npos) {
-            traceStats.nowTs = std::stod(line.substr(nowTsPos));
+            if (!OHOS::HiviewDFX::Hitrace::StringToDouble(line.substr(nowTsPos).c_str(), traceStats.nowTs)) {
+                inFile.close();
+                return false;
+            }
         }
         if ((line.find("bytes: ")) != std::string::npos) {
-            traceStats.bytes = std::stod(line.substr(bytesPos));
+            if (!OHOS::HiviewDFX::Hitrace::StringToInt(line.substr(bytesPos).c_str(), traceStats.bytes)) {
+                inFile.close();
+                return false;
+            }
         }
     }
     inFile.close();

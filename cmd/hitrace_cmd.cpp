@@ -559,7 +559,7 @@ static void DumpCompressedTrace(int traceFd, int outFd)
     int flush = Z_NO_FLUSH;
     ssize_t bytesWritten;
     ssize_t bytesRead;
-    if (memset_s(&zs, sizeof(zs), 0, sizeof(zs)) != 0) {
+    if (memset_s(&zs, sizeof(zs), 0, sizeof(zs)) != EOK) {
         ConsoleLog("error: zip stream buffer init failed.");
         return;
     }

@@ -185,7 +185,6 @@ static void UpdateSysParamTags()
     if (UNEXPECTANTLY(changed == 1) && paramValue != nullptr) {
         uint64_t tags = 0;
         if (!OHOS::HiviewDFX::Hitrace::StringToUint64(paramValue, tags)) {
-            HILOG_ERROR(LOG_CORE, "get uint64_t failed, paramValue: %s", paramValue);
             return;
         }
         g_tagsProperty = (tags | HITRACE_TAG_ALWAYS) & HITRACE_TAG_VALID_MASK;
@@ -195,7 +194,6 @@ static void UpdateSysParamTags()
     if (UNEXPECTANTLY(appPidChanged == 1) && paramPid != nullptr) {
         int64_t appTagMatchPid = -1;
         if (!OHOS::HiviewDFX::Hitrace::StringToInt64(paramPid, appTagMatchPid)) {
-            HILOG_ERROR(LOG_CORE, "get int64_t failed, paramPid: %s", paramPid);
             return;
         }
         g_appTagMatchPid = appTagMatchPid;
@@ -205,7 +203,6 @@ static void UpdateSysParamTags()
     if (UNEXPECTANTLY(levelThresholdChanged == 1) && paramLevel != nullptr) {
         int64_t levelThreshold = 0;
         if (!OHOS::HiviewDFX::Hitrace::StringToInt64(paramLevel, levelThreshold)) {
-            HILOG_ERROR(LOG_CORE, "get int64_t failed, paramLevel: %s", paramLevel);
             return;
         }
         g_levelThreshold = static_cast<HiTraceOutputLevel>(levelThreshold);
@@ -783,7 +780,6 @@ void AddHitraceMeterMarker(TraceMarker& traceMarker)
         }
         int pid = 0;
         if (!OHOS::HiviewDFX::Hitrace::StringToInt(g_pid, pid)) {
-            HILOG_ERROR(LOG_CORE, "get int failed, g_pid: %s", g_pid);
             return;
         }
         if ((traceMarker.level < g_levelThreshold) ||
@@ -1283,7 +1279,10 @@ HitracePerfScoped::HitracePerfScoped(bool isDebug, uint64_t tag, const std::stri
         return;
     }
     struct perf_event_attr peIns;
-    (void)memset_s(&peIns, sizeof(struct perf_event_attr), 0, sizeof(struct perf_event_attr));
+    if (memset_s(&peIns, sizeof(struct perf_event_attr), 0, sizeof(struct perf_event_attr)) != EOK) {
+        err_ = errno;
+        return;
+    }
     peIns.type = PERF_TYPE_HARDWARE;
     peIns.size = sizeof(struct perf_event_attr);
     peIns.config = PERF_COUNT_HW_INSTRUCTIONS;
@@ -1296,7 +1295,10 @@ HitracePerfScoped::HitracePerfScoped(bool isDebug, uint64_t tag, const std::stri
         return;
     }
     struct perf_event_attr peCycles;
-    (void)memset_s(&peCycles, sizeof(struct perf_event_attr), 0, sizeof(struct perf_event_attr));
+    if (memset_s(&peCycles, sizeof(struct perf_event_attr), 0, sizeof(struct perf_event_attr)) != EOK) {
+        err_ = errno;
+        return;
+    }
     peCycles.type = PERF_TYPE_HARDWARE;
     peCycles.size = sizeof(struct perf_event_attr);
     peCycles.config = PERF_COUNT_HW_CPU_CYCLES;

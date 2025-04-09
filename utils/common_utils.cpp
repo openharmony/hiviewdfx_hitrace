@@ -293,6 +293,19 @@ bool StringToUint64(const std::string &str, uint64_t &val)
     val = num;
     return true;
 }
+
+bool StringToDouble(const std::string &str, double &val)
+{
+    char *endPtr = nullptr;
+    errno = 0;
+    double num = std::strtod(str.c_str(), &endPtr);
+    if (endPtr == str.c_str() || *endPtr != '\0' || errno != 0) {
+        HILOG_ERROR(LOG_CORE, "get double failed, str: %s", str.c_str());
+        return false;
+    }
+    val = num;
+    return true;
+}
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS
