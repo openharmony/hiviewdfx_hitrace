@@ -29,7 +29,7 @@
 namespace OHOS {
 namespace HiviewDFX {
 namespace HitraceTest {
-constexpr int RECORD_SIZE_MAX = 512;
+constexpr int RECORD_SIZE_MAX = 1024;
 
 struct TraceInfo {
     char type;

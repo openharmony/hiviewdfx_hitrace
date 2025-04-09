@@ -75,7 +75,7 @@ const char* const EMPTY = "";
 
 constexpr int VAR_NAME_MAX_SIZE = 400;
 constexpr int NAME_NORMAL_LEN = 512;
-constexpr int RECORD_SIZE_MAX = 512;
+constexpr int RECORD_SIZE_MAX = 1024;
 
 static const int PID_BUF_SIZE = 6;
 static char g_pid[PID_BUF_SIZE];
