@@ -21,13 +21,14 @@ ohos_shared_library("hitrace_ndk") {
   ]
 
   sources = [
-    "$hitrace_frameworks_path/native/hitracechainc.c",
-    "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter_c.c",
     "hitrace_chain_ndk.c",
     "hitrace_meter_ndk.c",
   ]
 
-  deps = [ "$hitrace_interfaces_path/native/innerkits:hitrace_meter" ]
+  deps = [
+    "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
+    "$hitrace_interfaces_path/native/innerkits:libhitracechain",
+  ]
 
   external_deps = [ "bounds_checking_function:libsec_shared" ]
   if (defined(ohos_lite)) {
