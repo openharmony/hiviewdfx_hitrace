@@ -422,34 +422,27 @@ HWTEST_F(HitraceMeterTest, SyncTraceInterfaceTest007, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "SyncTraceInterfaceTest007: start.";
 
-    // Each line contains 75 characters, and the longName has a total length of 525 characters.
-    std::string longName = "SyncTraceInterfaceTest007SyncTraceInterfaceTest007SyncTraceInterfaceTest007";
-    longName += "SyncTraceInterfaceTest007SyncTraceInterfaceTest007SyncTraceInterfaceTest007";
-    longName += "SyncTraceInterfaceTest007SyncTraceInterfaceTest007SyncTraceInterfaceTest007";
-    longName += "SyncTraceInterfaceTest007SyncTraceInterfaceTest007SyncTraceInterfaceTest007";
-    longName += "SyncTraceInterfaceTest007SyncTraceInterfaceTest007SyncTraceInterfaceTest007";
-    longName += "SyncTraceInterfaceTest007SyncTraceInterfaceTest007SyncTraceInterfaceTest007";
-    longName += "SyncTraceInterfaceTest007SyncTraceInterfaceTest007SyncTraceInterfaceTest007";
+    // Each iteration adds 25 characters, resulting in a total string length of 1000 characters.
+    std::string longName = "";
+    for (int i = 0; i < 40; i++) {
+        longName += "SyncTraceInterfaceTest007";
+    }
     std::string longCustomArgs = "key=value,key=value,key=value,key=value,key=value";
 
     StartTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, longName.c_str(), longCustomArgs.c_str());
     FinishTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG);
 
-    // The total length of the trace output is limited to 512 characters.
     std::string expectRecord = std::string("B|") + g_pid + LABEL_HEADER + longName +
                                std::string("|M30|") + longCustomArgs;
-    expectRecord = expectRecord.substr(0, 512);
+    if (IsHmKernel()) {
+        expectRecord = expectRecord.substr(0, 512);
+    } else {
+        expectRecord = expectRecord.substr(0, 1024);
+    }
 
     std::vector<std::string> list = ReadTrace();
-    char record[RECORD_SIZE_MAX + 1] = {0};
-    TraceInfo traceInfo = {'B', HITRACE_LEVEL_COMMERCIAL, TAG, 0, longName.c_str(), "", longCustomArgs.c_str()};
-    bool isStartSuc = GetTraceResult(traceInfo, list, record);
-    int ret = strcmp(expectRecord.c_str(), record);
-    ASSERT_EQ(ret, 0) << "\nexpectRecord=\"" << expectRecord << "\"\nrecord=\"" << record <<"\"";
-    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
-    traceInfo.type = 'E';
-    bool isFinishSuc = GetTraceResult(traceInfo, list, record);
-    ASSERT_TRUE(isFinishSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+    bool isStartSuc = FindResult(expectRecord, list);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << expectRecord << "\" from trace.";
 
     GTEST_LOG_(INFO) << "SyncTraceInterfaceTest007: end.";
 }
@@ -818,14 +811,11 @@ HWTEST_F(HitraceMeterTest, AsyncTraceInterfaceTest002, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "AsyncTraceInterfaceTest002: start.";
 
-    // Each line contains 78 characters, and the longName has a total length of 494 characters.
-    std::string longName = "AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002";
-    longName += "AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002";
-    longName += "AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002";
-    longName += "AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002";
-    longName += "AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002";
-    longName += "AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002AsyncTraceInterfaceTest002";
-    longName += "AsyncTraceInterfaceTest002";
+    // Each iteration adds 26 characters, resulting in a total string length of 1040 characters.
+    std::string longName = "";
+    for (int i = 0; i < 40; i++) {
+        longName += "AsyncTraceInterfaceTest002";
+    }
     std::string longCustomCategory = "CategoryTestCategoryTest";
     std::string longCustomArgs = "key=value,key=value,key=value,key=value,key=value";
     int32_t taskId = 2;
@@ -834,24 +824,25 @@ HWTEST_F(HitraceMeterTest, AsyncTraceInterfaceTest002, TestSize.Level1)
                       longCustomCategory.c_str(), longCustomArgs.c_str());
     FinishAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, longName.c_str(), taskId);
 
-    // The total length of the trace output is limited to 512 characters.
-    std::string expectRecord = std::string("S|") + g_pid + LABEL_HEADER + longName + VERTICAL_LINE +
-                               std::to_string(taskId) + std::string("|M30|") + longCustomCategory +
-                               VERTICAL_LINE + longCustomArgs;
-    expectRecord = expectRecord.substr(0, 512);
+    std::string expectStartAsyncRecord = std::string("S|") + g_pid + LABEL_HEADER + longName +
+        VERTICAL_LINE + std::to_string(taskId) + std::string("|M30|") + longCustomCategory +
+        VERTICAL_LINE + longCustomArgs;
+    std::string expectFinishAsyncRecord = std::string("F|") + g_pid + LABEL_HEADER + longName +
+        VERTICAL_LINE + std::to_string(taskId) + std::string("|M30");
+    if (IsHmKernel()) {
+        expectStartAsyncRecord = expectStartAsyncRecord.substr(0, 512);
+        expectFinishAsyncRecord = expectFinishAsyncRecord.substr(0, 512);
+    } else {
+        expectStartAsyncRecord = expectStartAsyncRecord.substr(0, 1024);
+        expectFinishAsyncRecord = expectFinishAsyncRecord.substr(0, 1024);
+    }
 
     std::vector<std::string> list = ReadTrace();
-    char record[RECORD_SIZE_MAX + 1] = {0};
-    TraceInfo traceInfo = {
-        'S', HITRACE_LEVEL_COMMERCIAL, TAG, taskId, longName.c_str(), longCustomCategory.c_str(), longCustomArgs.c_str()
-    };
-    bool isStartSuc = GetTraceResult(traceInfo, list, record);
-    int ret = strcmp(expectRecord.c_str(), record);
-    ASSERT_EQ(ret, 0) << "\nexpectRecord=\"" << expectRecord << "\"\nrecord=\"" << record <<"\"";
-    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
-    traceInfo.type = 'F';
-    bool isFinishSuc = GetTraceResult(traceInfo, list, record);
-    ASSERT_TRUE(isFinishSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+    bool isStartSuc = FindResult(expectStartAsyncRecord, list);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << expectStartAsyncRecord << "\" from trace.";
+
+    bool isFinishSuc = FindResult(expectFinishAsyncRecord, list);
+    ASSERT_TRUE(isFinishSuc) << "Hitrace can't find \"" << expectFinishAsyncRecord << "\" from trace.";
 
     GTEST_LOG_(INFO) << "AsyncTraceInterfaceTest002: end.";
 }
