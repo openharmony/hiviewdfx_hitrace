@@ -57,6 +57,8 @@ bool StringToInt64(const std::string &str, int64_t &val);
 
 bool StringToUint64(const std::string &str, uint64_t &val);
 
+bool StringToDouble(const std::string &str, double &val);
+
 constexpr int DECIMAL_SCALE = 10;
 } // namespace Hitrace
 } // namespace HiviewDFX

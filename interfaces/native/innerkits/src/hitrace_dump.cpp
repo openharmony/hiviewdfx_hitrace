@@ -1508,7 +1508,6 @@ void RemoveUnSpace(std::string str, std::string& args)
 void SetCmdTraceIntParams(const std::string& traceParamsStr, int& traceParams)
 {
     if (!OHOS::HiviewDFX::Hitrace::StringToInt(traceParamsStr, traceParams)) {
-        HILOG_WARN(LOG_CORE, "Illegal input, traceParams initialized to null.");
         traceParams = 0;
         return;
     }

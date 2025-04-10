@@ -273,11 +273,11 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest007, TestSize.Level2)
 }
 
 /**
- * @tc.name: StringToIntTest
- * @tc.desc: Test StringToInt/StringToInt64/StringToUint64 function.
+ * @tc.name: StringToNumberTest
+ * @tc.desc: Test StringToInt/StringToInt64/StringToUint64/StringToDouble function.
  * @tc.type: FUNC
 */
-HWTEST_F(HitraceUtilsTest, StringToIntTest, TestSize.Level2)
+HWTEST_F(HitraceUtilsTest, StringToNumberTest, TestSize.Level2)
 {
     std::string traceParamsStr = "123";
     int paramsInt = 0;
@@ -314,6 +314,17 @@ HWTEST_F(HitraceUtilsTest, StringToIntTest, TestSize.Level2)
     traceParamsStr = "18446744073709551615";
     EXPECT_TRUE(OHOS::HiviewDFX::Hitrace::StringToUint64(traceParamsStr, paramsUint64));
     EXPECT_EQ(paramsUint64, ULLONG_MAX);
+
+    traceParamsStr = "1234567890.123456";
+    double paramsDouble = 0;
+    EXPECT_TRUE(OHOS::HiviewDFX::Hitrace::StringToDouble(traceParamsStr, paramsDouble));
+    EXPECT_EQ(paramsDouble, 1234567890.123456); // 1234567890.123456: test value
+    traceParamsStr = "-1234567890.123456";
+    EXPECT_TRUE(OHOS::HiviewDFX::Hitrace::StringToDouble(traceParamsStr, paramsDouble));
+    EXPECT_EQ(paramsDouble, -1234567890.123456); // -1234567890.123456: test value
+    traceParamsStr = ".1";
+    EXPECT_TRUE(OHOS::HiviewDFX::Hitrace::StringToDouble(traceParamsStr, paramsDouble));
+    EXPECT_EQ(paramsDouble, 0.1); // 0.1: test value
 }
 
 /**
@@ -392,6 +403,24 @@ HWTEST_F(HitraceUtilsTest, StringToUint64ErrorTest, TestSize.Level2)
     EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToUint64(traceParamsStr, paramsUint64));
     traceParamsStr = "18446744073709551616";
     EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToUint64(traceParamsStr, paramsUint64));
+}
+
+/**
+ * @tc.name: StringToDoubleErrorTest
+ * @tc.desc: Test StringToDouble function.
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceUtilsTest, StringToDoubleErrorTest, TestSize.Level2)
+{
+    std::string traceParamsStr = "a123";
+    double paramsDouble = 0;
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToDouble(traceParamsStr, paramsDouble));
+    traceParamsStr = "12a3";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToDouble(traceParamsStr, paramsDouble));
+    traceParamsStr = "";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToDouble(traceParamsStr, paramsDouble));
+    traceParamsStr = "abc";
+    EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToDouble(traceParamsStr, paramsDouble));
 }
 } // namespace
 } // namespace Hitrace

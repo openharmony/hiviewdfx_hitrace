@@ -53,16 +53,9 @@
         </policylist>
 
         <filefilterlist>
-            <filefilter name="defaultPolicyFilter" desc="Filters for compatibility, license header policies">
-                <filteritem type="filename" name="record_trace_20250320101116@2500-814308989.systrace" desc="systrace file for test"/>
-            </filefilter>
-            <filefilter name="copyrightPolicyFilter" desc="Filters for copyright header policies">
-                <filteritem type="filename" name="record_trace_20250320101116@2500-814308989.systrace" desc="systrace file for test"/>
-            </filefilter>
             <filefilter name="binaryFileTypePolicyFilter" desc="Filters for binary file policies">
                 <filteritem type="filepath" name="figures/en-us_image_0000001123644797.png" desc="self developed image"/>
                 <filteritem type="filepath" name="figures/zh-cn_image_0000001123644797.png" desc="self developed image"/>
-                <filteritem type="filename" name="record_trace_20250320101116@2500-814308989.sys" desc="the binary file for test, the file is self-developed"/>
             </filefilter>
         </filefilterlist>
     </oatconfig>

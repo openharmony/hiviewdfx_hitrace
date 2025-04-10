@@ -31,7 +31,7 @@ void StreamToValueInfo(const uint8_t* data, T& value)
 {
     do {
         errno_t err = memcpy_s(&(value), sizeof(value), (data), sizeof(value));
-        if (err != 0) {
+        if (err != EOK) {
             std::cout << "memcpy_s return value is abnormal!" << std::endl;
         }
         (data) += sizeof(value);
