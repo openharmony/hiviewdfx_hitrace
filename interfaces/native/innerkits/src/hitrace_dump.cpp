@@ -145,6 +145,7 @@ int g_timeLimit = 0;
 int g_newTraceFileLimit = 0;
 int g_writeFileLimit = 0;
 bool g_needGenerateNewTraceFile = false;
+uint64_t g_traceEndTime = std::numeric_limits<uint64_t>::max(); // in nano seconds
 
 TraceParams g_currentTraceParams = {};
 
@@ -152,6 +153,13 @@ struct FileWithTime {
     std::string filename;
     time_t ctime;
 };
+
+uint64_t GetCurBootTime()
+{
+    struct timespec bts = {0, 0};
+    clock_gettime(CLOCK_BOOTTIME, &bts);
+    return static_cast<uint64_t>(bts.tv_sec * S_TO_NS + bts.tv_nsec);
+}
 
 void RemoveFile(const std::string& fileName)
 {
@@ -722,11 +730,13 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
     int count = 0;
     const int maxCount = 2;
     struct timespec bts = {0, 0};
-    int64_t traceStartTime = 0;
+    uint64_t traceStartTime = 0;
+    uint64_t traceEndTime = std::numeric_limits<uint64_t>::max(); // in nano seconds
 
     if ((contentType == CONTENT_TYPE_CPU_RAW) && (g_timeLimit > 0)) {
         clock_gettime(CLOCK_BOOTTIME, &bts);
-        traceStartTime = bts.tv_sec * S_TO_NS + bts.tv_nsec - g_timeLimit * S_TO_NS;
+        traceStartTime = static_cast<uint64_t>(bts.tv_sec * S_TO_NS + bts.tv_nsec - g_timeLimit * S_TO_NS);
+        traceEndTime = g_traceEndTime;
     }
     int fileSizeThreshold = DEFAULT_FILE_SIZE * KB_PER_MB;
     if (!g_currentTraceParams.fileSize.empty()) {
@@ -737,7 +747,7 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
         int bytes = 0;
         bool endFlag = false;
         /* Write 1M at a time */
-        while (bytes < BUFFER_SIZE) {
+        while (bytes <= (BUFFER_SIZE - PAGE_SIZE)) {
             ssize_t readBytes = TEMP_FAILURE_RETRY(read(srcFd, g_buffer + bytes, PAGE_SIZE));
             if (readBytes == 0) {
                 endFlag = true;
@@ -752,11 +762,20 @@ bool WriteFile(uint8_t contentType, const std::string &src, int outFd, const std
                 break;
             }
 
-            if (traceStartTime > 0) {
-                uint64_t traceTime = *(reinterpret_cast<uint64_t *>(g_buffer));
-                if (traceTime < static_cast<uint64_t>(traceStartTime)) {
-                    continue;
-                }
+            uint64_t pageTraceTime = 0;
+            if (memcpy_s(&pageTraceTime, sizeof(uint64_t), g_buffer + bytes, sizeof(uint64_t)) != EOK) {
+                HILOG_ERROR(LOG_CORE, "Failed to memcpy g_buffer to pageTraceTime.");
+                break;
+            }
+            if (traceEndTime < pageTraceTime) {
+                endFlag = true;
+                HILOG_INFO(LOG_CORE,
+                    "Current pageTraceTime:(%{public}" PRIu64 ") is larger than traceEndTime:(%{public}" PRIu64 ")",
+                    pageTraceTime, traceEndTime);
+                break;
+            }
+            if (pageTraceTime < traceStartTime) {
+                continue;
             }
             if (CheckPage(contentType, g_buffer + bytes) == false) {
                 count++;
@@ -1021,6 +1040,7 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
                 break;
             }
             sleep(sleepTime);
+            g_traceEndTime = GetCurBootTime();
             if (!WriteCpuRaw(outFd, outPath)) {
                 break;
             }
@@ -1038,6 +1058,7 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
         }
     } while (g_needGenerateNewTraceFile);
     close(outFd);
+    g_traceEndTime = std::numeric_limits<uint64_t>::max();
     return true;
 }
 
@@ -1142,6 +1163,13 @@ bool ReadRawTrace(std::string &outputFileName)
     return false;
 }
 
+void TimeoutSignalHandler(int signum)
+{
+    if (signum == SIGUSR1) {
+        _exit(EXIT_SUCCESS);
+    }
+}
+
 bool WaitPidTimeout(pid_t pid, const int timeoutUsec)
 {
     int delayTime = timeoutUsec;
@@ -1159,7 +1187,8 @@ bool WaitPidTimeout(pid_t pid, const int timeoutUsec)
         }
         HILOG_DEBUG(LOG_CORE, "grasping trace, pid(%{public}d), ret(%{public}d).", pid, ret);
     }
-    HILOG_ERROR(LOG_CORE, "wait pid(%{public}d) %{public}d us timeout.", pid, timeoutUsec);
+    kill(pid, SIGUSR1);
+    HILOG_ERROR(LOG_CORE, "wait pid(%{public}d) %{public}d us timeout, kill it.", pid, timeoutUsec);
     return false;
 }
 
@@ -1196,8 +1225,10 @@ TraceErrorCode DumpTraceInner(std::vector<std::string> &outputFiles)
     }
     bool ret = false;
     if (pid == 0) {
+        signal(SIGUSR1, TimeoutSignalHandler);
         std::string processName = "HitraceDump";
         SetProcessName(processName);
+        g_traceEndTime = GetCurBootTime();
         MarkClockSync(g_traceRootPath);
         const int waitTime = 10000; // 10ms
         usleep(waitTime);
