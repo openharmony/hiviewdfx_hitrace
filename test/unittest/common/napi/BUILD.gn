@@ -13,7 +13,7 @@
 
 import("//build/test.gni")
 
-module_output_path = "hitrace/js"
+module_output_path = "hitrace/hitrace"
 
 ohos_js_unittest("HiTraceChainJsTest") {
   module_out_path = module_output_path
