@@ -14,7 +14,7 @@
 import("//base/hiviewdfx/hitrace/hitrace.gni")
 import("//build/test.gni")
 
-module_output_path = "hitrace/rust"
+module_output_path = "hitrace/hitrace"
 
 ohos_rust_unittest("rust_hitracechain_test") {
   module_out_path = module_output_path
