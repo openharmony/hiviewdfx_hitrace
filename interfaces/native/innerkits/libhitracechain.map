@@ -42,6 +42,7 @@
         "HiTraceChainSaveAndSetId";
         "HiTraceChainRestoreId";
         "HiTraceFinishTrace";
+        "HiTraceChainTracepointExWithArgs";
   };
   local:
     *;
