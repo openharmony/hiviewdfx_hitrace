@@ -50,6 +50,8 @@ std::string ReadFileInner(const std::string& filename);
 std::string ReadFile(const std::string& filename, const std::string& traceRootPath);
 
 bool IsTracingOn(const std::string& traceRootPath);
+
+std::string GetKernelVersion();
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS
