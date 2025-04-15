@@ -67,7 +67,7 @@ struct TraceParams {
 };
 
 constexpr uint16_t MAGIC_NUMBER = 57161;
-constexpr uint16_t VERSION_NUMBER = 1;
+constexpr uint16_t VERSION_NUMBER = 2;
 constexpr uint8_t FILE_RAW_TRACE = 0;
 constexpr uint8_t HM_FILE_RAW_TRACE = 1;
 constexpr uint64_t CACHE_TRACE_LOOP_SLEEP_TIME = 1;
@@ -104,6 +104,8 @@ const int SNAPSHOT_FILE_MAX_COUNT = 20;
 
 constexpr int DEFAULT_FULL_TRACE_LENGTH = 30;
 
+const char* const KERNEL_VERSION = "KERNEL_VERSION: ";
+
 struct alignas(ALIGNMENT_COEFFICIENT) TraceFileHeader {
     uint16_t magicNumber {MAGIC_NUMBER};
     uint8_t fileType {FILE_RAW_TRACE};
@@ -119,7 +121,8 @@ enum ContentType : uint8_t {
     CONTENT_TYPE_CPU_RAW = 4,
     CONTENT_TYPE_HEADER_PAGE = 30,
     CONTENT_TYPE_PRINTK_FORMATS = 31,
-    CONTENT_TYPE_KALLSYMS = 32
+    CONTENT_TYPE_KALLSYMS = 32,
+    CONTENT_TYPE_BASE_INFO = 33,
 };
 
 struct alignas(ALIGNMENT_COEFFICIENT) TraceFileContentHeader {
@@ -848,6 +851,37 @@ bool WriteTgids(int outFd, const std::string& outputFile)
     return WriteFile(CONTENT_TYPE_TGIDS, tgidsPath, outFd, outputFile);
 }
 
+ssize_t WriteKernelVersion(int outFd)
+{
+    static std::string kernelVersion = KERNEL_VERSION + GetKernelVersion() + "\n";
+    ssize_t writeRet = write(outFd, kernelVersion.data(), kernelVersion.size());
+    if (writeRet < 0) {
+        HILOG_WARN(LOG_CORE, "WriteKernelVersion fail, errno: %{public}d.", errno);
+        return 0;
+    } else {
+        return writeRet;
+    }
+}
+
+bool WriteBaseInfo(int outFd)
+{
+    struct TraceFileContentHeader contentHeader;
+    contentHeader.type = CONTENT_TYPE_BASE_INFO;
+    ssize_t writeRet = write(outFd, reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
+    if (writeRet < 0) {
+        HILOG_WARN(LOG_CORE, "Write BaseInfo contentHeader fail, errno: %{public}d.", errno);
+        return false;
+    }
+    contentHeader.length += static_cast<uint32_t>(WriteKernelVersion(outFd));
+    uint32_t offset = contentHeader.length + sizeof(contentHeader);
+    off_t pos = lseek(outFd, 0, SEEK_CUR);
+    lseek(outFd, pos - offset, SEEK_SET);
+    write(outFd, reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
+    lseek(outFd, pos, SEEK_SET);
+    g_outputFileSize += static_cast<int>(offset);
+    return true;
+}
+
 bool GenerateNewFile(int& outFd, std::string& outPath, const TRACE_TYPE traceType)
 {
     if (access(outPath.c_str(), F_OK) == 0) {
@@ -990,6 +1024,7 @@ bool CacheTraceLoop(const std::string &outputFileName)
             close(outFd);
             return false;
         }
+        WriteBaseInfo(outFd);
         WriteEventsFormat(outFd, outPath);
         while (g_cacheFlag.load()) {
             if (g_outputFileSize > fileSizeThreshold) {
@@ -1069,11 +1104,11 @@ bool RecordTraceLoop(const std::string& outputFileName, bool isLimited)
         g_needGenerateNewTraceFile = false;
         ssize_t writeRet = TEMP_FAILURE_RETRY(write(outFd, reinterpret_cast<char *>(&header), sizeof(header)));
         if (writeRet < 0) {
-            HILOG_WARN(LOG_CORE, "Failed to write trace file header, errno: %{public}s, headerLen: %{public}zu.",
-                strerror(errno), sizeof(header));
+            HILOG_WARN(LOG_CORE, "Failed to write trace file header, errno: %{public}s.", strerror(errno));
             close(outFd);
             return false;
         }
+        WriteBaseInfo(outFd);
         WriteEventsFormat(outFd, outPath);
         while (g_recordFlag.load()) {
             if (isLimited && g_outputFileSize > fileSizeThreshold) {
@@ -1173,7 +1208,7 @@ bool ReadRawTrace(std::string& outputFileName)
         return false;
     }
 
-    if (WriteEventsFormat(outFd, outPath) && WriteCpuRaw(outFd, outPath) &&
+    if (WriteBaseInfo(outFd) && WriteEventsFormat(outFd, outPath) && WriteCpuRaw(outFd, outPath) &&
         WriteCmdlines(outFd, outPath) && WriteTgids(outFd, outPath) &&
         WriteHeaderPage(outFd, outPath) && WritePrintkFormats(outFd, outPath) &&
         WriteKallsyms(outFd)) {

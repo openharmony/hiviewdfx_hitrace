@@ -306,6 +306,17 @@ bool StringToDouble(const std::string &str, double &val)
     val = num;
     return true;
 }
+
+std::string GetKernelVersion()
+{
+    utsname unameBuf;
+    if (uname(&unameBuf) == 0) {
+        return unameBuf.release;
+    } else {
+        HILOG_ERROR(LOG_CORE, "GetKernelVersion failed, errno: %{public}s", strerror(errno));
+        return "";
+    }
+}
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS
