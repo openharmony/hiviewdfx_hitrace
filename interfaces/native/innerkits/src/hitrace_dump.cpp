@@ -632,6 +632,7 @@ bool WriteFile(uint8_t contentType, const std::string& src, int outFd, const std
             }
             if (traceEndTime < pageTraceTime) {
                 endFlag = true;
+                bytes += (printFirstPageTime == true ? readBytes : 0);
                 HILOG_INFO(LOG_CORE,
                     "Current pageTraceTime:(%{public}" PRIu64 ") is larger than traceEndTime:(%{public}" PRIu64 ")",
                     pageTraceTime, traceEndTime);
