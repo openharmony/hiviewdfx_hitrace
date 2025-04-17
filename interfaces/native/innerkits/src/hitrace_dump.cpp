@@ -1040,7 +1040,6 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
                 break;
             }
             sleep(sleepTime);
-            g_traceEndTime = GetCurBootTime();
             if (!WriteCpuRaw(outFd, outPath)) {
                 break;
             }
@@ -1058,7 +1057,6 @@ bool DumpTraceLoop(const std::string &outputFileName, bool isLimited)
         }
     } while (g_needGenerateNewTraceFile);
     close(outFd);
-    g_traceEndTime = std::numeric_limits<uint64_t>::max();
     return true;
 }
 
