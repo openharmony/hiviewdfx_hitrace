@@ -15,66 +15,111 @@
         "name": "OH_HiTrace_CountTrace"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_BeginChain"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_EndChain"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_GetId"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_SetId"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_ClearId"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_CreateSpan"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_Tracepoint"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_InitId"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_IdFromBytes"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_IsIdValid"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_IsFlagEnabled"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_EnableFlag"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_GetFlags"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_SetFlags"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_GetChainId"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_SetChainId"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_GetSpanId"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_SetSpanId"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_GetParentSpanId"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_SetParentSpanId"
     },
     {
+        "first_introduced": "12",
         "name": "OH_HiTrace_IdToBytes"
+    },
+    {
+        "first_introduced": "19",
+        "name": "OH_HiTrace_StartTraceEx"
+    },
+    {
+        "first_introduced": "19",
+        "name": "OH_HiTrace_FinishTraceEx"
+    },
+    {
+        "first_introduced": "19",
+        "name": "OH_HiTrace_StartAsyncTraceEx"
+    },
+    {
+        "first_introduced": "19",
+        "name": "OH_HiTrace_FinishAsyncTraceEx"
+    },
+    {
+        "first_introduced": "19",
+        "name": "OH_HiTrace_CountTraceEx"
+    },
+    {
+        "first_introduced": "19",
+        "name": "OH_HiTrace_IsTraceEnabled"
     }
 ]
