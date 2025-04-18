@@ -145,7 +145,7 @@ bool ParseBaseFormatPath(cJSON* jsonNode, std::vector<std::string>& baseTraceFor
         }
     }
     if (IsRootVersion()) {
-        baseTraceFormats.push_back("events/xaact/tracing_mark_write/format");
+        baseTraceFormats.push_back("events/xacct/tracing_mark_write/format");
     }
     return true;
 }
