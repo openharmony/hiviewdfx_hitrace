@@ -254,6 +254,17 @@ bool IsTracingOn(const std::string& traceRootPath)
     HILOG_INFO(LOG_CORE, "tracing_on is 0.");
     return false;
 }
+
+std::string GetKernelVersion()
+{
+    utsname unameBuf;
+    if (uname(&unameBuf) == 0) {
+        return unameBuf.release;
+    } else {
+        HILOG_ERROR(LOG_CORE, "GetKernelVersion failed.");
+        return "";
+    }
+}
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS
