@@ -32,6 +32,10 @@ struct FileWithTime {
     std::string filename;
     time_t ctime;
     uint64_t fileSize;
+    bool isNewFile = true;
+
+    explicit FileWithTime(const std::string& name);
+    FileWithTime(const std::string& name, time_t time, uint64_t size, bool newFile);
 };
 
 struct TraceFileInfo {
@@ -41,11 +45,13 @@ struct TraceFileInfo {
     uint64_t fileSize;
 };
 
+void GetTraceFilesInDir(std::vector<FileWithTime>& fileList, TRACE_TYPE traceType);
 bool RemoveFile(const std::string& fileName);
 std::string GenerateTraceFileName(TRACE_TYPE traceType);
-void DelSnapshotTraceFile(const int& keepFileCount, std::vector<TraceFileInfo>& traceFileVec);
-void DelOldRecordTraceFile(const int& fileLimit);
-void ClearOldTraceFile(std::vector<std::string>& fileLists, const int& fileLimit);
+void DelSnapshotTraceFile(const int& keepFileCount, std::vector<TraceFileInfo>& traceFileVec,
+                          const uint64_t fileLimitSizeKb);
+void DelOldRecordTraceFile(std::vector<FileWithTime>& fileList, const int& fileLimit, const uint64_t fileLimitSizeKb);
+void ClearOldTraceFile(std::vector<FileWithTime>& fileLists, const int& fileLimit, const uint64_t fileLimitSizeKb);
 void DelSavedEventsFormat();
 void ClearCacheTraceFileByDuration(std::vector<TraceFileInfo>& cacheFileVec);
 void ClearCacheTraceFileBySize(std::vector<TraceFileInfo>& cacheFileVec, const uint64_t& fileSizeLimit);
