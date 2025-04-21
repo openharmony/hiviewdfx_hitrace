@@ -231,7 +231,15 @@ def parse_clock_set_rate(data, one_event):
     state = parse_int_field(one_event, "state", False)
     cpu_id = parse_int_field(one_event, "cpu_id", False)
 
-    return "%s state=%d cpu_id=%d" % (parse_bytes_to_str(data[data_pos:]), state, cpu_id)
+    return "%s state=%lu cpu_id=%lu" % (parse_bytes_to_str(data[data_pos:]), state, cpu_id)
+
+
+def parse_clock_set_rate_powerkernel_hm(data, one_event):
+    data_pos = parse_int_field(one_event, "name", False) & 0xffff
+    state = parse_int_field(one_event, "state", False)
+    cpu_id = parse_int_field(one_event, "cpu_id", False)
+
+    return "%s state=%u cpu_id=%u" % (parse_bytes_to_str(data[data_pos:]), state, cpu_id)
 
 
 def parse_cpu_frequency_limits_hm(data, one_event):
@@ -828,7 +836,8 @@ PRINT_FMT_SCHED_BLOCKED_REASON_HM = '"pid=%d iowait=%d caller=%s+0x%lx/0x%lx[%s]
 PRINT_FMT_SCHED_BLOCKED_REASON = '"pid=%d iowait=%d caller=%pS delay=%lu", REC->pid, REC->io_wait, REC->caller, REC->delay>>10'
 PRINT_FMT_CPU_FREQUENCY_HM = '"state=%u cpu_id=%u", REC->state, REC->cpu_id'
 PRINT_FMT_CPU_FREQUENCY = '"state=%lu cpu_id=%lu", (unsigned long)REC->state, (unsigned long)REC->cpu_id'
-PRINT_FMT_CLOCK_SET_RATE_HM = '"%s state=%lu cpu_id=%lu", ((char *)((void *)((char *)REC + (REC->__data_loc_name & 0xffff)))), (unsigned long)REC->state, (unsigned long)REC->cpu_id'
+PRINT_FMT_CLOCK_SET_RATE_POWER_HM = '"%s state=%lu cpu_id=%lu", ((char *)((void *)((char *)REC + (REC->__data_loc_name & 0xffff)))), (unsigned long)REC->state, (unsigned long)REC->cpu_id'
+PRINT_FMT_CLOCK_SET_RATE_POWERKERNEL_HM = '"%s state=%u cpu_id=%u", ((char *)((void *)((char *)REC + (REC->__data_loc_name & 0xffff)))), REC->state, REC->cpu_id'
 PRINT_FMT_CLOCK_SET_RATE = '"%s state=%lu cpu_id=%lu", __get_str(name), (unsigned long)REC->state, (unsigned long)REC->cpu_id'
 PRINT_FMT_CPU_FREQUENCY_LIMITS_HM = '"min=%lu max=%lu cpu_id=%lu", (unsigned long)REC->min, (unsigned long)REC->max, (unsigned long)REC->cpu_id'
 PRINT_FMT_CPU_FREQUENCY_LIMITS = '"min=%lu max=%lu cpu_id=%lu", (unsigned long)REC->min_freq, (unsigned long)REC->max_freq, (unsigned long)REC->cpu_id'
@@ -894,7 +903,8 @@ PRINT_FMT_SCHED_BLOCKED_REASON_HM: parse_sched_blocked_reason_hm,
 PRINT_FMT_SCHED_BLOCKED_REASON: parse_sched_blocked_reason,
 PRINT_FMT_CPU_FREQUENCY_HM: parse_cpu_frequency,
 PRINT_FMT_CPU_FREQUENCY: parse_cpu_frequency,
-PRINT_FMT_CLOCK_SET_RATE_HM: parse_clock_set_rate,
+PRINT_FMT_CLOCK_SET_RATE_POWER_HM: parse_clock_set_rate,
+PRINT_FMT_CLOCK_SET_RATE_POWERKERNEL_HM: parse_clock_set_rate_powerkernel_hm,
 PRINT_FMT_CLOCK_SET_RATE: parse_clock_set_rate,
 PRINT_FMT_CPU_FREQUENCY_LIMITS_HM: parse_cpu_frequency_limits_hm,
 PRINT_FMT_CPU_FREQUENCY_LIMITS: parse_cpu_frequency_limits,
