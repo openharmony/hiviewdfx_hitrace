@@ -1746,9 +1746,9 @@ HWTEST_F(HitraceMeterTest, HitraceMeterTest001, TestSize.Level2)
 {
     GTEST_LOG_(INFO) << "HitraceMeterTest001: start.";
 
-    SetCachedHandle(nullptr, reinterpret_cast<CachedHandle>(0xf1234567), nullptr);
-    SetCachedHandle(reinterpret_cast<CachedHandle>(0xf1234567), nullptr, nullptr);
-    SetCachedHandle(reinterpret_cast<CachedHandle>(0xf1234567), reinterpret_cast<CachedHandle>(0xf1234567), nullptr);
+    SetCachedHandle("g_cachedHandle", nullptr);
+    SetCachedHandle("g_appPidCachedHandle", nullptr);
+    SetCachedHandle("g_levelThresholdCachedHandle", nullptr);
 
     const char* name = "HitraceMeterTest001";
     const char* customArgs = "key=value";
