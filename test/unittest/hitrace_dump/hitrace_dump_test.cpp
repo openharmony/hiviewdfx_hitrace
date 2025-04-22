@@ -517,13 +517,13 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_011, TestSize.Level0)
     ASSERT_GE(ret.coverDuration, 7 * S_TO_MS); // coverDuration >= 7s
     ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT * 7 / DEFAULT_FULL_TRACE_LENGTH); // coverRatio >= 7/30
     sleep(1);
-    TraceRetInfo retNext = DumpTrace();
-    ASSERT_EQ(retNext.errorCode, TraceErrorCode::SUCCESS) << "errorCode: " <<
+    ret = DumpTrace();
+    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS) << "errorCode: " <<
         static_cast<int>(ret.errorCode);
-    for (int i = 0; i < retNext.outputFiles.size(); i++) {
-        GTEST_LOG_(INFO) << "outputFiles:" << retNext.outputFiles[i].c_str();
+    for (int i = 0; i < ret.outputFiles.size(); i++) {
+        GTEST_LOG_(INFO) << "outputFiles:" << ret.outputFiles[i].c_str();
     }
-    ASSERT_TRUE(retNext.outputFiles.size() >= 3); // compare file count
+    ASSERT_TRUE(ret.outputFiles.size() >= 3); // compare file count
     ASSERT_GE(ret.coverDuration, 8 * S_TO_MS); // coverDuration >= 8s
     ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT * 8 / DEFAULT_FULL_TRACE_LENGTH); // coverRatio >= 8/30
     ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
@@ -540,14 +540,14 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_012, TestSize.Level0)
     sleep(TEN_SEC + 1); // wait 11s before OpenTrace
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     sleep(TEN_SEC); // wait 10s
-    TraceRetInfo retNext = DumpTrace(TEN_SEC * 2); // get passed 20s trace
-    ASSERT_EQ(retNext.errorCode, TraceErrorCode::SUCCESS) << "errorCode: " <<
-        static_cast<int>(retNext.errorCode);
-    ASSERT_GE(retNext.outputFiles.size(), 1);
-    ASSERT_GE(retNext.coverDuration, (TEN_SEC - 1) * S_TO_MS); // coverDuration >= 9s
-    ASSERT_LE(retNext.coverDuration, (TEN_SEC + 2) * S_TO_MS); // coverDuration <= 12s
-    ASSERT_GE(retNext.coverRatio, MAX_RATIO_UNIT * (TEN_SEC - 1) / (TEN_SEC * 2)); // coverRatio >= 9/20
-    ASSERT_LE(retNext.coverRatio, MAX_RATIO_UNIT * (TEN_SEC + 2) / (TEN_SEC * 2)); // coverRatio <= 12/20
+    TraceRetInfo ret = DumpTrace(TEN_SEC * 2); // get passed 20s trace
+    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS) << "errorCode: " <<
+        static_cast<int>(ret.errorCode);
+    ASSERT_GE(ret.outputFiles.size(), 1);
+    ASSERT_GE(ret.coverDuration, (TEN_SEC - 1) * S_TO_MS); // coverDuration >= 9s
+    ASSERT_LE(ret.coverDuration, (TEN_SEC + 2) * S_TO_MS); // coverDuration <= 12s
+    ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT * (TEN_SEC - 1) / (TEN_SEC * 2)); // coverRatio >= 9/20
+    ASSERT_LE(ret.coverRatio, MAX_RATIO_UNIT * (TEN_SEC + 2) / (TEN_SEC * 2)); // coverRatio <= 12/20
     ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
 }
 
@@ -563,15 +563,15 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_013, TestSize.Level0)
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(CacheTraceOn(800, 10) == TraceErrorCode::SUCCESS);
     sleep(TEN_SEC); // wait 10s
-    TraceRetInfo retNext = DumpTrace(TEN_SEC * 2); // get passed 20s trace
-    ASSERT_EQ(retNext.errorCode, TraceErrorCode::SUCCESS) << "errorCode: " <<
-        static_cast<int>(retNext.errorCode);
-    ASSERT_EQ(retNext.mode, TraceMode::OPEN | TraceMode::CACHE);
-    ASSERT_GE(retNext.outputFiles.size(), 1);
-    ASSERT_GE(retNext.coverDuration, (TEN_SEC - 1) * S_TO_MS); // coverDuration >= 9s
-    ASSERT_LE(retNext.coverDuration, (TEN_SEC + 2) * S_TO_MS); // coverDuration <= 12s
-    ASSERT_GE(retNext.coverRatio, MAX_RATIO_UNIT * (TEN_SEC - 1) / (TEN_SEC * 2)); // coverRatio >= 9/20
-    ASSERT_LE(retNext.coverRatio, MAX_RATIO_UNIT * (TEN_SEC + 2) / (TEN_SEC * 2)); // coverRatio <= 12/20
+    TraceRetInfo ret = DumpTrace(TEN_SEC * 2); // get passed 20s trace
+    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS) << "errorCode: " <<
+        static_cast<int>(ret.errorCode);
+    ASSERT_EQ(ret.mode, TraceMode::OPEN | TraceMode::CACHE);
+    ASSERT_GE(ret.outputFiles.size(), 1);
+    ASSERT_GE(ret.coverDuration, (TEN_SEC - 1) * S_TO_MS); // coverDuration >= 9s
+    ASSERT_LE(ret.coverDuration, (TEN_SEC + 2) * S_TO_MS); // coverDuration <= 12s
+    ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT * (TEN_SEC - 1) / (TEN_SEC * 2)); // coverRatio >= 9/20
+    ASSERT_LE(ret.coverRatio, MAX_RATIO_UNIT * (TEN_SEC + 2) / (TEN_SEC * 2)); // coverRatio <= 12/20
     ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
 }
 

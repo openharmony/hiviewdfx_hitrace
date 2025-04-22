@@ -285,7 +285,7 @@ class FileHeader(FieldOperator):
     ITEM_VERSION_NUMBER = 2
     ITEM_RESERVED = 3
 
-    def __init__(self, item_types = None) -> None:
+    def __init__(self, item_types=None) -> None:
         item_types = item_types or []
         super().__init__(
             FieldType.TRACE_FILE_HEADER,
