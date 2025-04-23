@@ -257,7 +257,7 @@ void ClearOldTraceFile(std::vector<std::string>& fileLists, const int& fileLimit
     }
 
     int32_t deleteNum = static_cast<int32_t>(fileLists.size() - traceFileLimit);
-    for (size_t index = deleteNum - 1; index >= 0; index--) {
+    for (int32_t index = deleteNum - 1; index >= 0; index--) {
         if (access(fileLists[index].c_str(), F_OK) != 0) {
             HILOG_ERROR(LOG_CORE, "ClearOldTraceFile: access file failed, skip delete %{public}s, errno: %{public}d.",
                         fileLists[index].c_str(), errno);
@@ -266,7 +266,7 @@ void ClearOldTraceFile(std::vector<std::string>& fileLists, const int& fileLimit
 
         if (remove(fileLists[index].c_str()) == 0) {
             HILOG_INFO(LOG_CORE, "ClearOldTraceFile: delete %{public}s success.", fileLists[index].c_str());
-            fileLists.erase(fileLists.begin());
+            fileLists.erase(fileLists.begin() + index);
         } else {
             HILOG_ERROR(LOG_CORE, "ClearOldTraceFile: delete %{public}s failed, errno: %{public}d.",
                         fileLists[index].c_str(), errno);
