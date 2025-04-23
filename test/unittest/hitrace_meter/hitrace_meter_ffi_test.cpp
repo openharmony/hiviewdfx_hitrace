@@ -46,7 +46,7 @@ const std::string LABEL_HEADER = "|H:";
 const std::string VERTICAL_LINE = "|";
 static char g_pid[6];
 
-class HitraceMeterFFITest : public testing::Test {
+class HitraceMeterFfiTest : public testing::Test {
 public:
     static void SetUpTestCase(void);
     static void TearDownTestCase(void);
@@ -54,7 +54,7 @@ public:
     void TearDown(void);
 };
 
-void HitraceMeterFFITest::SetUpTestCase(void)
+void HitraceMeterFfiTest::SetUpTestCase(void)
 {
     std::string pidStr = std::to_string(getprocpid());
     int ret = strcpy_s(g_pid, sizeof(g_pid), pidStr.c_str());
@@ -66,14 +66,14 @@ void HitraceMeterFFITest::SetUpTestCase(void)
     ASSERT_TRUE(CleanFtrace());
 }
 
-void HitraceMeterFFITest::TearDownTestCase(void)
+void HitraceMeterFfiTest::TearDownTestCase(void)
 {
     SetPropertyInner(TRACE_TAG_ENABLE_FLAGS, "0");
     SetFtrace(TRACING_ON_NODE, false);
     CleanTrace();
 }
 
-void HitraceMeterFFITest::SetUp(void)
+void HitraceMeterFfiTest::SetUp(void)
 {
     ASSERT_TRUE(CleanTrace());
     ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "SetUp: Setting tracing_on failed.";
@@ -84,7 +84,7 @@ void HitraceMeterFFITest::SetUp(void)
     UpdateTraceLabel();
 }
 
-void HitraceMeterFFITest::TearDown(void)
+void HitraceMeterFfiTest::TearDown(void)
 {
     ASSERT_TRUE(SetPropertyInner(TRACE_TAG_ENABLE_FLAGS, "0")) << "TearDown: Setting enableflags failed.";
     ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, false)) << "TearDown: Setting tracing_on failed.";
@@ -97,7 +97,7 @@ void HitraceMeterFFITest::TearDown(void)
  * @tc.desc: Testing FfiOHOSHiTraceStartAsyncTrace and FfiOHOSHiTraceFinishAsyncTrace
  * @tc.type: FUNC
  */
-HWTEST_F(HitraceMeterFFITest, HitraceFfiTest01, TestSize.Level1)
+HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest01, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceFfiTest01: start.";
 
@@ -126,7 +126,7 @@ HWTEST_F(HitraceMeterFFITest, HitraceFfiTest01, TestSize.Level1)
  * @tc.desc: Testing FfiOHOSHiTraceStartAsyncTrace and FfiOHOSHiTraceFinishAsyncTrace name is nullptr
  * @tc.type: FUNC
  */
-HWTEST_F(HitraceMeterFFITest, HitraceFfiTest02, TestSize.Level1)
+HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest02, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceFfiTest02: start.";
 
@@ -153,7 +153,7 @@ HWTEST_F(HitraceMeterFFITest, HitraceFfiTest02, TestSize.Level1)
  * @tc.desc: Testing MiddleTraceDebug interface FfiOHOSHiTraceCountTrace
  * @tc.type: FUNC
  */
-HWTEST_F(HitraceMeterFFITest, HitraceFfiTest03, TestSize.Level1)
+HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest03, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceFfiTest03: start.";
 
@@ -176,7 +176,7 @@ HWTEST_F(HitraceMeterFFITest, HitraceFfiTest03, TestSize.Level1)
  * @tc.desc: Testing MiddleTraceDebug interface FfiOHOSHiTraceChainBegin
  * @tc.type: FUNC
  */
-HWTEST_F(HitraceMeterFFITest, HitraceFfiTest04, TestSize.Level1)
+HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest04, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceFfiTest04: start.";
 
@@ -202,7 +202,7 @@ HWTEST_F(HitraceMeterFFITest, HitraceFfiTest04, TestSize.Level1)
  * @tc.desc: Testing FfiOHOSHiTraceStartAsyncTrace and FfiOHOSHiTraceFinishAsyncTrace TraceInfo LEVEL 
  * @tc.type: FUNC
  */
-HWTEST_F(HitraceMeterFFITest, HitraceFfiTest05, TestSize.Level1)
+HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest05, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceFfiTest05: start.";
 

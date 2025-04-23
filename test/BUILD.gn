@@ -29,7 +29,7 @@ group("hitrace_unittest") {
     "unittest:HitraceEventTest",
     "unittest:HitraceMeterNDKTest",
     "unittest:HitraceMeterTest",
-    "unittest:HitraceMeterFFITest",
+    "unittest:HitraceMeterFfiTest",
     "unittest:HitraceUtilsTest",
   ]
   if (support_jsapi) {

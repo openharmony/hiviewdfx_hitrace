@@ -270,7 +270,7 @@ ohos_unittest("HitraceEventTest") {
 }
 
 
-config("HitraceMeterFFITest_config") {
+config("HitraceMeterFfiTest_config") {
   visibility = [ ":*" ]
 
   include_dirs = [
@@ -282,7 +282,7 @@ config("HitraceMeterFFITest_config") {
   ]
 }
 
-ohos_unittest("HitraceMeterFFITest") {
+ohos_unittest("HitraceMeterFfiTest") {
   module_out_path = module_output_path
 
   sources = [
@@ -291,7 +291,7 @@ ohos_unittest("HitraceMeterFFITest") {
     "hitrace_meter/hitrace_meter_test_utils.cpp",
   ]
 
-  configs = [ ":HitraceMeterFFITest_config" ]
+  configs = [ ":HitraceMeterFfiTest_config" ]
 
   cflags = [ "-DHITRACE_UNITTEST" ]
 
