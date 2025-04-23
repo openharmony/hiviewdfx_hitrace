@@ -603,7 +603,7 @@ static void DumpCompressedTrace(int traceFd, int outFd)
         if (flush == Z_FINISH && ret == Z_STREAM_END) {
             size_t have = CHUNK_SIZE - zs.avail_out;
             bytesWritten = TEMP_FAILURE_RETRY(write(outFd, out.get(), have));
-            if (static_cast<size_t>(bytesWritten) < have) {
+            if (bytesWritten < static_cast<ssize_t>(have)) {
                 ConsoleLog("error: writing deflated trace, errno " + std::to_string(errno));
             }
             break;
@@ -651,8 +651,9 @@ static void DumpTrace()
         return;
     }
 
-    ssize_t bytesWritten;
+    ssize_t bytesWritten;    
     ssize_t bytesRead;
+    size_t writeFailBytes = 0;
     if (g_traceArgs.isCompress) {
         DumpCompressedTrace(traceFd, outFd);
     } else {
@@ -663,9 +664,21 @@ static void DumpTrace()
             if ((bytesRead == 0) || (bytesRead == -1)) {
                 break;
             }
+            
             bytesWritten = TEMP_FAILURE_RETRY(write(outFd, buffer, bytesRead));
-            g_traceSysEventParams.fileSize += bytesWritten;
+             
+            if (bytesWritten > 0) {
+                g_traceSysEventParams.fileSize += bytesWritten;
+				writeFailBytes += (bytesRead - bytesWritten);
+            } else {
+				writeFailBytes += bytesRead;
+			}
         } while (bytesWritten > 0);
+    }
+    
+    if (writeFailBytes > 0) {
+        ConsoleLog("trace write fail " + std::to_string(writeFailBytes) + 
+          " bytes, output " + g_traceArgs.output);
     }
 
     g_traceSysEventParams.fileSize = g_traceSysEventParams.fileSize / KB_PER_MB;

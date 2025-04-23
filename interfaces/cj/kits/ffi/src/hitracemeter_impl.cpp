@@ -22,17 +22,20 @@ namespace CJSystemapi {
 
 void HiTraceMeterImpl::HiTraceStartAsyncTrace(const char* name, int taskId)
 {
-    StartAsyncTrace(HITRACE_TAG_APP, std::string(name), taskId);
+    std::string traceName = (name == nullptr) ? "" : name;
+    StartAsyncTrace(HITRACE_TAG_APP, traceName, taskId);
 }
 
 void HiTraceMeterImpl::HiTraceFinishAsyncTrace(const char* name, int taskId)
 {
-    FinishAsyncTrace(HITRACE_TAG_APP, std::string(name), taskId);
+    std::string traceName = (name == nullptr) ? "" : name;
+    FinishAsyncTrace(HITRACE_TAG_APP, traceName, taskId);
 }
 
 void HiTraceMeterImpl::HiTraceCountTrace(const char* name, int count)
 {
-    CountTrace(HITRACE_TAG_APP, std::string(name), count);
+    std::string traceName = (name == nullptr) ? "" : name;
+    CountTrace(HITRACE_TAG_APP, traceName, count);
 }
 
 } // CJSystemapi

@@ -23,7 +23,8 @@ namespace CJSystemapi {
 
 HiTraceId HiTraceChainImpl::Begin(const char* name, int flags)
 {
-    return HiTraceChain::Begin(std::string(name), flags);
+    std::string traceName = (name == nullptr) ? "" : name;
+    return HiTraceChain::Begin(traceName, flags);
 }
 
 void HiTraceChainImpl::End(const HiTraceId& id)
