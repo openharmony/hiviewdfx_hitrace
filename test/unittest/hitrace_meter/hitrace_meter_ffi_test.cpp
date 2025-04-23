@@ -190,7 +190,7 @@ HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest04, TestSize.Level1)
     
     ASSERT_EQ(hiTraceId.chainId, traceId.chainId);
     ASSERT_EQ(hiTraceId.spanId, traceId.spanId);
-    ASSERT_EQ(hiTraceId.parentSpanId, traceId.parentSpanId);    
+    ASSERT_EQ(hiTraceId.parentSpanId, traceId.parentSpanId);
     FfiOHOSHiTraceChainEnd(hiTraceId);
 
 
@@ -199,7 +199,7 @@ HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest04, TestSize.Level1)
 
 /**
  * @tc.name: HitraceFfiTest05
- * @tc.desc: Testing FfiOHOSHiTraceStartAsyncTrace and FfiOHOSHiTraceFinishAsyncTrace TraceInfo LEVEL 
+ * @tc.desc: Testing FfiOHOSHiTraceStartAsyncTrace and FfiOHOSHiTraceFinishAsyncTrace TraceInfo LEVEL
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest05, TestSize.Level1)
