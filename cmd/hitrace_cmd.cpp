@@ -653,7 +653,6 @@ static void DumpTrace()
 
     ssize_t bytesWritten;
     ssize_t bytesRead;
-    size_t writeFailBytes = 0;
     if (g_traceArgs.isCompress) {
         DumpCompressedTrace(traceFd, outFd);
     } else {
@@ -667,18 +666,10 @@ static void DumpTrace()
             bytesWritten = TEMP_FAILURE_RETRY(write(outFd, buffer, bytesRead));
             if (bytesWritten > 0) {
                 g_traceSysEventParams.fileSize += bytesWritten;
-                writeFailBytes += (bytesRead - bytesWritten);
-            } else {
-                writeFailBytes += bytesRead;
-            }
+            } 
         } while (bytesWritten > 0);
     }
     
-    if (writeFailBytes > 0) {
-        ConsoleLog("trace write fail " + std::to_string(writeFailBytes) +
-            " bytes, output " + g_traceArgs.output);
-    }
-
     g_traceSysEventParams.fileSize = g_traceSysEventParams.fileSize / KB_PER_MB;
     if (outFd != STDOUT_FILENO) {
         ConsoleLog("trace read done, output: " + g_traceArgs.output);
