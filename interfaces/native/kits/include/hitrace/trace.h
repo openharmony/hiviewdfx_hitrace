@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-#ifndef HIVIEWDFX_HITRACE_H
-#define HIVIEWDFX_HITRACE_H
 /**
  * @addtogroup Hitrace
  * @{
@@ -38,29 +36,18 @@
 /**
  * @file trace.h
  *
+ * @kit PerformanceAnalysisKit
+ *
  * @brief Defines APIs of the HiTraceMeter module for performance trace.
  *
- * Sample code: \n
- * Synchronous timeslice trace event: \n
- *     OH_HiTrace_StartTrace("hitraceTest");\n
- *     OH_HiTrace_FinishTrace();\n
- * Output: \n
- *     <...>-1668    (-------) [003] ....   135.059377: tracing_mark_write: B|1668|H:hitraceTest \n
- *     <...>-1668    (-------) [003] ....   135.059415: tracing_mark_write: E|1668| \n
- * Asynchronous timeslice trace event:\n
- *     OH_HiTrace_StartAsyncTrace("hitraceTest", 123); \n
- *     OH_HiTrace_FinishAsyncTrace("hitraceTest", 123); \n
- * Output: \n
- *     <...>-2477    (-------) [001] ....   396.427165: tracing_mark_write: S|2477|H:hitraceTest 123 \n
- *     <...>-2477    (-------) [001] ....   396.427196: tracing_mark_write: F|2477|H:hitraceTest 123 \n
- * Integer value trace event:\n
- *     OH_HiTrace_CountTrace("hitraceTest", 500); \n
- * Output: \n
- *     <...>-2638    (-------) [002] ....   458.904382: tracing_mark_write: C|2638|H:hitraceTest 500 \n
- *
+ * @library libhitracechain.so
  * @syscap SystemCapability.HiviewDFX.HiTrace
  * @since 10
  */
+
+#ifndef HIVIEWDFX_HITRACE_H
+#define HIVIEWDFX_HITRACE_H
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -247,7 +234,7 @@ typedef enum HiTrace_Tracepoint_Type {
 } HiTrace_Tracepoint_Type;
 
 /**
- * Enumerates the HiTrace communication modes.
+ * @brief Enumerates the HiTrace communication modes.
  *
  * @syscap SystemCapability.HiviewDFX.HiTrace
  *
@@ -293,42 +280,48 @@ typedef enum HiTrace_Communication_Mode {
  * the minimum output trace.
  *
  * @atomicservice
- * @since 18
+ *
+ * @since 19
  */
 typedef enum HiTrace_Output_Level {
     /**
      * @brief Output level only for debug usage.
      *
      * @atomicservice
-     * @since 18
+     *
+     * @since 19
      */
     HITRACE_LEVEL_DEBUG = 0,
     /**
-     * @brief Output level for beta version usage.
+     * @brief Output level for log version usage.
      *
      * @atomicservice
-     * @since 18
+     *
+     * @since 19
      */
     HITRACE_LEVEL_INFO = 1,
     /**
-     * @brief Output level for beta version usage, with higher priority than HITRACE_LEVEL_INFO.
+     * @brief Output level for log version usage, with higher priority than HITRACE_LEVEL_INFO.
      *
      * @atomicservice
-     * @since 18
+     *
+     * @since 19
      */
     HITRACE_LEVEL_CRITICAL = 2,
     /**
-     * @brief Output level for commercial version usage.
+     * @brief Output level for nolog version usage.
      *
      * @atomicservice
-     * @since 18
+     *
+     * @since 19
      */
     HITRACE_LEVEL_COMMERCIAL = 3,
     /**
      * @brief Output level for range limit.
      *
      * @atomicservice
-     * @since 18
+     *
+     * @since 19
      */
     HITRACE_LEVEL_MAX = HITRACE_LEVEL_COMMERCIAL,
 } HiTrace_Output_Level;
@@ -378,11 +371,11 @@ typedef struct HiTraceId {
  * @brief Starts tracing of a process.
  *
  * This API starts tracing, creates a <b>HiTraceId</b> instance, and sets it to the TLS of the calling thread.
+ * This API works only when it is called for the first time.
  *
  * @param name Pointer to a process name.
  * @param flags Trace flag.
- * @return Returns the trace ID of the calling thread. If the calling thread does not have a trace ID,
- * an invalid trace ID is returned.
+ * @return Returns the created <b>HiTraceId</b> instance.
  *
  * @syscap SystemCapability.HiviewDFX.HiTrace
  *
@@ -398,7 +391,7 @@ HiTraceId OH_HiTrace_BeginChain(const char *name, int flags);
  *
  * @since 12
  */
-void OH_HiTrace_EndChain(void);
+void OH_HiTrace_EndChain();
 
 /**
  * @brief Obtains the trace ID of the calling thread from the TLS.
@@ -411,7 +404,7 @@ void OH_HiTrace_EndChain(void);
  *
  * @since 12
  */
-HiTraceId OH_HiTrace_GetId(void);
+HiTraceId OH_HiTrace_GetId();
 
 /**
  * @brief Sets the trace ID of the calling thread. If the ID is invalid, no operation is performed.
@@ -537,6 +530,8 @@ void OH_HiTrace_EnableFlag(const HiTraceId *id, HiTrace_Flag flag);
  *
  * @param id <b>HiTraceId</b> instance.
  *
+ * @return Returns the trace flag set in the specified <b>HiTraceId</b> instance.
+ *
  * @syscap SystemCapability.HiviewDFX.HiTrace
  *
  * @since 12
@@ -560,6 +555,8 @@ void OH_HiTrace_SetFlags(HiTraceId *id, int flags);
  *
  * @param id <b>HiTraceId</b> instance for which you want to obtain the trace chain ID.
  *
+ * @return Returns the trace chain ID of the specified <b>HiTraceId</b> instance.
+ *
  * @syscap SystemCapability.HiviewDFX.HiTrace
  *
  * @since 12
@@ -569,7 +566,7 @@ uint64_t OH_HiTrace_GetChainId(const HiTraceId *id);
 /**
  * @brief Sets the trace chain ID to a <b>HiTraceId</b> instance
  *
- * @param id <b>HiTraceId</b> instance for which you want to set the trace chain ID.
+ * @param id <b>HiTraceId</b> instance.
  * @param chainId Trace chain ID to set.
  *
  * @syscap SystemCapability.HiviewDFX.HiTrace
@@ -582,6 +579,8 @@ void OH_HiTrace_SetChainId(HiTraceId *id, uint64_t chainId);
  * @brief Obtains the span ID in a <b>HiTraceId</b> instance.
  *
  * @param id <b>HiTraceId</b> instance for which you want to obtain the span ID.
+ *
+ * @return Returns the span ID in the specified <b>HiTraceId</b> instance.
  *
  * @syscap SystemCapability.HiviewDFX.HiTrace
  *
@@ -605,6 +604,8 @@ void OH_HiTrace_SetSpanId(HiTraceId *id, uint64_t spanId);
  * @brief Obtains the parent span ID in a <b>HiTraceId</b> instance.
  *
  * @param id <b>HiTraceId</b> instance for which you want to obtain the parent span ID.
+ *
+ * @return Returns the parent span ID in the specified <b>HiTraceId</b> instance.
  *
  * @syscap SystemCapability.HiviewDFX.HiTrace
  *
@@ -630,6 +631,8 @@ void OH_HiTrace_SetParentSpanId(HiTraceId *id, uint64_t parentSpanId);
  * @param id <b>HiTraceId</b> instance to be converted.
  * @param pIdArray Byte array.
  * @param len Length of the byte array.
+ *
+ * @return Returns the length of the byte array after conversion.
  *
  * @syscap SystemCapability.HiviewDFX.HiTrace
  *
@@ -722,11 +725,11 @@ void OH_HiTrace_CountTrace(const char *name, int64_t count);
  *
  * @param level Trace output priority level.
  * @param name Name of the synchronous trace task.
- * @param customArgs key=value pair, multiple pairs use comma as seperator.
+ * @param customArgs key=value pair, multiple pairs use comma as separator.
  * @atomicservice
- * @since 18
+ * @since 19
  */
-void OH_HiTrace_StartTraceEx(HiTrace_Output_Level level, const char *name, const char *customArgs);
+void OH_HiTrace_StartTraceEx(HiTrace_Output_Level level, const char* name, const char* customArgs);
 
 /**
  * @brief Marks the end of a synchronous trace task with output level control.
@@ -738,7 +741,7 @@ void OH_HiTrace_StartTraceEx(HiTrace_Output_Level level, const char *name, const
  *
  * @param level Trace output priority level.
  * @atomicservice
- * @since 18
+ * @since 19
  */
 void OH_HiTrace_FinishTraceEx(HiTrace_Output_Level level);
 
@@ -761,12 +764,12 @@ void OH_HiTrace_FinishTraceEx(HiTrace_Output_Level level);
  * @param name Name of the asynchronous trace task.
  * @param taskId ID of the asynchronous trace task.
  * @param customCategory Label used to aggregate the asynchronous trace.
- * @param customArgs key=value pair, multiple pairs use comma as seperator.
+ * @param customArgs key=value pair, multiple pairs use comma as separator.
  * @atomicservice
- * @since 18
+ * @since 19
  */
-void OH_HiTrace_StartAsyncTraceEx(
-    HiTrace_Output_Level level, const char *name, int32_t taskId, const char *customCategory, const char *customArgs);
+void OH_HiTrace_StartAsyncTraceEx(HiTrace_Output_Level level, const char* name, int32_t taskId,
+    const char* customCategory, const char* customArgs);
 
 /**
  * @brief Marks the end of an asynchronous trace task with output level control.
@@ -779,9 +782,9 @@ void OH_HiTrace_StartAsyncTraceEx(
  * @param name Name of the asynchronous trace task.
  * @param taskId ID of the asynchronous trace task.
  * @atomicservice
- * @since 18
+ * @since 19
  */
-void OH_HiTrace_FinishAsyncTraceEx(HiTrace_Output_Level level, const char *name, int32_t taskId);
+void OH_HiTrace_FinishAsyncTraceEx(HiTrace_Output_Level level, const char* name, int32_t taskId);
 
 /**
  * @brief Traces the value change of an integer variable based on its name with output level control.
@@ -793,16 +796,16 @@ void OH_HiTrace_FinishAsyncTraceEx(HiTrace_Output_Level level, const char *name,
  * @param name Name of the integer variable. It does not need to be the same as the real variable name.
  * @param count Integer value. Generally, an integer variable can be passed.
  * @atomicservice
- * @since 18
+ * @since 19
  */
-void OH_HiTrace_CountTraceEx(HiTrace_Output_Level level, const char *name, int64_t count);
+void OH_HiTrace_CountTraceEx(HiTrace_Output_Level level, const char* name, int64_t count);
 
 /**
  * @brief Get the trace output status of the calling process.
  *
  * @return Returns whether the calling process is allowed to output trace.
  * @atomicservice
- * @since 18
+ * @since 19
  */
 bool OH_HiTrace_IsTraceEnabled(void);
 
