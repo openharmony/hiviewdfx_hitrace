@@ -666,7 +666,7 @@ static void DumpTrace()
             bytesWritten = TEMP_FAILURE_RETRY(write(outFd, buffer, bytesRead));
             if (bytesWritten > 0) {
                 g_traceSysEventParams.fileSize += bytesWritten;
-            } 
+            }
         } while (bytesWritten > 0);
     }
     
