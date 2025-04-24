@@ -167,9 +167,15 @@ struct TraceMarker {
 inline void CreateCacheHandle()
 {
     const char* devValue = "true";
-    g_cachedHandle = CachedParameterCreate(TRACE_TAG_ENABLE_FLAGS.c_str(), devValue);
-    g_appPidCachedHandle = CachedParameterCreate(TRACE_KEY_APP_PID.c_str(), devValue);
-    g_levelThresholdCachedHandle = CachedParameterCreate(TRACE_LEVEL_THRESHOLD.c_str(), devValue);
+    if (g_cachedHandle == nullptr) {
+        g_cachedHandle = CachedParameterCreate(TRACE_TAG_ENABLE_FLAGS.c_str(), devValue);
+    }
+    if (g_appPidCachedHandle == nullptr) {
+        g_appPidCachedHandle = CachedParameterCreate(TRACE_KEY_APP_PID.c_str(), devValue);
+    }
+    if (g_levelThresholdCachedHandle == nullptr) {
+        g_levelThresholdCachedHandle = CachedParameterCreate(TRACE_LEVEL_THRESHOLD.c_str(), devValue);
+    }
 }
 
 static void UpdateSysParamTags()
@@ -823,12 +829,18 @@ void SetpidHasReload(bool ispidHasReload)
     g_pidHasReload = ispidHasReload;
 }
 
-void SetCachedHandle(CachedHandle cachedHandle, CachedHandle appPidCachedHandle,
-    CachedHandle levelThresholdCachedHandle)
+void SetCachedHandle(const char* name, CachedHandle cachedHandle)
 {
-    g_cachedHandle = cachedHandle;
-    g_appPidCachedHandle = appPidCachedHandle;
-    g_levelThresholdCachedHandle = levelThresholdCachedHandle;
+    if (strcmp(name, "g_cachedHandle") == 0) {
+        CachedParameterDestroy(g_cachedHandle);
+        g_cachedHandle = cachedHandle;
+    } else if (strcmp(name, "g_appPidCachedHandle") == 0) {
+        CachedParameterDestroy(g_appPidCachedHandle);
+        g_appPidCachedHandle = cachedHandle;
+    } else if (strcmp(name, "g_levelThresholdCachedHandle") == 0) {
+        CachedParameterDestroy(g_levelThresholdCachedHandle);
+        g_levelThresholdCachedHandle = cachedHandle;
+    }
     UpdateSysParamTags();
 }
 

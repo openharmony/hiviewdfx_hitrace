@@ -200,8 +200,7 @@ enum TraceFlag {
 void SetReloadPid(bool isReloadPid);
 void SetpidHasReload(bool ispidHasReload);
 void SetMarkerFd(int markerFd);
-void SetCachedHandle(CachedHandle cachedHandle, CachedHandle appPidCachedHandle,
-    CachedHandle levelThresholdCachedHandle);
+void SetCachedHandle(const char* name, CachedHandle cachedHandle);
 void SetWriteOnceLog(LogLevel loglevel, const std::string& logStr, bool& isWrite);
 #endif
 
