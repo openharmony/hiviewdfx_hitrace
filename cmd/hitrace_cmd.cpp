@@ -669,7 +669,7 @@ static void DumpTrace()
             }
         } while (bytesWritten > 0);
     }
-    
+
     g_traceSysEventParams.fileSize = g_traceSysEventParams.fileSize / KB_PER_MB;
     if (outFd != STDOUT_FILENO) {
         ConsoleLog("trace read done, output: " + g_traceArgs.output);
