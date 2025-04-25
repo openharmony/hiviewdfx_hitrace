@@ -59,7 +59,7 @@ void HitraceMeterFfiTest::SetUpTestCase(void)
     std::string pidStr = std::to_string(getprocpid());
     int ret = strcpy_s(g_pid, sizeof(g_pid), pidStr.c_str());
     if (ret != 0) {
-        HILOG_ERROR(LOG_CORE, "pid[%{public}s] strcpy_s fail ret: %{public}d.", pidStr.c_str(), ret);
+        GTEST_LOG_(ERROR) << "pid[" << pidStr << "] strcpy_s fail ret: " << std::to_string(ret);
         return;
     }
     ASSERT_TRUE(Init(g_pid));
@@ -79,7 +79,7 @@ void HitraceMeterFfiTest::SetUp(void)
     ASSERT_TRUE(SetFtrace(TRACING_ON_NODE, true)) << "SetUp: Setting tracing_on failed.";
     std::string value = std::to_string(TAG);
     ASSERT_TRUE(SetPropertyInner(TRACE_TAG_ENABLE_FLAGS, value)) << "SetUp: Setting enableflags failed.";
-    HILOG_INFO(LOG_CORE, "current tag is %{public}s", GetPropertyInner(TRACE_TAG_ENABLE_FLAGS, "0").c_str());
+    GTEST_LOG_(INFO) << "current tag is " << GetPropertyInner(TRACE_TAG_ENABLE_FLAGS, "0");
     ASSERT_TRUE(GetPropertyInner(TRACE_TAG_ENABLE_FLAGS, "-123") == value);
     UpdateTraceLabel();
 }
@@ -182,7 +182,7 @@ HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest04, TestSize.Level1)
 
     const char* name = nullptr;
 
-    CHiTraceId hiTraceId= FfiOHOSHiTraceChainBegin(name, HiTraceFlag::HITRACE_FLAG_DEFAULT);
+    CHiTraceId hiTraceId = FfiOHOSHiTraceChainBegin(name, HiTraceFlag::HITRACE_FLAG_DEFAULT);
     
     OHOS::HiviewDFX::HiTraceId id = Parse(hiTraceId);
     
