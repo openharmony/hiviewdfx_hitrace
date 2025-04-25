@@ -81,7 +81,7 @@ bool MarkClockSync(const std::string& traceRootPath)
     std::string resolvedPath = CanonicalizeSpecPath((traceRootPath + TRACE_MARKER_NODE).c_str());
     int fd = open(resolvedPath.c_str(), O_WRONLY);
     if (fd == -1) {
-        HILOG_ERROR(LOG_CORE, "MarkClockSync: oepn %{public}s fail, errno(%{public}d)", resolvedPath.c_str(), errno);
+        HILOG_ERROR(LOG_CORE, "MarkClockSync: open %{public}s fail, errno(%{public}d)", resolvedPath.c_str(), errno);
         return false;
     }
 

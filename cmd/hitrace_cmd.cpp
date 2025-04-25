@@ -603,7 +603,7 @@ static void DumpCompressedTrace(int traceFd, int outFd)
         if (flush == Z_FINISH && ret == Z_STREAM_END) {
             size_t have = CHUNK_SIZE - zs.avail_out;
             bytesWritten = TEMP_FAILURE_RETRY(write(outFd, out.get(), have));
-            if (static_cast<size_t>(bytesWritten) < have) {
+            if (bytesWritten < static_cast<ssize_t>(have)) {
                 ConsoleLog("error: writing deflated trace, errno " + std::to_string(errno));
             }
             break;
@@ -664,7 +664,9 @@ static void DumpTrace()
                 break;
             }
             bytesWritten = TEMP_FAILURE_RETRY(write(outFd, buffer, bytesRead));
-            g_traceSysEventParams.fileSize += bytesWritten;
+            if (bytesWritten > 0) {
+                g_traceSysEventParams.fileSize += bytesWritten;
+            }
         } while (bytesWritten > 0);
     }
 

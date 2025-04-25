@@ -268,3 +268,49 @@ ohos_unittest("HitraceEventTest") {
     "hisysevent:libhisyseventmanager",
   ]
 }
+
+config("HitraceMeterFfiTest_config") {
+  visibility = [ ":*" ]
+
+  include_dirs = [
+    "hitrace_meter",
+    "$hitrace_common_path",
+    "$hitrace_interfaces_path/cj/kits/ffi/include",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
+    "$hitrace_utils_path",
+  ]
+}
+
+ohos_unittest("HitraceMeterFfiTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter.cpp",
+    "hitrace_meter/hitrace_meter_ffi_test.cpp",
+    "hitrace_meter/hitrace_meter_test_utils.cpp",
+  ]
+
+  configs = [ ":HitraceMeterFfiTest_config" ]
+
+  cflags = [ "-DHITRACE_UNITTEST" ]
+
+  deps = [
+    "$hitrace_interfaces_path/cj/kits/ffi:cj_hitracechain_ffi",
+    "$hitrace_interfaces_path/cj/kits/ffi:cj_hitracemeter_ffi",
+    "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
+    "$hitrace_interfaces_path/native/innerkits:libhitracechain",
+    "$hitrace_utils_path:hitrace_common_utils",
+  ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "googletest:gtest_main",
+    "init:libbegetutil",
+    "napi:cj_bind_ffi",
+  ]
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+}

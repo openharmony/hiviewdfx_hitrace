@@ -593,6 +593,7 @@ bool WriteFile(uint8_t contentType, const std::string& src, int outFd, const std
     }
     if (!CheckFileExist(outputFile)) {
         HILOG_ERROR(LOG_CORE, "need generate new trace file, old file:%{public}s.", outputFile.c_str());
+        close(srcFd);
         return false;
     }
     struct TraceFileContentHeader contentHeader;
@@ -1224,6 +1225,7 @@ bool EpollWaitforChildProcess(pid_t& pid, int& pipefd)
     event.data.fd = pipefd;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, pipefd, &event) == -1) {
         HILOG_ERROR(LOG_CORE, "epoll_ctl error.");
+        close(epollfd);
         return false;
     }
 
@@ -1240,7 +1242,6 @@ bool EpollWaitforChildProcess(pid_t& pid, int& pipefd)
             HILOG_ERROR(LOG_CORE, "kill timeout child process.");
             kill(pid, SIGUSR1);
         }
-        close(pipefd);
         close(epollfd);
         return false;
     }
@@ -1250,7 +1251,6 @@ bool EpollWaitforChildProcess(pid_t& pid, int& pipefd)
     g_firstPageTimestamp = retVal.traceStartTime;
     g_lastPageTimestamp = retVal.traceEndTime;
 
-    close(pipefd);
     close(epollfd);
     if (waitpid(pid, nullptr, 0) <= 0) {
         HILOG_ERROR(LOG_CORE, "wait HitraceDump(%{public}d) exit failed, errno: (%{public}d)", pid, errno);
@@ -1333,8 +1333,11 @@ TraceErrorCode ProcessDump(TraceRetInfo& traceRetInfo)
     }
 
     if (!EpollWaitforChildProcess(pid, pipefd[0])) {
+        close(pipefd[0]);
         return TraceErrorCode::EPOLL_WAIT_ERROR;
     }
+    
+    close(pipefd[0]);
     return HandleDumpResult(traceRetInfo, reOutPath);
 }
 
