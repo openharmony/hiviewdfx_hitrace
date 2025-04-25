@@ -75,18 +75,36 @@ constexpr int UNIT_TIME = 100000;
 constexpr int ALIGNMENT_COEFFICIENT = 4;
 constexpr int RECORD_LOOP_SLEEP = 1;
 
-const int DEFAULT_BUFFER_SIZE = 12 * 1024;
+std::shared_ptr<ProductConfigJsonParser> g_ProductConfigParser = std::make_shared<ProductConfigJsonParser>();
+
 const int DEFAULT_FILE_SIZE = 100 * 1024;
 #ifdef HITRACE_UNITTEST
 const int DEFAULT_CACHE_FILE_SIZE = 15 * 1024;
 #else
 const int DEFAULT_CACHE_FILE_SIZE = 150 * 1024;
 #endif
+
+int GetDefaultBufferSize()
+{
+    constexpr int defaultBufferSize = 12 * 1024;
 #if defined(SNAPSHOT_TRACEBUFFER_SIZE) && (SNAPSHOT_TRACEBUFFER_SIZE != 0)
-const int HM_DEFAULT_BUFFER_SIZE = SNAPSHOT_TRACEBUFFER_SIZE;
+    constexpr int hmDefaultBufferSize = SNAPSHOT_TRACEBUFFER_SIZE;
 #else
-const int HM_DEFAULT_BUFFER_SIZE = 144 * 1024;
+    constexpr int hmDefaultBufferSize = 144 * 1024;
 #endif
+
+    if (!IsHmKernel()) {
+        return defaultBufferSize;
+    }
+
+    int bufferSize = g_ProductConfigParser->GetDefaultBufferSize();
+    if (bufferSize != 0) {
+        return bufferSize;
+    }
+
+    return hmDefaultBufferSize;
+}
+
 const int SAVED_CMDLINES_SIZE = 3072; // 3M
 const int BYTE_PER_KB = 1024;
 const int BYTE_PER_MB = 1024 * 1024;
@@ -164,7 +182,7 @@ uint8_t g_traceMode = TraceMode::CLOSE;
 std::string g_traceRootPath;
 uint8_t g_buffer[BUFFER_SIZE] = {0};
 std::vector<std::pair<std::string, int>> g_traceFilesTable;
-std::vector<std::string> g_recordingOutput;
+std::vector<FileWithTime> g_recordingOutput;
 int g_outputFileSize = 0;
 int g_newTraceFileLimit = 0;
 int g_writeFileLimit = 0;
@@ -985,7 +1003,12 @@ int32_t SearchTraceFiles(std::vector<std::string>& outputFiles, const uint64_t& 
         HILOG_INFO(LOG_CORE, "dumptrace cache file is %{public}s, new file is %{public}s.",
             file.c_str(), newFile.c_str());
     }
-    DelSnapshotTraceFile(SNAPSHOT_FILE_MAX_COUNT, g_traceFileVec);
+
+    if ((!IsRootVersion()) || g_ProductConfigParser->GetRootAgeingStatus() == ConfigStatus::ENABLE ||
+        (g_ProductConfigParser->GetRootAgeingStatus() == ConfigStatus::UNKNOWN &&
+        g_traceJsonParser->GetSnapShotFileAge())) {
+        DelSnapshotTraceFile(SNAPSHOT_FILE_MAX_COUNT, g_traceFileVec, g_ProductConfigParser->GetSnapshotFileSizeKb());
+    }
     return coverDuration;
 }
 
@@ -1138,16 +1161,17 @@ void ProcessRecordTask()
 {
     {
         std::lock_guard<std::mutex> lock(g_recordingOutputMutex);
-        g_recordingOutput = {};
+        g_recordingOutput.clear();
+        GetTraceFilesInDir(g_recordingOutput, TRACE_RECORDING);
+        if ((!IsRootVersion()) || g_ProductConfigParser->GetRootAgeingStatus() == ConfigStatus::ENABLE) {
+            // clear old record file before record tracing start.
+            DelOldRecordTraceFile(g_recordingOutput, g_currentTraceParams.fileLimit,
+                                  g_ProductConfigParser->GetRecordFileSizeKb());
+        }
     }
     const std::string threadName = "TraceDumpTask";
     prctl(PR_SET_NAME, threadName.c_str());
     HILOG_INFO(LOG_CORE, "ProcessRecordTask: trace dump thread start.");
-
-    if (!IsRootVersion()) {
-        // clear old record file before record tracing start.
-        DelOldRecordTraceFile(g_currentTraceParams.fileLimit);
-    }
 
     // if input filesize = 0, trace file should not be cut in root version.
     if (g_currentTraceParams.fileSize == 0 && IsRootVersion()) {
@@ -1156,7 +1180,7 @@ void ProcessRecordTask()
                                      GenerateTraceFileName(TRACE_RECORDING) : g_currentTraceParams.outputFile;
         if (RecordTraceLoop(outputFileName, g_needLimitFileSize)) {
             std::lock_guard<std::mutex> lock(g_recordingOutputMutex);
-            g_recordingOutput.push_back(outputFileName);
+            g_recordingOutput.emplace_back(outputFileName);
         }
         g_recordEnd.store(true);
         g_needLimitFileSize = true;
@@ -1164,15 +1188,16 @@ void ProcessRecordTask()
     }
 
     while (g_recordFlag.load()) {
-        if (!IsRootVersion()) {
+        if (!IsRootVersion() || g_ProductConfigParser->GetRootAgeingStatus() == ConfigStatus::ENABLE) {
             std::lock_guard<std::mutex> lock(g_recordingOutputMutex);
-            ClearOldTraceFile(g_recordingOutput, g_currentTraceParams.fileLimit);
+            ClearOldTraceFile(g_recordingOutput, g_currentTraceParams.fileLimit,
+                              g_ProductConfigParser->GetRecordFileSizeKb());
         }
         // Generate file name
         std::string outputFileName = GenerateTraceFileName(TRACE_RECORDING);
         if (RecordTraceLoop(outputFileName, true)) {
             std::lock_guard<std::mutex> lock(g_recordingOutputMutex);
-            g_recordingOutput.push_back(outputFileName);
+            g_recordingOutput.emplace_back(outputFileName);
         } else {
             break;
         }
@@ -1319,8 +1344,10 @@ TraceErrorCode HandleDumpResult(TraceRetInfo& traceRetInfo, std::string& reOutPa
     if (!g_traceJsonParser->ParseTraceJson(TRACE_SNAPSHOT_FILE_AGE)) {
         HILOG_WARN(LOG_CORE, "ProcessDump: Failed to parse TRACE_SNAPSHOT_FILE_AGE.");
     }
-    if ((!IsRootVersion()) || g_traceJsonParser->GetSnapShotFileAge()) {
-        DelSnapshotTraceFile(SNAPSHOT_FILE_MAX_COUNT, g_traceFileVec);
+    if ((!IsRootVersion()) || g_ProductConfigParser->GetRootAgeingStatus() == ConfigStatus::ENABLE ||
+        (g_ProductConfigParser->GetRootAgeingStatus() == ConfigStatus::UNKNOWN &&
+        g_traceJsonParser->GetSnapShotFileAge())) {
+        DelSnapshotTraceFile(SNAPSHOT_FILE_MAX_COUNT, g_traceFileVec, g_ProductConfigParser->GetSnapshotFileSizeKb());
     }
 
     if (traceRetInfo.outputFiles.empty()) {
@@ -1514,7 +1541,7 @@ TraceErrorCode HandleDefaultTraceOpen(const std::vector<std::string>& tagGroups)
     if (custBufSz > 0) {
         defaultTraceParams.bufferSize = std::to_string(custBufSz);
     } else {
-        int traceBufSz = IsHmKernel() ? HM_DEFAULT_BUFFER_SIZE : DEFAULT_BUFFER_SIZE;
+        int traceBufSz = GetDefaultBufferSize();
         defaultTraceParams.bufferSize = std::to_string(traceBufSz);
     }
     defaultTraceParams.clockType = "boot";
@@ -1679,6 +1706,16 @@ void SanitizeRetInfo(TraceRetInfo& traceRetInfo)
     traceRetInfo.coverDuration =
         std::min(traceRetInfo.coverDuration, static_cast<int>(DEFAULT_FULL_TRACE_LENGTH * S_TO_MS));
     traceRetInfo.coverRatio = std::min(traceRetInfo.coverRatio, MAX_RATIO_UNIT);
+}
+
+void FilterRecordResult(std::vector<std::string>& outputFiles, const std::vector<FileWithTime>& recordingOutput)
+{
+    outputFiles.clear();
+    for (const auto& output : recordingOutput) {
+        if (output.isNewFile) {
+            outputFiles.emplace_back(output.filename);
+        }
+    }
 }
 } // namespace
 
@@ -1916,7 +1953,7 @@ TraceRetInfo RecordTraceOff()
         ret.errorCode = WRONG_TRACE_MODE;
 
         std::lock_guard<std::mutex> lock(g_recordingOutputMutex);
-        ret.outputFiles = g_recordingOutput;
+        FilterRecordResult(ret.outputFiles, g_recordingOutput);
         return ret;
     }
 
@@ -1928,7 +1965,7 @@ TraceRetInfo RecordTraceOff()
     ret.errorCode = SUCCESS;
 
     std::lock_guard<std::mutex> outputFileslock(g_recordingOutputMutex);
-    ret.outputFiles = g_recordingOutput;
+    FilterRecordResult(ret.outputFiles, g_recordingOutput);
     HILOG_INFO(LOG_CORE, "Recording trace off.");
     g_traceMode &= ~TraceMode::RECORD;
     return ret;
