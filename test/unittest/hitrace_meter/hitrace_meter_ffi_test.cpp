@@ -223,7 +223,7 @@ HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest05, TestSize.Level1)
     ASSERT_FALSE(isCommercialFinishSuc) << "Hitrace can't find \"" << record << "\" from trace.";
 
     ASSERT_TRUE(CleanTrace());
-    CHiTraceId hiTraceId= FfiOHOSHiTraceChainBegin(name, HiTraceFlag::HITRACE_FLAG_DEFAULT);
+    CHiTraceId hiTraceId = FfiOHOSHiTraceChainBegin(name, HiTraceFlag::HITRACE_FLAG_DEFAULT);
     FfiOHOSHiTraceStartAsyncTrace(name, taskId);
     FfiOHOSHiTraceFinishAsyncTrace(name, taskId);
     OHOS::HiviewDFX::HiTraceId id = Parse(hiTraceId);
