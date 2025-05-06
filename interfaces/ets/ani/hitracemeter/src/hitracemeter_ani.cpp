@@ -124,7 +124,7 @@ static void EtsStartSyncTrace(ani_env *env, ani_enum_item level, ani_string name
     }
     std::string customArgsStr = "";
     if (!IsRefUndefined(env, static_cast<ani_ref>(customArgs))) {
-        if (!AniStringToStdString(env, name, nameStr)) {
+        if (!AniStringToStdString(env, static_cast<ani_string>(customArgs), customArgsStr)) {
             return;
         }
     }
@@ -152,12 +152,12 @@ static void EtsStartAsyncTrace(ani_env *env, ani_enum_item level, ani_string nam
         return;
     }
     std::string customCategoryStr = "";
-    if (!AniStringToStdString(env, name, customCategoryStr)) {
+    if (!AniStringToStdString(env, customCategory, customCategoryStr)) {
         return;
     }
     std::string customArgsStr = "";
     if (!IsRefUndefined(env, static_cast<ani_ref>(customArgs))) {
-        if (!AniStringToStdString(env, name, nameStr)) {
+        if (!AniStringToStdString(env, static_cast<ani_string>(customArgs), customArgsStr)) {
             return;
         }
     }
