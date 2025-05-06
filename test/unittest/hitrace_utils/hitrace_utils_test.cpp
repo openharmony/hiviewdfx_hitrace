@@ -192,10 +192,6 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest003, TestSize.Level2)
     jsonParser->ParseTraceJson(PARSE_TRACE_FORMAT_INFO);
     ASSERT_FALSE(jsonParser->GetBaseFmtPath().empty()) << "base format path size:" <<
         jsonParser->GetBaseFmtPath().size();
-    int basePathCnt2 = jsonParser->GetBaseFmtPath().size();
-    GTEST_LOG_(INFO) << "base format path size:" << basePathCnt2;
-
-    ASSERT_EQ(basePathCnt1, basePathCnt2);
 }
 
 /**

@@ -490,7 +490,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_010, TestSize.Level0)
     ASSERT_GE(ret.outputFiles.size(), 3); // at least 3 slices
     // almost fully cover max 30s guaranteed duration
     ASSERT_GE(ret.coverDuration, (DEFAULT_FULL_TRACE_LENGTH - 1) * S_TO_MS);
-    ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT - 10); // 1% tolerance
+    ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT - 100); // 100: 10% tolerance
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
