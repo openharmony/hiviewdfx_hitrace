@@ -258,14 +258,27 @@ void ClearOldTraceFile(std::vector<std::string>& fileLists, const int& fileLimit
     if (fileLimit != 0) {
         traceFileLimit = static_cast<size_t>(fileLimit);
     }
-    HILOG_INFO(LOG_CORE, "ClearOldTraceFile: activate aging mechanism with file limit %{public}zu", traceFileLimit);
+    HILOG_INFO(LOG_CORE, "ClearOldTraceFile: activate aging mechanism with file limit %{public}zu, "
+        "current files %{public}zu", traceFileLimit, fileLists.size());
 
-    if (fileLists.size() > traceFileLimit && access(fileLists[0].c_str(), F_OK) == 0) {
-        if (remove(fileLists[0].c_str()) == 0) {
-            fileLists.erase(fileLists.begin());
-            HILOG_INFO(LOG_CORE, "ClearOldTraceFile: delete first success.");
+    if (fileLists.size() <= traceFileLimit) {
+        return;
+    }
+
+    int32_t deleteNum = static_cast<int32_t>(fileLists.size() - traceFileLimit);
+    for (int32_t index = deleteNum - 1; index >= 0; index--) {
+        if (access(fileLists[index].c_str(), F_OK) != 0) {
+            HILOG_ERROR(LOG_CORE, "ClearOldTraceFile: access file failed, skip delete %{public}s, errno: %{public}d.",
+                        fileLists[index].c_str(), errno);
+            continue;
+        }
+
+        if (remove(fileLists[index].c_str()) == 0) {
+            HILOG_INFO(LOG_CORE, "ClearOldTraceFile: delete %{public}s success.", fileLists[index].c_str());
+            fileLists.erase(fileLists.begin() + index);
         } else {
-            HILOG_ERROR(LOG_CORE, "ClearOldTraceFile: delete first failed, errno: %{public}d.", errno);
+            HILOG_ERROR(LOG_CORE, "ClearOldTraceFile: delete %{public}s failed, errno: %{public}d.",
+                        fileLists[index].c_str(), errno);
         }
     }
 }
