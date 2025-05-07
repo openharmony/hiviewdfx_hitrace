@@ -132,6 +132,7 @@ const int BUFFER_SIZE = 256 * PAGE_SIZE; // 1M
 std::atomic<bool> g_dumpFlag(false);
 std::atomic<bool> g_dumpEnd(true);
 std::mutex g_traceMutex;
+std::mutex g_recordingOutputMutex;;
 
 bool g_serviceThreadIsStart = false;
 uint64_t g_sysInitParamTags = 0;
@@ -318,14 +319,27 @@ void ClearOldTraceFile(std::vector<std::string>& fileLists, const std::string& f
     if (!fileLimit.empty()) {
         traceFileLimit = static_cast<size_t>(std::stoi(fileLimit));
     }
-    HILOG_INFO(LOG_CORE, "ClearOldTraceFile: activate aging mechanism with file limit %{public}zu", traceFileLimit);
+    HILOG_INFO(LOG_CORE, "ClearOldTraceFile: activate aging mechanism with file limit %{public}zu, "
+        "current files %{public}zu", traceFileLimit, fileLists.size());
 
-    if (fileLists.size() > traceFileLimit && access(fileLists[0].c_str(), F_OK) == 0) {
-        if (remove(fileLists[0].c_str()) == 0) {
-            fileLists.erase(fileLists.begin());
-            HILOG_INFO(LOG_CORE, "ClearOldTraceFile: delete first success.");
+    if (fileLists.size() <= traceFileLimit) {
+        return;
+    }
+
+    int32_t deleteNum = static_cast<int32_t>(fileLists.size() - traceFileLimit);
+    for (int32_t index = deleteNum - 1; index >= 0; index--) {
+        if (access(fileLists[index].c_str(), F_OK) != 0) {
+            HILOG_ERROR(LOG_CORE, "ClearOldTraceFile: access file failed, skip delete %{public}s, errno: %{public}d.",
+                        fileLists[index].c_str(), errno);
+            continue;
+        }
+
+        if (remove(fileLists[index].c_str()) == 0) {
+            HILOG_INFO(LOG_CORE, "ClearOldTraceFile: delete %{public}s success.", fileLists[index].c_str());
+            fileLists.erase(fileLists.begin() + index);
         } else {
-            HILOG_ERROR(LOG_CORE, "ClearOldTraceFile: delete first failed, errno: %{public}d.", errno);
+            HILOG_ERROR(LOG_CORE, "ClearOldTraceFile: delete %{public}s failed, errno: %{public}d.",
+                        fileLists[index].c_str(), errno);
         }
     }
 }
@@ -1071,7 +1085,10 @@ void ProcessDumpTask()
 {
     g_dumpFlag = true;
     g_dumpEnd = false;
-    g_outputFilesForCmd = {};
+    {
+        std::lock_guard<std::mutex> lock(g_recordingOutputMutex);
+        g_outputFilesForCmd = {};
+    }
     const std::string threadName = "TraceDumpTask";
     prctl(PR_SET_NAME, threadName.c_str());
     HILOG_INFO(LOG_CORE, "ProcessDumpTask: trace dump thread start.");
@@ -1086,6 +1103,7 @@ void ProcessDumpTask()
         std::string outputFileName = g_currentTraceParams.outputFile.empty() ?
                                      GenerateTraceFileName(false) : g_currentTraceParams.outputFile;
         if (DumpTraceLoop(outputFileName, false)) {
+            std::lock_guard<std::mutex> lock(g_recordingOutputMutex);
             g_outputFilesForCmd.push_back(outputFileName);
         }
         g_dumpEnd = true;
@@ -1094,11 +1112,13 @@ void ProcessDumpTask()
 
     while (g_dumpFlag) {
         if (!IsRootVersion()) {
+            std::lock_guard<std::mutex> lock(g_recordingOutputMutex);
             ClearOldTraceFile(g_outputFilesForCmd, g_currentTraceParams.fileLimit);
         }
         // Generate file name
         std::string outputFileName = GenerateTraceFileName(false);
         if (DumpTraceLoop(outputFileName, true)) {
+            std::lock_guard<std::mutex> lock(g_recordingOutputMutex);
             g_outputFilesForCmd.push_back(outputFileName);
         } else {
             break;
@@ -1631,6 +1651,8 @@ TraceRetInfo DumpTraceOff()
         HILOG_ERROR(LOG_CORE, "DumpTraceOff: The current state is %{public}d, data exception.",
             static_cast<int>(g_traceMode));
         ret.errorCode = CALL_ERROR;
+
+        std::lock_guard<std::mutex> lock(g_recordingOutputMutex);
         ret.outputFiles = g_outputFilesForCmd;
         return ret;
     }
@@ -1641,6 +1663,8 @@ TraceRetInfo DumpTraceOff()
         g_dumpFlag = false;
     }
     ret.errorCode = SUCCESS;
+
+    std::lock_guard<std::mutex> outputFileslock(g_recordingOutputMutex);
     ret.outputFiles = g_outputFilesForCmd;
     HILOG_INFO(LOG_CORE, "Recording trace off.");
     return ret;
