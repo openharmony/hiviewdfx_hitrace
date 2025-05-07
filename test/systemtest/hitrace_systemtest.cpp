@@ -738,17 +738,16 @@ HWTEST_F(HitraceSystemTest, RecordingModeTest007, TestSize.Level1)
  */
 HWTEST_F(HitraceSystemTest, RecordingModeTest008, TestSize.Level1)
 {
-    if (!IsHmKernel()) {
-        return;
+    if (IsHmKernel()) {
+        std::vector<std::string> traceLists = {};
+        ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched -b 255",
+            {"buffer size must be from 256 KB to 1024 MB", "parsing args failed, exit"}, traceLists));
+        ASSERT_TRUE(traceLists.empty());
+        ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched -b 256",
+            {"RECORDING_LONG_BEGIN_RECORD", "tags:sched", "bufferSize:256", "trace capturing"}, traceLists));
+        ASSERT_TRUE(traceLists.empty());
+        ASSERT_EQ(ReadBufferSizeKB(), "512");
     }
-    std::vector<std::string> traceLists = {};
-    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched -b 255",
-        {"buffer size must be from 256 KB to 1024 MB", "parsing args failed, exit"}, traceLists));
-    ASSERT_TRUE(traceLists.empty());
-    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched -b 256",
-        {"RECORDING_LONG_BEGIN_RECORD", "tags:sched", "bufferSize:256", "trace capturing"}, traceLists));
-    ASSERT_TRUE(traceLists.empty());
-    ASSERT_EQ(ReadBufferSizeKB(), "512");
 }
 
 /**
@@ -758,17 +757,16 @@ HWTEST_F(HitraceSystemTest, RecordingModeTest008, TestSize.Level1)
  */
 HWTEST_F(HitraceSystemTest, RecordingModeTest009, TestSize.Level1)
 {
-    if (!IsHmKernel()) {
-        return;
+    if (IsHmKernel()) {
+        std::vector<std::string> traceLists = {};
+        ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched -b 1048577",
+            {"buffer size must be from 256 KB to 1024 MB", "parsing args failed, exit"}, traceLists));
+        ASSERT_TRUE(traceLists.empty());
+        ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched -b 1048576",
+            {"RECORDING_LONG_BEGIN_RECORD", "tags:sched", "bufferSize:1048576", "trace capturing"}, traceLists));
+        ASSERT_TRUE(traceLists.empty());
+        ASSERT_EQ(ReadBufferSizeKB(), "1048576");
     }
-    std::vector<std::string> traceLists = {};
-    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched -b 1048577",
-        {"buffer size must be from 256 KB to 1024 MB", "parsing args failed, exit"}, traceLists));
-    ASSERT_TRUE(traceLists.empty());
-    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched -b 1048576",
-        {"RECORDING_LONG_BEGIN_RECORD", "tags:sched", "bufferSize:1048576", "trace capturing"}, traceLists));
-    ASSERT_TRUE(traceLists.empty());
-    ASSERT_EQ(ReadBufferSizeKB(), "1048576");
 }
 
 /**
@@ -778,17 +776,16 @@ HWTEST_F(HitraceSystemTest, RecordingModeTest009, TestSize.Level1)
  */
 HWTEST_F(HitraceSystemTest, RecordingModeTest010, TestSize.Level1)
 {
-    if (IsHmKernel()) {
-        return;
+    if (!IsHmKernel()) {
+        std::vector<std::string> traceLists = {};
+        ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched -b 255",
+            {"buffer size must be from 256 KB to 300 MB", "parsing args failed, exit"}, traceLists));
+        ASSERT_TRUE(traceLists.empty());
+        ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched -b 256",
+            {"RECORDING_LONG_BEGIN_RECORD", "tags:sched", "bufferSize:256", "trace capturing"}, traceLists));
+        ASSERT_TRUE(traceLists.empty());
+        ASSERT_EQ(ReadBufferSizeKB(), "258");
     }
-    std::vector<std::string> traceLists = {};
-    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched -b 255",
-        {"buffer size must be from 256 KB to 300 MB", "parsing args failed, exit"}, traceLists));
-    ASSERT_TRUE(traceLists.empty());
-    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched -b 256",
-        {"RECORDING_LONG_BEGIN_RECORD", "tags:sched", "bufferSize:256", "trace capturing"}, traceLists));
-    ASSERT_TRUE(traceLists.empty());
-    ASSERT_EQ(ReadBufferSizeKB(), "258");
 }
 
 /**
@@ -798,16 +795,15 @@ HWTEST_F(HitraceSystemTest, RecordingModeTest010, TestSize.Level1)
  */
 HWTEST_F(HitraceSystemTest, RecordingModeTest011, TestSize.Level1)
 {
-    if (IsHmKernel()) {
-        return;
+    if (!IsHmKernel()) {
+        std::vector<std::string> traceLists = {};
+        ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched -b 307201",
+            {"buffer size must be from 256 KB to 300 MB", "parsing args failed, exit"}, traceLists));
+        ASSERT_TRUE(traceLists.empty());
+        ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched -b 307200",
+            {"RECORDING_LONG_BEGIN_RECORD", "tags:sched", "bufferSize:307200", "trace capturing"}, traceLists));
+        ASSERT_TRUE(traceLists.empty());
     }
-    std::vector<std::string> traceLists = {};
-    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched -b 307201",
-        {"buffer size must be from 256 KB to 300 MB", "parsing args failed, exit"}, traceLists));
-    ASSERT_TRUE(traceLists.empty());
-    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched -b 307200",
-        {"RECORDING_LONG_BEGIN_RECORD", "tags:sched", "bufferSize:307200", "trace capturing"}, traceLists));
-    ASSERT_TRUE(traceLists.empty());
 }
 
 /**

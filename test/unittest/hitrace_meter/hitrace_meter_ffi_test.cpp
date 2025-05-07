@@ -60,6 +60,7 @@ void HitraceMeterFfiTest::SetUpTestCase(void)
     int ret = strcpy_s(g_pid, sizeof(g_pid), pidStr.c_str());
     if (ret != 0) {
         GTEST_LOG_(ERROR) << "pid[" << pidStr << "] strcpy_s fail ret: " << std::to_string(ret);
+        FAIL();
         return;
     }
     ASSERT_TRUE(Init(g_pid));
@@ -199,7 +200,7 @@ HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest04, TestSize.Level1)
 
 /**
  * @tc.name: HitraceFfiTest05
- * @tc.desc: Testing FfiOHOSHiTraceStartAsyncTrace and FfiOHOSHiTraceFinishAsyncTrace TraceInfo LEVEL
+ * @tc.desc: Testing FfiOHOSHiTraceStartAsyncTrace and FfiOHOSHiTraceFinishAsyncTrace TraceInfo LEVEL COMMERCIAL
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest05, TestSize.Level1)
@@ -217,20 +218,35 @@ HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest05, TestSize.Level1)
     char record[RECORD_SIZE_MAX + 1] = {0};
     TraceInfo traceInfo = {'S', HITRACE_LEVEL_COMMERCIAL, TAG, taskId, name, "", ""};
     bool isCommercialStartSuc = GetTraceResult(traceInfo, list, record);
-    ASSERT_FALSE(isCommercialStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+    ASSERT_FALSE(isCommercialStartSuc) << "Hitrace unexpectedly found \"" << record << "\" from trace.";
     traceInfo.type = 'F';
     bool isCommercialFinishSuc = GetTraceResult(traceInfo, list, record);
     ASSERT_FALSE(isCommercialFinishSuc) << "Hitrace can't find \"" << record << "\" from trace.";
 
     ASSERT_TRUE(CleanTrace());
+}
+
+/**
+ * @tc.name: HitraceFfiTest06
+ * @tc.desc: Testing FfiOHOSHiTraceStartAsyncTrace and FfiOHOSHiTraceFinishAsyncTrace TraceInfo LEVEL INFO
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest06, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HitraceFfiTest06: start.";
+
+    const char* name = "HitraceFfiTest06";
+    int32_t taskId = 3;
+
     CHiTraceId hiTraceId = FfiOHOSHiTraceChainBegin(name, HiTraceFlag::HITRACE_FLAG_DEFAULT);
     FfiOHOSHiTraceStartAsyncTrace(name, taskId);
     FfiOHOSHiTraceFinishAsyncTrace(name, taskId);
     OHOS::HiviewDFX::HiTraceId id = Parse(hiTraceId);
     FfiOHOSHiTraceChainEnd(hiTraceId);
 
-    list = ReadTrace();
-    traceInfo = {'S', HITRACE_LEVEL_INFO, TAG, taskId, name, "", ""};
+    std::vector<std::string> list = ReadTrace();
+    char record[RECORD_SIZE_MAX + 1] = {0};
+    TraceInfo traceInfo = {'S', HITRACE_LEVEL_INFO, TAG, taskId, name, "", ""};
     traceInfo.hiTraceId = &id;
     bool isInfoStartSuc = GetTraceResult(traceInfo, list, record);
     ASSERT_TRUE(isInfoStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
@@ -240,7 +256,6 @@ HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest05, TestSize.Level1)
 
     GTEST_LOG_(INFO) << "HitraceFfiTest05: end.";
 }
-
 }
 }
 }
