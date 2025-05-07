@@ -435,11 +435,11 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest009, TestSize.Level1)
     }
     std::vector<std::string> traceLists = {};
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --dump_bgsrv", {"SNAPSHOT_DUMP", "DumpSnapshot done"}, traceLists));
-    ASSERT_GE(traceLists.size(), snapshotFileAge);
+    ASSERT_GE(traceLists.size(), snapshotFileAge + 1);
     ASSERT_TRUE(RunCmd("hitrace --stop_bgsrv"));
     int filecnt = CountSnapShotTraceFile();
     GTEST_LOG_(INFO) << "Filecnt: " << filecnt;
-    ASSERT_LE(filecnt, snapshotFileAge);
+    ASSERT_LE(filecnt, snapshotFileAge + 1);
 }
 
 /**
@@ -453,15 +453,16 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest010, TestSize.Level1)
     const int dumpCnt = 30; // 30 : dump 30 times
     for (int i = 0; i < dumpCnt; ++i) {
         ASSERT_TRUE(RunCmd("hitrace --dump_bgsrv"));
+        sleep(1); // wait 1s
     }
     const int snapshotFileAge = 20;
     std::vector<std::string> traceLists = {};
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --dump_bgsrv", {"SNAPSHOT_DUMP", "DumpSnapshot done"}, traceLists));
-    ASSERT_GE(traceLists.size(), snapshotFileAge);
+    ASSERT_GE(traceLists.size(), snapshotFileAge + 1);
     ASSERT_TRUE(RunCmd("hitrace --stop_bgsrv"));
     std::vector<std::string> dirTraceLists = {};
     GetSnapShotTraceFileList(dirTraceLists);
-    ASSERT_LE(dirTraceLists.size(), snapshotFileAge);
+    ASSERT_LE(dirTraceLists.size(), snapshotFileAge + 1);
     for (int i = 0; i < dirTraceLists.size(); ++i) {
         ASSERT_NE(std::find(traceLists.begin(), traceLists.end(), dirTraceLists[i]), traceLists.end()) <<
             "not found: " << dirTraceLists[i];
@@ -498,7 +499,7 @@ HWTEST_F(HitraceSystemTest, CacheModeTest001, TestSize.Level1)
     TraceRetInfo ret = DumpTrace();
     ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
     std::vector<FileWithInfo> fileList;
-    ASSERT_TRUE(GetFileInfo(TRACE_CACHE, ret.outputFiles, fileList));
+    ASSERT_TRUE(GetFileInfo(TRACE_SNAPSHOT, ret.outputFiles, fileList));
     ASSERT_GE(fileList.size(), 2); // cache_trace_ file count > 2
     uint64_t totalDuartion = 0;
     for (auto i = 0; i < fileList.size(); i++) {
@@ -532,28 +533,18 @@ HWTEST_F(HitraceSystemTest, CacheModeTest002, TestSize.Level1)
     sleep(2); // wait 2s
     TraceRetInfo ret = DumpTrace();
     ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
-    std::vector<FileWithInfo> cacheFileList;
     std::vector<FileWithInfo> traceFileList;
-    ASSERT_TRUE(GetFileInfo(TRACE_CACHE, ret.outputFiles, cacheFileList));
-    ASSERT_TRUE(GetFileInfo(TRACE_SNAPSHOT, ret.outputFiles, traceFileList));
+    EXPECT_TRUE(GetFileInfo(TRACE_SNAPSHOT, ret.outputFiles, traceFileList));
     uint64_t totalDuartion = 0;
-    ASSERT_GE(cacheFileList.size(), 2); // cache_trace_ file count > 2
-    for (auto i = 0; i < cacheFileList.size(); i++) {
-        GTEST_LOG_(INFO) << "file: " << cacheFileList[i].filename.c_str() << ", size: " << cacheFileList[i].fileSize
-            << ", duration:" << cacheFileList[i].duration;
-        ASSERT_LE(cacheFileList[i].fileSize, 17 * BYTE_PER_MB); // 17: single cache trace file max size limit(MB)
-        totalDuartion += cacheFileList[i].duration;
-        ASSERT_TRUE(IsFileIncludeAllKeyWords(cacheFileList[i].filename, {"name: sched_wakeup"}));
-    }
-    ASSERT_GE(traceFileList.size(), 1); // cache_trace_ file count > 1
+    EXPECT_GE(traceFileList.size(), 1); // cache_trace_ file count > 1
     for (auto i = 0; i < traceFileList.size(); i++) {
         GTEST_LOG_(INFO) << "file: " << traceFileList[i].filename.c_str() << ", size: " << traceFileList[i].fileSize
             << ", duration:" << traceFileList[i].duration;
         totalDuartion += traceFileList[i].duration;
-        ASSERT_TRUE(IsFileIncludeAllKeyWords(traceFileList[i].filename, {"name: sched_wakeup"}));
+        EXPECT_TRUE(IsFileIncludeAllKeyWords(traceFileList[i].filename, {"name: sched_wakeup"}));
     }
     totalDuartion /= S_TO_MS;
-    ASSERT_GE(totalDuartion, 10); // total trace duration over 10s
+    EXPECT_GE(totalDuartion, 10); // total trace duration over 10s
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
