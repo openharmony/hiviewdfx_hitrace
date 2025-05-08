@@ -1186,6 +1186,27 @@ HitraceMeterFmtScoped::HitraceMeterFmtScoped(uint64_t tag, const char* fmt, ...)
     AddHitraceMeterMarker(traceMarker);
 }
 
+HitraceMeterFmtScopedEx::HitraceMeterFmtScopedEx(HiTraceOutputLevel level, uint64_t tag,
+    const char* customArgs, const char* fmt, ...) : tag_(tag), level_(level)
+{
+    UpdateSysParamTags();
+    if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+        return;
+    }
+    char name[VAR_NAME_MAX_SIZE] = { 0 };
+    va_list args;
+
+    va_start(args, fmt);
+    int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
+    va_end(args);
+    if (res < 0) {
+        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
+        return;
+    }
+    TraceMarker traceMarker = {MARKER_BEGIN, level, tag, 0, name, EMPTY, customArgs};
+    AddHitraceMeterMarker(traceMarker);
+}
+
 bool IsTagEnabled(uint64_t tag)
 {
     UpdateSysParamTags();

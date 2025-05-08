@@ -1828,14 +1828,13 @@ HWTEST_F(HitraceMeterTest, HitraceMeterTest003, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceMeterTest003: start.";
 
-    std::string name = "HitraceMeterTest003";
     {
-        HitraceScoped(TAG, name);
+        HITRACE_METER(TAG);
     }
 
     std::vector<std::string> list = ReadTrace();
     char record[RECORD_SIZE_MAX + 1] = {0};
-    TraceInfo traceInfo = {'B', HITRACE_LEVEL_INFO, TAG, 0, name.c_str(), "", ""};
+    TraceInfo traceInfo = {'B', HITRACE_LEVEL_INFO, TAG, 0, __func__, "", ""};
     bool isStartSuc = GetTraceResult(traceInfo, list, record);
     ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
     traceInfo.type = 'E';
@@ -1894,7 +1893,7 @@ HWTEST_F(HitraceMeterTest, HitraceMeterTest004, TestSize.Level1)
 
     ASSERT_TRUE(CleanTrace());
     {
-        HitraceMeterFmtScoped(TAG, name, var);
+        HITRACE_METER_FMT(TAG, name, var);
     }
 
     list = ReadTrace();
@@ -1956,15 +1955,14 @@ HWTEST_F(HitraceMeterTest, HitraceMeterTest006, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceMeterTest006: start.";
 
-    const char* name = "HitraceMeterTest006";
     const char* customArgs = "key=value";
     {
-        HitraceScopedEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, customArgs);
+        HITRACE_METER_EX(HITRACE_LEVEL_COMMERCIAL, TAG, customArgs);
     }
 
     std::vector<std::string> list = ReadTrace();
     char record[RECORD_SIZE_MAX + 1] = {0};
-    TraceInfo traceInfo = {'B', HITRACE_LEVEL_COMMERCIAL, TAG, 0, name, "", customArgs};
+    TraceInfo traceInfo = {'B', HITRACE_LEVEL_COMMERCIAL, TAG, 0, __func__, "", customArgs};
     bool isStartSuc = GetTraceResult(traceInfo, list, record);
     ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
     traceInfo.type = 'E';
@@ -2165,6 +2163,70 @@ HWTEST_F(HitraceMeterTest, HitraceMeterTest011, TestSize.Level1)
     ASSERT_TRUE(isSuccess) << "Hitrace can't find \"" << record << "\" from trace.";
 
     GTEST_LOG_(INFO) << "HitraceMeterTest011: end.";
+}
+
+/**
+ * @tc.name: HitraceMeterTest012
+ * @tc.desc: Testing HitraceMeterFmtScopedEx
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, HitraceMeterTest012, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HitraceMeterTest012: start.";
+
+    const char* name = "HitraceMeterTest012-%d";
+    int var = 12;
+    // Each line contains 76 characters, and the longName has a total length of 459 characters.
+    std::string longName = "HitraceMeterTest012HitraceMeterTest012HitraceMeterTest012HitraceMeterTest012";
+    longName += "HitraceMeterTest012HitraceMeterTest012HitraceMeterTest012HitraceMeterTest012";
+    longName += "HitraceMeterTest012HitraceMeterTest012HitraceMeterTest012HitraceMeterTest012";
+    longName += "HitraceMeterTest012HitraceMeterTest012HitraceMeterTest012HitraceMeterTest012";
+    longName += "HitraceMeterTest012HitraceMeterTest012HitraceMeterTest012HitraceMeterTest012";
+    longName += "HitraceMeterTest012HitraceMeterTest012HitraceMeterTest012HitraceMeterTest012-%d";
+
+    SetTraceDisabled(true);
+    {
+        HitraceMeterFmtScopedEx(HITRACE_LEVEL_COMMERCIAL, TAG, "", name, var);
+    }
+    SetTraceDisabled(false);
+
+    std::vector<std::string> list = ReadTrace();
+    bool isSuccess = FindResult("HitraceMeterTest012", list);
+    ASSERT_FALSE(isSuccess) << "Hitrace shouldn't find \"HitraceMeterTest012\" from trace.";
+
+    ASSERT_TRUE(CleanTrace());
+    {
+        HitraceMeterFmtScopedEx(HITRACE_LEVEL_COMMERCIAL, TAG, "", longName.c_str(), var);
+    }
+
+    list = ReadTrace();
+    isSuccess = FindResult("HitraceMeterTest012", list);
+    ASSERT_FALSE(isSuccess) << "Hitrace shouldn't find \"HitraceMeterTest012\" from trace.";
+
+    ASSERT_TRUE(CleanTrace());
+    {
+        HitraceMeterFmtScopedEx(HITRACE_LEVEL_COMMERCIAL, INVALID_TAG, "", name, var);
+    }
+
+    list = ReadTrace();
+    isSuccess = FindResult("HitraceMeterTest012", list);
+    ASSERT_FALSE(isSuccess) << "Hitrace shouldn't find \"HitraceMeterTest012\" from trace.";
+
+    ASSERT_TRUE(CleanTrace());
+    {
+        HITRACE_METER_FMT_EX(HITRACE_LEVEL_COMMERCIAL, TAG, "", name, var);
+    }
+
+    list = ReadTrace();
+    char record[RECORD_SIZE_MAX + 1] = {0};
+    TraceInfo traceInfo = {'B', HITRACE_LEVEL_COMMERCIAL, TAG, 0, "HitraceMeterTest012-12", "", ""};
+    bool isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+    traceInfo.type = 'E';
+    bool isFinishSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isFinishSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+
+    GTEST_LOG_(INFO) << "HitraceMeterTest012: end.";
 }
 }
 }

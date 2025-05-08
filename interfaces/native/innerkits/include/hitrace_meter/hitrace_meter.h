@@ -107,6 +107,13 @@ constexpr uint64_t HITRACE_TAG_COMMERCIAL = (1ULL << 5); // Tag for commercial v
 #define HITRACE_METER(TAG) HITRACE_METER_NAME(TAG, __func__)
 #define HITRACE_METER_FMT(TAG, fmt, ...) HitraceMeterFmtScoped TOKENPASTE2(tracer, __LINE__)(TAG, fmt, ##__VA_ARGS__)
 
+#define HITRACE_METER_NAME_EX(level, TAG, name, customArgs) \
+    HitraceScopedEx TOKENPASTE2(tracer, __LINE__)(level, TAG, name, customArgs)
+#define HITRACE_METER_EX(level, TAG, customArgs) \
+    HITRACE_METER_NAME_EX(level, TAG, __func__, customArgs)
+#define HITRACE_METER_FMT_EX(level, TAG, customArgs, fmt, ...) \
+    HitraceMeterFmtScopedEx TOKENPASTE2(tracer, __LINE__)(level, TAG, customArgs, fmt, ##__VA_ARGS__)
+
 /**
  * Update trace label when your process has started.
  */
@@ -282,6 +289,19 @@ public:
     }
 private:
     uint64_t mTag;
+};
+
+class HitraceMeterFmtScopedEx {
+public:
+    HitraceMeterFmtScopedEx(HiTraceOutputLevel level, uint64_t tag, const char* customArgs, const char* fmt, ...);
+
+    ~HitraceMeterFmtScopedEx()
+    {
+        FinishTraceEx(level_, tag_);
+    }
+private:
+    uint64_t tag_;
+    HiTraceOutputLevel level_;
 };
 #ifdef __cplusplus
 }
