@@ -1040,6 +1040,7 @@ void ProcessCacheTask()
     while (g_cacheFlag.load()) {
         std::string outputFileName = GenerateTraceFileName(TRACE_CACHE);
         if (CacheTraceLoop(outputFileName)) {
+            std::lock_guard<std::mutex> cacheLock(g_cacheTraceMutex);
             ClearCacheTraceFileBySize(g_cacheFileVec, g_totalFileSizeLimit);
             HILOG_INFO(LOG_CORE, "ProcessCacheTask: save cache file.");
         } else {
@@ -1690,9 +1691,9 @@ TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups)
         HILOG_WARN(LOG_CORE, "OpenTrace: Failed to parse TRACE_SNAPSHOT_FILE_AGE.");
     }
     RefreshTraceVec(g_traceFileVec, TRACE_SNAPSHOT);
-    RefreshTraceVec(g_cacheFileVec, TRACE_CACHE);
     {
         std::lock_guard<std::mutex> cacheLock(g_cacheTraceMutex);
+        RefreshTraceVec(g_cacheFileVec, TRACE_CACHE);
         ClearCacheTraceFileByDuration(g_cacheFileVec);
     }
     g_sysInitParamTags = GetSysParamTags();
