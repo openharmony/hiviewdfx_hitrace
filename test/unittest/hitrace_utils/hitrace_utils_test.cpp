@@ -418,6 +418,30 @@ HWTEST_F(HitraceUtilsTest, StringToDoubleErrorTest, TestSize.Level2)
     traceParamsStr = "abc";
     EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToDouble(traceParamsStr, paramsDouble));
 }
+
+HWTEST_F(HitraceUtilsTest, ProductConfigJsonParser_001, TestSize.Level2)
+{
+    constexpr uint64_t recordFileSizekb = 2048;
+    constexpr uint64_t snapshotFileSizekb = 1024;
+    constexpr int defaultBufferSize = 2580;
+    constexpr ConfigStatus rootAgeingStatus = ConfigStatus::ENABLE;
+    ProductConfigJsonParser parser("/data/test/resource/testdata/test_product_config.json");
+
+    EXPECT_EQ(parser.GetRecordFileSizeKb(), recordFileSizekb);
+    EXPECT_EQ(parser.GetSnapshotFileSizeKb(), snapshotFileSizekb);
+    EXPECT_EQ(parser.GetDefaultBufferSize(), defaultBufferSize);
+    EXPECT_EQ(parser.GetRootAgeingStatus(), rootAgeingStatus);
+}
+
+HWTEST_F(HitraceUtilsTest, ProductConfigJsonParser_002, TestSize.Level2)
+{
+    ProductConfigJsonParser parser("/data/test/resource/testdata/test_product_config_none.json");
+
+    EXPECT_EQ(parser.GetRecordFileSizeKb(), 0);
+    EXPECT_EQ(parser.GetSnapshotFileSizeKb(), 0);
+    EXPECT_EQ(parser.GetDefaultBufferSize(), 0);
+    EXPECT_EQ(parser.GetRootAgeingStatus(), ConfigStatus::UNKNOWN);
+}
 } // namespace
 } // namespace Hitrace
 } // namespace HiviewDFX

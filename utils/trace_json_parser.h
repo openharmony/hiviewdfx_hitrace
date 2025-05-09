@@ -55,6 +55,12 @@ enum ParsePolicy : uint8_t {
     PARSE_ALL_INFO = PARSE_TRACE_GROUP_INFO | TRACE_SNAPSHOT_BUFSZ,
 };
 
+enum class ConfigStatus : uint8_t {
+    UNKNOWN,
+    ENABLE,
+    DISABLE
+};
+
 class TraceJsonParser {
 public:
     TraceJsonParser() = default;
@@ -72,6 +78,23 @@ private:
     std::vector<std::string> baseTraceFormats_ = {};
     int snapshotBufSzKb_ = 0;
     bool snapshotFileAge_ = true;
+};
+
+class ProductConfigJsonParser {
+public:
+    explicit ProductConfigJsonParser(const std::string& configJsonPath);
+    ~ProductConfigJsonParser() = default;
+
+    uint64_t GetRecordFileSizeKb() const;
+    uint64_t GetSnapshotFileSizeKb() const;
+    int GetDefaultBufferSize() const;
+    ConfigStatus GetRootAgeingStatus() const;
+
+private:
+    uint64_t recordFileSizeKb = 0;
+    uint64_t snapshotFileSizeKb = 0;
+    int defaultBufferSize = 0;
+    ConfigStatus rootAgeingEnable = ConfigStatus::UNKNOWN;
 };
 } // namespace HiTrace
 } // namespace HiviewDFX
