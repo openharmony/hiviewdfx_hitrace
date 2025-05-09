@@ -128,17 +128,17 @@ ani_object HiTraceChainAniUtil::CreateBigInt(ani_env *env, uint64_t traceId)
     ani_object bigintCtor = nullptr;
     ani_class bigIntCls;
     if (ANI_OK != env->FindClass(CLASS_NAME_BIGINT.c_str(), &bigIntCls)) {
-        HILOG_ERROR(LOG_CORE, "find Class %{public}s failed", CLASS_NAME_HITRACEID.c_str());
+        HILOG_ERROR(LOG_CORE, "find Class %{public}s failed", CLASS_NAME_BIGINT.c_str());
         return bigintCtor;
     }
     ani_method createLongMethod;
     if (ANI_OK != env->Class_FindMethod(bigIntCls, "<ctor>", "J:V", &createLongMethod)) {
-        HILOG_ERROR(LOG_CORE, "find method %{public}s failed", CLASS_NAME_HITRACEID.c_str());
+        HILOG_ERROR(LOG_CORE, "find method %{public}s constructor failed", CLASS_NAME_BIGINT.c_str());
         return bigintCtor;
     }
     ani_long longNum = static_cast<ani_long>(traceId);
     if (ANI_OK != env->Object_New(bigIntCls, createLongMethod, &bigintCtor, longNum)) {
-        HILOG_ERROR(LOG_CORE, "create object %{public}s failed", CLASS_NAME_HITRACEID.c_str());
+        HILOG_ERROR(LOG_CORE, "create object %{public}s failed", CLASS_NAME_BIGINT.c_str());
         return bigintCtor;
     }
     return bigintCtor;
