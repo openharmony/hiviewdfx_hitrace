@@ -56,6 +56,9 @@
         "HitraceMeterFmtScoped::HitraceMeterFmtScoped(unsigned long, char const*, ...)";
         "HitraceMeterFmtScoped::HitraceMeterFmtScoped(unsigned long long, char const*, ...)";
         "HitraceMeterFmtScoped::~HitraceMeterFmtScoped()";
+        "HitraceMeterFmtScopedEx::HitraceMeterFmtScopedEx(HiTraceOutputLevel, unsigned long, char const*, char const*, ...)";
+        "HitraceMeterFmtScopedEx::HitraceMeterFmtScopedEx(HiTraceOutputLevel, unsigned long long, char const*, char const*, ...)";
+        "HitraceMeterFmtScopedEx::~HitraceMeterFmtScopedEx()";
     };
     extern "C" {
         "HiTraceStartTrace";
