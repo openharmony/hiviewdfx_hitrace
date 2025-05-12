@@ -23,6 +23,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <unistd.h>
 #include <vector>
@@ -70,6 +71,20 @@ std::map<TRACE_TYPE, std::string> tracePrefixMap = {
     {TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
     {TRACE_RECORDING, TRACE_RECORDING_PREFIX},
     {TRACE_CACHE, TRACE_CACHE_PREFIX},
+};
+
+constexpr int ALIGNMENT_COEFFICIENT = 4;
+
+struct alignas(ALIGNMENT_COEFFICIENT) TraceFileHeader {
+    uint16_t magicNumber;
+    uint8_t fileType;
+    uint16_t versionNumber;
+    uint32_t reserved;
+};
+
+struct alignas(ALIGNMENT_COEFFICIENT) TraceFileContentHeader {
+    uint8_t type;
+    uint32_t length;
 };
 
 bool TraverseFiles(std::vector<std::string> files, std::string outputFileName)
@@ -148,6 +163,136 @@ void InitFileFromDir()
 {
     DeleteTraceFileInDir(GetTraceFilesInDir(TRACE_CACHE));
     DeleteTraceFileInDir(GetTraceFilesInDir(TRACE_SNAPSHOT));
+}
+
+static std::vector<std::string> GetRecordTrace()
+{
+    std::vector<std::string> result;
+    std::string args = "tags:sched clockType:boot bufferSize:1024 overwrite:1";
+    auto errorCode = OpenTrace(args);
+    if (errorCode!= TraceErrorCode::SUCCESS) {
+        GTEST_LOG_(INFO) << "GetRecordTrace OpenTrace failed, errorCode: " << static_cast<int>(errorCode);
+        return result;
+    }
+    errorCode = RecordTraceOn();
+    if (errorCode != TraceErrorCode::SUCCESS) {
+        GTEST_LOG_(INFO) << "GetRecordTrace RecordTraceOn failed, errorCode: " << static_cast<int>(errorCode);
+        CloseTrace();
+        return result;
+    }
+    sleep(1);
+    TraceRetInfo ret = RecordTraceOff();
+    if (ret.errorCode != TraceErrorCode::SUCCESS) {
+        GTEST_LOG_(INFO) << "GetRecordTrace RecordTraceOff failed, errorCode: " << static_cast<int>(ret.errorCode);
+        CloseTrace();
+        return result;
+    }
+    CloseTrace();
+    return ret.outputFiles;
+}
+
+static std::vector<std::string> GetCacheTrace()
+{
+    std::vector<std::string> result;
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    auto errorCode = OpenTrace(tagGroups);
+    if (errorCode != TraceErrorCode::SUCCESS) {
+        GTEST_LOG_(INFO) << "GetCacheTrace OpenTrace failed, errorCode: " << static_cast<int>(errorCode);
+        return result;
+    }
+    errorCode = CacheTraceOn();
+    if (errorCode != TraceErrorCode::SUCCESS) {
+        GTEST_LOG_(INFO) << "GetCacheTrace CacheTraceOn failed, errorCode: " << static_cast<int>(errorCode);
+        CloseTrace();
+        return result;
+    }
+    sleep(1);
+    TraceRetInfo ret = DumpTrace();
+    if (ret.errorCode != TraceErrorCode::SUCCESS) {
+        GTEST_LOG_(INFO) << "GetCacheTrace DumpTrace failed, errorCode: " << static_cast<int>(errorCode);
+        CloseTrace();
+        return result;
+    }
+    errorCode = CacheTraceOff();
+    if (errorCode != TraceErrorCode::SUCCESS) {
+        GTEST_LOG_(INFO) << "GetCacheTrace CacheTraceOff failed, errorCode: " << static_cast<int>(errorCode);
+        CloseTrace();
+        return result;
+    }
+    CloseTrace();
+    return ret.outputFiles;
+}
+
+static std::vector<std::string> GetSnapShotTrace()
+{
+    std::vector<std::string> result;
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    auto errorCode = OpenTrace(tagGroups);
+    if (errorCode != TraceErrorCode::SUCCESS) {
+        GTEST_LOG_(INFO) << "GetSnapShotTrace OpenTrace failed, errorCode: " << static_cast<int>(errorCode);
+        return result;
+    }
+    sleep(1);
+    TraceRetInfo ret = DumpTrace();
+    if (ret.errorCode != TraceErrorCode::SUCCESS) {
+        GTEST_LOG_(INFO) << "GetSnapShotTrace DumpTrace failed, errorCode: " << static_cast<int>(errorCode);
+        CloseTrace();
+        return result;
+    }
+    CloseTrace();
+    return ret.outputFiles;
+}
+
+static bool CheckBaseInfo(const std::string filePath)
+{
+    int fd = open(filePath.c_str(), O_RDONLY);
+    if (fd == -1) {
+        GTEST_LOG_(INFO) << "open file failed, errno: " << strerror(errno);
+        return false;
+    }
+    if (lseek(fd, sizeof(TraceFileHeader), SEEK_SET) == -1) {
+        GTEST_LOG_(INFO) << "lseek failed, errno: " << strerror(errno);
+        close(fd);
+        return false;
+    }
+
+    TraceFileContentHeader contentHeader;
+    ssize_t bytesRead = read(fd, &contentHeader, sizeof(TraceFileContentHeader));
+    if (bytesRead != static_cast<ssize_t>(sizeof(TraceFileContentHeader))) {
+        GTEST_LOG_(INFO) << "read content header failed, errno: " << strerror(errno);
+        close(fd);
+        return false;
+    }
+    std::string baseInfo(contentHeader.length, '\0');
+    bytesRead = read(fd, &baseInfo[0], contentHeader.length);
+    if (bytesRead != static_cast<ssize_t>(contentHeader.length)) {
+        GTEST_LOG_(INFO) << "read base info failed, errno: " << strerror(errno);
+        close(fd);
+        return false;
+    }
+    close(fd);
+
+    std::vector<std::string> segments;
+    std::istringstream iss(baseInfo);
+    std::string segment;
+    while (std::getline(iss, segment, '\n')) {
+        segments.push_back(segment);
+    }
+
+    std::vector<std::string> checkList = {
+        "KERNEL_VERSION"
+    };
+    int count = 0;
+    for (auto& key : checkList) {
+        for (auto& segment : segments) {
+            if (segment.find(key) != std::string::npos) {
+                count++;
+                GTEST_LOG_(INFO) << segment;
+                break;
+            }
+        }
+    }
+    return (count == checkList.size());
 }
 
 class HitraceDumpTest : public testing::Test {
@@ -573,6 +718,27 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_013, TestSize.Level0)
     ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT * (TEN_SEC - 1) / (TEN_SEC * 2)); // coverRatio >= 9/20
     ASSERT_LE(ret.coverRatio, MAX_RATIO_UNIT * (TEN_SEC + 2) / (TEN_SEC * 2)); // coverRatio <= 12/20
     ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpTraceTest_014
+ * @tc.desc: Test BaseInfo content in raw trace file.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpTraceTest_014, TestSize.Level0)
+{
+    std::vector<std::string> outputFiles;
+    outputFiles = GetRecordTrace();
+    ASSERT_FALSE(outputFiles.empty());
+    ASSERT_TRUE(CheckBaseInfo(outputFiles[0])) << outputFiles[0];
+
+    outputFiles = GetCacheTrace();
+    ASSERT_FALSE(outputFiles.empty());
+    ASSERT_TRUE(CheckBaseInfo(outputFiles[0])) << outputFiles[0];
+
+    outputFiles = GetSnapShotTrace();
+    ASSERT_FALSE(outputFiles.empty());
+    ASSERT_TRUE(CheckBaseInfo(outputFiles[0])) << outputFiles[0];
 }
 
 /**
