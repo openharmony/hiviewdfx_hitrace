@@ -122,6 +122,7 @@ const int SNAPSHOT_FILE_MAX_COUNT = 20;
 #endif
 
 constexpr int DEFAULT_FULL_TRACE_LENGTH = 30;
+constexpr uint64_t SNAPSHOT_MIN_REMAINING_SPACE = 300 * 1024 * 1024;     // 300M
 
 const char* const KERNEL_VERSION = "KERNEL_VERSION: ";
 
@@ -334,9 +335,9 @@ bool SetTraceNodeStatus(const std::string &path, bool enabled)
     return WriteStrToFile(path, enabled ? "1" : "0");
 }
 
-void TruncateFile()
+void TruncateFile(const std::string& path)
 {
-    int fd = creat((g_traceRootPath + TRACE_NODE).c_str(), 0);
+    int fd = creat((g_traceRootPath + path).c_str(), 0);
     if (fd == -1) {
         HILOG_ERROR(LOG_CORE, "TruncateFile: clear old trace failed.");
         return;
@@ -491,9 +492,12 @@ bool SetTraceSetting(const TraceParams& traceParams, const std::map<std::string,
                      std::vector<std::string>& tagFmts)
 {
     AddFilterPids(traceParams.filterPids);
+    if (!traceParams.filterPids.empty()) {
+        TruncateFile("trace_pipe_raw");
+    }
     TraceInit(allTags);
 
-    TruncateFile();
+    TruncateFile(TRACE_NODE);
 
     SetAllTags(traceParams, allTags, tagGroupTable, tagFmts);
 
@@ -1373,6 +1377,11 @@ TraceErrorCode HandleDumpResult(TraceRetInfo& traceRetInfo, std::string& reOutPa
 
 TraceErrorCode ProcessDump(TraceRetInfo& traceRetInfo)
 {
+    if (GetRemainingSpace("/data") <= SNAPSHOT_MIN_REMAINING_SPACE) {
+        HILOG_ERROR(LOG_CORE, "ProcessDump: remaining space not enough");
+        return TraceErrorCode::FILE_ERROR;
+    }
+
     int pipefd[2];
     if (pipe(pipefd) == -1) {
         HILOG_ERROR(LOG_CORE, "pipe creation error.");
@@ -1623,15 +1632,12 @@ void SetDestTraceTimeAndDuration(int maxDuration, const uint64_t& utTraceEndTime
  * args: tags:tag1,tags2... tagGroups:group1,group2... clockType:boot bufferSize:1024 overwrite:1 output:filename
  * traceParams:  Save the above parameters
 */
-bool ParseArgs(const std::string& args, TraceParams& traceParams, const std::map<std::string, TraceTag>& allTags,
+bool ParseArgs(std::string args, TraceParams& traceParams, const std::map<std::string, TraceTag>& allTags,
                const std::map<std::string, std::vector<std::string>>& tagGroupTable)
 {
-    std::string userArgs = args;
-    std::string str = ":";
-    RemoveUnSpace(str, userArgs);
-    str = ",";
-    RemoveUnSpace(str, userArgs);
-    std::vector<std::string> argList = Split(userArgs, ' ');
+    RemoveUnSpace(":", args);
+    RemoveUnSpace(",", args);
+    std::vector<std::string> argList = Split(args, ' ');
     for (std::string item : argList) {
         size_t pos = item.find(":");
         if (pos == std::string::npos) {
@@ -2032,7 +2038,7 @@ TraceErrorCode CloseTrace()
     }
 
     TraceInit(allTags);
-    TruncateFile();
+    TruncateFile(TRACE_NODE);
     HILOG_INFO(LOG_CORE, "CloseTrace done.");
     return SUCCESS;
 }

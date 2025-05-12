@@ -442,6 +442,13 @@ HWTEST_F(HitraceUtilsTest, ProductConfigJsonParser_002, TestSize.Level2)
     EXPECT_EQ(parser.GetDefaultBufferSize(), 0);
     EXPECT_EQ(parser.GetRootAgeingStatus(), ConfigStatus::UNKNOWN);
 }
+
+HWTEST_F(HitraceUtilsTest, GetRemainingSpace_001, TestSize.Level2)
+{
+    uint64_t remainingSpace = GetRemainingSpace("/data");
+    EXPECT_NE(remainingSpace, 0);
+    EXPECT_NE(remainingSpace, UINT64_MAX);
+}
 } // namespace
 } // namespace Hitrace
 } // namespace HiviewDFX

@@ -1,6 +1,6 @@
 {
     "record_file_kb_size" : 2048,
     "snapshot_file_kb_size" : 1024,
-    "default_buffer_size" : 2580,
+    "default_buffer_kb_size" : 2580,
     "root_ageing_enable" : 1
 }

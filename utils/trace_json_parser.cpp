@@ -298,7 +298,7 @@ ProductConfigJsonParser::ProductConfigJsonParser(const std::string& configJsonPa
 
     GetUint64FromJson(rootNode, "record_file_kb_size", recordFileSizeKb);
     GetUint64FromJson(rootNode, "snapshot_file_kb_size", snapshotFileSizeKb);
-    GetIntFromJson(rootNode, "default_buffer_size", defaultBufferSize);
+    GetIntFromJson(rootNode, "default_buffer_kb_size", defaultBufferSize);
 
     int tRootAgeingEnable = -1;
     if (GetIntFromJson(rootNode, "root_ageing_enable", tRootAgeingEnable)) {
