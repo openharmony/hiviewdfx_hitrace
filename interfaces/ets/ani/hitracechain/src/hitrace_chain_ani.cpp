@@ -192,7 +192,7 @@ static void ParseHiTraceId(ani_env *env, ani_object HiTraceIdAni, HiTraceId& tra
         return;
     }
     uint32_t flags = UINT32_T_PRO_DEFAULT_VALUE;
-    if (!HiTraceChainAniUtil::IsRefUndefined(env, parentSpanIdRef)) {
+    if (!HiTraceChainAniUtil::IsRefUndefined(env, flagsRef)) {
         flags = HiTraceChainAniUtil::ParseNumberValueInt32(env, flagsRef);
         traceId.SetFlags(flags);
     }
