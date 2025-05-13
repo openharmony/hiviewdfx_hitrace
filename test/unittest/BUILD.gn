@@ -200,6 +200,7 @@ ohos_unittest("HitraceDumpTest") {
 
   deps = [
     "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
+    "$hitrace_interfaces_path/native/innerkits:libhitrace_option",
     "$hitrace_utils_path:hitrace_common_utils",
     "$hitrace_utils_path:hitrace_file_utils",
     "$hitrace_utils_path:hitrace_json_parser",
@@ -308,6 +309,30 @@ ohos_unittest("HitraceMeterFfiTest") {
     "googletest:gtest_main",
     "init:libbegetutil",
     "napi:cj_bind_ffi",
+  ]
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+}
+
+ohos_unittest("HitraceOptionTest") {
+  module_out_path = module_output_path
+
+  include_dirs = [
+    "$hitrace_interfaces_path/native/innerkits/include",
+    "$hitrace_interfaces_path/native/innerkits/src/hitrace_option/hitrace_option.cpp"
+  ]
+
+  sources = [
+    "$hitrace_interfaces_path/native/innerkits/src/hitrace_option/hitrace_option.cpp",
+    "hitrace_option/hitrace_option_test.cpp"
+  ]
+
+  external_deps = [
+    "googletest:gtest_main",
+    "init:libbegetutil"
   ]
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]
