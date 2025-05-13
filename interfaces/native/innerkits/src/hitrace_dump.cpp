@@ -914,11 +914,57 @@ void GetTraceFileFromVec(const uint64_t& inputTraceStartTime, const uint64_t& in
     }
 }
 
+std::string RenameCacheFile(const std::string& cacheFile)
+{
+    std::string fileName = cacheFile.substr(cacheFile.find_last_of("/") + 1);
+    std::string cacheFileSuffix = "cache_";
+    std::string::size_type pos = fileName.find(cacheFileSuffix);
+    if (pos == std::string::npos) {
+        return cacheFile;
+    }
+    std::string dirPath = cacheFile.substr(0, cacheFile.find_last_of("/") + 1);
+    std::string newFileName = fileName.substr(pos + cacheFileSuffix.size());
+    std::string newFilePath = dirPath + newFileName;
+    if (rename(cacheFile.c_str(), newFilePath.c_str()) != 0) {
+        HILOG_ERROR(LOG_CORE, "rename %{public}s to %{public}s failed, errno: %{public}d.",
+            cacheFile.c_str(), newFilePath.c_str(), errno);
+        return cacheFile;
+    }
+    HILOG_INFO(LOG_CORE, "rename %{public}s to %{public}s success.", cacheFile.c_str(), newFilePath.c_str());
+    return newFilePath;
+}
+
 void SearchTraceFiles(const uint64_t& inputTraceStartTime, const uint64_t& inputTraceEndTime,
     std::vector<std::string>& outputFiles)
 {
-    GetTraceFileFromVec(inputTraceStartTime, inputTraceEndTime, g_cacheFileVec, outputFiles);
+    if (g_traceJsonParser == nullptr) {
+        g_traceJsonParser = std::make_shared<TraceJsonParser>();
+    }
+    if (!g_traceJsonParser->ParseTraceJson(TRACE_SNAPSHOT_FILE_AGE)) {
+        HILOG_WARN(LOG_CORE, "ProcessDump: Failed to parse TRACE_SNAPSHOT_FILE_AGE.");
+    }
+    if ((!IsRootVersion()) || g_traceJsonParser->GetSnapShotFileAge()) {
+        DelSnapshotTraceFile(SNAPSHOT_FILE_MAX_COUNT, g_traceFileVec);
+    }
     GetTraceFileFromVec(inputTraceStartTime, inputTraceEndTime, g_traceFileVec, outputFiles);
+    std::vector<std::string> outputCacheFiles;
+    GetTraceFileFromVec(inputTraceStartTime, inputTraceEndTime, g_cacheFileVec, outputCacheFiles);
+    for (const auto& file: outputCacheFiles) {
+        std::string newFile = RenameCacheFile(file);
+        for (auto it = g_cacheFileVec.begin(); it != g_cacheFileVec.end();) {
+            if (it->filename == file) {
+                it->filename = newFile;
+                g_traceFileVec.push_back(*it);
+                it = g_cacheFileVec.erase(it);
+                break;
+            } else {
+                ++it;
+            }
+        }
+        outputFiles.emplace_back(newFile);
+        HILOG_INFO(LOG_CORE, "dumptrace cache file is %{public}s, new file is %{public}s.",
+            file.c_str(), newFile.c_str());
+    }
 }
 
 bool CacheTraceLoop(const std::string &outputFileName)
@@ -1277,15 +1323,6 @@ TraceErrorCode DumpTraceInner(std::vector<std::string>& outputFiles)
             g_traceFileVec.push_back(traceFileInfo);
             outputFiles.push_back(traceFileInfo.filename);
         }
-    }
-    if (g_traceJsonParser == nullptr) {
-        g_traceJsonParser = std::make_shared<TraceJsonParser>();
-    }
-    if (!g_traceJsonParser->ParseTraceJson(TRACE_SNAPSHOT_FILE_AGE)) {
-        HILOG_WARN(LOG_CORE, "DumpTraceInner: Failed to parse TRACE_SNAPSHOT_FILE_AGE.");
-    }
-    if ((!IsRootVersion()) || g_traceJsonParser->GetSnapShotFileAge()) {
-        DelSnapshotTraceFile(SNAPSHOT_FILE_MAX_COUNT, g_traceFileVec);
     }
 
     if (outputFiles.empty()) {
