@@ -126,7 +126,11 @@ bool JsStrNumParamsFunc(napi_env& env, napi_callback_info& info, STR_NUM_PARAM_F
 {
     size_t argc = static_cast<size_t>(ARGC_TWO);
     napi_value argv[ARGC_TWO];
-    napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    napi_status status = napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    if (status != napi_ok) {
+        HILOG_ERROR(LOG_CORE, "napi_get_cb_info failed.");
+        return false;
+    }
     if (argc != ARGC_TWO) {
         HILOG_ERROR(LOG_CORE, "Wrong number of parameters.");
         return false;
@@ -146,7 +150,11 @@ static napi_value JSTraceStart(napi_env env, napi_callback_info info)
 {
     size_t argc = ARGC_THREE;
     napi_value argv[ARGC_THREE];
-    napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    napi_status status = napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    if (status != napi_ok) {
+        HILOG_ERROR(LOG_CORE, "napi_get_cb_info failed.");
+        return nullptr;
+    }
     std::string name;
     if (!ParseStringParam(env, argv[ARG_FIRST], name)) {
         return nullptr;
@@ -163,7 +171,11 @@ static napi_value JSTraceFinish(napi_env env, napi_callback_info info)
 {
     size_t argc = ARGC_TWO;
     napi_value argv[ARGC_TWO];
-    napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    napi_status status = napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    if (status != napi_ok) {
+        HILOG_ERROR(LOG_CORE, "napi_get_cb_info failed.");
+        return nullptr;
+    }
     (void)JsStrNumParamsFunc(env, info, [&env] (std::string name, napi_value& nValue) -> bool {
         int taskId = 0;
         if (!ParseInt32Param(env, nValue, taskId)) {
@@ -179,8 +191,11 @@ static napi_value JSCountTrace(napi_env env, napi_callback_info info)
 {
     size_t argc = ARGC_THREE;
     napi_value argv[ARGC_THREE];
-    napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
-
+    napi_status status = napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    if (status != napi_ok) {
+        HILOG_ERROR(LOG_CORE, "napi_get_cb_info failed.");
+        return nullptr;
+    }
     int32_t level;
     if (!ParseInt32Param(env, argv[ARG_FIRST], level)) {
         return nullptr;
@@ -204,7 +219,11 @@ static napi_value JSTraceCount(napi_env env, napi_callback_info info)
 {
     size_t argc = ARGC_TWO;
     napi_value argv[ARGC_TWO];
-    napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    napi_status status = napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    if (status != napi_ok) {
+        HILOG_ERROR(LOG_CORE, "napi_get_cb_info failed.");
+        return nullptr;
+    }
     if (argc == ARGC_TWO) {
         (void)JsStrNumParamsFunc(env, info, [&env] (std::string name, napi_value& nValue) -> bool {
             int64_t count = 0;
@@ -224,8 +243,11 @@ static napi_value JSStartSyncTrace(napi_env env, napi_callback_info info)
 {
     size_t argc = ARGC_THREE;
     napi_value argv[ARGC_THREE];
-    napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
-
+    napi_status status = napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    if (status != napi_ok) {
+        HILOG_ERROR(LOG_CORE, "napi_get_cb_info failed.");
+        return nullptr;
+    }
     int32_t level;
     if (!ParseInt32Param(env, argv[ARG_FIRST], level)) {
         return nullptr;
@@ -249,8 +271,11 @@ static napi_value JSFinishSyncTrace(napi_env env, napi_callback_info info)
 {
     size_t argc = ARGC_THREE;
     napi_value argv[ARGC_THREE];
-    napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
-
+    napi_status status = napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    if (status != napi_ok) {
+        HILOG_ERROR(LOG_CORE, "napi_get_cb_info failed.");
+        return nullptr;
+    }
     int32_t level;
     if (!ParseInt32Param(env, argv[ARG_FIRST], level)) {
         return nullptr;
@@ -264,8 +289,11 @@ static napi_value JSStartAsyncTrace(napi_env env, napi_callback_info info)
 {
     size_t argc = ARGC_FIVE;
     napi_value argv[ARGC_FIVE];
-    napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
-
+    napi_status status = napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    if (status != napi_ok) {
+        HILOG_ERROR(LOG_CORE, "napi_get_cb_info failed.");
+        return nullptr;
+    }
     int32_t level;
     if (!ParseInt32Param(env, argv[ARG_FIRST], level)) {
         return nullptr;
@@ -300,8 +328,11 @@ static napi_value JSFinishAsyncTrace(napi_env env, napi_callback_info info)
 {
     size_t argc = ARGC_THREE;
     napi_value argv[ARGC_THREE];
-    napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
-
+    napi_status status = napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    if (status != napi_ok) {
+        HILOG_ERROR(LOG_CORE, "napi_get_cb_info failed.");
+        return nullptr;
+    }
     int32_t level;
     if (!ParseInt32Param(env, argv[ARG_FIRST], level)) {
         return nullptr;
@@ -332,7 +363,11 @@ static napi_value JSIsTraceEnabled(napi_env env, napi_callback_info info)
 static napi_value TraceLevelConstructor(napi_env env, napi_callback_info info)
 {
     napi_value thisArg = nullptr;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisArg, nullptr);
+    napi_status status = napi_get_cb_info(env, info, nullptr, nullptr, &thisArg, nullptr);
+    if (status != napi_ok) {
+        HILOG_ERROR(LOG_CORE, "napi_get_cb_info failed.");
+        return nullptr;
+    }
     napi_get_global(env, nullptr);
     return thisArg;
 }
