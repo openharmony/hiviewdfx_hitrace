@@ -262,6 +262,79 @@ bool TraceJsonParser::ParseTraceJson(const uint8_t policy)
         policy, parserState_);
     return (policy & parserState_) == policy;
 }
+
+bool GetUint64FromJson(cJSON* jsonNode, const std::string& key, uint64_t& value)
+{
+    cJSON* item = cJSON_GetObjectItem(jsonNode, key.c_str());
+    if (item == nullptr) {
+        HILOG_ERROR(LOG_CORE, "GetUint64FromJson: [%{public}s] not found.", key.c_str());
+        return false;
+    }
+    if (!cJSON_IsNumber(item)) {
+        HILOG_ERROR(LOG_CORE, "GetUint64FromJson: [%{public}s] item is illegal.", key.c_str());
+        return false;
+    }
+    value = static_cast<uint64_t>(item->valueint);
+    return true;
+}
+
+bool GetIntFromJson(cJSON* jsonNode, const std::string& key, int& value)
+{
+    cJSON* item = cJSON_GetObjectItem(jsonNode, key.c_str());
+    if (item == nullptr) {
+        HILOG_ERROR(LOG_CORE, "GetIntFromJson: [%{public}s] not found.", key.c_str());
+        return false;
+    }
+    if (!cJSON_IsNumber(item)) {
+        HILOG_ERROR(LOG_CORE, "GetIntFromJson: [%{public}s] item is illegal.", key.c_str());
+        return false;
+    }
+    value = item->valueint;
+    return true;
+}
+
+ProductConfigJsonParser::ProductConfigJsonParser(const std::string& configJsonPath)
+{
+    cJSON* rootNode = ParseJsonFromFile(configJsonPath);
+    if (rootNode == nullptr) {
+        return;
+    }
+
+    GetUint64FromJson(rootNode, "record_file_kb_size", recordFileSizeKb);
+    GetUint64FromJson(rootNode, "snapshot_file_kb_size", snapshotFileSizeKb);
+    GetIntFromJson(rootNode, "default_buffer_size", defaultBufferSize);
+
+    int tRootAgeingEnable = -1;
+    if (GetIntFromJson(rootNode, "root_ageing_enable", tRootAgeingEnable)) {
+        if (tRootAgeingEnable == 0) {
+            rootAgeingEnable = ConfigStatus::DISABLE;
+        } else {
+            rootAgeingEnable = ConfigStatus::ENABLE;
+        }
+    }
+
+    cJSON_Delete(rootNode);
+}
+
+uint64_t ProductConfigJsonParser::GetRecordFileSizeKb() const
+{
+    return recordFileSizeKb;
+}
+
+uint64_t ProductConfigJsonParser::GetSnapshotFileSizeKb() const
+{
+    return snapshotFileSizeKb;
+}
+
+int ProductConfigJsonParser::GetDefaultBufferSize() const
+{
+    return defaultBufferSize;
+}
+
+ConfigStatus ProductConfigJsonParser::GetRootAgeingStatus() const
+{
+    return rootAgeingEnable;
+}
 } // namespace HiTrace
 } // namespace HiviewDFX
 } // namespace OHOS
