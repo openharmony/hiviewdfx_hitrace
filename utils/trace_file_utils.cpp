@@ -60,9 +60,9 @@ const std::string TRACE_SNAPSHOT_PREFIX = "trace_";
 const std::string TRACE_RECORDING_PREFIX = "record_trace_";
 const std::string TRACE_CACHE_PREFIX = "cache_trace_";
 std::map<TRACE_TYPE, std::string> tracePrefixMap = {
-    {TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
-    {TRACE_RECORDING, TRACE_RECORDING_PREFIX},
-    {TRACE_CACHE, TRACE_CACHE_PREFIX},
+    {TRACE_TYPE::TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
+    {TRACE_TYPE::TRACE_RECORDING, TRACE_RECORDING_PREFIX},
+    {TRACE_TYPE::TRACE_CACHE, TRACE_CACHE_PREFIX},
 };
 
 template<class T>

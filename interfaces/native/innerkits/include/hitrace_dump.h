@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Huawei Device Co., Ltd.
+ * Copyright (C) 2023-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,34 +19,13 @@
 #include <string>
 #include <vector>
 
+#include "hitrace_define.h"
+
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
 constexpr uint64_t DEFAULT_TRACE_SLICE_DURATION = 10;
 constexpr uint64_t DEFAULT_TOTAL_CACHE_FILE_SIZE = 800;
-
-enum TraceErrorCode : uint8_t {
-    SUCCESS = 0,
-    TRACE_NOT_SUPPORTED = 1,
-    TRACE_IS_OCCUPIED = 2,
-    TAG_ERROR = 3,
-    FILE_ERROR = 4,
-    WRITE_TRACE_INFO_ERROR = 5,
-    WRONG_TRACE_MODE = 6,
-    OUT_OF_TIME = 7,
-    FORK_ERROR = 8,
-    EPOLL_WAIT_ERROR = 9,
-    PIPE_CREATE_ERROR = 10,
-    INVALID_MAX_DURATION = 11,
-    UNSET = 255,
-};
-
-enum TraceMode : uint8_t {
-    CLOSE = 0,
-    OPEN = 1 << 0,
-    RECORD = 1 << 1,
-    CACHE = 1 << 2,
-};
 
 struct TraceRetInfo {
     TraceErrorCode errorCode;

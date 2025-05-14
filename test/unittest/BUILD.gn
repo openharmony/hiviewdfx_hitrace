@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Copyright (c) 2024-2025 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -309,6 +309,62 @@ ohos_unittest("HitraceMeterFfiTest") {
     "init:libbegetutil",
     "napi:cj_bind_ffi",
   ]
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+}
+
+ohos_unittest("HitraceSourceTest") {
+  module_out_path = module_output_path
+
+  include_dirs = [
+    "$hitrace_common_path",
+    "$hitrace_frameworks_path/trace_source",
+    "$hitrace_interfaces_path/native/innerkits/include",
+    "$hitrace_utils_path",
+  ]
+
+  sources = [ "trace_source/hitrace_source_test.cpp" ]
+
+  deps = [
+    "$hitrace_frameworks_path/trace_source:trace_source",
+    "$hitrace_interfaces_path/native/innerkits:hitrace_dump",
+    "$hitrace_utils_path:hitrace_common_utils",
+    "$hitrace_utils_path:hitrace_json_parser",
+  ]
+
+  external_deps = [ "googletest:gtest_main" ]
+}
+
+ohos_unittest("HitraceDumpExecutorTest") {
+  module_out_path = module_output_path
+
+  cflags = [ "-DHITRACE_UNITTEST" ]
+
+  include_dirs = [
+    "$hitrace_common_path",
+    "$hitrace_frameworks_path/trace_dump_executor",
+    "$hitrace_frameworks_path/trace_source",
+    "$hitrace_interfaces_path/native/innerkits/include",
+    "$hitrace_utils_path",
+  ]
+
+  sources = [
+    "$hitrace_frameworks_path/trace_dump_executor/trace_dump_executor.cpp",
+    "trace_dump_executor/trace_dump_executor_test.cpp",
+  ]
+
+  deps = [
+    "$hitrace_frameworks_path/trace_source:trace_source",
+    "$hitrace_interfaces_path/native/innerkits:hitrace_dump",
+    "$hitrace_utils_path:hitrace_common_utils",
+    "$hitrace_utils_path:hitrace_file_utils",
+  ]
+
+  external_deps = [ "googletest:gtest_main" ]
+
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]
   } else {

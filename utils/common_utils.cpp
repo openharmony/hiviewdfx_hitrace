@@ -42,6 +42,7 @@ namespace Hitrace {
 namespace {
 const std::string CPUFREQ_PREFIX = "/sys/devices/system/cpu/cpu";
 const std::string CPUFREQ_AFTERFIX = "/cpufreq/scaling_cur_freq";
+constexpr int DECIMAL_SCALE = 10;
 }
 
 std::string CanonicalizeSpecPath(const char* src)
@@ -305,6 +306,33 @@ bool StringToDouble(const std::string &str, double &val)
     }
     val = num;
     return true;
+}
+
+void WriteEventFile(const std::string& srcPath, const int fd)
+{
+    uint8_t buffer[PAGE_SIZE] = {0};
+    std::string srcSpecPath = CanonicalizeSpecPath(srcPath.c_str());
+    int srcFd = open(srcSpecPath.c_str(), O_RDONLY);
+    if (srcFd < 0) {
+        HILOG_ERROR(LOG_CORE, "WriteEventFile: open %{public}s failed.", srcPath.c_str());
+        return;
+    }
+    int64_t readLen = 0;
+    do {
+        int64_t len = read(srcFd, buffer, PAGE_SIZE);
+        if (len <= 0) {
+            break;
+        }
+        ssize_t writeRet = write(fd, buffer, len);
+        if (writeRet < 0) {
+            HILOG_ERROR(LOG_CORE, "WriteEventFile: write failed, err(%{public}s)", strerror(errno));
+            break;
+        }
+        readLen += len;
+    } while (true);
+    close(srcFd);
+    HILOG_INFO(LOG_CORE, "WriteEventFile end, path: %{public}s, data size: (%{public}" PRIu64 ").",
+        srcPath.c_str(), static_cast<uint64_t>(readLen));
 }
 
 std::string GetKernelVersion()

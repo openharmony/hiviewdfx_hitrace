@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023-2024 Huawei Device Co., Ltd.
+ * Copyright (C) 2023-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -159,10 +159,6 @@ struct ChildProcessRet {
     uint64_t traceStartTime;
     uint64_t traceEndTime;
 };
-
-#ifndef PAGE_SIZE
-constexpr size_t PAGE_SIZE = 4096;
-#endif
 
 const int BUFFER_SIZE = 256 * PAGE_SIZE; // 1M
 
@@ -1183,7 +1179,7 @@ void ProcessRecordTask()
     if (g_currentTraceParams.fileSize == 0 && IsRootVersion()) {
         g_needLimitFileSize = false;
         std::string outputFileName = g_currentTraceParams.outputFile.empty() ?
-                                     GenerateTraceFileName(TRACE_RECORDING) : g_currentTraceParams.outputFile;
+            GenerateTraceFileName(TRACE_RECORDING) : g_currentTraceParams.outputFile;
         if (RecordTraceLoop(outputFileName, g_needLimitFileSize)) {
             std::lock_guard<std::mutex> lock(g_recordingOutputMutex);
             g_recordingOutput.emplace_back(outputFileName);
@@ -1392,7 +1388,7 @@ TraceErrorCode ProcessDump(TraceRetInfo& traceRetInfo)
         close(pipefd[0]);
         return TraceErrorCode::EPOLL_WAIT_ERROR;
     }
-    
+
     close(pipefd[0]);
     return HandleDumpResult(traceRetInfo, reOutPath);
 }

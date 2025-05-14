@@ -20,14 +20,11 @@
 #include <string>
 #include <vector>
 
+#include "hitrace_define.h"
+
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
-enum TRACE_TYPE : uint8_t {
-    TRACE_SNAPSHOT = 0,
-    TRACE_RECORDING = 1,
-    TRACE_CACHE = 2,
-};
 struct FileWithTime {
     std::string filename;
     time_t ctime;

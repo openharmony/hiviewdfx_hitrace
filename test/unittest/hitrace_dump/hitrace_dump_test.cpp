@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Huawei Device Co., Ltd.
+ * Copyright (C) 2023-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,6 +30,7 @@
 
 #include "common_define.h"
 #include "common_utils.h"
+#include "hitrace_define.h"
 #include "hilog/log.h"
 #include "parameters.h"
 #include "securec.h"
@@ -62,15 +63,11 @@ struct FileWithTime {
     time_t ctime;
     uint64_t fileSize;
 };
-enum TRACE_TYPE : uint8_t {
-    TRACE_SNAPSHOT = 0,
-    TRACE_RECORDING = 1,
-    TRACE_CACHE = 2,
-};
+
 std::map<TRACE_TYPE, std::string> tracePrefixMap = {
-    {TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
-    {TRACE_RECORDING, TRACE_RECORDING_PREFIX},
-    {TRACE_CACHE, TRACE_CACHE_PREFIX},
+    {TRACE_TYPE::TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
+    {TRACE_TYPE::TRACE_RECORDING, TRACE_RECORDING_PREFIX},
+    {TRACE_TYPE::TRACE_CACHE, TRACE_CACHE_PREFIX},
 };
 
 constexpr int ALIGNMENT_COEFFICIENT = 4;
@@ -161,8 +158,8 @@ void DeleteTraceFileInDir(const std::vector<FileWithTime> fileLists)
 
 void InitFileFromDir()
 {
-    DeleteTraceFileInDir(GetTraceFilesInDir(TRACE_CACHE));
-    DeleteTraceFileInDir(GetTraceFilesInDir(TRACE_SNAPSHOT));
+    DeleteTraceFileInDir(GetTraceFilesInDir(TRACE_TYPE::TRACE_CACHE));
+    DeleteTraceFileInDir(GetTraceFilesInDir(TRACE_TYPE::TRACE_SNAPSHOT));
 }
 
 static std::vector<std::string> GetRecordTrace()
