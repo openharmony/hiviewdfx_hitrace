@@ -74,7 +74,7 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest001, TestSize.Level2)
 
 /**
  * @tc.name: TraceSourceTest002
- * @tc.desc: Test TraceSourceLinux class GetTraceFileHeader function.
+ * @tc.desc: Test TraceSourceHM class GetTraceFileHeader function.
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceSourceTest, TraceSourceTest002, TestSize.Level2)
@@ -204,7 +204,7 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest009, TestSize.Level2)
 
 /**
  * @tc.name: TraceSourceTest010
- * @tc.desc: Test TraceSourceLinux class GetTraceCmdLines function.
+ * @tc.desc: Test TraceSourceHM class GetTraceCmdLines function.
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceSourceTest, TraceSourceTest010, TestSize.Level2)
@@ -234,7 +234,7 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest011, TestSize.Level2)
 
 /**
  * @tc.name: TraceSourceTest012
- * @tc.desc: Test TraceSourceLinux class GetTraceTgids function.
+ * @tc.desc: Test TraceSourceHM class GetTraceTgids function.
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceSourceTest, TraceSourceTest012, TestSize.Level2)
@@ -346,6 +346,36 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest015, TestSize.Level2)
     if (remove(newTestFile.c_str()) != 0) {
         GTEST_LOG_(ERROR) << "Delete test trace file failed.";
     }
+}
+
+/**
+ * @tc.name: TraceSourceTest016
+ * @tc.desc: Test TraceSourceLinux class GetTraceBaseInfo function.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSourceTest, TraceSourceTest016, TestSize.Level2)
+{
+    std::shared_ptr<ITraceSource> traceSource = std::make_shared<TraceSourceLinux>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+    ASSERT_TRUE(traceSource != nullptr);
+    auto baseInfo = traceSource->GetTraceBaseInfo();
+    ASSERT_TRUE(baseInfo != nullptr);
+    ASSERT_TRUE(baseInfo->WriteTraceContent());
+    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
+}
+
+/**
+ * @tc.name: TraceSourceTest017
+ * @tc.desc: Test TraceSourceHM class GetTraceBaseInfo function.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSourceTest, TraceSourceTest017, TestSize.Level2)
+{
+    std::shared_ptr<ITraceSource> traceSource = std::make_shared<TraceSourceHM>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+    ASSERT_TRUE(traceSource != nullptr);
+    auto baseInfo = traceSource->GetTraceBaseInfo();
+    ASSERT_TRUE(baseInfo != nullptr);
+    ASSERT_TRUE(baseInfo->WriteTraceContent());
+    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
 }
 } // namespace
 } // namespace Hitrace

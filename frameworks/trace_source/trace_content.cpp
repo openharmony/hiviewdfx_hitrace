@@ -43,6 +43,8 @@ const int BUFFER_SIZE = 256 * PAGE_SIZE; // 1M
 constexpr uint8_t HM_FILE_RAW_TRACE = 1;
 const int DEFAULT_FILE_SIZE = 100 * 1024;
 
+ const char* const KERNEL_VERSION = "KERNEL_VERSION: ";
+
 static int g_writeFileLimit = 0;
 static int g_outputFileSize = 0;
 
@@ -259,6 +261,33 @@ bool TraceFileHdrHM::WriteTraceContent()
         return false;
     }
     return true;
+}
+
+bool TraceBaseInfoContent::WriteTraceContent()
+{
+    struct TraceFileContentHeader contentHeader;
+    contentHeader.type = CONTENT_TYPE_BASE_INFO;
+    ssize_t writeRet = write(traceFileFd_, reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader));
+    if (writeRet < 0) {
+        HILOG_WARN(LOG_CORE, "Write BaseInfo contentHeader failed, errno: %{public}d.", errno);
+        return false;
+    }
+    auto writeLen = WriteKernelVersion();
+    UpdateTraceContentHeader(contentHeader, writeLen);
+    return true;
+}
+
+ssize_t TraceBaseInfoContent::WriteKernelVersion()
+{
+    static std::string kernelVersion = KERNEL_VERSION + GetKernelVersion() + "\n";
+    HILOG_INFO(LOG_CORE, "WriteKernelVersion : current version %{public}s", kernelVersion.c_str());
+    ssize_t writeRet = write(traceFileFd_, kernelVersion.data(), kernelVersion.size());
+    if (writeRet < 0) {
+        HILOG_WARN(LOG_CORE, "WriteKernelVersion failed, errno: %{public}d.", errno);
+        return 0;
+    } else {
+        return writeRet;
+    }
 }
 
 TraceEventFmtContent::TraceEventFmtContent(const int fd,

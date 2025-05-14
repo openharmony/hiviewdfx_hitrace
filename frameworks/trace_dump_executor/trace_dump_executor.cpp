@@ -72,6 +72,7 @@ bool SingleTraceDumpStrategy::Execute(std::shared_ptr<ITraceSource> traceSource,
 {
     // 初始化组件写入
     traceSource->GetTraceFileHeader()->WriteTraceContent();
+    traceSource->GetTraceBaseInfo()->WriteTraceContent();
     traceSource->GetTraceEventFmt()->WriteTraceContent();
 
     // 核心数据写入
@@ -93,6 +94,7 @@ bool LoopTraceDumpStrategy::Execute(std::shared_ptr<ITraceSource> traceSource, c
 {
     // 初始化组件写入
     traceSource->GetTraceFileHeader()->WriteTraceContent();
+    traceSource->GetTraceBaseInfo()->WriteTraceContent();
     traceSource->GetTraceEventFmt()->WriteTraceContent();
 
     // 循环写入核心数据
@@ -252,8 +254,8 @@ bool TraceDumpExecutor::DoDumpTraceLoop(const TraceDumpParam& param, const std::
         param.type,
         fileSizeThreshold,
         isLimited,
-        0,
-        std::numeric_limits<uint64_t>::max()
+        param.traceStartTime,
+        param.traceEndTime
     };
 
     SetTraceDumpStrategy(std::make_unique<LoopTraceDumpStrategy>());
@@ -282,8 +284,8 @@ bool TraceDumpExecutor::DumpTraceInner(const TraceDumpParam& param, const std::s
         param.type,
         0,
         false,
-        0,
-        std::numeric_limits<uint64_t>::max()
+        param.traceStartTime,
+        param.traceEndTime
     };
 
     SetTraceDumpStrategy(std::make_unique<SingleTraceDumpStrategy>());

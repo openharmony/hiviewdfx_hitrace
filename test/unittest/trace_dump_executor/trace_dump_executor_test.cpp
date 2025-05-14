@@ -67,6 +67,8 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest001, TestSize.Level2)
         "",
         0,
         0,
+        0,
+        std::numeric_limits<uint64_t>::max()
     };
     auto it = [&](const TraceDumpParam& param) {
         ASSERT_TRUE(traceDumpExecutor.StartDumpTraceLoop(param));
@@ -99,6 +101,8 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest002, TestSize.Level2)
         TEST_TRACE_TEMP_FILE,
         0,
         0,
+        0,
+        std::numeric_limits<uint64_t>::max()
     };
     auto it = [&](const TraceDumpParam& param) {
         ASSERT_TRUE(traceDumpExecutor.StartDumpTraceLoop(param));
@@ -130,6 +134,8 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest003, TestSize.Level2)
         "",
         0,
         0,
+        0,
+        std::numeric_limits<uint64_t>::max()
     };
     const string file = traceDumpExecutor.DumpTrace(param);
     GTEST_LOG_(INFO) << "snapshot file: " << file;
@@ -153,6 +159,8 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest004, TestSize.Level2)
         "",
         0,
         0,
+        0,
+        std::numeric_limits<uint64_t>::max()
     };
     auto start = std::chrono::steady_clock::now();
     auto ret = traceDumpExecutor.DumpTraceAsync(param, [&](bool success) {
@@ -183,6 +191,8 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest005, TestSize.Level2)
         "",
         0,
         0,
+        0,
+        std::numeric_limits<uint64_t>::max()
     };
     auto start = std::chrono::steady_clock::now();
     auto ret = traceDumpExecutor.DumpTraceAsync(param, [&](bool success) {

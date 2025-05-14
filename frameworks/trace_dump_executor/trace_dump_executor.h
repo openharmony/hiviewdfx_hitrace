@@ -18,6 +18,7 @@
 
 #include <atomic>
 #include <mutex>
+#include <queue>
 #include <string>
 #include <vector>
 
@@ -31,11 +32,29 @@ struct TraceDumpParam {
     std::string outputFile;
     int fileLimit;
     int fileSize;
+    uint64_t traceStartTime = 0;
+    uint64_t traceEndTime = 0;
 };
 
 struct TraceDumpRet {
     TraceErrorCode code = TraceErrorCode::UNSET;
     std::string outputFile = "";
+};
+
+enum class TraceDumpStatus {
+    START = 0,
+    READ_DONE,
+    WRITE_DONE,
+    FINISH
+};
+
+struct TraceDumpTask {
+    uint64_t time = 0;
+    uint64_t traceStartTime = 0;
+    uint64_t traceEndTime = 0;
+    int bufferIdx = -1;
+    std::string outputFile = "";
+    TraceDumpStatus status = TraceDumpStatus::START;
 };
 
 struct AsyncTraceDumpContext {
@@ -81,6 +100,10 @@ public:
     TraceDumpRet DumpTraceAsync(const TraceDumpParam& param, std::function<void(bool)> callback,
         const int timeout = 5); // 5 : 5 seconds
 
+
+    void ReadRawTraceLoop() {}
+    void WriteTraceLoop() {}
+
     TraceDumpExecutor(const TraceDumpExecutor&) = delete;
     TraceDumpExecutor(TraceDumpExecutor&&) = delete;
     TraceDumpExecutor& operator=(const TraceDumpExecutor&) = delete;
@@ -93,7 +116,9 @@ private:
     bool DumpTraceInner(const TraceDumpParam& param, const std::string& traceFile);
 
     std::vector<std::string> traceFiles_;
+    std::queue<TraceDumpTask> traceDumpTasks_;
     std::mutex traceFileMutex_;
+    std::mutex traceDumpTaskMutex_;
     std::unique_ptr<ITraceDumpStrategy> dumpStrategy_;
 };
 } // namespace Hitrace

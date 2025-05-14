@@ -44,7 +44,8 @@ enum ContentType : uint8_t {
     CONTENT_TYPE_CPU_RAW = 4,
     CONTENT_TYPE_HEADER_PAGE = 30,
     CONTENT_TYPE_PRINTK_FORMATS = 31,
-    CONTENT_TYPE_KALLSYMS = 32
+    CONTENT_TYPE_KALLSYMS = 32,
+    CONTENT_TYPE_BASE_INFO = 33
 };
 
 struct alignas(ALIGNMENT_COEFFICIENT) TraceFileContentHeader {
@@ -103,6 +104,17 @@ public:
     TraceFileHdrHM(const int fd, const std::string& tracefsPath, const std::string& traceFilePath) :
         ITraceFileHdrContent(fd, tracefsPath, traceFilePath, true) {}
     bool WriteTraceContent() override;
+};
+
+class TraceBaseInfoContent : public ITraceContent {
+public:
+    TraceBaseInfoContent(const int fd,
+        const std::string& tracefsPath, const std::string& traceFilePath, const bool ishm) :
+        ITraceContent(fd, tracefsPath, traceFilePath, ishm) {}
+    bool WriteTraceContent() override;
+
+private:
+    ssize_t WriteKernelVersion();
 };
 
 class TraceEventFmtContent : public ITraceContent {

@@ -69,6 +69,11 @@ ITraceFileHdrContent* TraceSourceLinux::GetTraceFileHeader()
     return new TraceFileHdrLinux(traceFileFd_, tracefsPath_, traceFilePath_);
 }
 
+TraceBaseInfoContent* TraceSourceLinux::GetTraceBaseInfo()
+{
+    return new TraceBaseInfoContent(traceFileFd_, tracefsPath_, traceFilePath_, false);
+}
+
 ITraceCpuRawContent* TraceSourceLinux::GetTraceCpuRaw(const TraceDumpRequest& request)
 {
     return new TraceCpuRawLinux(traceFileFd_, tracefsPath_, traceFilePath_, request);
@@ -132,6 +137,11 @@ TraceSourceHM::~TraceSourceHM()
 ITraceFileHdrContent* TraceSourceHM::GetTraceFileHeader()
 {
     return new TraceFileHdrHM(traceFileFd_, tracefsPath_, traceFilePath_);
+}
+
+TraceBaseInfoContent* TraceSourceHM::GetTraceBaseInfo()
+{
+    return new TraceBaseInfoContent(traceFileFd_, tracefsPath_, traceFilePath_, true);
 }
 
 ITraceCpuRawContent* TraceSourceHM::GetTraceCpuRaw(const TraceDumpRequest& request)

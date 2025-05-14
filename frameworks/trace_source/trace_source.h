@@ -27,6 +27,7 @@ public:
     virtual ~ITraceSource() {}
 
     virtual ITraceFileHdrContent* GetTraceFileHeader() = 0;
+    virtual TraceBaseInfoContent* GetTraceBaseInfo() = 0;
     virtual ITraceCpuRawContent* GetTraceCpuRaw(const TraceDumpRequest& request) = 0;
     virtual ITraceHeaderPageContent* GetTraceHeaderPage() = 0;
     virtual ITracePrintkFmtContent* GetTracePrintkFmt() = 0;
@@ -44,6 +45,7 @@ public:
     ~TraceSourceLinux();
 
     ITraceFileHdrContent* GetTraceFileHeader() override;
+    TraceBaseInfoContent* GetTraceBaseInfo() override;
     ITraceCpuRawContent* GetTraceCpuRaw(const TraceDumpRequest& request) override;
     ITraceHeaderPageContent* GetTraceHeaderPage() override;
     ITracePrintkFmtContent* GetTracePrintkFmt() override;
@@ -66,6 +68,7 @@ public:
     ~TraceSourceHM();
 
     ITraceFileHdrContent* GetTraceFileHeader() override;
+    TraceBaseInfoContent* GetTraceBaseInfo() override;
     ITraceCpuRawContent* GetTraceCpuRaw(const TraceDumpRequest& request) override;
     ITraceHeaderPageContent* GetTraceHeaderPage() override;
     ITracePrintkFmtContent* GetTracePrintkFmt() override;
