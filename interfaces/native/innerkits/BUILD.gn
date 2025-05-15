@@ -128,6 +128,7 @@ ohos_shared_library("hitrace_dump") {
 
   deps = [
     ":hitrace_meter",
+    ":libhitrace_option",
     "$hitrace_config_path:hitrace_tags",
     "$hitrace_utils_path:hitrace_common_utils",
     "$hitrace_utils_path:hitrace_file_utils",
@@ -179,6 +180,38 @@ ohos_shared_library("hitrace_meter") {
     "system",
     "updater",
   ]
+  subsystem_name = "hiviewdfx"
+}
+
+ohos_shared_library("libhitrace_option") {
+  branch_protector_ret = "pac_ret"
+
+  include_dirs = [ "include" ]
+  sources = [
+    "src/hitrace_option/hitrace_option.cpp"
+  ]
+
+  external_deps = [ "init:libbegetutil" ]
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+
+  output_extension = "so"
+  install_enable = true
+
+  innerapi_tags = [
+    "platformsdk",
+  ]
+
+  version_script = "hitrace.map"
+
+  install_images = [
+    "system",
+  ]
+
+  part_name = "hitrace"
   subsystem_name = "hiviewdfx"
 }
 
