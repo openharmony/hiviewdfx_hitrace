@@ -87,7 +87,8 @@ ohos_static_library("hitrace_inner") {
     external_deps += [ "hilog:libhilog" ]
   }
 
-  if (is_ohos && is_clang && enhanced_opt && hitrace_feature_enable_pgo) {
+  if (is_ohos && is_clang && enhanced_opt && hitrace_feature_enable_pgo &&
+      (target_cpu == "arm" || target_cpu == "arm64")) {
     cflags = [
       "-fprofile-use=" +
           rebase_path("${hitrace_feature_pgo_path}/libhitrace_meter.profdata",
@@ -190,7 +191,8 @@ ohos_shared_library("hitrace_meter") {
   if (is_ohos && is_clang && enhanced_opt &&
       (target_cpu == "arm64" || target_cpu == "arm")) {
     ldflags = [ "-Wl,-Bsymbolic" ]
-    if (enable_enhanced_opt && hitrace_feature_enable_pgo) {
+    if (hitrace_feature_enable_pgo && target_cpu == "arm64" &&
+        enable_enhanced_opt) {
       ldflags += [ "-Wl,--aarch64-inline-plt" ]
     }
   }
