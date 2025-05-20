@@ -560,9 +560,15 @@
         "membus": {
             "description": "Memory Bus Utilization",
             "tag_offset": 0,
-            "enable_path": [ "events/memory_bus/enable" ],
+            "enable_path": [
+                "events/memory_bus/enable",
+                "events/xacct/enable"
+            ],
             "type": 1,
-            "format_path": [ "events/memory_bus/format" ]
+            "format_path": [
+                "events/memory_bus/format",
+                "events/xacct/tracing_mark_write/format"
+            ]
         },
         "ipa": {
             "description": "thermal power allocator",
