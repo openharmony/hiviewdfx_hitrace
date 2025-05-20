@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Huawei Device Co., Ltd.
+ * Copyright (C) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -54,10 +54,10 @@ void ClearCacheTraceFileByDuration(std::vector<TraceFileInfo>& cacheFileVec);
 void ClearCacheTraceFileBySize(std::vector<TraceFileInfo>& cacheFileVec, const uint64_t& fileSizeLimit);
 bool GetFileSize(const std::string& filePath, uint64_t& fileSize);
 uint64_t GetCurUnixTimeMs();
-uint64_t ConvertPageTraceTimeToUtTimeMs(const uint64_t& pageTraceTime);
-bool RenameTraceFile(const std::string& fileName, std::string& newFileName,
-    const uint64_t& firstPageTraceTime, const uint64_t& lastPageTraceTime);
 void RefreshTraceVec(std::vector<TraceFileInfo>& traceVec, const TRACE_TYPE traceType);
+std::string RenameCacheFile(const std::string& cacheFile);
+bool SetFileInfo(const std::string outPath, const uint64_t& firstPageTimestamp,
+    const uint64_t& lastPageTimestamp, TraceFileInfo& traceFileInfo);
 } // namespace HiTrace
 } // namespace HiviewDFX
 } // namespace OHOS

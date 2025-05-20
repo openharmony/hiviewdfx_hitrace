@@ -37,13 +37,13 @@ namespace Hitrace {
 #define LOG_TAG "HitraceSource"
 #endif
 namespace {
-const int KB_PER_MB = 1024;
-const int JUDGE_FILE_EXIST = 10;  // Check whether the trace file exists every 10 times.
-const int BUFFER_SIZE = 256 * PAGE_SIZE; // 1M
+constexpr int KB_PER_MB = 1024;
+constexpr int JUDGE_FILE_EXIST = 10;  // Check whether the trace file exists every 10 times.
+constexpr int BUFFER_SIZE = 256 * PAGE_SIZE; // 1M
 constexpr uint8_t HM_FILE_RAW_TRACE = 1;
-const int DEFAULT_FILE_SIZE = 100 * 1024;
+constexpr int DEFAULT_FILE_SIZE = 100 * 1024;
 
- const char* const KERNEL_VERSION = "KERNEL_VERSION: ";
+const char* const KERNEL_VERSION = "KERNEL_VERSION: ";
 
 static int g_writeFileLimit = 0;
 static int g_outputFileSize = 0;
@@ -375,7 +375,8 @@ bool ITraceCpuRawContent::WriteTracePipeRawData(const std::string& srcPath, cons
         ReadTracePipeRawLoop(traceSourceFd_, bytes, endFlag, pageChkFailedTime, printFirstPageTime);
         DoWriteTraceData(bytes, writeLen);
         if (IsWriteFileOverflow(g_outputFileSize, writeLen,
-            request_.fileSize != 0 ? request_.fileSize * KB_PER_MB : DEFAULT_FILE_SIZE * KB_PER_MB)) {
+            request_.fileSize != 0 ? request_.fileSize : DEFAULT_FILE_SIZE * KB_PER_MB)) {
+            isOverFlow_ = true;
             break;
         }
         if (endFlag) {
@@ -460,7 +461,8 @@ bool ITraceCpuRawContent::IsWriteFileOverflow(const int outputFileSize, const ss
         return false;
     }
     if (outputFileSize + writeLen + static_cast<int>(sizeof(TraceFileContentHeader)) >= fileSizeThreshold) {
-        HILOG_ERROR(LOG_CORE, "Failed to write, current round write file size exceeds the file size limit.");
+        HILOG_ERROR(LOG_CORE, "Failed to write, current round write file size exceeds the file size limit(%{public}d).",
+            fileSizeThreshold);
         return true;
     }
     if (writeLen > INT_MAX - BUFFER_SIZE) {
@@ -468,6 +470,11 @@ bool ITraceCpuRawContent::IsWriteFileOverflow(const int outputFileSize, const ss
         return true;
     }
     return false;
+}
+
+bool ITraceCpuRawContent::IsOverFlow()
+{
+    return isOverFlow_;
 }
 
 bool TraceCpuRawLinux::WriteTraceContent()

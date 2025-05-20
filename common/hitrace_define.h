@@ -55,7 +55,7 @@ enum TraceErrorCode : uint8_t {
 
 struct TraceDumpRequest {
     TRACE_TYPE type;
-    int fileSize;
+    int fileSize; // bytes
     bool limitFileSz;
     uint64_t traceStartTime;
     uint64_t traceEndTime;

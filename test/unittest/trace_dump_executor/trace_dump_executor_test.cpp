@@ -137,15 +137,16 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest003, TestSize.Level2)
         0,
         std::numeric_limits<uint64_t>::max()
     };
-    const string file = traceDumpExecutor.DumpTrace(param);
-    GTEST_LOG_(INFO) << "snapshot file: " << file;
-    ASSERT_GT(GetFileSize(file), 0);
+    auto ret = traceDumpExecutor.DumpTrace(param);
+    ASSERT_EQ(ret.code, TraceErrorCode::SUCCESS);
+    GTEST_LOG_(INFO) << "snapshot file: " << ret.outputFile;
+    ASSERT_GT(GetFileSize(ret.outputFile), 0);
     ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
 }
 
 /**
  * @tc.name: TraceDumpExecutorTest004
- * @tc.desc: Test TraceDumpExecutor class DumpTraceAsync function in sync return scenario
+ * @tc.desc: Test TraceDumpExecutor class StartCacheTraceLoop/StopCacheTraceLoop function.
  * @tc.type: FUNC
  */
 HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest004, TestSize.Level2)
@@ -154,30 +155,34 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest004, TestSize.Level2)
     std::string appArgs = "tags:sched,binder,ohos bufferSize:102400 overwrite:1";
     ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
     TraceDumpExecutor& traceDumpExecutor = TraceDumpExecutor::GetInstance();
+    traceDumpExecutor.ClearCacheTraceFiles();
     TraceDumpParam param = {
-        TRACE_TYPE::TRACE_SNAPSHOT,
+        TRACE_TYPE::TRACE_CACHE,
         "",
-        0,
-        0,
-        0,
-        std::numeric_limits<uint64_t>::max()
+        0, // file limit
+        0, // file size
+        0, // trace start time
+        std::numeric_limits<uint64_t>::max() // trace end time
     };
-    auto start = std::chrono::steady_clock::now();
-    auto ret = traceDumpExecutor.DumpTraceAsync(param, [&](bool success) {
-        auto end = std::chrono::steady_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
-        std::cout << "Async callback received after " << duration << " seconds. result: "
-                  << std::boolalpha << success << std::endl;
-    }, 8); // 8 : 8 seconds timeout
-    GTEST_LOG_(INFO) << "code : " << static_cast<int>(ret.code) << ", tracefile: " << ret.outputFile;
-    ASSERT_EQ(ret.code, TraceErrorCode::SUCCESS);
-    ASSERT_GT(GetFileSize(ret.outputFile), 0);
+    auto it = [&](const TraceDumpParam& param) {
+        ASSERT_TRUE(traceDumpExecutor.StartCacheTraceLoop(param, 50, 5)); // 50 : total file size 5 : slice max duration
+    };
+    std::thread traceLoopThread(it, param);
+    sleep(8); // 8 : 8 seconds
+    traceDumpExecutor.StopCacheTraceLoop();
+    traceLoopThread.join();
+    auto list = traceDumpExecutor.GetCacheTraceFiles();
+    ASSERT_EQ(list.size(), 2); // 2 : should have 2 files
+    for (const auto& file : list) {
+        GTEST_LOG_(INFO) << file.filename;
+        ASSERT_GT(GetFileSize(file.filename), 0);
+    }
     ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
 }
 
 /**
  * @tc.name: TraceDumpExecutorTest005
- * @tc.desc: Test TraceDumpExecutor class DumpTraceAsync function in async return scenario
+ * @tc.desc: Test TraceDumpExecutor class StartCacheTraceLoop/StopCacheTraceLoop function.
  * @tc.type: FUNC
  */
 HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest005, TestSize.Level2)
@@ -186,26 +191,35 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest005, TestSize.Level2)
     std::string appArgs = "tags:sched,binder,ohos bufferSize:102400 overwrite:1";
     ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
     TraceDumpExecutor& traceDumpExecutor = TraceDumpExecutor::GetInstance();
+    traceDumpExecutor.ClearCacheTraceFiles();
     TraceDumpParam param = {
-        TRACE_TYPE::TRACE_SNAPSHOT,
+        TRACE_TYPE::TRACE_CACHE,
         "",
-        0,
-        0,
-        0,
-        std::numeric_limits<uint64_t>::max()
+        0, // file limit
+        0, // file size
+        0, // trace start time
+        std::numeric_limits<uint64_t>::max() // trace end time
     };
-    auto start = std::chrono::steady_clock::now();
-    auto ret = traceDumpExecutor.DumpTraceAsync(param, [&](bool success) {
-        auto end = std::chrono::steady_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
-        std::cout << "Async callback received after " << duration << " seconds. result: "
-                  << std::boolalpha << success << std::endl;
-        EXPECT_TRUE(success) << "DumpTraceAsync return false.";
-    }, 2); // 2 : 2 seconds timeout
-    GTEST_LOG_(INFO) << "code : " << static_cast<int>(ret.code) << ", tracefile: " << ret.outputFile;
-    ASSERT_EQ(ret.code, TraceErrorCode::ASYNC_DUMP);
-    std::this_thread::sleep_for(std::chrono::seconds(3)); // 3 : wait 3 seconds to check trace file size.
-    ASSERT_GT(GetFileSize(ret.outputFile), 0);
+    auto it = [&](const TraceDumpParam& param) {
+        ASSERT_TRUE(traceDumpExecutor.StartCacheTraceLoop(param, 50, 5)); // 50 : total file size 5 : slice max duration
+    };
+    std::thread traceLoopThread(it, param);
+    sleep(7);
+    auto list1 = traceDumpExecutor.GetCacheTraceFiles();
+    ASSERT_EQ(list1.size(), 2); // 2 : should have 2 files
+    for (const auto& file : list1) {
+        GTEST_LOG_(INFO) << file.filename;
+        ASSERT_GT(GetFileSize(file.filename), 0);
+    }
+    sleep(1);
+    traceDumpExecutor.StopCacheTraceLoop();
+    auto list2 = traceDumpExecutor.GetCacheTraceFiles();
+    ASSERT_EQ(list2.size(), 3); // 3 : should have 3 files
+    for (const auto& file : list2) {
+        GTEST_LOG_(INFO) << file.filename;
+        ASSERT_GT(GetFileSize(file.filename), 0);
+    }
+    traceLoopThread.join();
     ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
 }
 } // namespace

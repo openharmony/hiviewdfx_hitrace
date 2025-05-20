@@ -64,7 +64,7 @@ struct PageHeader {
 class ITraceContent {
 public:
     ITraceContent(const int fd, const std::string& tracefsPath, const std::string& traceFilePath, const bool ishm);
-    ~ITraceContent();
+    virtual ~ITraceContent();
     virtual bool WriteTraceContent() = 0;
     bool WriteTraceData(const uint8_t contentType);
     void DoWriteTraceData(const int bytes, ssize_t& writeLen);
@@ -72,6 +72,7 @@ public:
     void UpdateTraceContentHeader(TraceFileContentHeader& contentHeader, const uint32_t writeLen);
     bool IsFileExist();
     bool CheckPage(uint8_t* page);
+    std::string GetTraceFilePath() const { return traceFilePath_; }
     static int GetCurrentFileSize();
     static void ResetCurrentFileSize();
 
@@ -154,12 +155,14 @@ public:
     TraceErrorCode GetDumpStatus() { return dumpStatus_; }
     uint64_t GetFirstPageTimeStamp() { return firstPageTimeStamp_; }
     uint64_t GetLastPageTimeStamp() { return lastPageTimeStamp_; }
+    bool IsOverFlow();
 
 protected:
     TraceDumpRequest request_;
     TraceErrorCode dumpStatus_ = TraceErrorCode::UNSET;
     uint64_t firstPageTimeStamp_ = std::numeric_limits<uint64_t>::max();
     uint64_t lastPageTimeStamp_ = 0;
+    bool isOverFlow_ = false;
 };
 
 class TraceCpuRawLinux : public ITraceCpuRawContent {

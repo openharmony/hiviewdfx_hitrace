@@ -22,11 +22,15 @@
 #include <string>
 #include <vector>
 
+#include "hitrace_define.h"
+#include "trace_file_utils.h"
 #include "trace_source.h"
 
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
+constexpr int TRACE_FILE_LEN = 128;
+
 struct TraceDumpParam {
     TRACE_TYPE type;
     std::string outputFile;
@@ -38,7 +42,9 @@ struct TraceDumpParam {
 
 struct TraceDumpRet {
     TraceErrorCode code = TraceErrorCode::UNSET;
-    std::string outputFile = "";
+    char outputFile[TRACE_FILE_LEN] = { 0 };
+    uint64_t traceStartTime = 0;
+    uint64_t traceEndTime = 0;
 };
 
 enum class TraceDumpStatus {
@@ -57,33 +63,43 @@ struct TraceDumpTask {
     TraceDumpStatus status = TraceDumpStatus::START;
 };
 
-struct AsyncTraceDumpContext {
-    std::mutex mutex;
-    std::condition_variable cv;
-    bool completed = false;
-    bool timed_out = false;
-    bool result = false;
+struct TraceContentPtr {
+    std::shared_ptr<ITraceFileHdrContent> fileHdr;
+    std::shared_ptr<TraceBaseInfoContent> baseInfo;
+    std::shared_ptr<TraceEventFmtContent> eventFmt;
+    std::shared_ptr<ITraceCpuRawContent> cpuRaw;
+    std::shared_ptr<TraceCmdLinesContent> cmdLines;
+    std::shared_ptr<TraceTgidsContent> tgids;
+    std::shared_ptr<ITraceHeaderPageContent> headerPage;
+    std::shared_ptr<ITracePrintkFmtContent> printkFmt;
 };
 
 class ITraceDumpStrategy {
 public:
     virtual ~ITraceDumpStrategy() = default;
-    virtual bool Execute(std::shared_ptr<ITraceSource> traceSource, const TraceDumpRequest& request) = 0;
+    virtual TraceDumpRet Execute(std::shared_ptr<ITraceSource> traceSource, const TraceDumpRequest& request) = 0;
+    bool CreateTraceContentPtr(std::shared_ptr<ITraceSource> traceSource, const TraceDumpRequest& request,
+        TraceContentPtr& contentPtr);
 };
 
-class SingleTraceDumpStrategy : public ITraceDumpStrategy {
+class SnapshotTraceDumpStrategy : public ITraceDumpStrategy {
 public:
-    bool Execute(std::shared_ptr<ITraceSource> traceSource, const TraceDumpRequest& request) override;
+    TraceDumpRet Execute(std::shared_ptr<ITraceSource> traceSource, const TraceDumpRequest& request) override;
 };
 
-class LoopTraceDumpStrategy : public ITraceDumpStrategy {
+class RecordTraceDumpStrategy : public ITraceDumpStrategy {
 public:
-    bool Execute(std::shared_ptr<ITraceSource> traceSource, const TraceDumpRequest& request) override;
+    TraceDumpRet Execute(std::shared_ptr<ITraceSource> traceSource, const TraceDumpRequest& request) override;
+};
+
+class CacheTraceDumpStrategy : public ITraceDumpStrategy {
+public:
+    TraceDumpRet Execute(std::shared_ptr<ITraceSource> traceSource, const TraceDumpRequest& request) override;
 };
 
 class TraceDumpExecutor final {
 public:
-    TraceDumpExecutor() = default;
+    TraceDumpExecutor();
     ~TraceDumpExecutor() = default;
 
     static TraceDumpExecutor& GetInstance()
@@ -95,14 +111,20 @@ public:
     // attention: StartDumpTraceLoop and StopDumpTraceLoop should be called in different threads.
     bool StartDumpTraceLoop(const TraceDumpParam& param);
     std::vector<std::string> StopDumpTraceLoop();
+    bool StartCacheTraceLoop(const TraceDumpParam& param, uint64_t totalFileSize, uint64_t sliceMaxDuration);
+    void StopCacheTraceLoop();
 
-    std::string DumpTrace(const TraceDumpParam& param);
-    TraceDumpRet DumpTraceAsync(const TraceDumpParam& param, std::function<void(bool)> callback,
-        const int timeout = 5); // 5 : 5 seconds
+    TraceDumpRet DumpTrace(const TraceDumpParam& param);
 
-
+    // todo: for async trace dump
     void ReadRawTraceLoop() {}
     void WriteTraceLoop() {}
+
+    std::vector<TraceFileInfo> GetCacheTraceFiles();
+
+#ifdef HITRACE_UNITTEST
+    void ClearCacheTraceFiles();
+#endif
 
     TraceDumpExecutor(const TraceDumpExecutor&) = delete;
     TraceDumpExecutor(TraceDumpExecutor&&) = delete;
@@ -111,12 +133,13 @@ public:
 
 private:
     void SetTraceDumpStrategy(std::unique_ptr<ITraceDumpStrategy> strategy);
-    bool ExecuteDumpTrace(std::shared_ptr<ITraceSource> traceSource, const TraceDumpRequest& request);
+    TraceDumpRet ExecuteDumpTrace(std::shared_ptr<ITraceSource> traceSource, const TraceDumpRequest& request);
     bool DoDumpTraceLoop(const TraceDumpParam& param, const std::string& traceFile, bool isLimited);
-    bool DumpTraceInner(const TraceDumpParam& param, const std::string& traceFile);
+    TraceDumpRet DumpTraceInner(const TraceDumpParam& param, const std::string& traceFile);
 
-    std::vector<std::string> traceFiles_;
-    std::queue<TraceDumpTask> traceDumpTasks_;
+    std::string tracefsDir_ = "";
+    std::vector<TraceFileInfo> traceFiles_; // for cache
+    std::queue<TraceDumpTask> traceDumpTaskQueue_;
     std::mutex traceFileMutex_;
     std::mutex traceDumpTaskMutex_;
     std::unique_ptr<ITraceDumpStrategy> dumpStrategy_;

@@ -64,44 +64,44 @@ TraceSourceLinux::~TraceSourceLinux()
     }
 }
 
-ITraceFileHdrContent* TraceSourceLinux::GetTraceFileHeader()
+std::shared_ptr<ITraceFileHdrContent> TraceSourceLinux::GetTraceFileHeader()
 {
-    return new TraceFileHdrLinux(traceFileFd_, tracefsPath_, traceFilePath_);
+    return std::make_shared<TraceFileHdrLinux>(traceFileFd_, tracefsPath_, traceFilePath_);
 }
 
-TraceBaseInfoContent* TraceSourceLinux::GetTraceBaseInfo()
+std::shared_ptr<TraceBaseInfoContent> TraceSourceLinux::GetTraceBaseInfo()
 {
-    return new TraceBaseInfoContent(traceFileFd_, tracefsPath_, traceFilePath_, false);
+    return std::make_shared<TraceBaseInfoContent>(traceFileFd_, tracefsPath_, traceFilePath_, false);
 }
 
-ITraceCpuRawContent* TraceSourceLinux::GetTraceCpuRaw(const TraceDumpRequest& request)
+std::shared_ptr<ITraceCpuRawContent> TraceSourceLinux::GetTraceCpuRaw(const TraceDumpRequest& request)
 {
-    return new TraceCpuRawLinux(traceFileFd_, tracefsPath_, traceFilePath_, request);
+    return std::make_shared<TraceCpuRawLinux>(traceFileFd_, tracefsPath_, traceFilePath_, request);
 }
 
-ITraceHeaderPageContent* TraceSourceLinux::GetTraceHeaderPage()
+std::shared_ptr<ITraceHeaderPageContent> TraceSourceLinux::GetTraceHeaderPage()
 {
-    return new TraceHeaderPageLinux(traceFileFd_, tracefsPath_, traceFilePath_);
+    return std::make_shared<TraceHeaderPageLinux>(traceFileFd_, tracefsPath_, traceFilePath_);
 }
 
-ITracePrintkFmtContent* TraceSourceLinux::GetTracePrintkFmt()
+std::shared_ptr<ITracePrintkFmtContent> TraceSourceLinux::GetTracePrintkFmt()
 {
-    return new TracePrintkFmtLinux(traceFileFd_, tracefsPath_, traceFilePath_);
+    return std::make_shared<TracePrintkFmtLinux>(traceFileFd_, tracefsPath_, traceFilePath_);
 }
 
-TraceEventFmtContent* TraceSourceLinux::GetTraceEventFmt()
+std::shared_ptr<TraceEventFmtContent> TraceSourceLinux::GetTraceEventFmt()
 {
-    return new TraceEventFmtContent(traceFileFd_, tracefsPath_, traceFilePath_, false);
+    return std::make_shared<TraceEventFmtContent>(traceFileFd_, tracefsPath_, traceFilePath_, false);
 }
 
-TraceCmdLinesContent* TraceSourceLinux::GetTraceCmdLines()
+std::shared_ptr<TraceCmdLinesContent> TraceSourceLinux::GetTraceCmdLines()
 {
-    return new TraceCmdLinesContent(traceFileFd_, tracefsPath_, traceFilePath_, false);
+    return std::make_shared<TraceCmdLinesContent>(traceFileFd_, tracefsPath_, traceFilePath_, false);
 }
 
-TraceTgidsContent* TraceSourceLinux::GetTraceTgids()
+std::shared_ptr<TraceTgidsContent> TraceSourceLinux::GetTraceTgids()
 {
-    return new TraceTgidsContent(traceFileFd_, tracefsPath_, traceFilePath_, false);
+    return std::make_shared<TraceTgidsContent>(traceFileFd_, tracefsPath_, traceFilePath_, false);
 }
 
 std::string TraceSourceLinux::GetTraceFilePath()
@@ -134,44 +134,44 @@ TraceSourceHM::~TraceSourceHM()
     }
 }
 
-ITraceFileHdrContent* TraceSourceHM::GetTraceFileHeader()
+std::shared_ptr<ITraceFileHdrContent> TraceSourceHM::GetTraceFileHeader()
 {
-    return new TraceFileHdrHM(traceFileFd_, tracefsPath_, traceFilePath_);
+    return std::make_shared<TraceFileHdrHM>(traceFileFd_, tracefsPath_, traceFilePath_);
 }
 
-TraceBaseInfoContent* TraceSourceHM::GetTraceBaseInfo()
+std::shared_ptr<TraceBaseInfoContent> TraceSourceHM::GetTraceBaseInfo()
 {
-    return new TraceBaseInfoContent(traceFileFd_, tracefsPath_, traceFilePath_, true);
+    return std::make_shared<TraceBaseInfoContent>(traceFileFd_, tracefsPath_, traceFilePath_, true);
 }
 
-ITraceCpuRawContent* TraceSourceHM::GetTraceCpuRaw(const TraceDumpRequest& request)
+std::shared_ptr<ITraceCpuRawContent> TraceSourceHM::GetTraceCpuRaw(const TraceDumpRequest& request)
 {
-    return new TraceCpuRawHM(traceFileFd_, tracefsPath_, traceFilePath_, request);
+    return std::make_shared<TraceCpuRawHM>(traceFileFd_, tracefsPath_, traceFilePath_, request);
 }
 
-ITraceHeaderPageContent* TraceSourceHM::GetTraceHeaderPage()
+std::shared_ptr<ITraceHeaderPageContent> TraceSourceHM::GetTraceHeaderPage()
 {
-    return new TraceHeaderPageHM(traceFileFd_, tracefsPath_, traceFilePath_);
+    return std::make_shared<TraceHeaderPageHM>(traceFileFd_, tracefsPath_, traceFilePath_);
 }
 
-ITracePrintkFmtContent* TraceSourceHM::GetTracePrintkFmt()
+std::shared_ptr<ITracePrintkFmtContent> TraceSourceHM::GetTracePrintkFmt()
 {
-    return new TracePrintkFmtHM(traceFileFd_, tracefsPath_, traceFilePath_);
+    return std::make_shared<TracePrintkFmtHM>(traceFileFd_, tracefsPath_, traceFilePath_);
 }
 
-TraceEventFmtContent* TraceSourceHM::GetTraceEventFmt()
+std::shared_ptr<TraceEventFmtContent> TraceSourceHM::GetTraceEventFmt()
 {
-    return new TraceEventFmtContent(traceFileFd_, tracefsPath_, traceFilePath_, true);
+    return std::make_shared<TraceEventFmtContent>(traceFileFd_, tracefsPath_, traceFilePath_, true);
 }
 
-TraceCmdLinesContent* TraceSourceHM::GetTraceCmdLines()
+std::shared_ptr<TraceCmdLinesContent> TraceSourceHM::GetTraceCmdLines()
 {
-    return new TraceCmdLinesContent(traceFileFd_, tracefsPath_, traceFilePath_, true);
+    return std::make_shared<TraceCmdLinesContent>(traceFileFd_, tracefsPath_, traceFilePath_, true);
 }
 
-TraceTgidsContent* TraceSourceHM::GetTraceTgids()
+std::shared_ptr<TraceTgidsContent> TraceSourceHM::GetTraceTgids()
 {
-    return new TraceTgidsContent(traceFileFd_, tracefsPath_, traceFilePath_, true);
+    return std::make_shared<TraceTgidsContent>(traceFileFd_, tracefsPath_, traceFilePath_, true);
 }
 
 std::string TraceSourceHM::GetTraceFilePath()
