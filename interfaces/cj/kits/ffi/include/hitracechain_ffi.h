@@ -17,7 +17,13 @@
 #define HITRACECHAIN_FFI_H
 
 #include "hitraceid.h"
+
+#ifndef HITRACE_UNITTEST
 #include "cj_ffi/cj_common_ffi.h"
+#else
+#define FFI_EXPORT
+#endif
+
 #include <cstdint>
 
 extern "C" {

@@ -308,7 +308,6 @@ ohos_unittest("HitraceMeterFfiTest") {
     "bounds_checking_function:libsec_shared",
     "googletest:gtest_main",
     "init:libbegetutil",
-    "napi:cj_bind_ffi",
   ]
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]
