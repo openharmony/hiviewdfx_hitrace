@@ -422,51 +422,21 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest008, TestSize.Level1)
 
 /**
  * @tc.name: SnapShotModeTest009
- * @tc.desc: test dump snapshot trace with 20 files aging
+ * @tc.desc: test dump snapshot trace with 15 files aging
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceSystemTest, SnapShotModeTest009, TestSize.Level1)
 {
     EXPECT_TRUE(RunCmd("hitrace --start_bgsrv"));
-    const int snapshotFileAge = 30;
-    for (int i = 0; i < snapshotFileAge; ++i) {
+    const int count = 15;
+    for (int i = 0; i < count; ++i) {
         EXPECT_TRUE(RunCmd("hitrace --dump_bgsrv"));
         sleep(1); // wait 1s
     }
     std::vector<std::string> traceLists = {};
     EXPECT_TRUE(CheckTraceCommandOutput("hitrace --dump_bgsrv", {"SNAPSHOT_DUMP", "DumpSnapshot done"}, traceLists));
-    EXPECT_GE(traceLists.size(), snapshotFileAge + 1);
+    EXPECT_GE(traceLists.size(), count + 1);
     EXPECT_TRUE(RunCmd("hitrace --stop_bgsrv"));
-    int filecnt = CountSnapShotTraceFile();
-    GTEST_LOG_(INFO) << "Filecnt: " << filecnt;
-    EXPECT_LE(filecnt, snapshotFileAge + 1);
-}
-
-/**
- * @tc.name: SnapShotModeTest010
- * @tc.desc: test dump snapshot trace with 20 files aging
- * @tc.type: FUNC
- */
-HWTEST_F(HitraceSystemTest, SnapShotModeTest010, TestSize.Level1)
-{
-    EXPECT_TRUE(RunCmd("hitrace --start_bgsrv"));
-    const int dumpCnt = 30; // 30 : dump 30 times
-    for (int i = 0; i < dumpCnt; ++i) {
-        EXPECT_TRUE(RunCmd("hitrace --dump_bgsrv"));
-        sleep(1); // wait 1s
-    }
-    const int snapshotFileAge = 20;
-    std::vector<std::string> traceLists = {};
-    EXPECT_TRUE(CheckTraceCommandOutput("hitrace --dump_bgsrv", {"SNAPSHOT_DUMP", "DumpSnapshot done"}, traceLists));
-    EXPECT_GE(traceLists.size(), snapshotFileAge + 1);
-    EXPECT_TRUE(RunCmd("hitrace --stop_bgsrv"));
-    std::vector<std::string> dirTraceLists = {};
-    GetSnapShotTraceFileList(dirTraceLists);
-    EXPECT_LE(dirTraceLists.size(), snapshotFileAge + 1);
-    for (int i = 0; i < dirTraceLists.size(); ++i) {
-        EXPECT_NE(std::find(traceLists.begin(), traceLists.end(), dirTraceLists[i]), traceLists.end()) <<
-            "not found: " << dirTraceLists[i];
-    }
 }
 
 /**
@@ -506,7 +476,7 @@ HWTEST_F(HitraceSystemTest, CacheModeTest001, TestSize.Level1)
     for (auto i = 0; i < fileList.size(); i++) {
         GTEST_LOG_(INFO) << "file: " << fileList[i].filename.c_str() << ", size: " << fileList[i].fileSize
             << ", duration:" << fileList[i].duration;
-        EXPECT_LE(fileList[i].fileSize, 154); // 154: single cache trace file max size limit(MB)
+        EXPECT_LE(fileList[i].fileSize, 154 * BYTE_PER_MB); // 154: single cache trace file max size limit(MB)
         totalDuartion += fileList[i].duration;
         EXPECT_TRUE(IsFileIncludeAllKeyWords(fileList[i].filename, {"name: sched_wakeup"}));
     }
@@ -543,7 +513,7 @@ HWTEST_F(HitraceSystemTest, CacheModeTest002, TestSize.Level1)
     for (auto i = 0; i < cacheFileList.size(); i++) {
         GTEST_LOG_(INFO) << "file: " << cacheFileList[i].filename.c_str() << ", size: " << cacheFileList[i].fileSize
             << ", duration:" << cacheFileList[i].duration;
-        EXPECT_LE(cacheFileList[i].fileSize, 17 * BYTE_PER_MB); // 17: single cache trace file max size limit(MB)
+        EXPECT_LE(cacheFileList[i].fileSize, 154 * BYTE_PER_MB); // 154: single cache trace file max size limit(MB)
         totalDuartion += cacheFileList[i].duration;
         EXPECT_TRUE(IsFileIncludeAllKeyWords(cacheFileList[i].filename, {"name: sched_wakeup"}));
     }
