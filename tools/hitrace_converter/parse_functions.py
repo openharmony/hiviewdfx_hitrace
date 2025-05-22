@@ -813,10 +813,6 @@ def parse_tracing_mark_write(data, one_event):
     if result_str is not None:
         if result_str.startswith("E|") and result_str[-1] == "|":
             result_str = result_str[:-1]
-        elif result_str.startswith("S|") or result_str.startswith("F|") or result_str.startswith("C|"):
-            pos = result_str.rfind(' ')
-            if pos != -1:
-                result_str = result_str[:pos + 1] + "|" + result_str[pos + 1:]
     return result_str
 
 
@@ -831,6 +827,12 @@ def parse_xacct_tracing_mark_write(data, one_event):
         name = ""
     return "%c|%d|%s" % (trace_type, pid, name)
 
+def parse_phase_task_delta(data, one_event):
+    name = parse_bytes_to_str(one_event["fields"]["name[16]"])
+    tid = parse_int_field(one_event, "tid", False)
+    delta_exec = parse_int_field(one_event, "delta_exec", False)
+    info = parse_bytes_to_str(one_event["fields"]["info[256]"])
+    return "comm=%s tid=%d delta_exec=%d deltas={%s}" % (name, tid, delta_exec, info)
 
 PRINT_FMT_IRQ_HANDLER_ENTRY = '"irq=%d name=%s", REC->irq, ((char *)((void *)((char *)REC + (REC->__data_loc_name & 0xffff))))'
 PRINT_FMT_IRQ_HANDLER_EXIT = '"irq=%d ret=%s", REC->irq, REC->ret ? "handled" : "unhandled"'
@@ -897,6 +899,7 @@ PRINT_FMT_THERMAL_POWER_ALLOCATOR = '"thermal_zone_id=%d req_power={%s} total_re
 PRINT_FMT_PRINT = '"%ps: %s", (void *)REC->ip, REC->buf'
 PRINT_FMT_TRACING_MARK_WRITE = '"%s", ((void *)((char *)REC + (REC->__data_loc_buffer & 0xffff)))'
 PRINT_FMT_XACCT_TRACING_MARK_WRITE = '"%c|%d|%s", "EB"[REC->start], REC->pid, REC->start ? REC->name : ""'
+PRINT_FMT_PHASE_TASK_DELTA = '"comm=%s tid=%d delta_exec=%llu deltas={%s}", REC->name, REC->tid, REC->delta_exec, REC->info'
 
 print_fmt_func_map = {
 PRINT_FMT_IRQ_HANDLER_ENTRY: parse_irq_handler_entry,
@@ -963,5 +966,6 @@ PRINT_FMT_THERMAL_POWER_ALLOCATOR_PID: parse_thermal_power_allocator_pid,
 PRINT_FMT_THERMAL_POWER_ALLOCATOR: parse_thermal_power_allocator,
 PRINT_FMT_PRINT: parse_print,
 PRINT_FMT_TRACING_MARK_WRITE: parse_tracing_mark_write,
-PRINT_FMT_XACCT_TRACING_MARK_WRITE: parse_xacct_tracing_mark_write
+PRINT_FMT_XACCT_TRACING_MARK_WRITE: parse_xacct_tracing_mark_write,
+PRINT_FMT_PHASE_TASK_DELTA: parse_phase_task_delta
 }
