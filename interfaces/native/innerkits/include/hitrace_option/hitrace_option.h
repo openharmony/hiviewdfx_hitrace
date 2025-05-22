@@ -16,6 +16,10 @@
 #ifndef HITRACE_OPTION_H
 #define HITRACE_OPTION_H
 
+#ifndef __cplusplus
+#include <sys/types.h>
+void FilterAppTrace(const char* app, pid_t pid);
+#else
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -38,8 +42,13 @@ int32_t ClearFilterPid();
 
 void FilterAppTrace(const std::string& app, pid_t pid);
 
+extern "C" {
+void FilterAppTrace(const char* app, pid_t pid);
+}
+
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS
+#endif // __cplusplus
 
 #endif // HITRACE_OPTION_H

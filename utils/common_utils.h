@@ -61,6 +61,9 @@ bool StringToDouble(const std::string &str, double &val);
 
 constexpr int DECIMAL_SCALE = 10;
 std::string GetKernelVersion();
+
+uint64_t GetRemainingSpace(const std::string& path);
+
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS

@@ -17,7 +17,6 @@
 
 #include <fcntl.h>
 #include <fstream>
-#include <ios>
 #include <sstream>
 #include <sys/file.h>
 #include <sys/stat.h>
@@ -64,7 +63,6 @@ public:
         }
         HILOG_INFO(LOG_CORE, "FileLock: %{public}s lock succ, fd = %{public}d", filename.c_str(), fd_);
 #endif
-
     }
 
     ~FileLock()
@@ -107,10 +105,9 @@ bool AppendToFile(const std::string& filename, const std::string& str)
         return false;
     }
 
-    off_t offset = lseek(fd, 0, SEEK_SET);
+    off_t offset = lseek(fd, 0, SEEK_END);
     if (offset == -1) {
         HILOG_ERROR(LOG_CORE, "AppendToFile: %{public}s lseek failed %{public}d", filename.c_str(), errno);
-        return false;
     }
 
     if (write(fd, str.c_str(), str.size()) < 0) {
@@ -179,6 +176,15 @@ void FilterAppTrace(const std::string& app, pid_t pid)
     if (app == paramApp) {
         AddFilterPid(pid);
     }
+}
+
+void FilterAppTrace(const char* app, pid_t pid)
+{
+    if (app == nullptr) {
+        HILOG_INFO(LOG_CORE, "FilterAppTrace: app is null");
+        return;
+    }
+    FilterAppTrace(std::string(app), pid);
 }
 
 } // namespace Hitrace

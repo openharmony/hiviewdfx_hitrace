@@ -90,6 +90,7 @@
         "FinishAsyncTraceExCwrapper";
         "CountTraceExCwrapper";
         "IsTagEnabledCwrapper";
+        "FilterAppTrace";
     };
   local:
     *;

@@ -183,10 +183,18 @@ ohos_shared_library("hitrace_meter") {
   subsystem_name = "hiviewdfx"
 }
 
+config("libhitrace_option_config") {
+  visibility = [ ":*" ]
+
+  include_dirs = [
+    "include"
+  ]
+}
+
 ohos_shared_library("libhitrace_option") {
   branch_protector_ret = "pac_ret"
+  public_configs = [ ":libhitrace_option_config" ]
 
-  include_dirs = [ "include" ]
   sources = [
     "src/hitrace_option/hitrace_option.cpp"
   ]

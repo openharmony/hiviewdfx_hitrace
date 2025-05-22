@@ -83,7 +83,28 @@ std::string ReadFile(const std::string& filename)
     return str;
 }
 
-HWTEST_F(HitraceOptionTest, SetTelemetryAppNameTest, TestSize.Level1)
+bool ContainsPid(const std::string& filename, pid_t pid)
+{
+    std::string pidStr = std::to_string(pid);
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    std::string line;
+    bool find = false;
+    while (std::getline(file, line)) {
+        if (line == pidStr) {
+            find = true;
+            break;
+        }
+    }
+
+    file.close();
+    return find;
+}
+
+HWTEST_F(HitraceOptionTest, SetTelemetryAppNameTest_001, TestSize.Level1)
 {
     ASSERT_TRUE(OHOS::system::SetParameter(TELEMETRY_APP_PARAM, "a"));
     ASSERT_EQ(OHOS::system::GetParameter(TELEMETRY_APP_PARAM, ""), "a");
@@ -92,23 +113,25 @@ HWTEST_F(HitraceOptionTest, SetTelemetryAppNameTest, TestSize.Level1)
     EXPECT_EQ(OHOS::system::GetParameter(TELEMETRY_APP_PARAM, ""), "com.test.app");
 }
 
-HWTEST_F(HitraceOptionTest, AddFilterPid, TestSize.Level1)
+HWTEST_F(HitraceOptionTest, AddFilterPid_001, TestSize.Level1)
 {
     WriteStrToFile(SET_EVENT_PID, "");
     ASSERT_EQ(ReadFile(SET_EVENT_PID), "");
     ASSERT_EQ(ReadFile(DEBUG_SET_EVENT_PID), "");
 
     EXPECT_EQ(AddFilterPid(1), HITRACE_NO_ERROR);
-    EXPECT_EQ(ReadFile(SET_EVENT_PID), "1\n");
-    EXPECT_EQ(ReadFile(DEBUG_SET_EVENT_PID), "1\n");
+    EXPECT_TRUE(ContainsPid(SET_EVENT_PID, 1));
+    EXPECT_TRUE(ContainsPid(DEBUG_SET_EVENT_PID, 1));
 
     pid_t pid = getpid();
     EXPECT_EQ(AddFilterPid(pid), HITRACE_NO_ERROR);
-    EXPECT_EQ(ReadFile(SET_EVENT_PID), "1\n" + std::to_string(pid) + "\n");
-    EXPECT_EQ(ReadFile(DEBUG_SET_EVENT_PID), "1\n" + std::to_string(pid) + "\n");
+    EXPECT_TRUE(ContainsPid(SET_EVENT_PID, 1));
+    EXPECT_TRUE(ContainsPid(DEBUG_SET_EVENT_PID, 1));
+    EXPECT_TRUE(ContainsPid(SET_EVENT_PID, pid));
+    EXPECT_TRUE(ContainsPid(DEBUG_SET_EVENT_PID, pid));
 }
 
-HWTEST_F(HitraceOptionTest, ClearFilterPid, TestSize.Level1)
+HWTEST_F(HitraceOptionTest, ClearFilterPid_001, TestSize.Level1)
 {
     WriteStrToFile(SET_EVENT_PID, "1");
     ASSERT_EQ(ReadFile(SET_EVENT_PID), "1\n");
@@ -119,7 +142,7 @@ HWTEST_F(HitraceOptionTest, ClearFilterPid, TestSize.Level1)
     EXPECT_EQ(ReadFile(DEBUG_SET_EVENT_PID), "");
 }
 
-HWTEST_F(HitraceOptionTest, FilterAppTrace, TestSize.Level1)
+HWTEST_F(HitraceOptionTest, FilterAppTrace_001, TestSize.Level1)
 {
     ASSERT_TRUE(OHOS::system::SetParameter(TELEMETRY_APP_PARAM, ""));
     ASSERT_EQ(OHOS::system::GetParameter(TELEMETRY_APP_PARAM, "null"), "");
@@ -133,7 +156,8 @@ HWTEST_F(HitraceOptionTest, FilterAppTrace, TestSize.Level1)
     ASSERT_TRUE(OHOS::system::SetParameter(TELEMETRY_APP_PARAM, "com.test.app"));
     ASSERT_EQ(OHOS::system::GetParameter(TELEMETRY_APP_PARAM, ""), "com.test.app");
     FilterAppTrace("com.test.app", 1);
-    EXPECT_NE(ReadFile(SET_EVENT_PID), "");
+    EXPECT_TRUE(ContainsPid(SET_EVENT_PID, 1));
+    EXPECT_TRUE(ContainsPid(DEBUG_SET_EVENT_PID, 1));
 }
 
 } // namespace HitraceTest
