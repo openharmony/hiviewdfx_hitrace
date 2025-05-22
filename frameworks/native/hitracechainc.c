@@ -98,6 +98,11 @@ HiTraceIdStruct HiTraceChainGetId(void)
     return pThreadId->id;
 }
 
+HiTraceIdStruct* HiTraceChainGetIdAddress(void)
+{
+    return &g_hiTraceId.id;
+}
+
 void HiTraceChainSetId(const HiTraceIdStruct* pId)
 {
     if (!HiTraceChainIsValid(pId)) {
