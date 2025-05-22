@@ -45,6 +45,9 @@ public:
     // trace id belong to current thread.
     static HiTraceId GetId();
 
+    // Get trace id address of current thread.
+    static HiTraceId* GetIdAddress();
+
     /**
      * @brief Set id as trace id of current thread. Do nothing if id is invalid.
      * @param id      the trace id to set.

@@ -2,6 +2,7 @@
   global:
     extern "C++" {
         "OHOS::HiviewDFX::HiTraceChain::GetId()";
+        "OHOS::HiviewDFX::HiTraceChain::GetIdAddress()";
         "OHOS::HiviewDFX::HiTraceId::IsValid() const";
         "OHOS::HiviewDFX::HiTraceId::GetChainId() const";
         "OHOS::HiviewDFX::HiTraceId::GetSpanId() const";
@@ -35,6 +36,7 @@
         "HiTraceChainBegin";
         "HiTraceChainEnd";
         "HiTraceChainGetId";
+        "HiTraceChainGetIdAddress";
         "HiTraceChainSetId";
         "HiTraceChainClearId";
         "HiTraceChainCreateSpan";

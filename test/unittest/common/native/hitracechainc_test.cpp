@@ -217,6 +217,72 @@ HWTEST_F(HiTraceChainCTest, IdTest_001, TestSize.Level1)
 }
 
 /**
+ * @tc.name: Dfx_HiTraceChainCTest_IdTest_002
+ * @tc.desc: Get, set and clear trace id by trace id pointer
+ * @tc.type: FUNC
+ * @tc.require: AR000CQVA0
+ */
+HWTEST_F(HiTraceChainCTest, IdTest_002, TestSize.Level1)
+{
+    /**
+     * @tc.steps: step1. get and validate trace id.
+     * @tc.expected: step1. trace id is invalid.
+     * @tc.steps: step2. construct trace id with chain id, span id, parent span id
+     *     and flags and set it into context, then get and validate it.
+     * @tc.expected: step2. trace id is valid with same chain id, span id, parent
+     *     span id and flags.
+     * @tc.steps: step3. construct invalid trace id and set into context, then get
+     *     and validate it.
+     * @tc.expected: step3. trace id is the same with step2.
+     * @tc.steps: step4. clear trace id, then get and validate it.
+     * @tc.expected: step4. trace id is invalid.
+     */
+    HiTraceIdStruct* pTraceId = HiTraceChainGetIdAddress();
+    EXPECT_EQ(0, HiTraceChainIsValid(pTraceId));
+    PRINT_ID(pTraceId);
+
+    // set thread id
+    constexpr uint64_t chainId = 0xABCDEF;
+    constexpr uint64_t spanId = 0x12345;
+    constexpr uint64_t parentSpanId = 0x67890;
+    constexpr int flags = HITRACE_FLAG_INCLUDE_ASYNC | HITRACE_FLAG_DONOT_CREATE_SPAN;
+    HiTraceIdStruct setId;
+    HiTraceChainInitId(&setId);
+    HiTraceChainSetChainId(&setId, chainId);
+    HiTraceChainSetFlags(&setId, flags);
+    HiTraceChainSetSpanId(&setId, spanId);
+    HiTraceChainSetParentSpanId(&setId, parentSpanId);
+    PRINT_ID(&setId);
+
+    HiTraceChainSetId(&setId);
+
+    EXPECT_EQ(1, HiTraceChainIsValid(pTraceId));
+    EXPECT_EQ(chainId, HiTraceChainGetChainId(pTraceId));
+    EXPECT_EQ(HITRACE_FLAG_INCLUDE_ASYNC | HITRACE_FLAG_DONOT_CREATE_SPAN, HiTraceChainGetFlags(pTraceId));
+    EXPECT_EQ(spanId, HiTraceChainGetSpanId(pTraceId));
+    EXPECT_EQ(parentSpanId, HiTraceChainGetParentSpanId(pTraceId));
+    PRINT_ID(pTraceId);
+
+    // set invalid id
+    HiTraceIdStruct invalidId;
+    HiTraceChainInitId(&invalidId);
+    HiTraceChainSetId(&invalidId);
+
+    EXPECT_EQ(1, HiTraceChainIsValid(pTraceId));
+    EXPECT_EQ(chainId, HiTraceChainGetChainId(pTraceId));
+    EXPECT_EQ(HITRACE_FLAG_INCLUDE_ASYNC | HITRACE_FLAG_DONOT_CREATE_SPAN, HiTraceChainGetFlags(pTraceId));
+    EXPECT_EQ(spanId, HiTraceChainGetSpanId(pTraceId));
+    EXPECT_EQ(parentSpanId, HiTraceChainGetParentSpanId(pTraceId));
+    PRINT_ID(pTraceId);
+
+    // clear thread id
+    HiTraceChainClearId();
+
+    EXPECT_EQ(0, HiTraceChainIsValid(pTraceId));
+    PRINT_ID(pTraceId);
+}
+
+/**
  * @tc.name: Dfx_HiTraceChainCTest_IntfTest_001
  * @tc.desc: Interconversion between trace id and bytes array.
  * @tc.type: FUNC
