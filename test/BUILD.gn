@@ -47,5 +47,6 @@ group("hitrace_fuzztest") {
     "fuzztest:HitraceCmdFuzzTest",
     "fuzztest:HitraceDumpFuzzTest",
     "fuzztest:HitraceMeterFuzzTest",
+    "fuzztest:HitraceOptionFuzzTest",
   ]
 }
