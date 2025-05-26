@@ -91,6 +91,18 @@ ohos_static_library("hitrace_inner") {
     external_deps += [ "hilog:libhilog" ]
   }
 
+  if (is_ohos && is_clang && enhanced_opt && hitrace_feature_enable_pgo &&
+      (target_cpu == "arm" || target_cpu == "arm64")) {
+    cflags = [
+      "-fprofile-use=" +
+          rebase_path("${hitrace_feature_pgo_path}/libhitrace_meter.profdata",
+                      root_build_dir),
+      "-Wno-error=backend-plugin",
+      "-Wno-profile-instr-out-of-date",
+      "-Wno-profile-instr-unprofiled",
+    ]
+  }
+
   part_name = "hitrace"
   subsystem_name = "hiviewdfx"
 }
@@ -133,6 +145,7 @@ ohos_shared_library("hitrace_dump") {
 
   deps = [
     ":hitrace_meter",
+    ":libhitrace_option",
     "$hitrace_config_path:hitrace_tags",
     "$hitrace_utils_path:hitrace_common_utils",
     "$hitrace_utils_path:hitrace_file_utils",
@@ -185,6 +198,55 @@ ohos_shared_library("hitrace_meter") {
     "system",
     "updater",
   ]
+  subsystem_name = "hiviewdfx"
+
+  if (is_ohos && is_clang && enhanced_opt &&
+      (target_cpu == "arm64" || target_cpu == "arm")) {
+    ldflags = [ "-Wl,-Bsymbolic" ]
+    if (hitrace_feature_enable_pgo && target_cpu == "arm64" &&
+        enable_enhanced_opt) {
+      ldflags += [ "-Wl,--aarch64-inline-plt" ]
+    }
+  }
+}
+
+config("libhitrace_option_config") {
+  visibility = [ ":*" ]
+
+  include_dirs = [
+    "include"
+  ]
+}
+
+ohos_shared_library("libhitrace_option") {
+  branch_protector_ret = "pac_ret"
+  public_configs = [ ":libhitrace_option_config" ]
+
+  sources = [
+    "src/hitrace_option/hitrace_option.cpp"
+  ]
+
+  external_deps = [ "init:libbegetutil" ]
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+
+  output_extension = "so"
+  install_enable = true
+
+  innerapi_tags = [
+    "platformsdk",
+  ]
+
+  version_script = "hitrace.map"
+
+  install_images = [
+    "system",
+  ]
+
+  part_name = "hitrace"
   subsystem_name = "hiviewdfx"
 }
 

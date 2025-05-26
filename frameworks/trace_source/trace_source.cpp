@@ -23,7 +23,7 @@
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
-namespace{
+namespace {
 #ifdef LOG_DOMAIN
 #undef LOG_DOMAIN
 #define LOG_DOMAIN 0xD002D33
@@ -48,8 +48,8 @@ static bool UpdateFileFd(const std::string& traceFile, int& fd)
 }
 }
 
-TraceSourceLinux::TraceSourceLinux(const std::string& tracefsPath, const std::string& traceFilePath) :
-    tracefsPath_(tracefsPath), traceFilePath_(traceFilePath)
+TraceSourceLinux::TraceSourceLinux(const std::string& tracefsPath, const std::string& traceFilePath)
+    : tracefsPath_(tracefsPath), traceFilePath_(traceFilePath)
 {
     traceFileFd_ = open(traceFilePath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644 : -rw-r--r--
     if (traceFileFd_ < 0) {
@@ -118,8 +118,8 @@ bool TraceSourceLinux::UpdateTraceFile(const std::string& traceFilePath)
     return true;
 }
 
-TraceSourceHM::TraceSourceHM(const std::string& tracefsPath, const std::string& traceFilePath) :
-    tracefsPath_(tracefsPath), traceFilePath_(traceFilePath)
+TraceSourceHM::TraceSourceHM(const std::string& tracefsPath, const std::string& traceFilePath)
+    : tracefsPath_(tracefsPath), traceFilePath_(traceFilePath)
 {
     traceFileFd_ = open(traceFilePath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644 : -rw-r--r--
     if (traceFileFd_ < 0) {

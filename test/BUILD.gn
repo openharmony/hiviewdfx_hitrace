@@ -31,6 +31,7 @@ group("hitrace_unittest") {
     "unittest:HitraceMeterFfiTest",
     "unittest:HitraceMeterNDKTest",
     "unittest:HitraceMeterTest",
+    "unittest:HitraceOptionTest",
     "unittest:HitraceSourceTest",
     "unittest:HitraceUtilsTest",
   ]
@@ -48,5 +49,6 @@ group("hitrace_fuzztest") {
     "fuzztest:HitraceCmdFuzzTest",
     "fuzztest:HitraceDumpFuzzTest",
     "fuzztest:HitraceMeterFuzzTest",
+    "fuzztest:HitraceOptionFuzzTest",
   ]
 }

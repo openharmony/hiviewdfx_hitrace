@@ -99,6 +99,16 @@ void HitraceDumpServiceModeTest(const uint8_t* data, size_t size)
     (void)CloseTrace();
     std::cout << "trace mode : " << GetTraceMode() << std::endl;
 }
+
+void HitraceDumpTest(const uint8_t* data, size_t size)
+{
+    bool enable = 0;
+    if (size < sizeof(enable)) {
+        return;
+    }
+    StreamToValueInfo(data, enable);
+    SetTraceStatus(enable);
+}
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS
@@ -114,5 +124,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     OHOS::HiviewDFX::Hitrace::HitraceDumpCmdModeTest(data, size);
     OHOS::HiviewDFX::Hitrace::HitraceDumpCacheTest(data, size);
     OHOS::HiviewDFX::Hitrace::HitraceDumpServiceModeTest(data, size);
+    OHOS::HiviewDFX::Hitrace::HitraceDumpTest(data, size);
     return 0;
 }

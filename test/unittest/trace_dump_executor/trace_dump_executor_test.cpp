@@ -30,6 +30,7 @@ namespace HiviewDFX {
 namespace Hitrace {
 namespace {
 static const char* const TEST_TRACE_TEMP_FILE = "/data/local/tmp/test_trace_file";
+constexpr int BYTE_PER_MB = 1024 * 1024;
 }
 
 class TraceDumpExecutorTest : public testing::Test {
@@ -70,7 +71,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest001, TestSize.Level2)
         0,
         std::numeric_limits<uint64_t>::max()
     };
-    auto it = [&](const TraceDumpParam& param) {
+    auto it = [&traceDumpExecutor](const TraceDumpParam& param) {
         ASSERT_TRUE(traceDumpExecutor.StartDumpTraceLoop(param));
     };
     std::thread traceLoopThread(it, param);
@@ -104,7 +105,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest002, TestSize.Level2)
         0,
         std::numeric_limits<uint64_t>::max()
     };
-    auto it = [&](const TraceDumpParam& param) {
+    auto it = [&traceDumpExecutor](const TraceDumpParam& param) {
         ASSERT_TRUE(traceDumpExecutor.StartDumpTraceLoop(param));
     };
     std::thread traceLoopThread(it, param);
@@ -164,8 +165,8 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest004, TestSize.Level2)
         0, // trace start time
         std::numeric_limits<uint64_t>::max() // trace end time
     };
-    auto it = [&](const TraceDumpParam& param) {
-        ASSERT_TRUE(traceDumpExecutor.StartCacheTraceLoop(param, 50, 5)); // 50 : total file size 5 : slice max duration
+    auto it = [&traceDumpExecutor](const TraceDumpParam& param) {
+        ASSERT_TRUE(traceDumpExecutor.StartCacheTraceLoop(param, 50 * BYTE_PER_MB, 5)); // 50 : file size 5 : slice
     };
     std::thread traceLoopThread(it, param);
     sleep(8); // 8 : 8 seconds
@@ -200,8 +201,8 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest005, TestSize.Level2)
         0, // trace start time
         std::numeric_limits<uint64_t>::max() // trace end time
     };
-    auto it = [&](const TraceDumpParam& param) {
-        ASSERT_TRUE(traceDumpExecutor.StartCacheTraceLoop(param, 50, 5)); // 50 : total file size 5 : slice max duration
+    auto it = [&traceDumpExecutor](const TraceDumpParam& param) {
+        ASSERT_TRUE(traceDumpExecutor.StartCacheTraceLoop(param, 50 * BYTE_PER_MB, 5)); // 50 : file size  5 : slice
     };
     std::thread traceLoopThread(it, param);
     sleep(7);

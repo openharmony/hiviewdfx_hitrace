@@ -30,4 +30,6 @@ declare_args() {
   }
   hitrace_snapshot_file_limit = 0
   hitrace_record_file_limit = 0
+  hitrace_feature_enable_pgo = false
+  hitrace_feature_pgo_path = ""
 }

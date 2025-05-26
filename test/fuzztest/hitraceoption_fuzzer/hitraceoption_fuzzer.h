@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,20 +13,9 @@
  * limitations under the License.
  */
 
-#ifndef HITRACEMETER_FFI_H
-#define HITRACEMETER_FFI_H
+#ifndef HITRACEOPTION_FUZZER_H
+#define HITRACEOPTION_FUZZER_H
 
-#ifndef HITRACE_UNITTEST
-#include "cj_ffi/cj_common_ffi.h"
-#else
-#define FFI_EXPORT
-#endif
-#include <cstdint>
-
-extern "C" {
-    void FfiOHOSHiTraceStartAsyncTrace(const char* name, int taskId);
-    void FfiOHOSHiTraceFinishAsyncTrace(const char* name, int taskId);
-    void FfiOHOSHiTraceCountTrace(const char* name, int count);
-}
+#define FUZZ_PROJECT_NAME "hitraceoption_fuzzer"
 
 #endif

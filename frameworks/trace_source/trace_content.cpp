@@ -76,8 +76,8 @@ static void PreWriteAllTraceEventsFormat(const int fd, const std::string& tracef
 ITraceContent::ITraceContent(const int fd,
                              const std::string& tracefsPath,
                              const std::string& traceFilePath,
-                             const bool ishm) :
-    traceFileFd_(fd), tracefsPath_(tracefsPath), traceFilePath_(traceFilePath), isHm_(ishm)
+                             const bool ishm)
+    : traceFileFd_(fd), tracefsPath_(tracefsPath), traceFilePath_(traceFilePath), isHm_(ishm)
 {
     traceSourceFd_ = -1;
 }
@@ -121,7 +121,7 @@ bool ITraceContent::WriteTraceData(const uint8_t contentType)
                 pageChkFailedTime++;
             }
             bytes += readBytes;
-            if (pageChkFailedTime >= 2) {
+            if (pageChkFailedTime >= 2) { // 2 : check failed times threshold
                 endFlag = true;
                 break;
             }
@@ -197,7 +197,7 @@ bool ITraceContent::CheckPage(uint8_t* page)
     }
     const int pageThreshold = PAGE_SIZE / 2; // pageThreshold = 2kB
     PageHeader *pageHeader = reinterpret_cast<PageHeader*>(&page);
-    if (pageHeader->size < static_cast<uint64_t>(pageThreshold)) { // attention: why ?
+    if (pageHeader->size < static_cast<uint64_t>(pageThreshold)) {
         return false;
     }
     return true;
@@ -251,8 +251,8 @@ bool TraceFileHdrHM::WriteTraceContent()
 {
     TraceFileHeader header;
     if (!InitTraceFileHdr(header)) {
-       return false;
-   }
+        return false;
+    }
     header.fileType = HM_FILE_RAW_TRACE;
     ssize_t writeRet = TEMP_FAILURE_RETRY(write(traceFileFd_, reinterpret_cast<char*>(&header), sizeof(header)));
     if (writeRet < 0) {
@@ -293,8 +293,8 @@ ssize_t TraceBaseInfoContent::WriteKernelVersion()
 TraceEventFmtContent::TraceEventFmtContent(const int fd,
                                            const std::string& tracefsPath,
                                            const std::string& traceFilePath,
-                                           const bool ishm) :
-    ITraceContent(fd, tracefsPath, traceFilePath, ishm)
+                                           const bool ishm)
+    : ITraceContent(fd, tracefsPath, traceFilePath, ishm)
 {
     const std::string savedEventsFormatPath = TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT;
     bool hasPreWrotten = true;
@@ -320,8 +320,8 @@ bool TraceEventFmtContent::WriteTraceContent()
 TraceCmdLinesContent::TraceCmdLinesContent(const int fd,
                                            const std::string& tracefsPath,
                                            const std::string& traceFilePath,
-                                           const bool ishm) :
-    ITraceContent(fd, tracefsPath, traceFilePath, ishm)
+                                           const bool ishm)
+    : ITraceContent(fd, tracefsPath, traceFilePath, ishm)
 {
     const std::string cmdlinesPath = tracefsPath_ + "saved_cmdlines";
     traceSourceFd_ = open(cmdlinesPath.c_str(), O_RDONLY | O_NONBLOCK);
@@ -336,8 +336,8 @@ bool TraceCmdLinesContent::WriteTraceContent()
 }
 
 TraceTgidsContent::TraceTgidsContent(const int fd, const std::string& tracefsPath, const std::string& traceFilePath,
-                                     const bool ishm) :
-    ITraceContent(fd, tracefsPath, traceFilePath, ishm)
+                                     const bool ishm)
+    : ITraceContent(fd, tracefsPath, traceFilePath, ishm)
 {
     const std::string tgidsPath = tracefsPath_ + "saved_tgids";
     traceSourceFd_ = open(tgidsPath.c_str(), O_RDONLY | O_NONBLOCK);
@@ -431,7 +431,7 @@ void ITraceCpuRawContent::ReadTracePipeRawLoop(const int srcFd,
             pageChkFailedTime++;
         }
         bytes += readBytes;
-        if (pageChkFailedTime >= 2) {
+        if (pageChkFailedTime >= 2) { // 2 : check failed times threshold
             endFlag = true;
             break;
         }
@@ -507,8 +507,8 @@ bool TraceCpuRawHM::WriteTraceContent()
 }
 
 TraceHeaderPageLinux::TraceHeaderPageLinux(const int fd,
-                                           const std::string& tracefsPath, const std::string& traceFilePath) :
-    ITraceHeaderPageContent(fd, tracefsPath, traceFilePath, false)
+                                           const std::string& tracefsPath, const std::string& traceFilePath)
+    : ITraceHeaderPageContent(fd, tracefsPath, traceFilePath, false)
 {
     const std::string headerPagePath = tracefsPath_ + "events/header_page";
     traceSourceFd_ = open(headerPagePath.c_str(), O_RDONLY | O_NONBLOCK);
@@ -528,8 +528,8 @@ bool TraceHeaderPageHM::WriteTraceContent()
 }
 
 TracePrintkFmtLinux::TracePrintkFmtLinux(const int fd,
-                                         const std::string& tracefsPath, const std::string& traceFilePath) :
-    ITracePrintkFmtContent(fd, tracefsPath, traceFilePath, false)
+                                         const std::string& tracefsPath, const std::string& traceFilePath)
+    : ITracePrintkFmtContent(fd, tracefsPath, traceFilePath, false)
 {
     const std::string printkFormatPath = tracefsPath_ + "printk_formats";
     traceSourceFd_ = open(printkFormatPath.c_str(), O_RDONLY | O_NONBLOCK);

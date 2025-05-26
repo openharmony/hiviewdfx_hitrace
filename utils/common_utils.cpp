@@ -21,6 +21,7 @@
 #include <fstream>
 #include <fcntl.h>
 #include <sstream>
+#include <sys/statvfs.h>
 #include <sys/utsname.h>
 
 #include "common_define.h"
@@ -344,6 +345,20 @@ std::string GetKernelVersion()
         HILOG_ERROR(LOG_CORE, "GetKernelVersion failed, errno: %{public}s", strerror(errno));
         return "";
     }
+}
+
+uint64_t GetRemainingSpace(const std::string& path)
+{
+    struct statvfs fsInfo;
+
+    if (statvfs(path.c_str(), &fsInfo) != 0) {
+        HILOG_ERROR(LOG_CORE, "GetRemainingSpace: statvfs failed, errno: %{public}d", errno);
+        return UINT64_MAX;
+    }
+
+    uint64_t ret = fsInfo.f_bavail * static_cast<uint64_t>(fsInfo.f_frsize);
+    HILOG_INFO(LOG_CORE, "GetRemainingSpace: %{public}s current remaining space %{public}" PRIu64, path.c_str(), ret);
+    return ret;
 }
 } // namespace Hitrace
 } // namespace HiviewDFX

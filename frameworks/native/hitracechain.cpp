@@ -35,6 +35,11 @@ HiTraceId HiTraceChain::GetId()
     return HiTraceId(::HiTraceChainGetId());
 }
 
+HiTraceId* HiTraceChain::GetIdAddress()
+{
+    return reinterpret_cast<HiTraceId*>(::HiTraceChainGetIdAddress());
+}
+
 void HiTraceChain::SetId(const HiTraceId& id)
 {
     ::HiTraceChainSetId(&(id.id_));

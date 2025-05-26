@@ -106,6 +106,7 @@ typedef struct HiTraceIdStruct {
 HiTraceIdStruct HiTraceChainBegin(const char* name, int flags);
 void HiTraceChainEnd(const HiTraceIdStruct* pId);
 HiTraceIdStruct HiTraceChainGetId(void);
+HiTraceIdStruct* HiTraceChainGetIdAddress(void);
 void HiTraceChainSetId(const HiTraceIdStruct* pId);
 void HiTraceChainClearId(void);
 HiTraceIdStruct HiTraceChainCreateSpan(void);

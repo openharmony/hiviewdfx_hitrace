@@ -23,7 +23,6 @@
 #include <sstream>
 
 #include "common_define.h"
-#include "common_utils.h"
 #include "cJSON.h"
 #include "hilog/log.h"
 
@@ -143,9 +142,6 @@ bool ParseBaseFormatPath(cJSON* jsonNode, std::vector<std::string>& baseTraceFor
                 baseTraceFormats.push_back(formatItem->valuestring);
             }
         }
-    }
-    if (IsRootVersion()) {
-        baseTraceFormats.push_back("events/xacct/tracing_mark_write/format");
     }
     return true;
 }
@@ -302,7 +298,7 @@ ProductConfigJsonParser::ProductConfigJsonParser(const std::string& configJsonPa
 
     GetUint64FromJson(rootNode, "record_file_kb_size", recordFileSizeKb);
     GetUint64FromJson(rootNode, "snapshot_file_kb_size", snapshotFileSizeKb);
-    GetIntFromJson(rootNode, "default_buffer_size", defaultBufferSize);
+    GetIntFromJson(rootNode, "default_buffer_kb_size", defaultBufferSize);
 
     int tRootAgeingEnable = -1;
     if (GetIntFromJson(rootNode, "root_ageing_enable", tRootAgeingEnable)) {

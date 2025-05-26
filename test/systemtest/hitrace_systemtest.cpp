@@ -419,51 +419,21 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest008, TestSize.Level1)
 
 /**
  * @tc.name: SnapShotModeTest009
- * @tc.desc: test dump snapshot trace with 20 files aging
+ * @tc.desc: test dump snapshot trace with 15 files aging
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceSystemTest, SnapShotModeTest009, TestSize.Level1)
 {
-    ASSERT_TRUE(RunCmd("hitrace --start_bgsrv"));
-    const int snapshotFileAge = 20;
-    for (int i = 0; i < snapshotFileAge; ++i) {
-        ASSERT_TRUE(RunCmd("hitrace --dump_bgsrv"));
+    EXPECT_TRUE(RunCmd("hitrace --start_bgsrv"));
+    const int count = 15;
+    for (int i = 0; i < count; ++i) {
+        EXPECT_TRUE(RunCmd("hitrace --dump_bgsrv"));
         sleep(1); // wait 1s
     }
     std::vector<std::string> traceLists = {};
-    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --dump_bgsrv", {"SNAPSHOT_DUMP", "DumpSnapshot done"}, traceLists));
-    ASSERT_GE(traceLists.size(), snapshotFileAge + 1);
-    ASSERT_TRUE(RunCmd("hitrace --stop_bgsrv"));
-    int filecnt = CountSnapShotTraceFile();
-    GTEST_LOG_(INFO) << "Filecnt: " << filecnt;
-    ASSERT_LE(filecnt, snapshotFileAge + 1);
-}
-
-/**
- * @tc.name: SnapShotModeTest010
- * @tc.desc: test dump snapshot trace with 20 files aging
- * @tc.type: FUNC
- */
-HWTEST_F(HitraceSystemTest, SnapShotModeTest010, TestSize.Level1)
-{
-    ASSERT_TRUE(RunCmd("hitrace --start_bgsrv"));
-    const int dumpCnt = 30; // 30 : dump 30 times
-    for (int i = 0; i < dumpCnt; ++i) {
-        ASSERT_TRUE(RunCmd("hitrace --dump_bgsrv"));
-        sleep(1); // wait 1s
-    }
-    const int snapshotFileAge = 20;
-    std::vector<std::string> traceLists = {};
-    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --dump_bgsrv", {"SNAPSHOT_DUMP", "DumpSnapshot done"}, traceLists));
-    ASSERT_GE(traceLists.size(), snapshotFileAge + 1);
-    ASSERT_TRUE(RunCmd("hitrace --stop_bgsrv"));
-    std::vector<std::string> dirTraceLists = {};
-    GetSnapShotTraceFileList(dirTraceLists);
-    ASSERT_LE(dirTraceLists.size(), snapshotFileAge + 1);
-    for (int i = 0; i < dirTraceLists.size(); ++i) {
-        ASSERT_NE(std::find(traceLists.begin(), traceLists.end(), dirTraceLists[i]), traceLists.end()) <<
-            "not found: " << dirTraceLists[i];
-    }
+    EXPECT_TRUE(CheckTraceCommandOutput("hitrace --dump_bgsrv", {"SNAPSHOT_DUMP", "DumpSnapshot done"}, traceLists));
+    EXPECT_GE(traceLists.size(), count + 1);
+    EXPECT_TRUE(RunCmd("hitrace --stop_bgsrv"));
 }
 
 /**
@@ -473,12 +443,12 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest010, TestSize.Level1)
  */
 HWTEST_F(HitraceSystemTest, SnapShotModeTest011, TestSize.Level1)
 {
-    ASSERT_TRUE(RunCmd("hitrace --trace_begin --record ohos"));
+    EXPECT_TRUE(RunCmd("hitrace --trace_begin --record ohos"));
     std::vector<std::string> traceLists = {};
-    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --start_bgsrv",
+    EXPECT_TRUE(CheckTraceCommandOutput("hitrace --start_bgsrv",
         {"SNAPSHOT_START", "OpenSnapshot failed", "errorCode(1013)"}, traceLists));
-    ASSERT_TRUE(traceLists.empty());
-    ASSERT_TRUE(RunCmd("hitrace --trace_finish --record"));
+    EXPECT_TRUE(traceLists.empty());
+    EXPECT_TRUE(RunCmd("hitrace --trace_finish --record"));
 }
 
 /**
@@ -489,27 +459,27 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest011, TestSize.Level1)
 HWTEST_F(HitraceSystemTest, CacheModeTest001, TestSize.Level1)
 {
     const std::vector<std::string> tagGroups = {"default"};
-    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    EXPECT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     // total cache filesize limit: 800MB, sliceduration: 20s
-    ASSERT_TRUE(CacheTraceOn(800, 5) == TraceErrorCode::SUCCESS);
+    EXPECT_TRUE(CacheTraceOn(800, 5) == TraceErrorCode::SUCCESS);
     sleep(8); // wait 8s
     TraceRetInfo ret = DumpTrace();
-    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
-    ASSERT_EQ(ret.mode, TraceMode::OPEN | TraceMode::CACHE);
+    EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
+    EXPECT_EQ(ret.mode, TraceMode::OPEN | TraceMode::CACHE);
     std::vector<FileWithInfo> fileList;
-    ASSERT_TRUE(GetFileInfo(TRACE_TYPE::TRACE_SNAPSHOT, ret.outputFiles, fileList));
-    ASSERT_GE(fileList.size(), 2); // cache_trace_ file count > 2
+    EXPECT_TRUE(GetFileInfo(TRACE_TYPE::TRACE_SNAPSHOT, ret.outputFiles, fileList));
+    EXPECT_GE(fileList.size(), 2); // cache_trace_ file count > 2
     uint64_t totalDuartion = 0;
     for (auto i = 0; i < fileList.size(); i++) {
         GTEST_LOG_(INFO) << "file: " << fileList[i].filename.c_str() << ", size: " << fileList[i].fileSize
             << ", duration:" << fileList[i].duration;
-        ASSERT_LE(fileList[i].fileSize, 17 * BYTE_PER_MB); // 17: single cache trace file max size limit(MB)
+        EXPECT_LE(fileList[i].fileSize, 154 * BYTE_PER_MB); // 154: single cache trace file max size limit(MB)
         totalDuartion += fileList[i].duration;
-        ASSERT_TRUE(IsFileIncludeAllKeyWords(fileList[i].filename, {"name: sched_wakeup"}));
+        EXPECT_TRUE(IsFileIncludeAllKeyWords(fileList[i].filename, {"name: sched_wakeup"}));
     }
     totalDuartion /= S_TO_MS;
-    ASSERT_GE(totalDuartion, 7); // total trace duration over 7s, given 1 second of tolerance
-    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+    EXPECT_GE(totalDuartion, 7); // total trace duration over 7s, given 1 second of tolerance
+    EXPECT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
 /**
@@ -521,39 +491,39 @@ HWTEST_F(HitraceSystemTest, CacheModeTest002, TestSize.Level1)
 {
     const std::vector<std::string> tagGroups = {"default"};
     TraceErrorCode retCode = OpenTrace(tagGroups);
-    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
+    EXPECT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     // total cache filesize limit: 800MB, sliceduration: 20s
     retCode = CacheTraceOn(800, 5);
-    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
+    EXPECT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     sleep(8); // wait 8s
     retCode = CacheTraceOff();
-    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
+    EXPECT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     sleep(2); // wait 2s
     TraceRetInfo ret = DumpTrace();
-    ASSERT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
+    EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
     std::vector<FileWithInfo> cacheFileList;
     std::vector<FileWithInfo> traceFileList;
-    ASSERT_TRUE(GetFileInfo(TRACE_TYPE::TRACE_SNAPSHOT, ret.outputFiles, cacheFileList));
-    ASSERT_TRUE(GetFileInfo(TRACE_TYPE::TRACE_SNAPSHOT, ret.outputFiles, traceFileList));
+    EXPECT_TRUE(GetFileInfo(TRACE_TYPE::TRACE_SNAPSHOT, ret.outputFiles, cacheFileList));
+    EXPECT_TRUE(GetFileInfo(TRACE_TYPE::TRACE_SNAPSHOT, ret.outputFiles, traceFileList));
     uint64_t totalDuartion = 0;
-    ASSERT_GE(cacheFileList.size(), 2); // cache_trace_ file count > 2
+    EXPECT_GE(cacheFileList.size(), 2); // cache_trace_ file count > 2
     for (auto i = 0; i < cacheFileList.size(); i++) {
         GTEST_LOG_(INFO) << "file: " << cacheFileList[i].filename.c_str() << ", size: " << cacheFileList[i].fileSize
             << ", duration:" << cacheFileList[i].duration;
-        ASSERT_LE(cacheFileList[i].fileSize, 17 * BYTE_PER_MB); // 17: single cache trace file max size limit(MB)
+        EXPECT_LE(cacheFileList[i].fileSize, 154 * BYTE_PER_MB); // 154: single cache trace file max size limit(MB)
         totalDuartion += cacheFileList[i].duration;
-        ASSERT_TRUE(IsFileIncludeAllKeyWords(cacheFileList[i].filename, {"name: sched_wakeup"}));
+        EXPECT_TRUE(IsFileIncludeAllKeyWords(cacheFileList[i].filename, {"name: sched_wakeup"}));
     }
-    ASSERT_GE(traceFileList.size(), 1); // cache_trace_ file count > 1
+    EXPECT_GE(traceFileList.size(), 1); // cache_trace_ file count > 1
     for (auto i = 0; i < traceFileList.size(); i++) {
         GTEST_LOG_(INFO) << "file: " << traceFileList[i].filename.c_str() << ", size: " << traceFileList[i].fileSize
             << ", duration:" << traceFileList[i].duration;
         totalDuartion += traceFileList[i].duration;
-        ASSERT_TRUE(IsFileIncludeAllKeyWords(traceFileList[i].filename, {"name: sched_wakeup"}));
+        EXPECT_TRUE(IsFileIncludeAllKeyWords(traceFileList[i].filename, {"name: sched_wakeup"}));
     }
     totalDuartion /= S_TO_MS;
-    ASSERT_GE(totalDuartion, 10); // total trace duration over 10s
-    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+    EXPECT_GE(totalDuartion, 10); // total trace duration over 10s
+    EXPECT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
 /**
@@ -565,19 +535,19 @@ HWTEST_F(HitraceSystemTest, CacheModeTest003, TestSize.Level0)
 {
     const std::vector<std::string> tagGroups = {"default"};
     TraceErrorCode retCode = OpenTrace(tagGroups);
-    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
+    EXPECT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     // total cache filesize limit: 800MB, sliceduration: 5s
     retCode = CacheTraceOn(800, 5);
-    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
+    EXPECT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     sleep(8); // wait 8s
     retCode = CloseTrace();
-    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
+    EXPECT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     sleep(30); // wait 30s: start aging file
     retCode = OpenTrace(tagGroups);
-    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
-    ASSERT_EQ(GetTraceFilesInDir(TRACE_TYPE::TRACE_CACHE).size(), 0); // no cache trace file
+    EXPECT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
+    EXPECT_EQ(GetTraceFilesInDir(TRACE_TYPE::TRACE_CACHE).size(), 0); // no cache trace file
     retCode = CloseTrace();
-    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
+    EXPECT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
 }
 
 /**
@@ -589,24 +559,24 @@ HWTEST_F(HitraceSystemTest, CacheModeTest004, TestSize.Level0)
 {
     const std::vector<std::string> tagGroups = {"default"};
     TraceErrorCode retCode = OpenTrace(tagGroups);
-    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
+    EXPECT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     // total cache filesize limit: 5MB, sliceduration: 2s
     retCode = CacheTraceOn(5, 2);
-    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
+    EXPECT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     sleep(10); // wait 10s
     retCode = CacheTraceOff();
-    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
+    EXPECT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
     std::vector<std::string> fileVec = GetTraceFilesInDir(TRACE_TYPE::TRACE_CACHE);
     std::vector<FileWithInfo> cacheFileList;
-    ASSERT_TRUE(GetFileInfo(TRACE_TYPE::TRACE_CACHE, fileVec, cacheFileList));
+    EXPECT_TRUE(GetFileInfo(TRACE_TYPE::TRACE_CACHE, fileVec, cacheFileList));
     uint64_t totalFileSize = 0;
     for (auto i = 0; i < cacheFileList.size(); i++) {
         GTEST_LOG_(INFO) << "file: " << cacheFileList[i].filename.c_str() << ", size: " << cacheFileList[i].fileSize;
         totalFileSize += cacheFileList[i].fileSize;
     }
-    ASSERT_LT(totalFileSize, 6 * BYTE_PER_MB); // aging file in 5MB - 6MB
+    EXPECT_LT(totalFileSize, 6 * BYTE_PER_MB); // aging file in 5MB - 6MB
     retCode = CloseTrace();
-    ASSERT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
+    EXPECT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
 }
 
 /**

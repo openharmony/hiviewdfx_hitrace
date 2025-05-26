@@ -62,6 +62,9 @@ bool StringToDouble(const std::string &str, double &val);
 void WriteEventFile(const std::string& srcPath, const int fd);
 
 std::string GetKernelVersion();
+
+uint64_t GetRemainingSpace(const std::string& path);
+
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS

@@ -187,6 +187,62 @@ HWTEST_F(HiTraceChainCppTest, IdTest_001, TestSize.Level1)
 }
 
 /**
+ * @tc.name: Dfx_HiTraceChainCppTest_IdTest_002
+ * @tc.desc: Get, set and clear trace id by trace id pointer
+ * @tc.type: FUNC
+ * @tc.require: AR000CQV9U
+ */
+HWTEST_F(HiTraceChainCppTest, IdTest_002, TestSize.Level1)
+{
+    /**
+     * @tc.steps: step1. get and validate trace id.
+     * @tc.expected: step1. trace id is invalid.
+     * @tc.steps: step2. construct trace id with chain id, span id, parent span id
+     *     and flags and set it into context, then get and validate it.
+     * @tc.expected: step2. trace id is valid with same chain id, span id, parent
+     *     span id and flags.
+     * @tc.steps: step3. construct invalid trace id and set into context, then get
+     *     and validate it.
+     * @tc.expected: step3. trace id is the same with step2.
+     * @tc.steps: step4. clear trace id, then get and validate it.
+     * @tc.expected: step4. trace id is invalid.
+     */
+    HiTraceId* pTraceId = HiTraceChain::GetIdAddress();
+    EXPECT_EQ(0, pTraceId->IsValid());
+    /* set thread id */
+    constexpr uint64_t CHAIN_ID = 0xABCDEF;
+    constexpr uint64_t SPAN_ID = 0x12345;
+    constexpr uint64_t PARENT_SPAN_ID = 0x67890;
+
+    HiTraceId initId = HiTraceChain::GetId();
+    initId.SetChainId(CHAIN_ID);
+    initId.EnableFlag(HITRACE_FLAG_INCLUDE_ASYNC);
+    initId.EnableFlag(HITRACE_FLAG_DONOT_CREATE_SPAN);
+    initId.SetSpanId(SPAN_ID);
+    initId.SetParentSpanId(PARENT_SPAN_ID);
+
+    HiTraceChain::SetId(initId);
+
+    EXPECT_EQ(1, pTraceId->IsValid());
+    EXPECT_EQ(CHAIN_ID, pTraceId->GetChainId());
+    EXPECT_EQ(HITRACE_FLAG_INCLUDE_ASYNC | HITRACE_FLAG_DONOT_CREATE_SPAN, pTraceId->GetFlags());
+    EXPECT_EQ(SPAN_ID, pTraceId->GetSpanId());
+    EXPECT_EQ(PARENT_SPAN_ID, pTraceId->GetParentSpanId());
+
+    HiTraceId invalidId;
+    HiTraceChain::SetId(invalidId);
+
+    EXPECT_EQ(1, pTraceId->IsValid());
+    EXPECT_EQ(CHAIN_ID, pTraceId->GetChainId());
+    EXPECT_EQ(HITRACE_FLAG_INCLUDE_ASYNC | HITRACE_FLAG_DONOT_CREATE_SPAN, pTraceId->GetFlags());
+    EXPECT_EQ(SPAN_ID, pTraceId->GetSpanId());
+    EXPECT_EQ(PARENT_SPAN_ID, pTraceId->GetParentSpanId());
+
+    HiTraceChain::ClearId();
+    EXPECT_EQ(0, pTraceId->IsValid());
+}
+
+/**
  * @tc.name: Dfx_HiTraceChainCppTest_IntfTest_001
  * @tc.desc: Interconversion between trace id and bytes array.
  * @tc.type: FUNC

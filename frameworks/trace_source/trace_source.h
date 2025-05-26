@@ -44,7 +44,7 @@ class TraceSourceLinux : public ITraceSource {
 public:
     TraceSourceLinux() = delete;
     TraceSourceLinux(const std::string& tracefsPath, const std::string& traceFilePath);
-    ~TraceSourceLinux();
+    ~TraceSourceLinux() override;
 
     std::shared_ptr<ITraceFileHdrContent> GetTraceFileHeader() override;
     std::shared_ptr<TraceBaseInfoContent> GetTraceBaseInfo() override;
@@ -67,7 +67,7 @@ class TraceSourceHM : public ITraceSource {
 public:
     TraceSourceHM() = delete;
     TraceSourceHM(const std::string& tracefsPath, const std::string& traceFilePath);
-    ~TraceSourceHM();
+    ~TraceSourceHM() override;
 
     std::shared_ptr<ITraceFileHdrContent> GetTraceFileHeader() override;
     std::shared_ptr<TraceBaseInfoContent> GetTraceBaseInfo() override;

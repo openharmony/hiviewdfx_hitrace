@@ -1179,4 +1179,16 @@ HWTEST_F(HitraceDumpTest, TraceFilesTableTest_001, TestSize.Level0)
         EXPECT_EQ(data[index].second, traceFilesTable[index].second);
     }
 }
+
+HWTEST_F(HitraceDumpTest, SetTraceStatus_001, TestSize.Level0)
+{
+    std::string traceRootPath = "";
+    ASSERT_TRUE(IsTraceMounted(traceRootPath));
+
+    EXPECT_EQ(SetTraceStatus(true), TraceErrorCode::SUCCESS);
+    EXPECT_EQ(IsTracingOn(traceRootPath), true);
+
+    EXPECT_EQ(SetTraceStatus(false), TraceErrorCode::SUCCESS);
+    EXPECT_EQ(IsTracingOn(traceRootPath), false);
+}
 } // namespace

@@ -38,7 +38,6 @@ namespace Hitrace {
 #endif
 namespace {
 constexpr int BYTE_PER_KB = 1024;
-constexpr int BYTE_PER_MB = 1024 * 1024;
 constexpr int DEFAULT_FILE_SIZE = 100 * 1024;
 constexpr uint64_t S_TO_NS = 1000000000;
 constexpr int MAX_NEW_TRACE_FILE_LIMIT = 5;
@@ -90,6 +89,22 @@ bool IsGenerateNewFile(std::shared_ptr<ITraceSource> traceSource, const TRACE_TY
     count++;
     traceSource->UpdateTraceFile(GenerateTraceFileName(traceType));
     return true;
+}
+
+void PreTraceContentDump(const TraceContentPtr& traceContentPtr)
+{
+    traceContentPtr.fileHdr->ResetCurrentFileSize();
+    traceContentPtr.fileHdr->WriteTraceContent();
+    traceContentPtr.baseInfo->WriteTraceContent();
+    traceContentPtr.eventFmt->WriteTraceContent();
+}
+
+void AfterTraceContentDump(const TraceContentPtr& traceContentPtr)
+{
+    traceContentPtr.cmdLines->WriteTraceContent();
+    traceContentPtr.tgids->WriteTraceContent();
+    traceContentPtr.headerPage->WriteTraceContent();
+    traceContentPtr.printkFmt->WriteTraceContent();
 }
 }
 
@@ -147,17 +162,11 @@ TraceDumpRet SnapshotTraceDumpStrategy::Execute(std::shared_ptr<ITraceSource> tr
         HILOG_ERROR(LOG_CORE, "SnapshotTraceDumpStrategy: CreateTraceContentPtr failed.");
         return {TraceErrorCode::WRITE_TRACE_INFO_ERROR, "", 0, 0};
     }
-    traceContentPtr.fileHdr->ResetCurrentFileSize();
-    traceContentPtr.fileHdr->WriteTraceContent();
-    traceContentPtr.baseInfo->WriteTraceContent();
-    traceContentPtr.eventFmt->WriteTraceContent();
+    PreTraceContentDump(traceContentPtr);
     if (!traceContentPtr.cpuRaw->WriteTraceContent()) {
         return {traceContentPtr.cpuRaw->GetDumpStatus(), "", 0, 0};
     }
-    traceContentPtr.cmdLines->WriteTraceContent();
-    traceContentPtr.tgids->WriteTraceContent();
-    traceContentPtr.headerPage->WriteTraceContent();
-    traceContentPtr.printkFmt->WriteTraceContent();
+    AfterTraceContentDump(traceContentPtr);
 
     auto traceFile = traceContentPtr.cpuRaw->GetTraceFilePath();
     TraceDumpRet ret = {
@@ -186,10 +195,7 @@ TraceDumpRet RecordTraceDumpStrategy::Execute(std::shared_ptr<ITraceSource> trac
     uint64_t traceStartTime = 0;
     uint64_t traceEndTime = 0;
     do {
-        traceContentPtr.fileHdr->ResetCurrentFileSize();
-        traceContentPtr.fileHdr->WriteTraceContent();
-        traceContentPtr.baseInfo->WriteTraceContent();
-        traceContentPtr.eventFmt->WriteTraceContent();
+        PreTraceContentDump(traceContentPtr);
         while (g_isDumpRunning.load()) {
             sleep(1);
             auto updatedRequest = request;
@@ -208,10 +214,7 @@ TraceDumpRet RecordTraceDumpStrategy::Execute(std::shared_ptr<ITraceSource> trac
             traceStartTime = traceContentPtr.cpuRaw->GetFirstPageTimeStamp();
             traceEndTime = traceContentPtr.cpuRaw->GetLastPageTimeStamp();
         }
-        traceContentPtr.cmdLines->WriteTraceContent();
-        traceContentPtr.tgids->WriteTraceContent();
-        traceContentPtr.headerPage->WriteTraceContent();
-        traceContentPtr.printkFmt->WriteTraceContent();
+        AfterTraceContentDump(traceContentPtr);
     } while (IsGenerateNewFile(traceSource, TRACE_TYPE::TRACE_RECORDING, newFileCount));
 
     TraceDumpRet ret = {
@@ -239,10 +242,7 @@ TraceDumpRet CacheTraceDumpStrategy::Execute(std::shared_ptr<ITraceSource> trace
     uint64_t traceEndTime = 0;
     uint64_t sliceDuration = 0;
     do {
-        traceContentPtr.fileHdr->ResetCurrentFileSize();
-        traceContentPtr.fileHdr->WriteTraceContent();
-        traceContentPtr.baseInfo->WriteTraceContent();
-        traceContentPtr.eventFmt->WriteTraceContent();
+        PreTraceContentDump(traceContentPtr);
         while (g_isDumpRunning.load()) {
             struct timespec bts = {0, 0};
             clock_gettime(CLOCK_BOOTTIME, &bts);
@@ -265,12 +265,8 @@ TraceDumpRet CacheTraceDumpStrategy::Execute(std::shared_ptr<ITraceSource> trace
                 break;
             }
         }
-        traceContentPtr.cmdLines->WriteTraceContent();
-        traceContentPtr.tgids->WriteTraceContent();
-        traceContentPtr.headerPage->WriteTraceContent();
-        traceContentPtr.printkFmt->WriteTraceContent();
+        AfterTraceContentDump(traceContentPtr);
     } while (IsGenerateNewFile(traceSource, TRACE_TYPE::TRACE_CACHE, newFileCount));
-
     TraceDumpRet ret = {
         .code = code,
         .traceStartTime = traceStartTime,
@@ -360,7 +356,7 @@ bool TraceDumpExecutor::StartCacheTraceLoop(const TraceDumpParam& param,
         auto traceFile = GenerateTraceFileName(param.type);
         if (DoDumpTraceLoop(param, traceFile, true)) {
             std::lock_guard<std::mutex> cacheLock(traceFileMutex_);
-            ClearCacheTraceFileBySize(traceFiles_, totalFileSize * BYTE_PER_MB);
+            ClearCacheTraceFileBySize(traceFiles_, totalFileSize);
             HILOG_INFO(LOG_CORE, "ProcessCacheTask: save cache file.");
         } else {
             break;
@@ -413,7 +409,8 @@ void TraceDumpExecutor::SetTraceDumpStrategy(std::unique_ptr<ITraceDumpStrategy>
     dumpStrategy_ = std::move(strategy);
 }
 
-TraceDumpRet TraceDumpExecutor::ExecuteDumpTrace(std::shared_ptr<ITraceSource> traceSource, const TraceDumpRequest& request)
+TraceDumpRet TraceDumpExecutor::ExecuteDumpTrace(std::shared_ptr<ITraceSource> traceSource,
+    const TraceDumpRequest& request)
 {
     if (dumpStrategy_ == nullptr) {
         HILOG_ERROR(LOG_CORE, "ExecuteDumpTrace : No write strategy set!");
@@ -440,20 +437,13 @@ bool TraceDumpExecutor::DoDumpTraceLoop(const TraceDumpParam& param, const std::
     } else {
         traceSource = std::make_shared<TraceSourceLinux>(tracefsDir_, traceFile);
     }
-
     if (param.type == TRACE_TYPE::TRACE_RECORDING) {
         SetTraceDumpStrategy(std::make_unique<RecordTraceDumpStrategy>());
     } else {
         SetTraceDumpStrategy(std::make_unique<CacheTraceDumpStrategy>());
     }
 
-    TraceDumpRequest request = {
-        param.type,
-        fileSizeThreshold,
-        isLimited,
-        param.traceStartTime,
-        param.traceEndTime
-    };
+    TraceDumpRequest request = { param.type, fileSizeThreshold, isLimited, param.traceStartTime, param.traceEndTime };
 
     std::lock_guard<std::mutex> lck(traceFileMutex_);
     auto dumpRet = ExecuteDumpTrace(traceSource, request);
@@ -472,7 +462,6 @@ bool TraceDumpExecutor::DoDumpTraceLoop(const TraceDumpParam& param, const std::
         tmpfilename = traceFileInfo.filename;
         traceFiles_.emplace_back(traceFileInfo);
     }
-
     if (access(tmpfilename.c_str(), F_OK) == -1) {
         HILOG_ERROR(LOG_CORE, "DoDumpTraceLoop : Trace file (%{public}s) not found.", traceFile.c_str());
         return false;

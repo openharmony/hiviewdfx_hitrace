@@ -98,8 +98,12 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest003, TestSize.Level2)
     ASSERT_TRUE(traceSource != nullptr);
     auto traceHdrPage = traceSource->GetTraceHeaderPage();
     ASSERT_TRUE(traceHdrPage != nullptr);
-    ASSERT_TRUE(traceHdrPage->WriteTraceContent());
-    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
+    if (IsHmKernel()) {
+        ASSERT_FALSE(traceHdrPage->WriteTraceContent());
+    } else {
+        ASSERT_TRUE(traceHdrPage->WriteTraceContent());
+        ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
+    }
 }
 
 /**

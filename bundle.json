@@ -19,7 +19,9 @@
       "hitrace_support_executable_file",
       "hitrace_snapshot_tracebuffer_size",
       "hitrace_snapshot_file_limit",
-      "hitrace_record_file_limit"
+      "hitrace_record_file_limit",
+      "hitrace_feature_enable_pgo",
+      "hitrace_feature_pgo_path"
     ],
     "adapted_system_type": [
       "small",
@@ -63,6 +65,16 @@
             "header_base": "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/",
             "header_files": [
               "hitrace_dump.h"
+            ]
+          }
+        },
+        {
+          "type": "so",
+          "name": "//base/hiviewdfx/hitrace/interfaces/native/innerkits:libhitrace_option",
+          "header": {
+            "header_base": "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/hitrace_option/",
+            "header_files": [
+              "hitrace_option.h"
             ]
           }
         },

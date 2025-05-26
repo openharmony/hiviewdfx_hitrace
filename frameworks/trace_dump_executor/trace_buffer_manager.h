@@ -29,7 +29,7 @@ public:
     using task_id_type = uint64_t; // 可根据实际情况调整任务ID类型
 
     // 构造函数：初始化总内存上限和块大小（默认50MB）
-    TraceBufferManager(size_t maxTotalSz, size_t blockSz = 50 * 1024 * 1024)
+    explicit TraceBufferManager(size_t maxTotalSz, size_t blockSz = 50 * 1024 * 1024)
         : maxTotalSz_(maxTotalSz),
           blockSz_(blockSz),
           curTotalSz_(0) {}

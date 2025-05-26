@@ -25,6 +25,7 @@
 #include <mutex>
 #include <set>
 #include <sys/epoll.h>
+#include <sys/file.h>
 #include <sys/prctl.h>
 #include <sys/sysinfo.h>
 #include <sys/wait.h>
@@ -35,6 +36,7 @@
 #include "common_utils.h"
 #include "dynamic_buffer.h"
 #include "hitrace_meter.h"
+#include "hitrace_option/hitrace_option.h"
 #include "hilog/log.h"
 #include "parameters.h"
 #include "securec.h"
@@ -58,6 +60,7 @@ namespace {
 struct TraceParams {
     std::vector<std::string> tags;
     std::vector<std::string> tagGroups;
+    std::vector<std::string> filterPids;
     std::string bufferSize;
     std::string clockType;
     std::string isOverWrite;
@@ -82,6 +85,7 @@ const int SNAPSHOT_FILE_MAX_COUNT = SNAPSHOT_FILE_LIMIT;
 const int SNAPSHOT_FILE_MAX_COUNT = 20;
 #endif
 constexpr int DEFAULT_FULL_TRACE_LENGTH = 30;
+constexpr uint64_t SNAPSHOT_MIN_REMAINING_SPACE = 300 * 1024 * 1024;     // 300M
 
 std::mutex g_traceMutex;
 bool g_serviceThreadIsStart = false;
@@ -123,6 +127,8 @@ int GetDefaultBufferSize()
 
     return hmDefaultBufferSize;
 }
+
+const std::string TELEMETRY_APP_PARAM = "debug.hitrace.telemetry.app";
 
 bool IsTraceOpen()
 {
@@ -207,14 +213,14 @@ bool WriteStrToFile(const std::string& filename, const std::string& str)
     return WriteStrToFileInner(g_traceRootPath + filename, str);
 }
 
-void SetTraceNodeStatus(const std::string &path, bool enabled)
+bool SetTraceNodeStatus(const std::string &path, bool enabled)
 {
-    WriteStrToFile(path, enabled ? "1" : "0");
+    return WriteStrToFile(path, enabled ? "1" : "0");
 }
 
-void TruncateFile()
+void TruncateFile(const std::string& path)
 {
-    int fd = creat((g_traceRootPath + TRACE_NODE).c_str(), 0);
+    int fd = creat((g_traceRootPath + path).c_str(), 0);
     if (fd == -1) {
         HILOG_ERROR(LOG_CORE, "TruncateFile: clear old trace failed.");
         return;
@@ -232,6 +238,21 @@ bool SetProperty(const std::string& property, const std::string& value)
         HILOG_INFO(LOG_CORE, "SetProperty: set %{public}s success.", value.c_str());
     }
     return result;
+}
+
+void ClearFilterParam()
+{
+    bool ok = true;
+    if (!OHOS::system::SetParameter(TELEMETRY_APP_PARAM, "")) {
+        HILOG_ERROR(LOG_CORE, "ClearFilterParam: clear param fail");
+        ok = false;
+    }
+    if (ClearFilterPid() != HITRACE_NO_ERROR) {
+        HILOG_ERROR(LOG_CORE, "ClearFilterParam: clear pid fail");
+        ok = false;
+    }
+
+    HILOG_INFO(LOG_CORE, "ClearFilterParam %{public}d.", ok);
 }
 
 // close all trace node
@@ -353,9 +374,13 @@ bool SetTraceSetting(const TraceParams& traceParams, const std::map<std::string,
                      const std::map<std::string, std::vector<std::string>>& tagGroupTable,
                      std::vector<std::string>& tagFmts)
 {
+    AddFilterPids(traceParams.filterPids);
+    if (!traceParams.filterPids.empty()) {
+        TruncateFile("trace_pipe_raw");
+    }
     TraceInit(allTags);
 
-    TruncateFile();
+    TruncateFile(TRACE_NODE);
 
     SetAllTags(traceParams, allTags, tagGroupTable, tagFmts);
 
@@ -573,7 +598,8 @@ bool EpollWaitforChildProcess(pid_t& pid, int& pipefd, std::string& reOutPath)
     }
     TraceDumpRet retVal;
     read(pipefd, &retVal, sizeof(retVal));
-    HILOG_INFO(LOG_CORE, "Epoll wait read : %{public}d, outputFile: %{public}s, [%{public}" PRIu64 ", %{public}" PRIu64 "].",
+    HILOG_INFO(LOG_CORE,
+        "Epoll wait read : %{public}d, outputFile: %{public}s, [%{public}" PRIu64 ", %{public}" PRIu64 "].",
         retVal.code, retVal.outputFile, retVal.traceStartTime, retVal.traceEndTime);
     g_dumpStatus = retVal.code;
     reOutPath = retVal.outputFile;
@@ -622,6 +648,11 @@ TraceErrorCode HandleDumpResult(TraceRetInfo& traceRetInfo, std::string& reOutPa
 
 TraceErrorCode ProcessDump(TraceRetInfo& traceRetInfo)
 {
+    if (GetRemainingSpace("/data") <= SNAPSHOT_MIN_REMAINING_SPACE) {
+        HILOG_ERROR(LOG_CORE, "ProcessDump: remaining space not enough");
+        return TraceErrorCode::FILE_ERROR;
+    }
+
     int pipefd[2];
     if (pipe(pipefd) == -1) {
         HILOG_ERROR(LOG_CORE, "pipe creation error.");
@@ -865,15 +896,12 @@ void SetDestTraceTimeAndDuration(int maxDuration, const uint64_t& utTraceEndTime
  * args: tags:tag1,tags2... tagGroups:group1,group2... clockType:boot bufferSize:1024 overwrite:1 output:filename
  * traceParams:  Save the above parameters
 */
-bool ParseArgs(const std::string& args, TraceParams& traceParams, const std::map<std::string, TraceTag>& allTags,
+bool ParseArgs(std::string args, TraceParams& traceParams, const std::map<std::string, TraceTag>& allTags,
                const std::map<std::string, std::vector<std::string>>& tagGroupTable)
 {
-    std::string userArgs = args;
-    std::string str = ":";
-    RemoveUnSpace(str, userArgs);
-    str = ",";
-    RemoveUnSpace(str, userArgs);
-    std::vector<std::string> argList = Split(userArgs, ' ');
+    RemoveUnSpace(":", args);
+    RemoveUnSpace(",", args);
+    std::vector<std::string> argList = Split(args, ' ');
     for (std::string item : argList) {
         size_t pos = item.find(":");
         if (pos == std::string::npos) {
@@ -908,6 +936,8 @@ bool ParseArgs(const std::string& args, TraceParams& traceParams, const std::map
                 return false;
             }
             OHOS::system::SetParameter(TRACE_KEY_APP_PID, pidStr);
+        } else if (itemName == "filterPids") {
+            traceParams.filterPids = Split(item.substr(pos + 1), ',');
         } else {
             HILOG_ERROR(LOG_CORE, "Extra trace command line options appear when ParseArgs: %{public}s, return false.",
                 itemName.c_str());
@@ -985,6 +1015,7 @@ uint8_t GetTraceMode()
 TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups)
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
+    ClearFilterParam();
     if (g_traceMode != TraceMode::CLOSE) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: WRONG_TRACE_MODE, current trace mode: %{public}u.",
             static_cast<uint32_t>(g_traceMode));
@@ -1187,6 +1218,7 @@ TraceRetInfo RecordTraceOff()
 TraceErrorCode CloseTrace()
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
+    ClearFilterParam();
     HILOG_INFO(LOG_CORE, "CloseTrace start.");
     if (g_traceMode == TraceMode::CLOSE) {
         HILOG_INFO(LOG_CORE, "Trace has already been closed.");
@@ -1212,7 +1244,7 @@ TraceErrorCode CloseTrace()
     }
 
     TraceInit(allTags);
-    TruncateFile();
+    TruncateFile(TRACE_NODE);
     HILOG_INFO(LOG_CORE, "CloseTrace done.");
     return SUCCESS;
 }
@@ -1225,6 +1257,24 @@ std::vector<std::pair<std::string, int>> GetTraceFilesTable()
 void SetTraceFilesTable(const std::vector<std::pair<std::string, int>>& traceFilesTable)
 {
     g_traceFilesTable = traceFilesTable;
+}
+
+TraceErrorCode SetTraceStatus(bool enable)
+{
+    HILOG_INFO(LOG_CORE, "SetTraceStatus %{public}d", enable);
+    std::lock_guard<std::mutex> lock(g_traceMutex);
+    if (g_traceRootPath.empty()) {
+        if (!IsTraceMounted(g_traceRootPath)) {
+            HILOG_ERROR(LOG_CORE, "SetTraceStatus: TRACE_NOT_SUPPORTED.");
+            return TRACE_NOT_SUPPORTED;
+        }
+    }
+
+    if (!SetTraceNodeStatus(TRACING_ON_NODE, enable)) {
+        return WRITE_TRACE_INFO_ERROR;
+    };
+
+    return SUCCESS;
 }
 } // namespace Hitrace
 } // namespace HiviewDFX
