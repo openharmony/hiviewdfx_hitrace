@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+# Copyright (c) 2021-2025 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -109,7 +109,10 @@ ohos_static_library("hitrace_inner") {
 
 config("hitrace_dump_config") {
   visibility = [ ":*" ]
-  include_dirs = [ "include" ]
+  include_dirs = [
+    "include",
+    "$hitrace_common_path",
+  ]
 }
 
 ohos_shared_library("hitrace_dump") {
@@ -118,6 +121,8 @@ ohos_shared_library("hitrace_dump") {
     "$hitrace_common_path",
     "$hitrace_cmd_path/include",
     "$hitrace_frameworks_path/include",
+    "$hitrace_frameworks_path/trace_dump_executor",
+    "$hitrace_frameworks_path/trace_source",
     "$hitrace_utils_path",
   ]
   public_configs = [ ":hitrace_dump_config" ]
@@ -145,6 +150,7 @@ ohos_shared_library("hitrace_dump") {
     "$hitrace_utils_path:hitrace_common_utils",
     "$hitrace_utils_path:hitrace_file_utils",
     "$hitrace_utils_path:hitrace_json_parser",
+    "$hitrace_frameworks_path/trace_dump_executor:trace_dump_executor",
   ]
 
   external_deps = [

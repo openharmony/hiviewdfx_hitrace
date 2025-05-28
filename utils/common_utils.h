@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -59,7 +59,8 @@ bool StringToUint64(const std::string &str, uint64_t &val);
 
 bool StringToDouble(const std::string &str, double &val);
 
-constexpr int DECIMAL_SCALE = 10;
+void WriteEventFile(const std::string& srcPath, const int fd);
+
 std::string GetKernelVersion();
 
 uint64_t GetRemainingSpace(const std::string& path);

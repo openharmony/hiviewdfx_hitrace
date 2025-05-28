@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -21,6 +21,10 @@
 #define EXPECTANTLY(exp) (__builtin_expect(!!(exp), true))
 #define UNEXPECTANTLY(exp) (__builtin_expect(!!(exp), false))
 #define UNUSED_PARAM __attribute__((__unused__))
+
+#ifndef PAGE_SIZE
+constexpr size_t PAGE_SIZE = 4096;
+#endif
 
 const std::string TRACE_TAG_ENABLE_FLAGS = "debug.hitrace.tags.enableflags";
 const std::string TRACE_KEY_APP_PID = "debug.hitrace.app_pid";

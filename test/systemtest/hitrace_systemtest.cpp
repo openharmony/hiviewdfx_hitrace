@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Huawei Device Co., Ltd.
+ * Copyright (C) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,6 +23,7 @@
 
 #include "common_define.h"
 #include "common_utils.h"
+#include "hitrace_define.h"
 #include "test_utils.h"
 #include "securec.h"
 
@@ -44,15 +45,11 @@ struct FileWithInfo {
     uint64_t fileSize;
     uint64_t duration;
 };
-enum TRACE_TYPE : uint8_t {
-    TRACE_SNAPSHOT = 0,
-    TRACE_RECORDING = 1,
-    TRACE_CACHE = 2,
-};
+
 std::map<TRACE_TYPE, std::string> tracePrefixMap = {
-    {TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
-    {TRACE_RECORDING, TRACE_RECORDING_PREFIX},
-    {TRACE_CACHE, TRACE_CACHE_PREFIX},
+    {TRACE_TYPE::TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
+    {TRACE_TYPE::TRACE_RECORDING, TRACE_RECORDING_PREFIX},
+    {TRACE_TYPE::TRACE_CACHE, TRACE_CACHE_PREFIX},
 };
 }
 class HitraceSystemTest : public testing::Test {
@@ -470,7 +467,7 @@ HWTEST_F(HitraceSystemTest, CacheModeTest001, TestSize.Level1)
     EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
     EXPECT_EQ(ret.mode, TraceMode::OPEN | TraceMode::CACHE);
     std::vector<FileWithInfo> fileList;
-    EXPECT_TRUE(GetFileInfo(TRACE_SNAPSHOT, ret.outputFiles, fileList));
+    EXPECT_TRUE(GetFileInfo(TRACE_TYPE::TRACE_SNAPSHOT, ret.outputFiles, fileList));
     EXPECT_GE(fileList.size(), 2); // cache_trace_ file count > 2
     uint64_t totalDuartion = 0;
     for (auto i = 0; i < fileList.size(); i++) {
@@ -506,8 +503,8 @@ HWTEST_F(HitraceSystemTest, CacheModeTest002, TestSize.Level1)
     EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
     std::vector<FileWithInfo> cacheFileList;
     std::vector<FileWithInfo> traceFileList;
-    EXPECT_TRUE(GetFileInfo(TRACE_SNAPSHOT, ret.outputFiles, cacheFileList));
-    EXPECT_TRUE(GetFileInfo(TRACE_SNAPSHOT, ret.outputFiles, traceFileList));
+    EXPECT_TRUE(GetFileInfo(TRACE_TYPE::TRACE_SNAPSHOT, ret.outputFiles, cacheFileList));
+    EXPECT_TRUE(GetFileInfo(TRACE_TYPE::TRACE_SNAPSHOT, ret.outputFiles, traceFileList));
     uint64_t totalDuartion = 0;
     EXPECT_GE(cacheFileList.size(), 2); // cache_trace_ file count > 2
     for (auto i = 0; i < cacheFileList.size(); i++) {
@@ -548,7 +545,7 @@ HWTEST_F(HitraceSystemTest, CacheModeTest003, TestSize.Level0)
     sleep(30); // wait 30s: start aging file
     retCode = OpenTrace(tagGroups);
     EXPECT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
-    EXPECT_EQ(GetTraceFilesInDir(TRACE_CACHE).size(), 0); // no cache trace file
+    EXPECT_EQ(GetTraceFilesInDir(TRACE_TYPE::TRACE_CACHE).size(), 0); // no cache trace file
     retCode = CloseTrace();
     EXPECT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
 }
@@ -569,9 +566,9 @@ HWTEST_F(HitraceSystemTest, CacheModeTest004, TestSize.Level0)
     sleep(10); // wait 10s
     retCode = CacheTraceOff();
     EXPECT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
-    std::vector<std::string> fileVec = GetTraceFilesInDir(TRACE_CACHE);
+    std::vector<std::string> fileVec = GetTraceFilesInDir(TRACE_TYPE::TRACE_CACHE);
     std::vector<FileWithInfo> cacheFileList;
-    EXPECT_TRUE(GetFileInfo(TRACE_CACHE, fileVec, cacheFileList));
+    EXPECT_TRUE(GetFileInfo(TRACE_TYPE::TRACE_CACHE, fileVec, cacheFileList));
     uint64_t totalFileSize = 0;
     for (auto i = 0; i < cacheFileList.size(); i++) {
         GTEST_LOG_(INFO) << "file: " << cacheFileList[i].filename.c_str() << ", size: " << cacheFileList[i].fileSize;
