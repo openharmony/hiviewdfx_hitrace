@@ -869,6 +869,58 @@ HWTEST_F(HitraceSystemTest, HitraceSystemRawTest, TestSize.Level2)
         ASSERT_TRUE(access(traceFilePath.c_str(), F_OK) != -1);
     }
 }
+
+/**
+ * @tc.name: HitraceSystemSetLevelTest001
+ * @tc.desc: when excute hitrace command with --trace_level, success to set level
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSystemTest, HitraceSystemSetLevelTest001, TestSize.Level2)
+{
+    std::vector<std::string> traceLists = {};
+    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_level I",
+                                        {"SET_TRACE_LEVEL", "success to set trace level"}, traceLists));
+}
+
+/**
+ * @tc.name: HitraceSystemSetLevelTest002
+ * @tc.desc: when excute hitrace command with --trace_level, fail to set level
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSystemTest, HitraceSystemSetLevelTest002, TestSize.Level2)
+{
+    std::vector<std::string> traceLists = {};
+    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_level K",
+                                        {"error: trace level is illegal input.", "parsing args failed"}, traceLists));
+}
+
+/**
+ * @tc.name: HitraceSystemGetLevelTest001
+ * @tc.desc: when excute hitrace command with --get_level, success to get level
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSystemTest, HitraceSystemGetLevelTest001, TestSize.Level2)
+{
+    std::vector<std::string> traceLists = {};
+    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_level",
+                                        {"GET_TRACE_LEVEL", "the current trace level threshold is"}, traceLists));
+}
+
+/**
+ * @tc.name: HitraceSystemGetLevelTest002
+ * @tc.desc: when excute hitrace command with --get_level, fail to get level
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSystemTest, HitraceSystemGetLevelTest002, TestSize.Level2)
+{
+    constexpr int invalidLevel = -1;
+    constexpr int hitraceOutputLevelInfo = 1;
+    ASSERT_TRUE(SetPropertyInner(TRACE_LEVEL_THRESHOLD, std::to_string(invalidLevel)));
+    std::vector<std::string> traceLists = {};
+    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_level",
+                                        {"GET_TRACE_LEVEL", "error: get trace level threshold failed"}, traceLists));
+    ASSERT_TRUE(SetPropertyInner(TRACE_LEVEL_THRESHOLD, std::to_string(hitraceOutputLevelInfo)));
+}
 } // namespace
 } // namespace Hitrace
 } // namespace HiviewDFX
