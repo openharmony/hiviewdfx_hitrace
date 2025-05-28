@@ -364,6 +364,11 @@ ohos_unittest("HitraceSourceTest") {
   ]
 
   external_deps = [ "googletest:gtest_main" ]
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
 }
 
 ohos_unittest("HitraceDumpExecutorTest") {
@@ -381,6 +386,7 @@ ohos_unittest("HitraceDumpExecutorTest") {
 
   sources = [
     "$hitrace_frameworks_path/trace_dump_executor/trace_dump_executor.cpp",
+    "$hitrace_frameworks_path/trace_dump_executor/trace_dump_pipe.cpp",
     "trace_dump_executor/trace_dump_executor_test.cpp",
   ]
 

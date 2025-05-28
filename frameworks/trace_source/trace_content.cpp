@@ -71,6 +71,21 @@ static void PreWriteAllTraceEventsFormat(const int fd, const std::string& tracef
         }
     }
 }
+
+static int IsCurrentTracePageValid(const uint64_t pageTraceTime, const uint64_t traceStartTime,
+    const uint64_t traceEndTime)
+{
+    if (pageTraceTime > traceEndTime) { // need stop read, but should keep current page.
+        HILOG_INFO(LOG_CORE,
+            "Current pageTraceTime(%{public}" PRIu64 ") is larger than traceEndTime(%{public}" PRIu64 ")",
+            pageTraceTime, traceEndTime);
+        return -1;
+    }
+    if (pageTraceTime < traceStartTime) { // skip current 4K data caused of target trace range is not reached.
+        return 0; // just skip
+    }
+    return 1; // hit.
+}
 }
 
 ITraceContent::ITraceContent(const int fd,
@@ -126,7 +141,7 @@ bool ITraceContent::WriteTraceData(const uint8_t contentType)
                 break;
             }
         }
-        DoWriteTraceData(bytes, writeLen);
+        DoWriteTraceData(g_buffer, bytes, writeLen);
         if (endFlag) {
             break;
         }
@@ -137,9 +152,13 @@ bool ITraceContent::WriteTraceData(const uint8_t contentType)
     return true;
 }
 
-void ITraceContent::DoWriteTraceData(const int bytes, ssize_t& writeLen)
+void ITraceContent::DoWriteTraceData(const uint8_t* buffer, const int bytes, ssize_t& writeLen)
 {
-    ssize_t writeRet = TEMP_FAILURE_RETRY(write(traceFileFd_, g_buffer, bytes));
+    if (buffer == nullptr) {
+        HILOG_ERROR(LOG_CORE, "DoWriteTraceData: buffer is nullptr!");
+        return;
+    }
+    ssize_t writeRet = TEMP_FAILURE_RETRY(write(traceFileFd_, buffer, bytes));
     if (writeRet < 0) {
         HILOG_ERROR(LOG_CORE, "DoWriteTraceData: write failed, err(%{public}s)", strerror(errno));
     } else {
@@ -373,7 +392,7 @@ bool ITraceCpuRawContent::WriteTracePipeRawData(const std::string& srcPath, cons
         int bytes = 0;
         bool endFlag = false;
         ReadTracePipeRawLoop(traceSourceFd_, bytes, endFlag, pageChkFailedTime, printFirstPageTime);
-        DoWriteTraceData(bytes, writeLen);
+        DoWriteTraceData(g_buffer, bytes, writeLen);
         if (IsWriteFileOverflow(g_outputFileSize, writeLen,
             request_.fileSize != 0 ? request_.fileSize : DEFAULT_FILE_SIZE * KB_PER_MB)) {
             isOverFlow_ = true;
@@ -411,7 +430,7 @@ void ITraceCpuRawContent::ReadTracePipeRawLoop(const int srcFd,
             break;
         }
         // attention : only capture target duration trace data
-        int pageValid = IsCurrentTracePageValid(pageTraceTime);
+        int pageValid = IsCurrentTracePageValid(pageTraceTime, request_.traceStartTime, request_.traceEndTime);
         if (pageValid < 0) {
             endFlag = true;
             bytes += (printFirstPageTime ? readBytes : 0);
@@ -436,20 +455,6 @@ void ITraceCpuRawContent::ReadTracePipeRawLoop(const int srcFd,
             break;
         }
     }
-}
-
-int ITraceCpuRawContent::IsCurrentTracePageValid(const uint64_t pageTraceTime)
-{
-    if (pageTraceTime > request_.traceEndTime) { // need stop read, but should keep current page.
-        HILOG_INFO(LOG_CORE,
-            "Current pageTraceTime(%{public}" PRIu64 ") is larger than traceEndTime(%{public}" PRIu64 ")",
-            pageTraceTime, request_.traceEndTime);
-        return -1;
-    }
-    if (pageTraceTime < request_.traceStartTime) { // skip current 4K data caused of target trace range is not reached.
-        return 0; // just skip
-    }
-    return 1; // hit.
 }
 
 bool ITraceCpuRawContent::IsWriteFileOverflow(const int outputFileSize, const ssize_t writeLen,
@@ -503,6 +508,164 @@ bool TraceCpuRawHM::WriteTraceContent()
         HILOG_ERROR(LOG_CORE, "TraceCpuRawHM WriteTraceContent failed, dump status: %{public}hhu.", dumpStatus_);
         return false;
     }
+    return true;
+}
+
+void ITraceCpuRawRead::CopyTracePipeRawLoop(const int srcFd, const int cpu, ssize_t& writeLen, bool& endFlag,
+    int& pageChkFailedTime, bool& printFirstPageTime)
+{
+    const size_t bufferSz = TraceBufferManager::GetInstance().GetBlockSize();
+    auto buffer = TraceBufferManager::GetInstance().AllocateBlock(request_.taskId, cpu);
+    if (buffer == nullptr) {
+        HILOG_ERROR(LOG_CORE, "CopyTracePipeRawLoop: Failed to allocate memory block.");
+        endFlag = true;
+        return;
+    }
+    size_t blockReadSz = 0;
+    uint8_t pageBuffer[PAGE_SIZE] = {};
+    while (blockReadSz <= bufferSz - static_cast<size_t>(PAGE_SIZE)) {
+        ssize_t readBytes = TEMP_FAILURE_RETRY(read(srcFd, pageBuffer, PAGE_SIZE));
+        if (readBytes <= 0) {
+            HILOG_DEBUG(LOG_CORE, "CopyTracePipeRawLoop: read raw trace done, size(%{public}zd), err(%{public}s).",
+                readBytes, strerror(errno));
+            break;
+        }
+        uint64_t pageTraceTime = 0;
+        if (memcpy_s(&pageTraceTime, sizeof(uint64_t), pageBuffer, sizeof(uint64_t)) != EOK) {
+            HILOG_ERROR(LOG_CORE, "CopyTracePipeRawLoop: failed to memcpy g_buffer to pageTraceTime.");
+            break;
+        }
+        // attention : only capture target duration trace data
+        int pageValid = IsCurrentTracePageValid(pageTraceTime, request_.traceStartTime, request_.traceEndTime);
+        if (pageValid < 0) {
+            endFlag = true;
+            blockReadSz += (printFirstPageTime ? readBytes : 0);
+            buffer->Append(pageBuffer, readBytes);
+            break;
+        } else if (pageValid == 0) {
+            continue;
+        }
+
+        lastPageTimeStamp_ = std::max(lastPageTimeStamp_, pageTraceTime);
+        if (UNEXPECTANTLY(!printFirstPageTime)) {
+            HILOG_INFO(LOG_CORE, "CopyTracePipeRawLoop: First page trace time(%{public}" PRIu64 ")", pageTraceTime);
+            printFirstPageTime = true;
+            firstPageTimeStamp_ = std::min(firstPageTimeStamp_, pageTraceTime);
+        }
+        if (!CheckPage(pageBuffer)) {
+            pageChkFailedTime++;
+        }
+        blockReadSz += static_cast<size_t>(readBytes);
+        buffer->Append(pageBuffer, readBytes);
+        if (pageChkFailedTime >= 2) { // 2 : check failed times threshold
+            endFlag = true;
+            break;
+        }
+    }
+    writeLen += blockReadSz;
+}
+
+bool ITraceCpuRawRead::CacheTracePipeRawData(const std::string& srcPath, const int cpuIdx)
+{
+    traceSourceFd_ = open(srcPath.c_str(), O_RDONLY | O_NONBLOCK);
+    if (traceSourceFd_ < 0) {
+        HILOG_ERROR(LOG_CORE, "CacheTracePipeRawData: open %{public}s failed.", srcPath.c_str());
+        return false;
+    }
+    ssize_t writeLen = 0;
+    int pageChkFailedTime = 0;
+    bool printFirstPageTime = false; // attention: update first page time in every WriteTracePipeRawData calling.
+    while (true) {
+        bool endFlag = false;
+        CopyTracePipeRawLoop(traceSourceFd_, cpuIdx, writeLen, endFlag, pageChkFailedTime, printFirstPageTime);
+        if (endFlag) {
+            break;
+        }
+    }
+    if (writeLen > 0) {
+        dumpStatus_ = TraceErrorCode::SUCCESS;
+    } else if (dumpStatus_ == TraceErrorCode::UNSET) {
+        dumpStatus_ = TraceErrorCode::OUT_OF_TIME;
+    }
+    HILOG_INFO(LOG_CORE, "CacheTracePipeRawData end, path: %{public}s, byte: %{public}zd. g_writeFileLimit: %{public}d",
+        srcPath.c_str(), writeLen, g_writeFileLimit);
+    return true;
+}
+
+bool TraceCpuRawReadLinux::WriteTraceContent()
+{
+    int cpuNums = GetCpuProcessors();
+    for (int cpuIdx = 0; cpuIdx < cpuNums; cpuIdx++) {
+        std::string srcPath = tracefsPath_ + "per_cpu/cpu" + std::to_string(cpuIdx) + "/trace_pipe_raw";
+        if (!CacheTracePipeRawData(srcPath, cpuIdx)) {
+            return false;
+        }
+    }
+    if (dumpStatus_ != TraceErrorCode::SUCCESS) {
+        HILOG_ERROR(LOG_CORE, "TraceCpuRawReadLinux WriteTraceContent failed, dump status: %{public}hhu.", dumpStatus_);
+        return false;
+    }
+    return true;
+}
+
+bool TraceCpuRawReadHM::WriteTraceContent()
+{
+    std::string srcPath = tracefsPath_ + "/trace_pipe_raw";
+    if (!CacheTracePipeRawData(srcPath, 0)) { // 0 : hongmeng kernel only has one cpu trace raw pipe
+        return false;
+    }
+    if (dumpStatus_ != TraceErrorCode::SUCCESS) {
+        HILOG_ERROR(LOG_CORE, "TraceCpuRawReadHM WriteTraceContent failed, dump status: %{public}hhu.", dumpStatus_);
+        return false;
+    }
+    return true;
+}
+
+bool TraceCpuRawWriteLinux::WriteTraceContent()
+{
+    if (!IsFileExist()) {
+        HILOG_ERROR(LOG_CORE, "TraceCpuRawWriteLinux::WriteTraceContent trace file (%{public}s) not found.",
+            traceFilePath_.c_str());
+        return false;
+    }
+    int prevCpu = -1;
+    ssize_t writeLen = 0;
+    struct TraceFileContentHeader rawHeader;
+    auto buffers = TraceBufferManager::GetInstance().GetTaskBuffers(taskId_);
+    for (auto& bufItem : buffers) {
+        int cpuIdx = bufItem->cpu;
+        if (cpuIdx != prevCpu) {
+            writeLen = 0;
+            if (!DoWriteTraceContentHeader(rawHeader, CONTENT_TYPE_CPU_RAW + cpuIdx)) {
+                return false;
+            }
+        }
+        DoWriteTraceData(bufItem->data.data(), bufItem->usedBytes, writeLen); // attention: maybe write null data.
+        UpdateTraceContentHeader(rawHeader, static_cast<uint32_t>(writeLen));
+    }
+    TraceBufferManager::GetInstance().ReleaseTaskBlocks(taskId_);
+    HILOG_INFO(LOG_CORE, "TraceCpuRawWriteLinux::WriteTraceContent write len %{public}d", writeLen);
+    return true;
+}
+
+bool TraceCpuRawWriteHM::WriteTraceContent()
+{
+    if (!IsFileExist()) {
+        HILOG_ERROR(LOG_CORE, "TraceCpuRawWriteHM::WriteTraceContent trace file (%{public}s) not found.",
+            traceFilePath_.c_str());
+        return false;
+    }
+    struct TraceFileContentHeader rawHeader;
+    if (!DoWriteTraceContentHeader(rawHeader, CONTENT_TYPE_CPU_RAW)) {
+        return false;
+    }
+    ssize_t writeLen = 0;
+    auto buffers = TraceBufferManager::GetInstance().GetTaskBuffers(taskId_);
+    for (auto& bufItem : buffers) {
+        DoWriteTraceData(bufItem->data.data(), bufItem->usedBytes, writeLen); // attention: maybe write null data.
+    }
+    UpdateTraceContentHeader(rawHeader, static_cast<uint32_t>(writeLen));
+    TraceBufferManager::GetInstance().ReleaseTaskBlocks(taskId_);
     return true;
 }
 

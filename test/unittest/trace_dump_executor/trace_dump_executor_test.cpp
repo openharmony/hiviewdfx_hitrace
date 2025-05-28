@@ -21,6 +21,7 @@
 
 #include "hitrace_dump.h"
 #include "trace_dump_executor.h"
+#include "trace_dump_pipe.h"
 
 using namespace testing::ext;
 using namespace std;
@@ -63,6 +64,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest001, TestSize.Level2)
     std::string appArgs = "tags:sched,binder,ohos bufferSize:102400 overwrite:1";
     ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
     TraceDumpExecutor& traceDumpExecutor = TraceDumpExecutor::GetInstance();
+    ASSERT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
     TraceDumpParam param = {
         TRACE_TYPE::TRACE_RECORDING,
         "",
@@ -97,6 +99,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest002, TestSize.Level2)
     std::string appArgs = "tags:sched,binder,ohos bufferSize:102400 overwrite:1";
     ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
     TraceDumpExecutor& traceDumpExecutor = TraceDumpExecutor::GetInstance();
+    ASSERT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
     TraceDumpParam param = {
         TRACE_TYPE::TRACE_RECORDING,
         TEST_TRACE_TEMP_FILE,
@@ -157,6 +160,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest004, TestSize.Level2)
     ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
     TraceDumpExecutor& traceDumpExecutor = TraceDumpExecutor::GetInstance();
     traceDumpExecutor.ClearCacheTraceFiles();
+    ASSERT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
     TraceDumpParam param = {
         TRACE_TYPE::TRACE_CACHE,
         "",
@@ -193,6 +197,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest005, TestSize.Level2)
     ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
     TraceDumpExecutor& traceDumpExecutor = TraceDumpExecutor::GetInstance();
     traceDumpExecutor.ClearCacheTraceFiles();
+    ASSERT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
     TraceDumpParam param = {
         TRACE_TYPE::TRACE_CACHE,
         "",
@@ -222,6 +227,90 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest005, TestSize.Level2)
     }
     traceLoopThread.join();
     ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: TraceDumpPipeTest001
+ * @tc.desc: Test TraceDumpExecutor class trace task pipe
+ * @tc.type: FUNC
+ */
+HWTEST_F(TraceDumpExecutorTest, TraceDumpPipeTest001, TestSize.Level2)
+{
+    HitraceDumpPipe::ClearTraceDumpPipe();
+    ASSERT_TRUE(HitraceDumpPipe::InitTraceDumpPipe());
+    pid_t pid = fork();
+    if (pid < 0) {
+        FAIL() << "Failed to fork process.";
+    } else if (pid == 0) {
+        auto dumpPipe2 = std::make_shared<HitraceDumpPipe>(false);
+        TraceDumpTask task;
+        EXPECT_TRUE(dumpPipe2->ReadTraceTask(1000, task));
+        EXPECT_EQ(task.status, TraceDumpStatus::READ_DONE);
+        _exit(0);
+    }
+    auto dumpPipe1 = std::make_shared<HitraceDumpPipe>(true);
+    TraceDumpTask task = {
+        .status = TraceDumpStatus::READ_DONE,
+    };
+    EXPECT_TRUE(dumpPipe1->SubmitTraceDumpTask(task));
+    waitpid(pid, nullptr, 0);
+    HitraceDumpPipe::ClearTraceDumpPipe();
+}
+
+/**
+ * @tc.name: TraceDumpPipeTest002
+ * @tc.desc: Test TraceDumpExecutor class sync dump pipe
+ * @tc.type: FUNC
+ */
+HWTEST_F(TraceDumpExecutorTest, TraceDumpPipeTest002, TestSize.Level2)
+{
+    HitraceDumpPipe::ClearTraceDumpPipe();
+    ASSERT_TRUE(HitraceDumpPipe::InitTraceDumpPipe());
+    pid_t pid = fork();
+    if (pid < 0) {
+        FAIL() << "Failed to fork process.";
+    } else if (pid == 0) {
+        auto dumpPipe2 = std::make_shared<HitraceDumpPipe>(false);
+        TraceDumpTask task = {
+            .status = TraceDumpStatus::READ_DONE,
+        };
+        EXPECT_TRUE(dumpPipe2->WriteSyncReturn(task));
+        _exit(0);
+    }
+    auto dumpPipe1 = std::make_shared<HitraceDumpPipe>(true);
+    TraceDumpTask task;
+    EXPECT_TRUE(dumpPipe1->ReadSyncDumpRet(1, task));
+    EXPECT_EQ(task.status, TraceDumpStatus::READ_DONE);
+    waitpid(pid, nullptr, 0);
+    HitraceDumpPipe::ClearTraceDumpPipe();
+}
+
+/**
+ * @tc.name: TraceDumpPipeTest003
+ * @tc.desc: Test TraceDumpExecutor class async dump pipe
+ * @tc.type: FUNC
+ */
+HWTEST_F(TraceDumpExecutorTest, TraceDumpPipeTest003, TestSize.Level2)
+{
+    HitraceDumpPipe::ClearTraceDumpPipe();
+    ASSERT_TRUE(HitraceDumpPipe::InitTraceDumpPipe());
+    pid_t pid = fork();
+    if (pid < 0) {
+        FAIL() << "Failed to fork process.";
+    } else if (pid == 0) {
+        auto dumpPipe2 = std::make_shared<HitraceDumpPipe>(false);
+        TraceDumpTask task = {
+            .status = TraceDumpStatus::FINISH,
+        };
+        EXPECT_TRUE(dumpPipe2->WriteAsyncReturn(task));
+        _exit(0);
+    }
+    auto dumpPipe1 = std::make_shared<HitraceDumpPipe>(true);
+    TraceDumpTask task;
+    EXPECT_TRUE(dumpPipe1->ReadAsyncDumpRet(1, task));
+    EXPECT_EQ(task.status, TraceDumpStatus::FINISH);
+    waitpid(pid, nullptr, 0);
+    HitraceDumpPipe::ClearTraceDumpPipe();
 }
 } // namespace
 } // namespace Hitrace

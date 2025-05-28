@@ -45,6 +45,8 @@ struct TraceFileInfo {
 void GetTraceFilesInDir(std::vector<FileWithTime>& fileList, TRACE_TYPE traceType);
 bool RemoveFile(const std::string& fileName);
 std::string GenerateTraceFileName(TRACE_TYPE traceType);
+std::string GenerateTraceFileNameByTraceTime(TRACE_TYPE traceType,
+    const uint64_t& firstPageTraceTime, const uint64_t& lastPageTraceTime);
 void DelSnapshotTraceFile(const int keepFileCount, std::vector<TraceFileInfo>& traceFileVec,
     const uint64_t fileLimitSizeKb);
 void DelOldRecordTraceFile(std::vector<FileWithTime>& fileList, const int fileLimit, const uint64_t fileLimitSizeKb);
@@ -52,11 +54,11 @@ void ClearOldTraceFile(std::vector<FileWithTime>& fileLists, const int fileLimit
 void DelSavedEventsFormat();
 void ClearCacheTraceFileByDuration(std::vector<TraceFileInfo>& cacheFileVec);
 void ClearCacheTraceFileBySize(std::vector<TraceFileInfo>& cacheFileVec, const uint64_t& fileSizeLimit);
-bool GetFileSize(const std::string& filePath, uint64_t& fileSize);
+off_t GetFileSize(const std::string& filePath);
 uint64_t GetCurUnixTimeMs();
 void RefreshTraceVec(std::vector<TraceFileInfo>& traceVec, const TRACE_TYPE traceType);
 std::string RenameCacheFile(const std::string& cacheFile);
-bool SetFileInfo(const std::string outPath, const uint64_t& firstPageTimestamp,
+bool SetFileInfo(const bool renameFile, const std::string outPath, const uint64_t& firstPageTimestamp,
     const uint64_t& lastPageTimestamp, TraceFileInfo& traceFileInfo);
 } // namespace HiTrace
 } // namespace HiviewDFX

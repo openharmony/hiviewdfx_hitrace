@@ -27,15 +27,6 @@ namespace Hitrace {
 constexpr uint64_t DEFAULT_TRACE_SLICE_DURATION = 10;
 constexpr uint64_t DEFAULT_TOTAL_CACHE_FILE_SIZE = 800;
 
-struct TraceRetInfo {
-    TraceErrorCode errorCode;
-    uint8_t mode = 0;
-    std::vector<std::string> outputFiles;
-    int32_t coverRatio = 0;
-    int32_t coverDuration = 0;
-    std::vector<std::string> tags;
-};
-
 #ifdef HITRACE_UNITTEST
 void SetSysInitParamTags(uint64_t sysInitParamTags);
 bool SetCheckParam();
@@ -69,6 +60,9 @@ TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups);
  * ---- If maxDuration is less than 0, it is illegal input parameter.
 */
 TraceRetInfo DumpTrace(int maxDuration = 0, uint64_t happenTime = 0);
+
+TraceRetInfo DumpTraceAsync(int maxDuration = 0, uint64_t happenTime = 0,
+    std::function<void(TraceRetInfo)> asyncCallback = nullptr);
 
 /**
  * Enable sub threads to periodically drop disk trace data.

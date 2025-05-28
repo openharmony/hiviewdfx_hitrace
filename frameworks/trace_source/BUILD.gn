@@ -21,6 +21,7 @@ ohos_static_library("trace_source") {
     "$hitrace_utils_path",
   ]
   sources = [
+    "trace_buffer_manager.cpp",
     "trace_content.cpp",
     "trace_source.cpp",
   ]

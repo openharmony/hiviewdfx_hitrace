@@ -25,6 +25,9 @@
 #ifndef PAGE_SIZE
 constexpr size_t PAGE_SIZE = 4096;
 #endif
+constexpr uint64_t S_TO_NS = 1000000000;
+constexpr uint64_t MS_TO_NS = 1000000;
+constexpr uint64_t S_TO_MS = 1000;
 
 const std::string TRACE_TAG_ENABLE_FLAGS = "debug.hitrace.tags.enableflags";
 const std::string TRACE_KEY_APP_PID = "debug.hitrace.app_pid";
@@ -38,6 +41,4 @@ const std::string TRACE_NODE = "trace";
 
 const std::string TRACE_FILE_DEFAULT_DIR = "/data/log/hitrace/";
 const std::string TRACE_SAVED_EVENTS_FORMAT = "saved_events_format";
-
-
 #endif // HITRACE_COMMON_DEFINE_H

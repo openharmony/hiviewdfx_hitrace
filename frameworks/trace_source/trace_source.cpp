@@ -104,6 +104,16 @@ std::shared_ptr<TraceTgidsContent> TraceSourceLinux::GetTraceTgids()
     return std::make_shared<TraceTgidsContent>(traceFileFd_, tracefsPath_, traceFilePath_, false);
 }
 
+std::shared_ptr<ITraceCpuRawRead> TraceSourceLinux::GetTraceCpuRawRead(const TraceDumpRequest& request)
+{
+    return std::make_shared<TraceCpuRawReadLinux>(tracefsPath_, request);
+}
+
+std::shared_ptr<ITraceCpuRawWrite> TraceSourceLinux::GetTraceCpuRawWrite(const uint64_t taskId)
+{
+    return std::make_shared<TraceCpuRawWriteLinux>(traceFileFd_, traceFilePath_, taskId);
+}
+
 std::string TraceSourceLinux::GetTraceFilePath()
 {
     return traceFilePath_;
@@ -172,6 +182,16 @@ std::shared_ptr<TraceCmdLinesContent> TraceSourceHM::GetTraceCmdLines()
 std::shared_ptr<TraceTgidsContent> TraceSourceHM::GetTraceTgids()
 {
     return std::make_shared<TraceTgidsContent>(traceFileFd_, tracefsPath_, traceFilePath_, true);
+}
+
+std::shared_ptr<ITraceCpuRawRead> TraceSourceHM::GetTraceCpuRawRead(const TraceDumpRequest& request)
+{
+    return std::make_shared<TraceCpuRawReadHM>(tracefsPath_, request);
+}
+
+std::shared_ptr<ITraceCpuRawWrite> TraceSourceHM::GetTraceCpuRawWrite(const uint64_t taskId)
+{
+    return std::make_shared<TraceCpuRawWriteHM>(traceFileFd_, traceFilePath_, taskId);
 }
 
 std::string TraceSourceHM::GetTraceFilePath()

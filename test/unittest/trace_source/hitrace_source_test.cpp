@@ -270,7 +270,7 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest013, TestSize.Level2)
     ASSERT_TRUE(traceSource != nullptr);
     TraceDumpRequest request = {
         TRACE_TYPE::TRACE_RECORDING,
-        1024000, // 102400 : set 100MB /sys/kernel/tracing/buffer_size_kb.
+        102400, // 102400 : set 100MB /sys/kernel/tracing/buffer_size_kb.
         false,
         0,
         std::numeric_limits<uint64_t>::max()
@@ -380,6 +380,25 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest017, TestSize.Level2)
     ASSERT_TRUE(baseInfo != nullptr);
     ASSERT_TRUE(baseInfo->WriteTraceContent());
     ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
+}
+
+/**
+ * @tc.name: TraceSourceTest018
+ * @tc.desc: Test TraceBufferManager class AllocateBlock/GetTaskBuffers/GetCurrentTotalSize function.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSourceTest, TraceSourceTest018, TestSize.Level2)
+{
+    TraceBufferManager::GetInstance().AllocateBlock(1, 0);
+    EXPECT_EQ(TraceBufferManager::GetInstance().GetCurrentTotalSize(), 10 * 1024 * 1024);
+    TraceBufferManager::GetInstance().AllocateBlock(1, 0);
+    EXPECT_EQ(TraceBufferManager::GetInstance().GetCurrentTotalSize(), 20 * 1024 * 1024);
+    auto buffers = TraceBufferManager::GetInstance().GetTaskBuffers(1);
+    EXPECT_EQ(buffers.size(), 2);
+    for (auto& buf : buffers) {
+        EXPECT_NE(buf->data.data(), nullptr);
+        EXPECT_EQ(buf->usedBytes, 0);
+    }
 }
 } // namespace
 } // namespace Hitrace

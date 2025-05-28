@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -22,6 +22,7 @@
 #include <fcntl.h>
 #include <sstream>
 #include <sys/statvfs.h>
+#include <sys/time.h>
 #include <sys/utsname.h>
 
 #include "common_define.h"
@@ -149,6 +150,13 @@ int GetCpuProcessors()
     int processors = 0;
     processors = sysconf(_SC_NPROCESSORS_CONF);
     return (processors == 0) ? 1 : processors;
+}
+
+uint64_t GetCurBootTime()
+{
+    struct timespec bts = {0, 0};
+    clock_gettime(CLOCK_BOOTTIME, &bts);
+    return static_cast<uint64_t>(bts.tv_sec * S_TO_NS + bts.tv_nsec);
 }
 
 void ReadCurrentCpuFrequencies(std::string& freqs)

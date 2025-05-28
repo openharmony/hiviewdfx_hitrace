@@ -52,9 +52,6 @@ const size_t DEFAULT_TRACE_FILE_LIMIT = 15;
 const int TIME_BUFFER_SIZE = 16;
 const int DEFAULT_TRACE_DURATION = 30;
 const int TIME_INIT = 1900;
-constexpr uint64_t MS_TO_NS = 1000000;
-constexpr uint64_t S_TO_MS = 1000;
-constexpr uint64_t S_TO_NS = 1000000000;
 constexpr uint64_t KILO = 1000;
 const std::string TRACE_SNAPSHOT_PREFIX = "trace_";
 const std::string TRACE_RECORDING_PREFIX = "record_trace_";
@@ -197,11 +194,9 @@ void GetTraceFilesInDir(std::vector<FileWithTime>& fileList, TRACE_TYPE traceTyp
 
 FileWithTime::FileWithTime(const std::string& name)
 {
-    uint64_t size = 0;
-    GetFileSize(name, size);
     this->filename = name;
     this->ctime = 0;
-    this->fileSize = size;
+    this->fileSize = static_cast<uint64_t>(GetFileSize(name));
     this->isNewFile = true;
 }
 
@@ -261,6 +256,35 @@ std::string GenerateTraceFileName(TRACE_TYPE traceType)
     clock_gettime(CLOCK_MONOTONIC, &mts);
     HILOG_INFO(LOG_CORE, "output trace: %{public}s, boot_time(%{public}" PRId64 "), mono_time(%{public}" PRId64 ").",
         name.c_str(), static_cast<int64_t>(bts.tv_sec), static_cast<int64_t>(mts.tv_sec));
+    return name;
+}
+
+std::string GenerateTraceFileNameByTraceTime(TRACE_TYPE traceType,
+    const uint64_t& firstPageTraceTime, const uint64_t& lastPageTraceTime)
+{
+    if (firstPageTraceTime >= lastPageTraceTime) {
+        HILOG_ERROR(LOG_CORE,
+            "RenameTraceFile: firstPageTraceTime is larger than lastPageTraceTime, firstPageTraceTime:(%{public}"
+            PRIu64 "), lastPageTraceTime:(%{public}" PRIu64 ")",
+            firstPageTraceTime, lastPageTraceTime);
+        return ""; // todo
+    }
+    // eg: /data/log/hitrace/trace_localtime@boottime.sys
+    std::string name = TRACE_FILE_DEFAULT_DIR;
+    name += tracePrefixMap[traceType];
+    // get localtime
+    uint64_t traceDuration = (lastPageTraceTime - firstPageTraceTime) / MS_TO_NS;
+    uint64_t utFirstPageTraceTimeMs = ConvertPageTraceTimeToUtTimeMs(firstPageTraceTime);
+    time_t utFirstPageTraceTimeSec = static_cast<time_t>(utFirstPageTraceTimeMs / S_TO_MS);
+    struct tm timeInfo = {};
+    char timeBuf[TIME_BUFFER_SIZE] = {0};
+    if (localtime_r(&utFirstPageTraceTimeSec, &timeInfo) == nullptr) {
+        HILOG_ERROR(LOG_CORE, "RegenerateTraceFileName: get local time failed");
+        return "";
+    }
+    (void)strftime(timeBuf, TIME_BUFFER_SIZE, "%Y%m%d%H%M%S", &timeInfo);
+    name += std::string(timeBuf);
+    name += "@" + std::to_string(firstPageTraceTime / S_TO_NS) + "-" + std::to_string(traceDuration) + ".sys";
     return name;
 }
 
@@ -441,19 +465,18 @@ void ClearCacheTraceFileBySize(std::vector<TraceFileInfo>& cacheFileVec, const u
     }
 }
 
-bool GetFileSize(const std::string& filePath, uint64_t& fileSize)
+off_t GetFileSize(const std::string& filePath)
 {
     struct stat fileInfo;
     int ret = stat(filePath.c_str(), &fileInfo);
     if (ret != 0) {
         HILOG_ERROR(LOG_CORE, "Get fileSize failed, %{public}s is not exist, ret is %{public}d.",
             filePath.c_str(), ret);
-        return false;
+        return -1;
     }
-    fileSize += static_cast<uint64_t>(fileInfo.st_size);
     HILOG_INFO(LOG_CORE, "GetFileSize: filename:%{public}s, fileSize:(%{public}" PRId64 ").",
-        filePath.c_str(), fileSize);
-    return true;
+        filePath.c_str(), fileInfo.st_size);
+    return fileInfo.st_size;
 }
 
 uint64_t GetCurUnixTimeMs()
@@ -504,22 +527,18 @@ std::string RenameCacheFile(const std::string& cacheFile)
     return newFilePath;
 }
 
-bool SetFileInfo(const std::string outPath, const uint64_t& firstPageTimestamp,
+bool SetFileInfo(const bool renameFile, const std::string outPath, const uint64_t& firstPageTimestamp,
     const uint64_t& lastPageTimestamp, TraceFileInfo& traceFileInfo)
 {
-    std::string newFileName;
-    if (!RenameTraceFile(outPath, newFileName, firstPageTimestamp, lastPageTimestamp)) {
+    std::string newFileName = outPath;
+    if (renameFile && !RenameTraceFile(outPath, newFileName, firstPageTimestamp, lastPageTimestamp)) {
         HILOG_INFO(LOG_CORE, "rename failed, outPath: %{public}s.", outPath.c_str());
-        return false;
-    }
-    uint64_t traceFileSize = 0;
-    if (!GetFileSize(newFileName, traceFileSize)) {
         return false;
     }
     traceFileInfo.filename = newFileName;
     traceFileInfo.traceStartTime = ConvertPageTraceTimeToUtTimeMs(firstPageTimestamp);
     traceFileInfo.traceEndTime = ConvertPageTraceTimeToUtTimeMs(lastPageTimestamp);
-    traceFileInfo.fileSize = traceFileSize;
+    traceFileInfo.fileSize = static_cast<uint64_t>(GetFileSize(newFileName));
     return true;
 }
 } // namespace Hitrace

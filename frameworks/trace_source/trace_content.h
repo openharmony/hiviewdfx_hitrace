@@ -20,6 +20,7 @@
 #include <string>
 
 #include "hitrace_define.h"
+#include "trace_buffer_manager.h"
 
 namespace OHOS {
 namespace HiviewDFX {
@@ -67,7 +68,7 @@ public:
     virtual ~ITraceContent();
     virtual bool WriteTraceContent() = 0;
     bool WriteTraceData(const uint8_t contentType);
-    void DoWriteTraceData(const int bytes, ssize_t& writeLen);
+    void DoWriteTraceData(const uint8_t* buffer, const int bytes, ssize_t& writeLen);
     bool DoWriteTraceContentHeader(TraceFileContentHeader& contentHeader, const uint8_t contentType);
     void UpdateTraceContentHeader(TraceFileContentHeader& contentHeader, const uint32_t writeLen);
     bool IsFileExist();
@@ -149,7 +150,6 @@ public:
     bool WriteTracePipeRawData(const std::string& srcPath, const int cpuIdx);
     void ReadTracePipeRawLoop(const int srcFd,
         int& bytes, bool& endFlag, int& pageChkFailedTime, bool& printFirstPageTime);
-    int IsCurrentTracePageValid(const uint64_t pageTraceTime);
     bool IsWriteFileOverflow(const int outputFileSize, const ssize_t writeLen, const int fileSizeThreshold);
 
     TraceErrorCode GetDumpStatus() { return dumpStatus_; }
@@ -178,6 +178,65 @@ public:
     TraceCpuRawHM(const int fd,
         const std::string& tracefsPath, const std::string& traceFilePath, const TraceDumpRequest& request)
         : ITraceCpuRawContent(fd, tracefsPath, traceFilePath, true, request) {}
+    bool WriteTraceContent() override;
+};
+
+class ITraceCpuRawRead : public ITraceContent {
+public:
+    ITraceCpuRawRead(const std::string& tracefsPath, const bool ishm, const TraceDumpRequest& request)
+        : ITraceContent(-1, tracefsPath, "", ishm), request_(request) {}
+    bool WriteTraceContent() override = 0;
+
+    bool CacheTracePipeRawData(const std::string& srcPath, const int cpuIdx);
+    void CopyTracePipeRawLoop(const int srcFd, const int cpu, ssize_t& writeLen, bool& endFlag,
+        int& pageChkFailedTime, bool& printFirstPageTime);
+
+    TraceErrorCode GetDumpStatus() { return dumpStatus_; }
+    uint64_t GetFirstPageTimeStamp() { return firstPageTimeStamp_; }
+    uint64_t GetLastPageTimeStamp() { return lastPageTimeStamp_; }
+
+protected:
+    TraceDumpRequest request_;
+    TraceErrorCode dumpStatus_ = TraceErrorCode::UNSET;
+    uint64_t firstPageTimeStamp_ = std::numeric_limits<uint64_t>::max();
+    uint64_t lastPageTimeStamp_ = 0;
+};
+
+class TraceCpuRawReadLinux : public ITraceCpuRawRead {
+public:
+    TraceCpuRawReadLinux(const std::string& tracefsPath, const TraceDumpRequest& request)
+        : ITraceCpuRawRead(tracefsPath, false, request) {}
+    bool WriteTraceContent() override;
+};
+
+class TraceCpuRawReadHM : public ITraceCpuRawRead {
+public:
+    TraceCpuRawReadHM(const std::string& tracefsPath, const TraceDumpRequest& request)
+        : ITraceCpuRawRead(tracefsPath, true, request) {}
+    bool WriteTraceContent() override;
+};
+
+class ITraceCpuRawWrite : public ITraceContent {
+public:
+    ITraceCpuRawWrite(const int fd, const std::string& traceFilePath, const uint64_t taskId, const bool ishm)
+        : ITraceContent(fd, "", traceFilePath, ishm), taskId_(taskId) {}
+    bool WriteTraceContent() override = 0;
+
+protected:
+    uint64_t taskId_ = 0; // Task ID for the current write operation
+};
+
+class TraceCpuRawWriteLinux : public ITraceCpuRawWrite {
+public:
+    TraceCpuRawWriteLinux(const int fd, const std::string& traceFilePath, const uint64_t taskId)
+        : ITraceCpuRawWrite(fd, traceFilePath, taskId, false) {}
+    bool WriteTraceContent() override;
+};
+
+class TraceCpuRawWriteHM : public ITraceCpuRawWrite {
+public:
+    TraceCpuRawWriteHM(const int fd, const std::string& traceFilePath, const uint64_t taskId)
+        : ITraceCpuRawWrite(fd, traceFilePath, taskId, true) {}
     bool WriteTraceContent() override;
 };
 
