@@ -936,6 +936,25 @@ void StartTraceArgs(uint64_t tag, const char* fmt, ...)
     AddHitraceMeterMarker(traceMarker);
 }
 
+void StartTraceArgsEx(HiTraceOutputLevel level, uint64_t tag, const char* customArgs, const char* fmt, ...)
+{
+    UpdateSysParamTags();
+    if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+        return;
+    }
+    char name[VAR_NAME_MAX_SIZE] = { 0 };
+    va_list args;
+    va_start(args, fmt);
+    int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
+    va_end(args);
+    if (res < 0) {
+        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
+        return;
+    }
+    TraceMarker traceMarker = {MARKER_BEGIN, level, tag, 0, name, EMPTY, customArgs};
+    AddHitraceMeterMarker(traceMarker);
+}
+
 void StartTraceArgsDebug(bool isDebug, uint64_t tag, const char* fmt, ...)
 {
     UpdateSysParamTags();
@@ -1032,6 +1051,27 @@ void StartAsyncTraceArgs(uint64_t tag, int32_t taskId, const char* fmt, ...)
     AddHitraceMeterMarker(traceMarker);
 }
 
+void StartAsyncTraceArgsEx(HiTraceOutputLevel level, uint64_t tag, int32_t taskId,
+    const char* customCategory, const char* customArgs, const char* fmt, ...)
+{
+    UpdateSysParamTags();
+    if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+        return;
+    }
+    char name[VAR_NAME_MAX_SIZE] = { 0 };
+    va_list args;
+
+    va_start(args, fmt);
+    int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
+    va_end(args);
+    if (res < 0) {
+        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
+        return;
+    }
+    TraceMarker traceMarker = {MARKER_ASYNC_BEGIN, level, tag, taskId, name, customCategory, customArgs};
+    AddHitraceMeterMarker(traceMarker);
+}
+
 void StartAsyncTraceArgsDebug(bool isDebug, uint64_t tag, int32_t taskId, const char* fmt, ...)
 {
     UpdateSysParamTags();
@@ -1096,6 +1136,26 @@ void FinishAsyncTraceArgs(uint64_t tag, int32_t taskId, const char* fmt, ...)
         return;
     }
     TraceMarker traceMarker = {MARKER_ASYNC_END, HITRACE_LEVEL_INFO, tag, taskId, name, EMPTY, EMPTY};
+    AddHitraceMeterMarker(traceMarker);
+}
+
+void FinishAsyncTraceArgsEx(HiTraceOutputLevel level, uint64_t tag, int32_t taskId, const char* fmt, ...)
+{
+    UpdateSysParamTags();
+    if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+        return;
+    }
+    char name[VAR_NAME_MAX_SIZE] = { 0 };
+    va_list args;
+
+    va_start(args, fmt);
+    int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
+    va_end(args);
+    if (res < 0) {
+        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
+        return;
+    }
+    TraceMarker traceMarker = {MARKER_ASYNC_END, level, tag, taskId, name, EMPTY, EMPTY};
     AddHitraceMeterMarker(traceMarker);
 }
 
