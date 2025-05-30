@@ -132,6 +132,7 @@ void StartTrace(uint64_t tag, const std::string& name, float limit = -1);
 void StartTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, const char* customArgs = "");
 void StartTraceDebug(bool isDebug, uint64_t tag, const std::string& name, float limit = -1);
 void StartTraceArgs(uint64_t tag, const char* fmt, ...);
+void StartTraceArgsEx(HiTraceOutputLevel level, uint64_t tag, const char* customArgs, const char* fmt, ...);
 void StartTraceArgsDebug(bool isDebug, uint64_t tag, const char* fmt, ...);
 void StartTraceWrapper(uint64_t tag, const char* name);
 
@@ -150,6 +151,8 @@ void StartAsyncTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name,
     const char* customCategory, const char* customArgs = "");
 void StartAsyncTraceDebug(bool isDebug, uint64_t tag, const std::string& name, int32_t taskId, float limit = -1);
 void StartAsyncTraceArgs(uint64_t tag, int32_t taskId, const char* fmt, ...);
+void StartAsyncTraceArgsEx(HiTraceOutputLevel level, uint64_t tag, int32_t taskId,
+    const char* customCategory, const char* customArgs, const char* fmt, ...);
 void StartAsyncTraceArgsDebug(bool isDebug, uint64_t tag, int32_t taskId, const char* fmt, ...);
 void StartAsyncTraceWrapper(uint64_t tag, const char* name, int32_t taskId);
 
@@ -166,6 +169,7 @@ void FinishAsyncTrace(uint64_t tag, const std::string& name, int32_t taskId);
 void FinishAsyncTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, int32_t taskId);
 void FinishAsyncTraceDebug(bool isDebug, uint64_t tag, const std::string& name, int32_t taskId);
 void FinishAsyncTraceArgs(uint64_t tag, int32_t taskId, const char* fmt, ...);
+void FinishAsyncTraceArgsEx(HiTraceOutputLevel level, uint64_t tag, int32_t taskId, const char* fmt, ...);
 void FinishAsyncTraceArgsDebug(bool isDebug, uint64_t tag, int32_t taskId, const char* fmt, ...);
 void FinishAsyncTraceWrapper(uint64_t tag, const char* name, int32_t taskId);
 

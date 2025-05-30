@@ -759,6 +759,67 @@ HWTEST_F(HitraceMeterTest, SyncTraceInterfaceTest015, TestSize.Level1)
 }
 
 /**
+ * @tc.name: SyncTraceInterfaceTest016
+ * @tc.desc: Testing StartTraceArgsEx
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, SyncTraceInterfaceTest016, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SyncTraceInterfaceTest016: start.";
+
+    const char* name = "SyncTraceInterfaceTest016-%d";
+    int var = 16;
+    // Each line contains 75 characters, and the longName has a total length of 453 characters.
+    std::string longName = "SyncTraceInterfaceTest016SyncTraceInterfaceTest016SyncTraceInterfaceTest016";
+    longName += "SyncTraceInterfaceTest016SyncTraceInterfaceTest016SyncTraceInterfaceTest016";
+    longName += "SyncTraceInterfaceTest016SyncTraceInterfaceTest016SyncTraceInterfaceTest016";
+    longName += "SyncTraceInterfaceTest016SyncTraceInterfaceTest016SyncTraceInterfaceTest016";
+    longName += "SyncTraceInterfaceTest016SyncTraceInterfaceTest016SyncTraceInterfaceTest016";
+    longName += "SyncTraceInterfaceTest016SyncTraceInterfaceTest016SyncTraceInterfaceTest016-%d";
+    const char* customArgs = "key=value";
+
+    SetTraceDisabled(true);
+    StartTraceArgsEx(HITRACE_LEVEL_COMMERCIAL, TAG, customArgs, name, var);
+    FinishTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG);
+    SetTraceDisabled(false);
+
+    std::vector<std::string> list = ReadTrace();
+    bool isSuccess = FindResult("SyncTraceInterfaceTest016", list);
+    ASSERT_FALSE(isSuccess) << "Hitrace shouldn't find \"SyncTraceInterfaceTest016\" from trace.";
+
+    ASSERT_TRUE(CleanTrace());
+    StartTraceArgsEx(HITRACE_LEVEL_COMMERCIAL, TAG, customArgs, longName.c_str(), var);
+    FinishTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG);
+
+    list = ReadTrace();
+    isSuccess = FindResult("SyncTraceInterfaceTest016", list);
+    ASSERT_FALSE(isSuccess) << "Hitrace shouldn't find \"SyncTraceInterfaceTest016\" from trace.";
+
+    ASSERT_TRUE(CleanTrace());
+    StartTraceArgsEx(HITRACE_LEVEL_COMMERCIAL, INVALID_TAG, customArgs, name, var);
+    FinishTraceEx(HITRACE_LEVEL_COMMERCIAL, INVALID_TAG);
+
+    list = ReadTrace();
+    isSuccess = FindResult("SyncTraceInterfaceTest016", list);
+    ASSERT_FALSE(isSuccess) << "Hitrace shouldn't find \"SyncTraceInterfaceTest016\" from trace.";
+
+    ASSERT_TRUE(CleanTrace());
+    StartTraceArgsEx(HITRACE_LEVEL_COMMERCIAL, TAG, customArgs, name, var);
+    FinishTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG);
+
+    list = ReadTrace();
+    char record[RECORD_SIZE_MAX + 1] = {0};
+    TraceInfo traceInfo = {'B', HITRACE_LEVEL_COMMERCIAL, TAG, 0, "SyncTraceInterfaceTest016-16", "", customArgs};
+    bool isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+    traceInfo.type = 'E';
+    bool isFinishSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isFinishSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+
+    GTEST_LOG_(INFO) << "SyncTraceInterfaceTest016: end.";
+}
+
+/**
  * @tc.name: AsyncTraceInterfaceTest001
  * @tc.desc: Testing StartAsyncTraceEx and FinishAsyncTraceEx with HiTraceId
  * @tc.type: FUNC
@@ -1224,6 +1285,72 @@ HWTEST_F(HitraceMeterTest, AsyncTraceInterfaceTest011, TestSize.Level1)
     ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
 
     GTEST_LOG_(INFO) << "AsyncTraceInterfaceTest011: end.";
+}
+
+/**
+ * @tc.name: AsyncTraceInterfaceTest012
+ * @tc.desc: Testing StartAsyncTraceArgsEx and FinishAsyncTraceArgsEx
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, AsyncTraceInterfaceTest012, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AsyncTraceInterfaceTest012: start.";
+
+    const char* name = "AsyncTraceInterfaceTest012-%d";
+    int var = 12;
+    // Each line contains 78 characters, and the longName has a total length of 470 characters.
+    std::string longName = "AsyncTraceInterfaceTest012AsyncTraceInterfaceTest012AsyncTraceInterfaceTest012";
+    longName += "AsyncTraceInterfaceTest012AsyncTraceInterfaceTest012AsyncTraceInterfaceTest012";
+    longName += "AsyncTraceInterfaceTest012AsyncTraceInterfaceTest012AsyncTraceInterfaceTest012";
+    longName += "AsyncTraceInterfaceTest012AsyncTraceInterfaceTest012AsyncTraceInterfaceTest012";
+    longName += "AsyncTraceInterfaceTest012AsyncTraceInterfaceTest012AsyncTraceInterfaceTest012";
+    longName += "AsyncTraceInterfaceTest012AsyncTraceInterfaceTest012AsyncTraceInterfaceTest012-%d";
+    int32_t taskId = 12;
+    const char* customCategory = "test";
+    const char* customArgs = "key=value";
+
+    SetTraceDisabled(true);
+    StartAsyncTraceArgsEx(HITRACE_LEVEL_COMMERCIAL, TAG, taskId, customCategory, customArgs, name, var);
+    FinishAsyncTraceArgsEx(HITRACE_LEVEL_COMMERCIAL, TAG, taskId, name, var);
+    SetTraceDisabled(false);
+
+    std::vector<std::string> list = ReadTrace();
+    bool isSuccess = FindResult("AsyncTraceInterfaceTest012", list);
+    ASSERT_FALSE(isSuccess) << "Hitrace shouldn't find \"AsyncTraceInterfaceTest012\" from trace.";
+
+    ASSERT_TRUE(CleanTrace());
+    StartAsyncTraceArgsEx(HITRACE_LEVEL_COMMERCIAL, TAG, taskId, customCategory, customArgs, longName.c_str(), var);
+    FinishAsyncTraceArgsEx(HITRACE_LEVEL_COMMERCIAL, TAG, taskId, longName.c_str(), var);
+
+    list = ReadTrace();
+    isSuccess = FindResult("AsyncTraceInterfaceTest012", list);
+    ASSERT_FALSE(isSuccess) << "Hitrace shouldn't find \"AsyncTraceInterfaceTest012\" from trace.";
+
+    ASSERT_TRUE(CleanTrace());
+    StartAsyncTraceArgsEx(HITRACE_LEVEL_COMMERCIAL, INVALID_TAG, taskId, customCategory, customArgs, name, var);
+    FinishAsyncTraceArgsEx(HITRACE_LEVEL_COMMERCIAL, INVALID_TAG, taskId, name, var);
+
+    list = ReadTrace();
+    isSuccess = FindResult("AsyncTraceInterfaceTest012", list);
+    ASSERT_FALSE(isSuccess) << "Hitrace shouldn't find \"AsyncTraceInterfaceTest012\" from trace.";
+
+    ASSERT_TRUE(CleanTrace());
+    StartAsyncTraceArgsEx(HITRACE_LEVEL_COMMERCIAL, TAG, taskId, customCategory, customArgs, name, var);
+    FinishAsyncTraceArgsEx(HITRACE_LEVEL_COMMERCIAL, TAG, taskId, name, var);
+
+    char record[RECORD_SIZE_MAX + 1] = {0};
+    TraceInfo traceInfo = {
+        'S', HITRACE_LEVEL_COMMERCIAL, TAG, taskId,
+        "AsyncTraceInterfaceTest012-12", customCategory, customArgs
+    };
+    list = ReadTrace();
+    bool isStartSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isStartSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+    traceInfo.type = 'F';
+    bool isFinishSuc = GetTraceResult(traceInfo, list, record);
+    ASSERT_TRUE(isFinishSuc) << "Hitrace can't find \"" << record << "\" from trace.";
+
+    GTEST_LOG_(INFO) << "AsyncTraceInterfaceTest012: end.";
 }
 
 /**
