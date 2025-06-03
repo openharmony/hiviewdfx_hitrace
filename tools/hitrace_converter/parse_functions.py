@@ -834,6 +834,156 @@ def parse_phase_task_delta(data, one_event):
     info = parse_bytes_to_str(one_event["fields"]["info[256]"])
     return "comm=%s tid=%d delta_exec=%d deltas={%s}" % (name, tid, delta_exec, info)
 
+
+def parse_erofs_read_enter(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    ino = parse_int_field(one_event, "ino", False)
+    off = parse_int_field(one_event, "off", False)
+    size = parse_int_field(one_event, "size", False)
+    data_loc_name = parse_int_field(one_event, "name", False) & 0xffff
+    return "dev:%d,%d ino:%lu offset:%lu size:%d entry_name:%s" % (dev >> 20, dev & 0xfffff, ino, off, size, parse_bytes_to_str(data[data_loc_name:]))
+
+
+def parse_erofs_read_exit(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    ino = parse_int_field(one_event, "ino", False)
+    off = parse_int_field(one_event, "off", False)
+    size = parse_int_field(one_event, "size", False)
+    res = parse_int_field(one_event, "res", False)
+    return "dev:%d,%d ino:%lu offset:%lu size:%d res:%d" % (dev >> 20, dev & 0xfffff, ino, off, size, res)
+
+
+def parse_erofs_read_iter_enter(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    ino = parse_int_field(one_event, "ino", False)
+    off = parse_int_field(one_event, "off", False)
+    size = parse_int_field(one_event, "size", False)
+    return "dev:%d,%d ino:%lu offset:%lu size:%d" % (dev >> 20, dev & 0xfffff, ino, off, size)
+
+
+def parse_erofs_read_iter_exit(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    ino = parse_int_field(one_event, "ino", False)
+    off = parse_int_field(one_event, "off", False)
+    size = parse_int_field(one_event, "size", False)
+    res = parse_int_field(one_event, "res", False)
+    return "dev:%d,%d ino:%lu offset:%lu size:%d res:%d" % (dev >> 20, dev & 0xfffff, ino, off, size, res)
+
+
+def parse_erofs_readdir(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    index = parse_int_field(one_event, "index", False)
+    start_pos = parse_int_field(one_event, "start_pos", False)
+    end_pos = parse_int_field(one_event, "end_pos", False)
+    res = parse_int_field(one_event, "res", False)
+    return "dev:(%d,%d), ino:%lu, start_pos:%lu, end_pos:%lu, err:%d" % (dev >> 20, dev & 0xfffff, index, start_pos, end_pos, res)
+
+
+def parse_erofs_lookup_start(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    index = parse_int_field(one_event, "index", False)
+    data_loc_name = parse_int_field(one_event, "name", False) & 0xffff
+    return "dev:(%d,%d), ino:%lu, name:%s" % (dev >> 20, dev & 0xfffff, index, parse_bytes_to_str(data[data_loc_name:]))
+
+
+def parse_erofs_lookup_end(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    index = parse_int_field(one_event, "index", False)
+    data_loc_name = parse_int_field(one_event, "name", False) & 0xffff
+    ino = parse_int_field(one_event, "cino", False)
+    res = parse_int_field(one_event, "res", False)
+    return "dev:(%d,%d), pino:%lu, name:%s, ino:%lu, err:%d" % (dev >> 20, dev & 0xfffff, index, parse_bytes_to_str(data[data_loc_name:]), ino, res)
+
+
+def parse_erofs_getattr_enter(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    index = parse_int_field(one_event, "index", False)
+    mode = parse_int_field(one_event, "mode", False)
+    size = parse_int_field(one_event, "size", False)
+    blocks = parse_int_field(one_event, "blocks", False)
+    nlink = parse_int_field(one_event, "nlink", False)
+    return "dev:(%d,%d), ino:%lu, mode:0x%hx, " "size:%ld, blocks:%lu, linkcnt:%u" % (dev >> 20, dev & 0xfffff, index, mode, size, blocks, nlink)
+
+
+def parse_erofs_getattr_exit(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    index = parse_int_field(one_event, "index", False)
+    mode = parse_int_field(one_event, "mode", False)
+    size = parse_int_field(one_event, "size", False)
+    blocks = parse_int_field(one_event, "blocks", False)
+    nlink = parse_int_field(one_event, "nlink", False)
+    return "dev:(%d,%d), ino:%lu, mode:0x%hx, " "size:%ld, blocks:%lu, linkcnt:%u" % (dev >> 20, dev & 0xfffff, index, mode, size, blocks, nlink)
+
+
+def parse_erofs_listxattr_enter(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    index = parse_int_field(one_event, "index", False)
+    mode = parse_int_field(one_event, "mode", False)
+    xattr_nid = parse_int_field(one_event, "xattr_nid", False)
+    size = parse_int_field(one_event, "size", False)
+    return "dev:(%d,%d), ino:%lu, mode:0x%hx, xattr_nid:%ld, size:%ld" % (dev >> 20, dev & 0xfffff, index, mode, xattr_nid, size)
+
+
+def parse_erofs_listxattr_exit(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    index = parse_int_field(one_event, "index", False)
+    mode = parse_int_field(one_event, "mode", False)
+    size = parse_int_field(one_event, "size", False)
+    blocks = parse_int_field(one_event, "blocks", False)
+    nlink = parse_int_field(one_event, "nlink", False)
+    res = parse_int_field(one_event, "res", False)
+    return "dev:(%d,%d), ino:%lu, mode:0x%hx, " "size:%ld, blocks:%lu, linkcnt:%u, err:%d" % (dev >> 20, dev & 0xfffff, index, mode, size, blocks, nlink, res)
+
+
+def parse_erofs_raw_access_readpages_start(data, one_event):
+    index = parse_int_field(one_event, "index", False)
+    nr_pages = parse_int_field(one_event, "nr_pages", False)
+    nid = parse_int_field(one_event, "index", False)
+    return "index:%lu nr_pages:%u nid:%lu" % (index, nr_pages, nid)
+
+
+def parse_erofs_raw_access_readpages_end(data, one_event):
+    nid = parse_int_field(one_event, "nid", False)
+    res = parse_int_field(one_event, "res", False)
+    return "nid:%lu res:%d" % (nid, res)
+
+
+def parse_erofs_read_raw_page_start(data, one_event):
+    index = parse_int_field(one_event, "index", False)
+    nid = parse_int_field(one_event, "nid", False)
+    return "index:%lu nid:%lu" % (index, nid)
+
+
+def parse_erofs_read_raw_page_end(data, one_event):
+    nid = parse_int_field(one_event, "nid", False)
+    res = parse_int_field(one_event, "res", False)
+    return "nid:%lu res:%d" % (nid, res)
+
+
+def parse_z_erofs_vle_normalaccess_readpage_end(data, one_event):
+    nid = parse_int_field(one_event, "nid", False)
+    res = parse_int_field(one_event, "res", False)
+    return "nid:%lu res:%d" % (nid, res)
+
+
+def parse_z_erofs_vle_normalaccess_readpage_start(data, one_event):
+    index = parse_int_field(one_event, "index", False)
+    nid = parse_int_field(one_event, "nid", False)
+    return "index:%lu nid:%lu" % (index, nid)
+
+
+def parse_z_erofs_vle_normalaccess_readpages_end(data, one_event):
+    nid = parse_int_field(one_event, "nid", False)
+    res = parse_int_field(one_event, "res", False)
+    return "nid:%lu res:%d" % (nid, res)
+
+
+def parse_z_erofs_vle_normalaccess_readpages_start(data, one_event):
+    index = parse_int_field(one_event, "index", False)
+    nr_pages = parse_int_field(one_event, "nr_pages", False)
+    nid = parse_int_field(one_event, "nid", False)
+    return "index:%lu nr_pages:%u nid:%lu" % (index, nr_pages, nid)
+
 PRINT_FMT_IRQ_HANDLER_ENTRY = '"irq=%d name=%s", REC->irq, ((char *)((void *)((char *)REC + (REC->__data_loc_name & 0xffff))))'
 PRINT_FMT_IRQ_HANDLER_EXIT = '"irq=%d ret=%s", REC->irq, REC->ret ? "handled" : "unhandled"'
 PRINT_FMT_SOFTIRQ_ENTRY_EXIT = '"vec=%u [action=%s]", REC->vec, __print_symbolic(REC->vec, { 0, "HI" }, { 1, "TIMER" }, { 2, "NET_TX" }, { 3, "NET_RX" }, { 4, "BLOCK" }, { 5, "IRQ_POLL" }, { 6, "TASKLET" }, { 7, "SCHED" }, { 8, "HRTIMER" }, { 9, "RCU" })'
@@ -900,6 +1050,25 @@ PRINT_FMT_PRINT = '"%ps: %s", (void *)REC->ip, REC->buf'
 PRINT_FMT_TRACING_MARK_WRITE = '"%s", ((void *)((char *)REC + (REC->__data_loc_buffer & 0xffff)))'
 PRINT_FMT_XACCT_TRACING_MARK_WRITE = '"%c|%d|%s", "EB"[REC->start], REC->pid, REC->start ? REC->name : ""'
 PRINT_FMT_PHASE_TASK_DELTA = '"comm=%s tid=%d delta_exec=%llu deltas={%s}", REC->name, REC->tid, REC->delta_exec, REC->info'
+PRINT_FMT_EROFS_READ_ENTER = '"dev:%d,%d ino:%lu offset:%llu size:%zd entry_name:%s", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->ino, REC->off, REC->size, ((char *)((void *)((char *)REC + (REC->__data_loc_name & 0xffff))))'
+PRINT_FMT_EROFS_READ_EXIT = '"dev:%d,%d ino:%lu offset:%llu size:%zd res:%zd", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->ino, REC->off, REC->size, REC->res'
+PRINT_FMT_EROFS_READ_ITER_ENTER = '"dev:%d,%d ino:%lu offset:%llu size:%zd", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->ino, REC->off, REC->size'
+PRINT_FMT_EROFS_READ_ITER_EXIT = '"dev:%d,%d ino:%lu offset:%llu size:%zd res:%zd", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->ino, REC->off, REC->size, REC->res'
+PRINT_FMT_EROFS_READDIR = '"dev:(%d,%d), ino:%lu, start_pos:%llu, end_pos:%llu, err:%d", ((unsigned int) (((REC)->dev) >> 20)), ((unsigned int) (((REC)->dev) & ((1U << 20) - 1))), ((unsigned long)((REC)->index)), REC->start_pos, REC->end_pos, REC->res'
+PRINT_FMT_EROFS_LOOKUP_START = '"dev:(%d,%d), ino:%lu, name:%s", ((unsigned int) (((REC)->dev) >> 20)), ((unsigned int) (((REC)->dev) & ((1U << 20) - 1))), ((unsigned long)((REC)->index)), ((char *)((void *)((char *)REC + (REC->__data_loc_name &0xffff))))'
+PRINT_FMT_EROFS_LOOKUP_END = '"dev:(%d,%d), pino:%lu, name:%s, ino:%lu, err:%d", ((unsigned int) (((REC)->dev) >> 20)), ((unsigned int) (((REC)->dev) & ((1U << 20) - 1))), ((unsigned long)((REC)->index)), ((char *)((void *)((char *)REC + (REC->__data_loc_name & 0xffff)))), REC->cino, REC->res'
+PRINT_FMT_EROFS_GETATTR_ENTER = '"dev:(%d,%d), ino:%lu, mode:0x%hx, " "size:%lld, blocks:%llu, linkcnt:%u", ((unsigned int) (((REC)->dev) >> 20)), ((unsigned int) (((REC)->dev) & ((1U << 20) - 1))), ((unsigned long)((REC)->index)), REC->mode, REC->size, (unsigned long long)REC->blocks, REC->nlink'
+PRINT_FMT_EROFS_GETATTR_EXIT = '"dev:(%d,%d), ino:%lu, mode:0x%hx, " "size:%lld, blocks:%llu, linkcnt:%u", ((unsigned int) (((REC)->dev) >> 20)), ((unsigned int) (((REC)->dev) & ((1U << 20) - 1))), ((unsigned long)((REC)->index)), REC->mode, REC->size, (unsigned long long)REC->blocks, REC->nlink'
+PRINT_FMT_EROFS_LISTXATTR_ENTER = '"dev:(%d,%d), ino:%lu, mode:0x%hx, xattr_nid:%lld, size:%lld", ((unsigned int) (((REC)->dev) >> 20)), ((unsigned int) (((REC)->dev) & ((1U << 20) - 1))), ((unsigned long)((REC)->index)), REC->mode, REC->xattr_nid, REC->size'
+PRINT_FMT_EROFS_LISTXATTR_EXIT = '"dev:(%d,%d), ino:%lu, mode:0x%hx, " "size:%lld, blocks:%llu, linkcnt:%u, err:%d", ((unsigned int) (((REC)->dev) >> 20)), ((unsigned int) (((REC)->dev) & ((1U << 20) - 1))), ((unsigned long)((REC)->index)), REC->mode, REC->size, (unsigned long long)REC->blocks, REC->nlink, REC->res'
+PRINT_FMT_EROFS_RAW_ACCESS_READPAGES_START = '"index:%llu nr_pages:%u nid:%lu", REC->index, REC->nr_pages, REC->nid'
+PRINT_FMT_EROFS_RAW_ACCESS_READPAGES_END = '"nid:%lu res:%d", REC->nid, REC->res'
+PRINT_FMT_EROFS_READ_RAW_PAGE_START = '"index:%llu nid:%lu", REC->index, REC->nid'
+PRINT_FMT_EROFS_READ_RAW_PAGE_END = '"nid:%lu res:%d", REC->nid, REC->res'
+PRINT_FMT_Z_EROFS_VLE_NORMALACCESS_READPAGE_END = '"nid:%lu res:%d", REC->nid, REC->res'
+PRINT_FMT_Z_EROFS_VLE_NORMALACCESS_READPAGE_START = '"index:%llu nid:%lu", REC->index, REC->nid'
+PRINT_FMT_Z_EROFS_VLE_NORMALACCESS_READPAGES_END = '"nid:%lu res:%d", REC->nid, REC->res'
+PRINT_FMT_Z_EROFS_VLE_NORMALACCESS_READPAGES_START = '"index:%llu nr_pages:%u nid:%lu", REC->index, REC->nr_pages, REC->nid'
 
 print_fmt_func_map = {
 PRINT_FMT_IRQ_HANDLER_ENTRY: parse_irq_handler_entry,
@@ -967,5 +1136,24 @@ PRINT_FMT_THERMAL_POWER_ALLOCATOR: parse_thermal_power_allocator,
 PRINT_FMT_PRINT: parse_print,
 PRINT_FMT_TRACING_MARK_WRITE: parse_tracing_mark_write,
 PRINT_FMT_XACCT_TRACING_MARK_WRITE: parse_xacct_tracing_mark_write,
-PRINT_FMT_PHASE_TASK_DELTA: parse_phase_task_delta
+PRINT_FMT_PHASE_TASK_DELTA: parse_phase_task_delta,
+PRINT_FMT_EROFS_READ_ENTER: parse_erofs_read_enter,
+PRINT_FMT_EROFS_READ_EXIT: parse_erofs_read_exit,
+PRINT_FMT_EROFS_READ_ITER_ENTER: parse_erofs_read_iter_enter,
+PRINT_FMT_EROFS_READ_ITER_EXIT: parse_erofs_read_iter_exit,
+PRINT_FMT_EROFS_READDIR: parse_erofs_readdir,
+PRINT_FMT_EROFS_LOOKUP_START: parse_erofs_lookup_start,
+PRINT_FMT_EROFS_LOOKUP_END: parse_erofs_lookup_end,
+PRINT_FMT_EROFS_GETATTR_ENTER: parse_erofs_getattr_enter,
+PRINT_FMT_EROFS_GETATTR_EXIT: parse_erofs_getattr_exit,
+PRINT_FMT_EROFS_LISTXATTR_ENTER: parse_erofs_listxattr_enter,
+PRINT_FMT_EROFS_LISTXATTR_EXIT: parse_erofs_listxattr_exit,
+PRINT_FMT_EROFS_RAW_ACCESS_READPAGES_START: parse_erofs_raw_access_readpages_start,
+PRINT_FMT_EROFS_RAW_ACCESS_READPAGES_END: parse_erofs_raw_access_readpages_end,
+PRINT_FMT_EROFS_READ_RAW_PAGE_START: parse_erofs_read_raw_page_start,
+PRINT_FMT_EROFS_READ_RAW_PAGE_END: parse_erofs_read_raw_page_end,
+PRINT_FMT_Z_EROFS_VLE_NORMALACCESS_READPAGE_END: parse_z_erofs_vle_normalaccess_readpage_end,
+PRINT_FMT_Z_EROFS_VLE_NORMALACCESS_READPAGE_START: parse_z_erofs_vle_normalaccess_readpage_start,
+PRINT_FMT_Z_EROFS_VLE_NORMALACCESS_READPAGES_END: parse_z_erofs_vle_normalaccess_readpages_end,
+PRINT_FMT_Z_EROFS_VLE_NORMALACCESS_READPAGES_START: parse_z_erofs_vle_normalaccess_readpages_start
 }

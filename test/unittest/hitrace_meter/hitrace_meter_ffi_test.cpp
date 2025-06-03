@@ -42,8 +42,6 @@ namespace HitraceTest {
 #endif
 
 constexpr uint64_t TAG = HITRACE_TAG_APP;
-const std::string LABEL_HEADER = "|H:";
-const std::string VERTICAL_LINE = "|";
 static char g_pid[6];
 
 class HitraceMeterFfiTest : public testing::Test {
@@ -254,7 +252,7 @@ HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest06, TestSize.Level1)
     bool isInfoFinishSuc = GetTraceResult(traceInfo, list, record);
     ASSERT_TRUE(isInfoFinishSuc) << "Hitrace can't find \"" << record << "\" from trace.";
 
-    GTEST_LOG_(INFO) << "HitraceFfiTest05: end.";
+    GTEST_LOG_(INFO) << "HitraceFfiTest06: end.";
 }
 }
 }
