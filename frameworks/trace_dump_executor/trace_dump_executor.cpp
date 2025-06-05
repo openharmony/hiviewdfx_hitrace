@@ -49,6 +49,7 @@ constexpr int DEFAULT_CACHE_FILE_SIZE = 15 * 1024;
 constexpr int DEFAULT_CACHE_FILE_SIZE = 150 * 1024;
 #endif
 constexpr uint64_t SYNC_RETURN_TIMEOUT_NS = 5000000000; // 5s
+constexpr int64_t ASYNC_DUMP_FILE_SIZE_ADDITION = 1024 * 1024; // 1MB
 
 std::vector<FileWithTime> g_looptraceFiles;
 std::shared_ptr<ProductConfigJsonParser> g_ProductConfigParser
@@ -293,7 +294,7 @@ TraceDumpRet AsyncTraceReadStrategy::Execute(std::shared_ptr<ITraceSource> trace
 
     TraceDumpRet ret = {
         .code = cpuRawRead->GetDumpStatus(),
-        .fileSize = TraceBufferManager::GetInstance().GetTaskTotalUsedBytes(request.taskId),
+        .fileSize = static_cast<int64_t>(TraceBufferManager::GetInstance().GetTaskTotalUsedBytes(request.taskId)),
         .traceStartTime = cpuRawRead->GetFirstPageTimeStamp(),
         .traceEndTime = cpuRawRead->GetLastPageTimeStamp(),
     };
@@ -301,7 +302,7 @@ TraceDumpRet AsyncTraceReadStrategy::Execute(std::shared_ptr<ITraceSource> trace
     if (strncpy_s(ret.outputFile, TRACE_FILE_LEN, tracefile.c_str(), TRACE_FILE_LEN - 1) != 0) {
         HILOG_ERROR(LOG_CORE, "AsyncTraceReadStrategy: strncpy_s failed.");
     }
-    HILOG_INFO(LOG_CORE, "AsyncTraceReadStrategy: trace file : %{public}s, file size : %{public}zu",
+    HILOG_INFO(LOG_CORE, "AsyncTraceReadStrategy: trace file : %{public}s, file size : %{public}" PRId64,
         ret.outputFile, ret.fileSize);
     return ret;
 }
@@ -482,12 +483,12 @@ void TraceDumpExecutor::ReadRawTraceLoop()
         }
 
         if (hasTask) {
-            HILOG_INFO(LOG_CORE, "ReadRawTraceLoop : start read trace of taskid[%{public}llu]", currentTask.time);
+            HILOG_INFO(LOG_CORE, "ReadRawTraceLoop : start read trace of taskid[%{public}" PRIu64 "]", currentTask.time);
             if (!DoReadRawTrace(currentTask)) {
-                HILOG_WARN(LOG_CORE, "ReadRawTraceLoop : do read raw trace failed, taskid[%{public}llu]",
+                HILOG_WARN(LOG_CORE, "ReadRawTraceLoop : do read raw trace failed, taskid[%{public}" PRIu64 "]",
                     currentTask.time);
             } else {
-                HILOG_INFO(LOG_CORE, "ReadRawTraceLoop : read raw trace done, taskid[%{public}llu]", currentTask.time);
+                HILOG_INFO(LOG_CORE, "ReadRawTraceLoop : read raw trace done, taskid[%{public}" PRIu64 "]", currentTask.time);
                 writeCondVar_.notify_one();
             }
         }
@@ -532,12 +533,13 @@ void TraceDumpExecutor::WriteTraceLoop()
         }
 
         if (hasTask) {
-            HILOG_INFO(LOG_CORE, "WriteTraceLoop : start write trace of taskid[%{public}llu]", currentTask.time);
+            HILOG_INFO(LOG_CORE, "WriteTraceLoop : start write trace of taskid[%{public}" PRIu64 "]", currentTask.time);
             if (!DoWriteRawTrace(currentTask)) {
-                HILOG_WARN(LOG_CORE, "WriteTraceLoop : do write raw trace failed, taskid[%{public}llu]",
+                HILOG_WARN(LOG_CORE, "WriteTraceLoop : do write raw trace failed, taskid[%{public}" PRIu64 "]",
                     currentTask.time);
             } else {
-                HILOG_INFO(LOG_CORE, "WriteTraceLoop : write raw trace done, taskid[%{public}llu]", currentTask.time);
+                HILOG_INFO(LOG_CORE, "WriteTraceLoop : write raw trace done, taskid[%{public}" PRIu64 "]",
+                    currentTask.time);
             }
         }
     }
@@ -632,6 +634,7 @@ bool TraceDumpExecutor::UpdateTraceDumpTask(const TraceDumpTask& task)
     std::lock_guard<std::mutex> lck(taskQueueMutex_);
     for (auto& dumpTask : traceDumpTaskVec_) {
         if (dumpTask.time == task.time) {
+            // attention: avoid updating hasSyncReturn field, it is only used in monitor thread.
             dumpTask.code = task.code;
             dumpTask.status = task.status;
             dumpTask.fileSize = task.fileSize;
@@ -640,12 +643,13 @@ bool TraceDumpExecutor::UpdateTraceDumpTask(const TraceDumpTask& task)
             if (strcpy_s(dumpTask.outputFile, sizeof(dumpTask.outputFile), task.outputFile) != 0) {
                 HILOG_ERROR(LOG_CORE, "UpdateTraceDumpTask: strcpy_s failed.");
             }
-            HILOG_INFO(LOG_CORE, "UpdateTraceDumpTask: task updated, task id: %{public}llu, status: %{public}hhu, file: %{public}s, filesize: %{public}zu.",
+            HILOG_INFO(LOG_CORE, "UpdateTraceDumpTask: task id: %{public}" PRIu64 ", status: %{public}hhu, "
+                "file: %{public}s, filesize: %{public}" PRId64 ".",
                 task.time, task.status, task.outputFile, task.fileSize);
             return true;
         }
     }
-    HILOG_WARN(LOG_CORE, "UpdateTraceDumpTask: task[%{public}llu] not found in lists.", task.time);
+    HILOG_WARN(LOG_CORE, "UpdateTraceDumpTask: task[%{public}" PRIu64 "] not found in lists.", task.time);
     return false;
 }
 
@@ -787,18 +791,21 @@ bool TraceDumpExecutor::DoReadRawTrace(TraceDumpTask& task)
     SetTraceDumpStrategy(std::make_unique<AsyncTraceReadStrategy>());
     auto ret = ExecuteDumpTrace(traceSource, request);
     task.code = ret.code;
-    task.fileSize = ret.fileSize + 1024 * 1024; // 1 MB
+    task.fileSize = ret.fileSize + ASYNC_DUMP_FILE_SIZE_ADDITION;
     if (strncpy_s(task.outputFile, TRACE_FILE_LEN, ret.outputFile, TRACE_FILE_LEN - 1) != 0) {
         HILOG_ERROR(LOG_CORE, "DoReadRawTrace: strncpy_s failed.");
     }
     if (task.code == TraceErrorCode::SUCCESS) {
         task.status = TraceDumpStatus::READ_DONE;
+        if (task.fileSize > task.fileSizeLimit) {
+            task.code = TraceErrorCode::SIZE_EXCEED_LIMIT;
+        }
     }
     if (!UpdateTraceDumpTask(task)) {
         HILOG_ERROR(LOG_CORE, "DoReadRawTrace: update trace dump task failed.");
         return false;
     }
-    return task.code == TraceErrorCode::SUCCESS;
+    return task.code == TraceErrorCode::SUCCESS || task.code == TraceErrorCode::SIZE_EXCEED_LIMIT;
 }
 
 bool TraceDumpExecutor::DoWriteRawTrace(TraceDumpTask& task)
@@ -826,15 +833,18 @@ bool TraceDumpExecutor::DoWriteRawTrace(TraceDumpTask& task)
     SetTraceDumpStrategy(std::make_unique<AsyncTraceWriteStrategy>());
     auto ret = ExecuteDumpTrace(traceSource, request);
     task.code = ret.code;
-    task.fileSize = GetFileSize(std::string(task.outputFile));
+    task.fileSize = static_cast<int64_t>(GetFileSize(std::string(task.outputFile)));
     if (task.code == TraceErrorCode::SUCCESS) {
         task.status = TraceDumpStatus::WRITE_DONE;
+        if (task.fileSize > task.fileSizeLimit) {
+            task.code = TraceErrorCode::SIZE_EXCEED_LIMIT;
+        }
     }
     if (!UpdateTraceDumpTask(task)) {
         HILOG_ERROR(LOG_CORE, "DoWriteRawTrace: update trace dump task failed.");
         return false;
     }
-    return task.code == TraceErrorCode::SUCCESS;
+    return task.code == TraceErrorCode::SUCCESS || task.code == TraceErrorCode::SIZE_EXCEED_LIMIT;
 }
 } // namespace Hitrace
 } // namespace HiviewDFX

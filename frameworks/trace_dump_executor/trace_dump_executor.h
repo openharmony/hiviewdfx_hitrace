@@ -42,7 +42,7 @@ struct TraceDumpParam {
 struct TraceDumpRet {
     TraceErrorCode code = TraceErrorCode::UNSET;
     char outputFile[TRACE_FILE_LEN] = { 0 };
-    size_t fileSize = 0;
+    int64_t fileSize = 0;
     uint64_t traceStartTime = 0;
     uint64_t traceEndTime = 0;
 };

@@ -54,6 +54,7 @@ enum TraceErrorCode : uint8_t {
     ASYNC_DUMP = 12,
     TRACE_TASK_SUBMIT_ERROR = 13,
     TRACE_TASK_DUMP_TIMEOUT = 14,
+    SIZE_EXCEED_LIMIT = 15,
     UNSET = 255,
 };
 
@@ -70,7 +71,7 @@ struct TraceRetInfo {
     TraceErrorCode errorCode;
     uint8_t mode = 0;
     std::vector<std::string> outputFiles;
-    size_t fileSize = 0;
+    int64_t fileSize = 0;
     int32_t coverRatio = 0;
     int32_t coverDuration = 0;
     std::vector<std::string> tags;
@@ -90,8 +91,8 @@ struct TraceDumpTask {
     uint64_t traceEndTime = 0;
     int bufferIdx = -1;
     char outputFile[TRACE_FILE_LEN] = { 0 };
-    size_t fileSize = 0;
-    // std::function<void(TraceRetInfo)> callback = nullptr;
+    int64_t fileSize = 0;
+    int64_t fileSizeLimit = 0;
     bool hasSyncReturn = false;
     TraceErrorCode code = TraceErrorCode::UNSET;
     TraceDumpStatus status = TraceDumpStatus::START;

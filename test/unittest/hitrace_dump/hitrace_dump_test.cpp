@@ -1208,17 +1208,37 @@ HWTEST_F(HitraceDumpTest, DumpTraceAsyncTest001, TestSize.Level2)
             GTEST_LOG_(INFO) << "output: " << files << " file size: " << GetFileSize(files);
         }
     };
-    auto ret1 = DumpTraceAsync(0, 0, func);
-    EXPECT_EQ(ret1.errorCode, TraceErrorCode::SUCCESS);
-    GTEST_LOG_(INFO) << "interface return file1 size :" << ret1.fileSize;
-    for (auto file : ret1.outputFiles) {
+    auto ret = DumpTraceAsync(0, 0, INT64_MAX, func);
+    EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
+    GTEST_LOG_(INFO) << "interface return file1 size :" << ret.fileSize;
+    for (auto file : ret.outputFiles) {
         GTEST_LOG_(INFO) << "interface return file1 :" << file;
     }
-    auto ret2 = DumpTraceAsync(0, 0, func);
-    EXPECT_EQ(ret2.errorCode, TraceErrorCode::SUCCESS);
-    GTEST_LOG_(INFO) << "interface return file2 size :" << ret2.fileSize;
-    for (auto file : ret2.outputFiles) {
-        GTEST_LOG_(INFO) << "interface return file2 :" << file;
+    // Close trace after async dump
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpTraceAsyncTest002
+ * @tc.desc: Test DumpTraceAsync func, filesizelimit parameter
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpTraceAsyncTest002, TestSize.Level2)
+{
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+
+    std::function<void(TraceRetInfo)> func = [](TraceRetInfo traceInfo) {
+        EXPECT_EQ(traceInfo.errorCode, TraceErrorCode::SIZE_EXCEED_LIMIT);
+        for (auto& files : traceInfo.outputFiles) {
+            GTEST_LOG_(INFO) << "output: " << files << " file size: " << GetFileSize(files);
+        }
+    };
+    auto ret = DumpTraceAsync(0, 0, 100, func); // 100 : 100 bytes
+    EXPECT_EQ(ret.errorCode, TraceErrorCode::SIZE_EXCEED_LIMIT) << "errorCode: " << static_cast<int>(ret.errorCode);
+    GTEST_LOG_(INFO) << "interface return file1 size :" << ret.fileSize;
+    for (auto file : ret.outputFiles) {
+        GTEST_LOG_(INFO) << "interface return file1 :" << file;
     }
     // Close trace after async dump
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);

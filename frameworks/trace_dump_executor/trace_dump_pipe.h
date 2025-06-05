@@ -41,6 +41,11 @@ public:
     bool WriteAsyncReturn(TraceDumpTask& task);
 
 private:
+    bool CheckProcessRole(bool shouldBeParent, const char* operation) const;
+    bool CheckFdValidity(int fd, const char* operation, const char* pipeName) const;
+    bool WriteToPipe(int fd, const TraceDumpTask& task, const char* operation);
+    bool ReadFromPipe(int fd, TraceDumpTask& task, const int timeoutMs, const char* operation);
+
     bool isParent_;
     int taskSubmitFd_;
     int syncRetFd_;

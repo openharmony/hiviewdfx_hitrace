@@ -22,6 +22,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include "common_define.h"
 #include "hilog/log.h"
 
 namespace OHOS {
@@ -39,6 +40,8 @@ namespace {
 const char TRACE_TASK_SUBMIT_PIPE[] = "/data/log/hitrace/trace_task";
 const char TRACE_SYNC_RETURN_PIPE[] = "/data/log/hitrace/trace_sync_return";
 const char TRACE_ASYNC_RETURN_PIPE[] = "/data/log/hitrace/trace_async_return";
+const int READ_PIPE_TICK = 50;
+const mode_t PIPE_FILE_MODE = 0666;
 } // namespace
 
 HitraceDumpPipe::HitraceDumpPipe(bool isParent)
@@ -94,17 +97,17 @@ HitraceDumpPipe::~HitraceDumpPipe()
 
 bool HitraceDumpPipe::InitTraceDumpPipe()
 {
-    if (mkfifo(TRACE_TASK_SUBMIT_PIPE, 0666) < 0) {
+    if (mkfifo(TRACE_TASK_SUBMIT_PIPE, PIPE_FILE_MODE) < 0) {
         HILOG_ERROR(LOG_CORE, "HitraceDumpPipe: create %{public}s failed, errno(%{public}d)",
             TRACE_TASK_SUBMIT_PIPE, errno);
         return false;
     }
-    if (mkfifo(TRACE_SYNC_RETURN_PIPE, 0666) < 0) {
+    if (mkfifo(TRACE_SYNC_RETURN_PIPE, PIPE_FILE_MODE) < 0) {
         HILOG_ERROR(LOG_CORE, "HitraceDumpPipe: create %{public}s failed, errno(%{public}d)",
             TRACE_SYNC_RETURN_PIPE, errno);
         return false;
     }
-    if (mkfifo(TRACE_ASYNC_RETURN_PIPE, 0666) < 0) {
+    if (mkfifo(TRACE_ASYNC_RETURN_PIPE, PIPE_FILE_MODE) < 0) {
         HILOG_ERROR(LOG_CORE, "HitraceDumpPipe: create %{public}s failed, errno(%{public}d)",
             TRACE_ASYNC_RETURN_PIPE, errno);
         return false;
@@ -119,135 +122,104 @@ void HitraceDumpPipe::ClearTraceDumpPipe()
     unlink(TRACE_ASYNC_RETURN_PIPE);
 }
 
+bool HitraceDumpPipe::CheckProcessRole(bool shouldBeParent, const char* operation) const
+{
+    if (isParent_ != shouldBeParent) {
+        HILOG_ERROR(LOG_CORE, "%{public}s: %{public}s process can not perform this operation.",
+            operation, shouldBeParent ? "child" : "parent");
+        return false;
+    }
+    return true;
+}
+
+bool HitraceDumpPipe::CheckFdValidity(int fd, const char* operation, const char* pipeName) const
+{
+    if (fd < 0) {
+        HILOG_ERROR(LOG_CORE, "%{public}s: %{public}s fd is illegal.", operation, pipeName);
+        return false;
+    }
+    return true;
+}
+
+bool HitraceDumpPipe::WriteToPipe(int fd, const TraceDumpTask& task, const char* operation)
+{
+    ssize_t ret = write(fd, &task, sizeof(task));
+    if (ret < 0) {
+        HILOG_ERROR(LOG_CORE, "%{public}s: write pipe failed.", operation);
+        return false;
+    }
+    HILOG_INFO(LOG_CORE, "%{public}s: task submitted, task id: %{public}" PRIu64 ".", operation, task.time);
+    return true;
+}
+
+bool HitraceDumpPipe::ReadFromPipe(int fd, TraceDumpTask& task, const int timeoutMs, const char* operation)
+{
+    int msCnt = 0;
+    while (msCnt <= timeoutMs) {
+        ssize_t readSize = read(fd, &task, sizeof(task));
+        if (readSize > 0) {
+            HILOG_INFO(LOG_CORE, "%{public}s: read task done, task id: %{public}" PRIu64 ".", operation, task.time);
+            return true;
+        }
+        usleep(READ_PIPE_TICK * S_TO_MS); // 50 ms
+        msCnt += READ_PIPE_TICK;
+    }
+    HILOG_INFO(LOG_CORE, "%{public}s: read task timeout.", operation);
+    return false;
+}
+
 bool HitraceDumpPipe::SubmitTraceDumpTask(const TraceDumpTask& task)
 {
-    if (!isParent_) {
-        HILOG_ERROR(LOG_CORE, "SubmitTraceDumpTask: child process can not submit trace dump task.");
+    const char* operation = "SubmitTraceDumpTask";
+    if (!CheckProcessRole(true, operation) || !CheckFdValidity(taskSubmitFd_, operation, "submit pipe")) {
         return false;
     }
-    if (taskSubmitFd_ < 0) {
-        HILOG_ERROR(LOG_CORE, "SubmitTraceDumpTask: submit pipe fd is illegel.");
-        return false;
-    }
-    ssize_t ret = write(taskSubmitFd_, &task, sizeof(task));
-    if (ret < 0) {
-        HILOG_ERROR(LOG_CORE, "SubmitTraceDumpTask: write pipe failed.");
-        return false;
-    }
-    HILOG_INFO(LOG_CORE, "SubmitTraceDumpTask: task submitted, task id: %{public}llu.", task.time);
-    return true;
+    return WriteToPipe(taskSubmitFd_, task, operation);
 }
 
 bool HitraceDumpPipe::ReadSyncDumpRet(const int timeout, TraceDumpTask& task)
 {
-    if (!isParent_) {
-        HILOG_ERROR(LOG_CORE, "ReadSyncDumpRet: child process can not read sync pipe return.");
+    const char* operation = "ReadSyncDumpRet";
+    if (!CheckProcessRole(true, operation) || !CheckFdValidity(syncRetFd_, operation, "sync return pipe")) {
         return false;
     }
-    if (syncRetFd_ < 0) {
-        HILOG_ERROR(LOG_CORE, "ReadSyncDumpRet: sync return pipe fd is illegel.");
-        return false;
-    }
-
-    int msCnt = 0;
-    while (msCnt <= timeout * 1000) {
-        ssize_t readSize = read(syncRetFd_, &task, sizeof(task));
-        if (readSize > 0) {
-            HILOG_INFO(LOG_CORE, "ReadSyncDumpRet: read task done, task id: %{public}llu.", task.time);
-            return true;
-        }
-        usleep(50 * 1000); // 50 ms
-        msCnt += 50;
-    }
-
-    HILOG_INFO(LOG_CORE, "ReadSyncDumpRet: read task timeout.");
-    return false;
+    return ReadFromPipe(syncRetFd_, task, timeout * S_TO_MS, operation);
 }
 
 bool HitraceDumpPipe::ReadAsyncDumpRet(const int timeout, TraceDumpTask& task)
 {
-    if (!isParent_) {
-        HILOG_ERROR(LOG_CORE, "ReadSyncDumpRet: child process can not read async pipe return.");
+    const char* operation = "ReadAsyncDumpRet";
+    if (!CheckProcessRole(true, operation) || !CheckFdValidity(asyncRetFd_, operation, "async return pipe")) {
         return false;
     }
-    if (asyncRetFd_ < 0) {
-        HILOG_ERROR(LOG_CORE, "ReadSyncDumpRet: async return pipe fd is illegel.");
-        return false;
-    }
-    int msCnt = 0;
-    while (msCnt <= timeout * 1000) {
-        ssize_t readSize = read(asyncRetFd_, &task, sizeof(task));
-        if (readSize > 0) {
-            HILOG_INFO(LOG_CORE, "ReadAsyncDumpRet: read task done, task id: %{public}llu.", task.time);
-            return true;
-        }
-        usleep(50 * 1000); // 50 ms
-        msCnt += 50;
-    }
-    HILOG_INFO(LOG_CORE, "ReadAsyncDumpRet: read task timeout.");
-    return false;
+    return ReadFromPipe(asyncRetFd_, task, timeout * S_TO_MS, operation);
 }
 
 bool HitraceDumpPipe::ReadTraceTask(const int timeoutMs, TraceDumpTask& task)
 {
-    if (isParent_) {
-        HILOG_ERROR(LOG_CORE, "ReadTraceTask: parent process can not read submit pipe.");
+    const char* operation = "ReadTraceTask";
+    if (!CheckProcessRole(false, operation) || !CheckFdValidity(taskSubmitFd_, operation, "submit pipe")) {
         return false;
     }
-    if (taskSubmitFd_ < 0) {
-        HILOG_ERROR(LOG_CORE, "ReadTraceTask: submit pipe fd is illegel.");
-        return false;
-    }
-    int msCnt = 0;
-    while (msCnt <= timeoutMs) {
-        ssize_t readSize = read(taskSubmitFd_, &task, sizeof(task));
-        if (readSize > 0) {
-            HILOG_INFO(LOG_CORE, "ReadTraceTask: read task done, task id: %{public}llu.", task.time);
-            return true;
-        }
-        usleep(50 * 1000); // 50 ms
-        msCnt += 50;
-    }
-    HILOG_INFO(LOG_CORE, "ReadTraceTask: read task timeout.");
-    return false;
+    return ReadFromPipe(taskSubmitFd_, task, timeoutMs, operation);
 }
 
 bool HitraceDumpPipe::WriteSyncReturn(TraceDumpTask& task)
 {
-    if (isParent_) {
-        HILOG_ERROR(LOG_CORE, "WriteSyncReturn: parent process can not write sync return pipe.");
+    const char* operation = "WriteSyncReturn";
+    if (!CheckProcessRole(false, operation) || !CheckFdValidity(syncRetFd_, operation, "sync return pipe")) {
         return false;
     }
-    if (syncRetFd_ < 0) {
-        HILOG_ERROR(LOG_CORE, "WriteSyncReturn: sync return pipe fd is illegel.");
-        return false;
-    }
-    ssize_t ret = write(syncRetFd_, &task, sizeof(task));
-    if (ret < 0) {
-        HILOG_ERROR(LOG_CORE, "WriteSyncReturn: write pipe failed.");
-        return false;
-    }
-    HILOG_INFO(LOG_CORE, "WriteSyncReturn: task submitted, task id: %{public}llu.", task.time);
-    return true;
+    return WriteToPipe(syncRetFd_, task, operation);
 }
 
 bool HitraceDumpPipe::WriteAsyncReturn(TraceDumpTask& task)
 {
-    if (isParent_) {
-        HILOG_ERROR(LOG_CORE, "WriteAsyncReturn: parent process can not write async return pipe.");
+    const char* operation = "WriteAsyncReturn";
+    if (!CheckProcessRole(false, operation) || !CheckFdValidity(asyncRetFd_, operation, "async return pipe")) {
         return false;
     }
-    if (asyncRetFd_ < 0) {
-        HILOG_ERROR(LOG_CORE, "WriteAsyncReturn: async return pipe fd is illegel.");
-        return false;
-    }
-    ssize_t ret = write(asyncRetFd_, &task, sizeof(task));
-    if (ret < 0) {
-        HILOG_ERROR(LOG_CORE, "WriteAsyncReturn: write pipe failed.");
-        return false;
-    }
-    HILOG_INFO(LOG_CORE, "WriteAsyncReturn: task submitted, task id: %{public}llu.", task.time);
-    return true;
+    return WriteToPipe(asyncRetFd_, task, operation);
 }
 } // namespace Hitrace
 } // namespace HiviewDFX
