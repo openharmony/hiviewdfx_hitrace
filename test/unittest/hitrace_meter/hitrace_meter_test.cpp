@@ -93,8 +93,8 @@ void HitraceMeterTest::TearDown(void)
 static void GetLibPathsBySystemBits(std::vector<std::string> &filePaths)
 {
     std::vector<std::string> lib64FilePaths = {
-        "/system/lib64/chipset-pub-sdk/libhitracechain.so",
-        "/system/lib64/chipset-pub-sdk/libhitrace_meter.so",
+        "/system/lib64/chipset-sdk-sp/libhitracechain.so",
+        "/system/lib64/chipset-sdk-sp/libhitrace_meter.so",
         "/system/lib64/libhitrace_meter_rust.dylib.so",
         "/system/lib64/libhitracechain.dylib.so",
         "/system/lib64/libhitracechain_c_wrapper.so",
@@ -106,8 +106,8 @@ static void GetLibPathsBySystemBits(std::vector<std::string> &filePaths)
         "/system/lib64/platformsdk/libhitrace_dump.z.so"
     };
     std::vector<std::string> libFilePaths = {
-        "/system/lib/chipset-pub-sdk/libhitracechain.so",
-        "/system/lib/chipset-pub-sdk/libhitrace_meter.so",
+        "/system/lib/chipset-sdk-sp/libhitracechain.so",
+        "/system/lib/chipset-sdk-sp/libhitrace_meter.so",
         "/system/lib/libhitrace_meter_rust.dylib.so",
         "/system/lib/libhitracechain.dylib.so",
         "/system/lib/libhitracechain_c_wrapper.so",

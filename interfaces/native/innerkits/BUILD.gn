@@ -41,7 +41,7 @@ ohos_shared_library("libhitracechain") {
   install_enable = true
 
   innerapi_tags = [
-    "chipsetsdk",
+    "chipsetsdk_sp",
     "platformsdk",
   ]
 
@@ -189,7 +189,7 @@ ohos_shared_library("hitrace_meter") {
   output_extension = "so"
 
   innerapi_tags = [
-    "chipsetsdk",
+    "chipsetsdk_sp",
     "platformsdk",
     "sasdk",
   ]
