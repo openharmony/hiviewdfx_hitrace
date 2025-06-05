@@ -24,7 +24,6 @@
 #include "common_define.h"
 #include "common_utils.h"
 #include "hilog/log.h"
-#include "trace_dump_pipe.h"
 #include "trace_file_utils.h"
 #include "trace_json_parser.h"
 
@@ -182,14 +181,34 @@ TraceDumpRet SnapshotTraceDumpStrategy::Execute(std::shared_ptr<ITraceSource> tr
     return ret;
 }
 
+bool RecordTraceDumpStrategy::ProcessTraceContent(std::shared_ptr<ITraceSource> traceSource,
+    const TraceDumpRequest& request, TraceContentPtr& traceContentPtr, TraceProcessResult& result)
+{
+    while (g_isDumpRunning.load()) {
+        sleep(1);
+        auto updatedRequest = request;
+        updatedRequest.traceEndTime = GetCurBootTime();
+        traceContentPtr.cpuRaw = traceSource->GetTraceCpuRaw(updatedRequest);
+        if (!traceContentPtr.cpuRaw->WriteTraceContent()) {
+            return false;
+        }
+        if (traceContentPtr.cpuRaw->IsOverFlow()) {
+            HILOG_INFO(LOG_CORE, "RecordTraceDumpStrategy: write trace content overflow.");
+            break;
+        }
+        result.code = traceContentPtr.cpuRaw->GetDumpStatus();
+        result.traceFile = traceContentPtr.cpuRaw->GetTraceFilePath();
+        result.traceStartTime = traceContentPtr.cpuRaw->GetFirstPageTimeStamp();
+        result.traceEndTime = traceContentPtr.cpuRaw->GetLastPageTimeStamp();
+    }
+    return true;
+}
+
 TraceDumpRet RecordTraceDumpStrategy::Execute(std::shared_ptr<ITraceSource> traceSource,
     const TraceDumpRequest& request)
 {
     int newFileCount = 1;
-    TraceErrorCode code;
-    std::string traceFile;
-    uint64_t traceStartTime = 0;
-    uint64_t traceEndTime = 0;
+    TraceProcessResult result = {};
     do {
         struct TraceContentPtr traceContentPtr;
         if (!CreateTraceContentPtr(traceSource, request, traceContentPtr)) {
@@ -197,49 +216,60 @@ TraceDumpRet RecordTraceDumpStrategy::Execute(std::shared_ptr<ITraceSource> trac
             return {TraceErrorCode::WRITE_TRACE_INFO_ERROR, "", 0, 0};
         }
         PreTraceContentDump(traceContentPtr);
-        while (g_isDumpRunning.load()) {
-            sleep(1);
-            auto updatedRequest = request;
-            updatedRequest.traceEndTime = GetCurBootTime();
-            traceContentPtr.cpuRaw = traceSource->GetTraceCpuRaw(updatedRequest);
-            if (!traceContentPtr.cpuRaw->WriteTraceContent()) {
-                if (IsGenerateNewFile(traceSource, TRACE_TYPE::TRACE_RECORDING, newFileCount)) {
-                    continue;
-                }
+        if (!ProcessTraceContent(traceSource, request, traceContentPtr, result)) {
+            if (!IsGenerateNewFile(traceSource, TRACE_TYPE::TRACE_RECORDING, newFileCount)) {
                 HILOG_ERROR(LOG_CORE, "RecordTraceDumpStrategy: write raw trace content failed.");
                 break;
             }
-            if (traceContentPtr.cpuRaw->IsOverFlow()) {
-                HILOG_INFO(LOG_CORE, "RecordTraceDumpStrategy: write trace content overflow.");
-                break;
-            }
-            code = traceContentPtr.cpuRaw->GetDumpStatus();
-            traceFile = traceContentPtr.cpuRaw->GetTraceFilePath();
-            traceStartTime = traceContentPtr.cpuRaw->GetFirstPageTimeStamp();
-            traceEndTime = traceContentPtr.cpuRaw->GetLastPageTimeStamp();
+            continue;
         }
         AfterTraceContentDump(traceContentPtr);
     } while (IsGenerateNewFile(traceSource, TRACE_TYPE::TRACE_RECORDING, newFileCount));
 
     TraceDumpRet ret = {
-        .code = code,
-        .traceStartTime = traceStartTime,
-        .traceEndTime = traceEndTime,
+        .code = result.code,
+        .traceStartTime = result.traceStartTime,
+        .traceEndTime = result.traceEndTime,
     };
-    if (strncpy_s(ret.outputFile, TRACE_FILE_LEN, traceFile.c_str(), TRACE_FILE_LEN - 1) != 0) {
+    if (strncpy_s(ret.outputFile, TRACE_FILE_LEN, result.traceFile.c_str(), TRACE_FILE_LEN - 1) != 0) {
         HILOG_ERROR(LOG_CORE, "RecordTraceDumpStrategy: strncpy_s failed.");
     }
     return ret;
+}
+
+bool CacheTraceDumpStrategy::ProcessTraceContent(std::shared_ptr<ITraceSource> traceSource,
+    const TraceDumpRequest& request, TraceContentPtr& traceContentPtr, TraceProcessResult& result,
+    uint64_t& sliceDuration)
+{
+    while (g_isDumpRunning.load()) {
+        struct timespec bts = {0, 0};
+        clock_gettime(CLOCK_BOOTTIME, &bts);
+        uint64_t startTime = static_cast<uint64_t>(bts.tv_sec * S_TO_NS + bts.tv_nsec);
+        sleep(1);
+        if (!traceContentPtr.cpuRaw->WriteTraceContent()) {
+            return false;
+        }
+        clock_gettime(CLOCK_BOOTTIME, &bts);
+        uint64_t endTime = static_cast<uint64_t>(bts.tv_sec * S_TO_NS + bts.tv_nsec);
+        uint64_t timeDiff = (endTime - startTime) / S_TO_NS;
+        result.code = traceContentPtr.cpuRaw->GetDumpStatus();
+        result.traceFile = traceContentPtr.cpuRaw->GetTraceFilePath();
+        result.traceStartTime = traceContentPtr.cpuRaw->GetFirstPageTimeStamp();
+        result.traceEndTime = traceContentPtr.cpuRaw->GetLastPageTimeStamp();
+        sliceDuration += timeDiff;
+        if (sliceDuration >= g_sliceMaxDuration || g_interruptCache.load()) {
+            sliceDuration = 0;
+            break;
+        }
+    }
+    return true;
 }
 
 TraceDumpRet CacheTraceDumpStrategy::Execute(std::shared_ptr<ITraceSource> traceSource,
     const TraceDumpRequest& request)
 {
     int newFileCount = 1;
-    TraceErrorCode code;
-    std::string traceFile;
-    uint64_t traceStartTime = 0;
-    uint64_t traceEndTime = 0;
+    TraceProcessResult result = {};
     uint64_t sliceDuration = 0;
     do {
         struct TraceContentPtr traceContentPtr;
@@ -247,39 +277,22 @@ TraceDumpRet CacheTraceDumpStrategy::Execute(std::shared_ptr<ITraceSource> trace
             return {TraceErrorCode::WRITE_TRACE_INFO_ERROR, "", 0, 0};
         }
         PreTraceContentDump(traceContentPtr);
-        while (g_isDumpRunning.load()) {
-            struct timespec bts = {0, 0};
-            clock_gettime(CLOCK_BOOTTIME, &bts);
-            uint64_t startTime = static_cast<uint64_t>(bts.tv_sec * S_TO_NS + bts.tv_nsec);
-            sleep(1);
-            if (!traceContentPtr.cpuRaw->WriteTraceContent()) {
-                if (IsGenerateNewFile(traceSource, TRACE_TYPE::TRACE_CACHE, newFileCount)) {
-                    continue;
-                }
+        if (!ProcessTraceContent(traceSource, request, traceContentPtr, result, sliceDuration)) {
+            if (!IsGenerateNewFile(traceSource, TRACE_TYPE::TRACE_CACHE, newFileCount)) {
                 HILOG_ERROR(LOG_CORE, "CacheTraceDumpStrategy: write raw trace content failed.");
                 break;
             }
-            clock_gettime(CLOCK_BOOTTIME, &bts);
-            uint64_t endTime = static_cast<uint64_t>(bts.tv_sec * S_TO_NS + bts.tv_nsec);
-            uint64_t timeDiff = (endTime - startTime) / S_TO_NS;
-            code = traceContentPtr.cpuRaw->GetDumpStatus();
-            traceFile = traceContentPtr.cpuRaw->GetTraceFilePath();
-            traceStartTime = traceContentPtr.cpuRaw->GetFirstPageTimeStamp();
-            traceEndTime = traceContentPtr.cpuRaw->GetLastPageTimeStamp();
-            sliceDuration += timeDiff;
-            if (sliceDuration >= g_sliceMaxDuration || g_interruptCache.load()) {
-                sliceDuration = 0;
-                break;
-            }
+            continue;
         }
         AfterTraceContentDump(traceContentPtr);
     } while (IsGenerateNewFile(traceSource, TRACE_TYPE::TRACE_CACHE, newFileCount));
+
     TraceDumpRet ret = {
-        .code = code,
-        .traceStartTime = traceStartTime,
-        .traceEndTime = traceEndTime,
+        .code = result.code,
+        .traceStartTime = result.traceStartTime,
+        .traceEndTime = result.traceEndTime,
     };
-    if (strncpy_s(ret.outputFile, TRACE_FILE_LEN, traceFile.c_str(), TRACE_FILE_LEN - 1) != 0) {
+    if (strncpy_s(ret.outputFile, TRACE_FILE_LEN, result.traceFile.c_str(), TRACE_FILE_LEN - 1) != 0) {
         HILOG_ERROR(LOG_CORE, "CacheTraceDumpStrategy: strncpy_s failed.");
     }
     return ret;
@@ -450,49 +463,42 @@ void TraceDumpExecutor::ReadRawTraceLoop()
     const std::string threadName = "ReadRawTraceLoop";
     prctl(PR_SET_NAME, threadName.c_str());
     HILOG_INFO(LOG_CORE, "ReadRawTraceLoop start.");
-
     while (g_readFlag.load()) {
         TraceDumpTask currentTask;
         bool hasTask = false;
-
         {
             std::unique_lock<std::mutex> lck(taskQueueMutex_);
             readCondVar_.wait(lck, [this]() {
                 return !g_readFlag.load() ||
-                       std::any_of(traceDumpTaskVec_.begin(), traceDumpTaskVec_.end(),
-                           [](const TraceDumpTask& task) {
-                               return task.status == TraceDumpStatus::START &&
-                                      task.code == TraceErrorCode::UNSET;
-                           });
+                    std::any_of(traceDumpTaskVec_.begin(), traceDumpTaskVec_.end(), [](const TraceDumpTask& task) {
+                        return task.status == TraceDumpStatus::START && task.code == TraceErrorCode::UNSET;
+                    });
             });
-
             if (!g_readFlag.load()) {
                 break;
             }
-
-            auto it = std::find_if(traceDumpTaskVec_.begin(), traceDumpTaskVec_.end(),
-                [](const TraceDumpTask& task) {
-                    return task.status == TraceDumpStatus::START &&
-                           task.code == TraceErrorCode::UNSET;
-                });
-
+            auto it = std::find_if(traceDumpTaskVec_.begin(), traceDumpTaskVec_.end(), [](const TraceDumpTask& task) {
+                return task.status == TraceDumpStatus::START && task.code == TraceErrorCode::UNSET;
+            });
             if (it != traceDumpTaskVec_.end()) {
                 currentTask = *it;
                 hasTask = true;
             }
         }
-
         if (hasTask) {
-            HILOG_INFO(LOG_CORE, "ReadRawTraceLoop : start read trace of taskid[%{public}" PRIu64 "]", currentTask.time);
+            HILOG_INFO(LOG_CORE, "ReadRawTraceLoop : start read trace of taskid[%{public}" PRIu64 "]",
+                currentTask.time);
             if (!DoReadRawTrace(currentTask)) {
                 HILOG_WARN(LOG_CORE, "ReadRawTraceLoop : do read raw trace failed, taskid[%{public}" PRIu64 "]",
                     currentTask.time);
             } else {
-                HILOG_INFO(LOG_CORE, "ReadRawTraceLoop : read raw trace done, taskid[%{public}" PRIu64 "]", currentTask.time);
+                HILOG_INFO(LOG_CORE, "ReadRawTraceLoop : read raw trace done, taskid[%{public}" PRIu64 "]",
+                    currentTask.time);
                 writeCondVar_.notify_one();
             }
         }
     }
+    HILOG_INFO(LOG_CORE, "ReadRawTraceLoop end.");
 }
 
 void TraceDumpExecutor::WriteTraceLoop()
@@ -500,38 +506,28 @@ void TraceDumpExecutor::WriteTraceLoop()
     const std::string threadName = "WriteTraceLoop";
     prctl(PR_SET_NAME, threadName.c_str());
     HILOG_INFO(LOG_CORE, "WriteTraceLoop start.");
-
     while (g_writeFlag.load()) {
         TraceDumpTask currentTask;
         bool hasTask = false;
-
         {
             std::unique_lock<std::mutex> lck(taskQueueMutex_);
             writeCondVar_.wait(lck, [this]() {
                 return !g_writeFlag.load() ||
-                       std::any_of(traceDumpTaskVec_.begin(), traceDumpTaskVec_.end(),
-                           [](const TraceDumpTask& task) {
-                               return task.status == TraceDumpStatus::READ_DONE ||
-                                      task.status == TraceDumpStatus::WAIT_WRITE;
-                           });
+                    std::any_of(traceDumpTaskVec_.begin(), traceDumpTaskVec_.end(), [](const TraceDumpTask& task) {
+                        return task.status == TraceDumpStatus::READ_DONE || task.status == TraceDumpStatus::WAIT_WRITE;
+                    });
             });
-
             if (!g_writeFlag.load()) {
                 break;
             }
-
-            auto it = std::find_if(traceDumpTaskVec_.begin(), traceDumpTaskVec_.end(),
-                [](const TraceDumpTask& task) {
-                    return task.status == TraceDumpStatus::READ_DONE ||
-                           task.status == TraceDumpStatus::WAIT_WRITE;
-                });
-
+            auto it = std::find_if(traceDumpTaskVec_.begin(), traceDumpTaskVec_.end(), [](const TraceDumpTask& task) {
+                return task.status == TraceDumpStatus::READ_DONE || task.status == TraceDumpStatus::WAIT_WRITE;
+            });
             if (it != traceDumpTaskVec_.end()) {
                 currentTask = *it;
                 hasTask = true;
             }
         }
-
         if (hasTask) {
             HILOG_INFO(LOG_CORE, "WriteTraceLoop : start write trace of taskid[%{public}" PRIu64 "]", currentTask.time);
             if (!DoWriteRawTrace(currentTask)) {
@@ -543,69 +539,69 @@ void TraceDumpExecutor::WriteTraceLoop()
             }
         }
     }
+    HILOG_INFO(LOG_CORE, "WriteTraceLoop end.");
+}
+
+void TraceDumpExecutor::ProcessNewTask(std::shared_ptr<HitraceDumpPipe>& dumpPipe, int& sleepCnt)
+{
+    TraceDumpTask newTask;
+    if (dumpPipe->ReadTraceTask(200, newTask)) { // 200 : 200ms
+        std::lock_guard<std::mutex> lck(taskQueueMutex_);
+        traceDumpTaskVec_.push_back(newTask);
+        readCondVar_.notify_one();
+        sleepCnt = 0;
+    }
+}
+
+void TraceDumpExecutor::DoProcessTraceDumpTask(std::shared_ptr<HitraceDumpPipe>& dumpPipe, TraceDumpTask& task,
+    std::vector<TraceDumpTask>& completedTasks)
+{
+    uint64_t curBootTime = GetCurBootTime();
+    if (task.status == TraceDumpStatus::WRITE_DONE) {
+        if (task.hasSyncReturn && dumpPipe->WriteAsyncReturn(task)) { // Async return
+            completedTasks.push_back(task);
+        } else if (!task.hasSyncReturn && dumpPipe->WriteSyncReturn(task)) { // Sync return
+            task.hasSyncReturn = true;
+            if (curBootTime - task.time <= SYNC_RETURN_TIMEOUT_NS) {
+                completedTasks.push_back(task);
+            }
+        }
+    } else if (task.status == TraceDumpStatus::READ_DONE && !task.hasSyncReturn &&
+        curBootTime - task.time > SYNC_RETURN_TIMEOUT_NS) { // write trace timeout
+        if (dumpPipe->WriteSyncReturn(task)) {
+            task.hasSyncReturn = true;
+            task.status = TraceDumpStatus::WAIT_WRITE;
+            writeCondVar_.notify_one();
+        }
+    }
 }
 
 void TraceDumpExecutor::TraceDumpTaskMonitor()
 {
     auto dumpPipe = std::make_shared<HitraceDumpPipe>(false);
     int sleepCnt = 0;
-
     while (true) {
         std::vector<TraceDumpTask> completedTasks;
         {
             std::lock_guard<std::mutex> lck(taskQueueMutex_);
-            uint64_t curBootTime = GetCurBootTime();
             for (auto& task : traceDumpTaskVec_) {
-                if (task.status == TraceDumpStatus::WRITE_DONE) {
-                    if (task.hasSyncReturn) {
-                        // Async return
-                        if (dumpPipe->WriteAsyncReturn(task)) {
-                            completedTasks.push_back(task);
-                        }
-                    } else {
-                        // Sync return
-                        if (dumpPipe->WriteSyncReturn(task)) {
-                            task.hasSyncReturn = true;
-                            if (curBootTime - task.time <= SYNC_RETURN_TIMEOUT_NS) {
-                                completedTasks.push_back(task);
-                            }
-                        }
-                    }
-                } else if (task.status == TraceDumpStatus::READ_DONE && !task.hasSyncReturn &&
-                    curBootTime - task.time > SYNC_RETURN_TIMEOUT_NS) { // write trace timeout
-                    if (dumpPipe->WriteSyncReturn(task)) {
-                        task.hasSyncReturn = true;
-                        task.status = TraceDumpStatus::WAIT_WRITE;
-                        writeCondVar_.notify_one();
-                    }
-                }
+                DoProcessTraceDumpTask(dumpPipe, task, completedTasks);
             }
-
             // Remove completed tasks
             for (const auto& task : completedTasks) {
                 auto it = std::remove_if(traceDumpTaskVec_.begin(), traceDumpTaskVec_.end(),
                     [&task](const TraceDumpTask& t) { return t.time == task.time; });
                 traceDumpTaskVec_.erase(it, traceDumpTaskVec_.end());
             }
-
             if (!traceDumpTaskVec_.empty()) {
                 sleepCnt = 0;
             }
         }
-
         // Check for new tasks
-        TraceDumpTask newTask;
-        if (dumpPipe->ReadTraceTask(200, newTask)) {
-            std::lock_guard<std::mutex> lck(taskQueueMutex_);
-            traceDumpTaskVec_.push_back(newTask);
-            readCondVar_.notify_one();
-            sleepCnt = 0;
-        }
-
+        ProcessNewTask(dumpPipe, sleepCnt);
         sleep(1);
         sleepCnt++;
-
-        if (sleepCnt > 15 && IsTraceDumpTaskEmpty()) {
+        if (sleepCnt >= 15 && IsTraceDumpTaskEmpty()) { // 15 : similar to 15 seconds
             HILOG_INFO(LOG_CORE, "TraceDumpTaskMonitor : no task, dump process exit.");
             g_readFlag.store(false);
             g_writeFlag.store(false);
@@ -665,6 +661,12 @@ bool TraceDumpExecutor::IsTraceDumpTaskEmpty()
 {
     std::lock_guard<std::mutex> lck(taskQueueMutex_);
     return traceDumpTaskVec_.empty();
+}
+
+size_t TraceDumpExecutor::GetTraceDumpTaskCount()
+{
+    std::lock_guard<std::mutex> lck(taskQueueMutex_);
+    return traceDumpTaskVec_.size();
 }
 
 #ifdef HITRACE_UNITTEST
@@ -840,6 +842,9 @@ bool TraceDumpExecutor::DoWriteRawTrace(TraceDumpTask& task)
             task.code = TraceErrorCode::SIZE_EXCEED_LIMIT;
         }
     }
+#ifdef HITRACE_UNITTEST
+    sleep(10); // 10 : sleep 10 seconds to construct a timeout task
+#endif
     if (!UpdateTraceDumpTask(task)) {
         HILOG_ERROR(LOG_CORE, "DoWriteRawTrace: update trace dump task failed.");
         return false;

@@ -85,6 +85,8 @@ const int SNAPSHOT_FILE_MAX_COUNT = 20;
 #endif
 constexpr int DEFAULT_FULL_TRACE_LENGTH = 30;
 constexpr uint64_t SNAPSHOT_MIN_REMAINING_SPACE = 300 * 1024 * 1024;     // 300M
+constexpr uint64_t DEFAULT_ASYNC_TRACE_SIZE = 50 * 1024 * 1024;          // 50M
+constexpr int HUNDRED_MILLISECONDS = 100 * 1000; // 100ms
 
 std::atomic<pid_t> g_traceDumpTaskPid(-1);
 
@@ -465,7 +467,7 @@ int32_t GetTraceFileFromVec(const uint64_t& inputTraceStartTime, const uint64_t&
     return coverDuration;
 }
 
-int32_t SearchTraceFiles(const uint64_t& inputTraceStartTime, const uint64_t& inputTraceEndTime,
+void SearchTraceFiles(const uint64_t& inputTraceStartTime, const uint64_t& inputTraceEndTime,
     TraceRetInfo& traceRetInfo)
 {
     if (g_traceJsonParser == nullptr) {
@@ -502,7 +504,7 @@ int32_t SearchTraceFiles(const uint64_t& inputTraceStartTime, const uint64_t& in
         }
         file = newFile;
     }
-    return coverDuration;
+    traceRetInfo.coverDuration += coverDuration;
 }
 
 void ProcessCacheTask()
@@ -615,11 +617,10 @@ bool EpollWaitforChildProcess(pid_t& pid, int& pipefd, std::string& reOutPath)
     return true;
 }
 
-TraceErrorCode HandleDumpResult(const bool renameFile, TraceRetInfo& traceRetInfo, std::string& reOutPath)
+TraceErrorCode HandleDumpResult(std::string& reOutPath, TraceRetInfo& traceRetInfo)
 {
-    traceRetInfo.coverDuration +=
-        SearchTraceFiles(g_utDestTraceStartTime, g_utDestTraceEndTime, traceRetInfo);
-    if (g_dumpStatus != TraceErrorCode::SUCCESS && g_dumpStatus != TraceErrorCode::SIZE_EXCEED_LIMIT) {
+    SearchTraceFiles(g_utDestTraceStartTime, g_utDestTraceEndTime, traceRetInfo);
+    if (g_dumpStatus) {
         if (remove(reOutPath.c_str()) == 0) {
             HILOG_INFO(LOG_CORE, "Delete outpath:%{public}s success.", reOutPath.c_str());
         } else {
@@ -630,7 +631,7 @@ TraceErrorCode HandleDumpResult(const bool renameFile, TraceRetInfo& traceRetInf
     } else {
         HILOG_INFO(LOG_CORE, "Output: %{public}s.", reOutPath.c_str());
         TraceFileInfo traceFileInfo;
-        if (!SetFileInfo(renameFile, reOutPath, g_firstPageTimestamp, g_lastPageTimestamp, traceFileInfo)) {
+        if (!SetFileInfo(true, reOutPath, g_firstPageTimestamp, g_lastPageTimestamp, traceFileInfo)) {
             // trace rename error
             HILOG_ERROR(LOG_CORE, "SetFileInfo: set %{public}s info failed.", reOutPath.c_str());
             RemoveFile(reOutPath);
@@ -646,12 +647,29 @@ TraceErrorCode HandleDumpResult(const bool renameFile, TraceRetInfo& traceRetInf
     if (traceRetInfo.outputFiles.empty()) {
         return (g_dumpStatus != 0) ? static_cast<TraceErrorCode>(g_dumpStatus) : TraceErrorCode::FILE_ERROR;
     }
-    return static_cast<TraceErrorCode>(g_dumpStatus);
+    return TraceErrorCode::SUCCESS;
+}
+
+void HandleAsyncDumpResult(TraceDumpTask& task, TraceRetInfo& traceRetInfo)
+{
+    SearchTraceFiles(g_utDestTraceStartTime, g_utDestTraceEndTime, traceRetInfo);
+    TraceFileInfo traceFileInfo;
+    if (!SetFileInfo(false, std::string(task.outputFile), g_firstPageTimestamp, g_lastPageTimestamp, traceFileInfo)) {
+        // trace rename error
+        HILOG_ERROR(LOG_CORE, "SetFileInfo: set %{public}s info failed.", task.outputFile);
+    } else { // success
+        traceFileInfo.fileSize = task.fileSize;
+        g_traceFileVec.push_back(traceFileInfo);
+        traceRetInfo.outputFiles.push_back(traceFileInfo.filename);
+        traceRetInfo.coverDuration += static_cast<int32_t>(traceFileInfo.traceEndTime - traceFileInfo.traceStartTime);
+        traceRetInfo.fileSize += traceFileInfo.fileSize;
+    }
 }
 
 TraceErrorCode ProcessDumpSync(TraceRetInfo& traceRetInfo)
 {
-    if (GetRemainingSpace("/data") <= SNAPSHOT_MIN_REMAINING_SPACE) {
+    auto taskCnt = TraceDumpExecutor::GetInstance().GetTraceDumpTaskCount();
+    if (GetRemainingSpace("/data") <= SNAPSHOT_MIN_REMAINING_SPACE + taskCnt * DEFAULT_ASYNC_TRACE_SIZE) {
         HILOG_ERROR(LOG_CORE, "ProcessDumpSync: remaining space not enough");
         return TraceErrorCode::FILE_ERROR;
     }
@@ -691,7 +709,7 @@ TraceErrorCode ProcessDumpSync(TraceRetInfo& traceRetInfo)
     }
 
     close(pipefd[0]);
-    return HandleDumpResult(true, traceRetInfo, reOutPath);
+    return HandleDumpResult(reOutPath, traceRetInfo);
 }
 
 void LoadDumpRet(TraceRetInfo& ret, int32_t committedDuration)
@@ -715,10 +733,13 @@ TraceDumpTask WaitSyncDumpRetLoop(const pid_t pid, const std::shared_ptr<Hitrace
 {
     HILOG_INFO(LOG_CORE, "WaitSyncDumpRetLoop: start.");
     TraceDumpTask task;
-    if (pipe->ReadSyncDumpRet(10, task)) {
+    if (pipe->ReadSyncDumpRet(10, task)) { // 10 : 10 seconds
+        g_firstPageTimestamp = task.traceStartTime;
+        g_lastPageTimestamp = task.traceEndTime;
+        g_dumpStatus = task.code;
         if (task.status == TraceDumpStatus::WRITE_DONE) {
             task.status = TraceDumpStatus::FINISH;
-            // g_dumpStatus = task.code;
+            TraceDumpExecutor::GetInstance().RemoveTraceDumpTask(task.time);
             HILOG_INFO(LOG_CORE, "WaitSyncDumpRetLoop: task finished.");
         } else {
             HILOG_ERROR(LOG_CORE, "WaitSyncDumpRetLoop: task status is not FINISH.");
@@ -751,15 +772,11 @@ void WaitAsyncDumpRetLoop(TraceRetInfo& traceRetInfo, const std::shared_ptr<Hitr
         if (task.status == TraceDumpStatus::WRITE_DONE) {
             task.status = TraceDumpStatus::FINISH;
             HILOG_INFO(LOG_CORE, "WaitAsyncDumpRetLoop: task finished.");
+            traceRetInfo.fileSize = 0;
+            for (auto& file : traceRetInfo.outputFiles) {
+                traceRetInfo.fileSize += GetFileSize(file);
+            }
             TraceDumpExecutor::GetInstance().RemoveTraceDumpTask(task.time);
-            // std::string tracefile = task.outputFile;
-            // traceRetInfo.fileSize = task.fileSize;
-            // g_firstPageTimestamp = task.traceStartTime;
-            // g_lastPageTimestamp = task.traceEndTime;
-            // g_dumpStatus = task.code;
-            // traceRetInfo.errorCode = HandleDumpResult(false, traceRetInfo, tracefile);
-            // LoadDumpRet(traceRetInfo, 30); // 30 : default committed duration  todo?
-            // SanitizeRetInfo(traceRetInfo);
             if (g_callbacks[task.time] != nullptr) {
                 g_callbacks[task.time](traceRetInfo);
             }
@@ -768,18 +785,42 @@ void WaitAsyncDumpRetLoop(TraceRetInfo& traceRetInfo, const std::shared_ptr<Hitr
             // should not happen, but just in case.
             HILOG_ERROR(LOG_CORE, "WaitAsyncDumpRetLoop: task status is not FINISH.");
         }
-        usleep(100000); // 100ms
+        usleep(HUNDRED_MILLISECONDS);
     } while (true);
     HILOG_INFO(LOG_CORE, "WaitAsyncDumpRetLoop: exit.");
 }
 
+TraceErrorCode SubmitTaskAndWaitReturn(const TraceDumpTask& task, const bool cloneAsyncThread,
+    TraceRetInfo& traceRetInfo)
+{
+    TraceDumpExecutor::GetInstance().AddTraceDumpTask(task);
+    auto dumpPipe = std::make_shared<HitraceDumpPipe>(true);
+    if (!dumpPipe->SubmitTraceDumpTask(task)) {
+        return TraceErrorCode::TRACE_TASK_SUBMIT_ERROR;
+    }
+    auto taskRet = WaitSyncDumpRetLoop(g_traceDumpTaskPid.load(), dumpPipe);
+    HandleAsyncDumpResult(taskRet, traceRetInfo);
+    if (taskRet.status == TraceDumpStatus::FINISH) {
+        HILOG_INFO(LOG_CORE, "ProcessDumpAsync: task finished.");
+        return taskRet.code;
+    } else if (taskRet.code != TraceErrorCode::TRACE_TASK_DUMP_TIMEOUT) {
+        HILOG_ERROR(LOG_CORE, "ProcessDumpAsync: task status is not FINISH.");
+        if (cloneAsyncThread) {
+            std::thread asyncThread(WaitAsyncDumpRetLoop, std::ref(traceRetInfo), std::move(dumpPipe));
+            asyncThread.detach();
+        }
+        return TraceErrorCode::ASYNC_DUMP;
+    }
+    return TraceErrorCode::TRACE_TASK_DUMP_TIMEOUT;
+}
+
 TraceErrorCode ProcessDumpAsync(const uint64_t taskid, const int64_t fileSizeLimit, TraceRetInfo& traceRetInfo)
 {
-    if (GetRemainingSpace("/data") <= SNAPSHOT_MIN_REMAINING_SPACE) {
+    auto taskCnt = TraceDumpExecutor::GetInstance().GetTraceDumpTaskCount();
+    if (GetRemainingSpace("/data") <= SNAPSHOT_MIN_REMAINING_SPACE + taskCnt * DEFAULT_ASYNC_TRACE_SIZE) {
         HILOG_ERROR(LOG_CORE, "ProcessDumpAsync: remaining space not enough");
         return TraceErrorCode::FILE_ERROR;
     }
-
     struct TraceDumpTask task = {
         .time = taskid,
         .traceStartTime = g_traceStartTime,
@@ -790,31 +831,11 @@ TraceErrorCode ProcessDumpAsync(const uint64_t taskid, const int64_t fileSizeLim
         .code = TraceErrorCode::UNSET,
         .status = TraceDumpStatus::START
     };
-
     HILOG_INFO(LOG_CORE, "ProcessDumpAsync: new task id[%{public}" PRIu64 "]", task.time);
-
-    if (!TraceDumpExecutor::GetInstance().IsTraceDumpTaskEmpty()) {
+    if (taskCnt > 0) {
+        // must have a trace dump process running, just submit trace dump task, or need check child process is alive.
         HILOG_INFO(LOG_CORE, "ProcessDumpAsync: task queue is not empty, do not fork new process.");
-        // must have a trace dump process running, just submit trace dump task.
-        TraceDumpExecutor::GetInstance().AddTraceDumpTask(task);
-        auto dumpPipe = std::make_shared<HitraceDumpPipe>(true);
-        if (!dumpPipe->SubmitTraceDumpTask(task)) {
-            return TraceErrorCode::TRACE_TASK_SUBMIT_ERROR;
-        }
-        auto taskRet = WaitSyncDumpRetLoop(g_traceDumpTaskPid.load(), dumpPipe);
-        std::string tracefile = taskRet.outputFile;
-        traceRetInfo.fileSize = taskRet.fileSize;
-        g_firstPageTimestamp = taskRet.traceStartTime;
-        g_lastPageTimestamp = taskRet.traceEndTime;
-        g_dumpStatus = taskRet.code;
-        auto ret = HandleDumpResult(false, traceRetInfo, tracefile);
-        if (taskRet.status == TraceDumpStatus::FINISH) {
-            HILOG_INFO(LOG_CORE, "ProcessDumpAsync: task finished.");
-            return ret;
-        } else if (taskRet.code != TraceErrorCode::TRACE_TASK_DUMP_TIMEOUT) {
-            HILOG_ERROR(LOG_CORE, "ProcessDumpAsync: task status is not FINISH.");
-            return TraceErrorCode::ASYNC_DUMP;
-        }
+        return SubmitTaskAndWaitReturn(task, false, traceRetInfo);
     } else {
         HitraceDumpPipe::ClearTraceDumpPipe();
         if (!HitraceDumpPipe::InitTraceDumpPipe()) {
@@ -822,7 +843,6 @@ TraceErrorCode ProcessDumpAsync(const uint64_t taskid, const int64_t fileSizeLim
             return TraceErrorCode::PIPE_CREATE_ERROR;
         }
     }
-
     pid_t pid = fork();
     if (pid < 0) {
         HILOG_ERROR(LOG_CORE, "ProcessDumpAsync: fork failed.");
@@ -840,28 +860,8 @@ TraceErrorCode ProcessDumpAsync(const uint64_t taskid, const int64_t fileSizeLim
         loopWriteThread.join();
         _exit(EXIT_SUCCESS);
     }
-
     g_traceDumpTaskPid.store(pid);
-    TraceDumpExecutor::GetInstance().AddTraceDumpTask(task);
-    auto dumpPipe = std::make_shared<HitraceDumpPipe>(true);
-    dumpPipe->SubmitTraceDumpTask(task);
-    auto taskRet = WaitSyncDumpRetLoop(pid, dumpPipe);
-    std::string tracefile = taskRet.outputFile;
-    traceRetInfo.fileSize = taskRet.fileSize;
-    g_firstPageTimestamp = taskRet.traceStartTime;
-    g_lastPageTimestamp = taskRet.traceEndTime;
-    g_dumpStatus = taskRet.code;
-    auto ret = HandleDumpResult(false, traceRetInfo, tracefile);
-    if (taskRet.status == TraceDumpStatus::FINISH) {
-        HILOG_INFO(LOG_CORE, "ProcessDumpAsync: task finished.");
-        return ret;
-    } else if (taskRet.code != TraceErrorCode::TRACE_TASK_DUMP_TIMEOUT) {
-        HILOG_WARN(LOG_CORE, "ProcessDumpAsync: task status is not FINISH.");
-        std::thread asyncThread(WaitAsyncDumpRetLoop, std::ref(traceRetInfo), std::move(dumpPipe));
-        asyncThread.detach();
-        return TraceErrorCode::ASYNC_DUMP;
-    }
-    return TraceErrorCode::TRACE_TASK_DUMP_TIMEOUT;
+    return SubmitTaskAndWaitReturn(task, true, traceRetInfo);
 }
 
 uint64_t GetSysParamTags()
@@ -1135,7 +1135,7 @@ void SetTotalFileSizeLimitAndSliceMaxDuration(const uint64_t& totalFileSize, con
 void GetFileInCache(TraceRetInfo& traceRetInfo)
 {
     HILOG_INFO(LOG_CORE, "DumpTrace: Trace is caching, get cache file.");
-    traceRetInfo.coverDuration += SearchTraceFiles(g_utDestTraceStartTime, g_utDestTraceEndTime, traceRetInfo);
+    SearchTraceFiles(g_utDestTraceStartTime, g_utDestTraceEndTime, traceRetInfo);
     if (traceRetInfo.outputFiles.empty()) {
         HILOG_ERROR(LOG_CORE, "DumpTrace: Trace is caching, but failed to retrieve target trace file.");
         traceRetInfo.errorCode = OUT_OF_TIME;
@@ -1145,6 +1145,28 @@ void GetFileInCache(TraceRetInfo& traceRetInfo)
         }
         traceRetInfo.errorCode = SUCCESS;
     }
+}
+
+bool CheckTraceDumpStatus(const int maxDuration, const uint64_t utTraceEndTime, TraceRetInfo& ret)
+{
+    if (!IsTraceOpen() || IsRecordOn()) {
+        HILOG_ERROR(LOG_CORE, "CheckTraceDumpStatus: WRONG_TRACE_MODE, current trace mode: %{public}u.",
+            static_cast<uint32_t>(g_traceMode));
+        ret.errorCode = WRONG_TRACE_MODE;
+        return false;
+    }
+    if (maxDuration < 0) {
+        HILOG_ERROR(LOG_CORE, "CheckTraceDumpStatus: Illegal input: maxDuration = %{public}d < 0.", maxDuration);
+        ret.errorCode = INVALID_MAX_DURATION;
+        return false;
+    }
+
+    if (!CheckServiceRunning()) {
+        HILOG_ERROR(LOG_CORE, "CheckTraceDumpStatus: TRACE_IS_OCCUPIED.");
+        ret.errorCode = TRACE_IS_OCCUPIED;
+        return false;
+    }
+    return true;
 }
 } // namespace
 
@@ -1290,26 +1312,11 @@ TraceRetInfo DumpTrace(int maxDuration, uint64_t utTraceEndTime)
     std::lock_guard<std::mutex> lock(g_traceMutex);
     TraceRetInfo ret;
     ret.mode = g_traceMode;
-    if (!IsTraceOpen() || IsRecordOn()) {
-        HILOG_ERROR(LOG_CORE, "DumpTrace: WRONG_TRACE_MODE, current trace mode: %{public}u.",
-            static_cast<uint32_t>(g_traceMode));
-        ret.errorCode = WRONG_TRACE_MODE;
+    if (!CheckTraceDumpStatus(maxDuration, utTraceEndTime, ret)) {
         return ret;
     }
     HILOG_INFO(LOG_CORE, "DumpTrace start, target duration is %{public}d, target endtime is (%{public}" PRIu64 ").",
         maxDuration, utTraceEndTime);
-
-    if (maxDuration < 0) {
-        HILOG_ERROR(LOG_CORE, "DumpTrace: Illegal input: maxDuration = %{public}d < 0.", maxDuration);
-        ret.errorCode = INVALID_MAX_DURATION;
-        return ret;
-    }
-
-    if (!CheckServiceRunning()) {
-        HILOG_ERROR(LOG_CORE, "DumpTrace: TRACE_IS_OCCUPIED.");
-        ret.errorCode = TRACE_IS_OCCUPIED;
-        return ret;
-    }
     SetDestTraceTimeAndDuration(maxDuration, utTraceEndTime);
     int32_t committedDuration =
         std::min(DEFAULT_FULL_TRACE_LENGTH, static_cast<int32_t>(g_utDestTraceEndTime - g_utDestTraceStartTime));
@@ -1341,26 +1348,12 @@ TraceRetInfo DumpTraceAsync(int maxDuration, uint64_t utTraceEndTime, int64_t fi
     std::lock_guard<std::mutex> lock(g_traceMutex);
     TraceRetInfo ret;
     ret.mode = g_traceMode;
-    if (!IsTraceOpen() || IsRecordOn()) {
-        HILOG_ERROR(LOG_CORE, "DumpTraceAsync: WRONG_TRACE_MODE, current trace mode: %{public}u.",
-            static_cast<uint32_t>(g_traceMode));
-        ret.errorCode = WRONG_TRACE_MODE;
+    if (!CheckTraceDumpStatus(maxDuration, utTraceEndTime, ret)) {
         return ret;
     }
-    HILOG_INFO(LOG_CORE, "DumpTraceAsync start, target duration is %{public}d, target endtime is (%{public}" PRIu64 ").",
+
+    HILOG_INFO(LOG_CORE, "DumpTraceAsync start, target duration is %{public}d, target endtime is %{public}" PRIu64 ".",
         maxDuration, utTraceEndTime);
-
-    if (maxDuration < 0) {
-        HILOG_ERROR(LOG_CORE, "DumpTraceAsync: Illegal input: maxDuration = %d < 0.", maxDuration);
-        ret.errorCode = INVALID_MAX_DURATION;
-        return ret;
-    }
-
-    if (!CheckServiceRunning()) {
-        HILOG_ERROR(LOG_CORE, "DumpTraceAsync: TRACE_IS_OCCUPIED.");
-        ret.errorCode = TRACE_IS_OCCUPIED;
-        return ret;
-    }
     SetDestTraceTimeAndDuration(maxDuration, utTraceEndTime);
     int32_t committedDuration =
         std::min(DEFAULT_FULL_TRACE_LENGTH, static_cast<int32_t>(g_utDestTraceEndTime - g_utDestTraceStartTime));
@@ -1373,24 +1366,24 @@ TraceRetInfo DumpTraceAsync(int maxDuration, uint64_t utTraceEndTime, int64_t fi
         }
         return ret;
     }
-
     ret.errorCode = SetTimeIntervalBoundary(maxDuration, utTraceEndTime);
     if (ret.errorCode != SUCCESS) {
         return ret;
     }
     g_firstPageTimestamp = UINT64_MAX;
     g_lastPageTimestamp = 0;
-
     auto taskid = GetCurBootTime();
     g_callbacks[taskid] = asyncCallback;
     ret.errorCode = ProcessDumpAsync(taskid, fileSizeLimit, ret);
-    if (ret.errorCode != ASYNC_DUMP) {
+    if (ret.errorCode != TraceErrorCode::ASYNC_DUMP) {
         LoadDumpRet(ret, committedDuration);
         SanitizeRetInfo(ret);
         if (g_callbacks[taskid] != nullptr) {
             g_callbacks[taskid](ret);
         }
         g_callbacks.erase(taskid);
+    } else {
+        ret.errorCode = TraceErrorCode::SUCCESS;
     }
     RestoreTimeIntervalBoundary();
     HILOG_INFO(LOG_CORE, "DumpTraceAsync with time limit done.");

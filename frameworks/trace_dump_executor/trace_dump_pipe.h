@@ -24,7 +24,7 @@ namespace Hitrace {
 class HitraceDumpPipe {
 public:
     HitraceDumpPipe() = delete;
-    HitraceDumpPipe(bool isParent);
+    explicit HitraceDumpPipe(bool isParent);
     ~HitraceDumpPipe();
 
     static bool InitTraceDumpPipe();

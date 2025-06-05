@@ -1204,15 +1204,18 @@ HWTEST_F(HitraceDumpTest, DumpTraceAsyncTest001, TestSize.Level2)
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
 
     std::function<void(TraceRetInfo)> func = [](TraceRetInfo traceInfo) {
+        off_t totalFileSz = 0;
         for (auto& files : traceInfo.outputFiles) {
+            totalFileSz += GetFileSize(files);
             GTEST_LOG_(INFO) << "output: " << files << " file size: " << GetFileSize(files);
         }
+        EXPECT_EQ(totalFileSz, traceInfo.fileSize);
     };
     auto ret = DumpTraceAsync(0, 0, INT64_MAX, func);
     EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
-    GTEST_LOG_(INFO) << "interface return file1 size :" << ret.fileSize;
+    GTEST_LOG_(INFO) << "interface return file size :" << ret.fileSize;
     for (auto file : ret.outputFiles) {
-        GTEST_LOG_(INFO) << "interface return file1 :" << file;
+        GTEST_LOG_(INFO) << "interface return file :" << file;
     }
     // Close trace after async dump
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
@@ -1230,15 +1233,53 @@ HWTEST_F(HitraceDumpTest, DumpTraceAsyncTest002, TestSize.Level2)
 
     std::function<void(TraceRetInfo)> func = [](TraceRetInfo traceInfo) {
         EXPECT_EQ(traceInfo.errorCode, TraceErrorCode::SIZE_EXCEED_LIMIT);
+        off_t totalFileSz = 0;
         for (auto& files : traceInfo.outputFiles) {
+            totalFileSz += GetFileSize(files);
             GTEST_LOG_(INFO) << "output: " << files << " file size: " << GetFileSize(files);
         }
+        EXPECT_EQ(totalFileSz, traceInfo.fileSize);
     };
     auto ret = DumpTraceAsync(0, 0, 100, func); // 100 : 100 bytes
     EXPECT_EQ(ret.errorCode, TraceErrorCode::SIZE_EXCEED_LIMIT) << "errorCode: " << static_cast<int>(ret.errorCode);
-    GTEST_LOG_(INFO) << "interface return file1 size :" << ret.fileSize;
+    GTEST_LOG_(INFO) << "interface return file size :" << ret.fileSize;
     for (auto file : ret.outputFiles) {
-        GTEST_LOG_(INFO) << "interface return file1 :" << file;
+        GTEST_LOG_(INFO) << "interface return file :" << file;
+    }
+    // Close trace after async dump
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpTraceAsyncTest003
+ * @tc.desc: Test DumpTraceAsync func, execute within 5 seconds timeout
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpTraceAsyncTest003, TestSize.Level2)
+{
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+
+    std::function<void(TraceRetInfo)> func = [](TraceRetInfo traceInfo) {
+        EXPECT_EQ(traceInfo.errorCode, TraceErrorCode::SUCCESS);
+        off_t totalFileSz = 0;
+        for (auto& files : traceInfo.outputFiles) {
+            totalFileSz += GetFileSize(files);
+            GTEST_LOG_(INFO) << "output: " << files << " file size: " << GetFileSize(files);
+        }
+        EXPECT_EQ(totalFileSz, traceInfo.fileSize);
+    };
+    auto ret = DumpTraceAsync(0, 0, INT64_MAX, func);
+    EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(ret.errorCode);
+    GTEST_LOG_(INFO) << "interface return file size :" << ret.fileSize;
+    for (auto file : ret.outputFiles) {
+        GTEST_LOG_(INFO) << "interface return file :" << file;
+    }
+    ret = DumpTraceAsync(0, 0, INT64_MAX, func);
+    EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(ret.errorCode);
+    GTEST_LOG_(INFO) << "interface return file size :" << ret.fileSize;
+    for (auto file : ret.outputFiles) {
+        GTEST_LOG_(INFO) << "interface return file :" << file;
     }
     // Close trace after async dump
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);

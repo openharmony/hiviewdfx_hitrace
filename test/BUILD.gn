@@ -23,6 +23,7 @@ group("hitrace_systemtest") {
 group("hitrace_unittest") {
   testonly = true
   deps = [
+    "unittest:HitraceAsyncDumpTimeoutTest",
     "unittest:HitraceCTest",
     "unittest:HitraceCppTest",
     "unittest:HitraceDumpExecutorTest",

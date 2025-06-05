@@ -527,18 +527,22 @@ std::string RenameCacheFile(const std::string& cacheFile)
     return newFilePath;
 }
 
-bool SetFileInfo(const bool renameFile, const std::string outPath, const uint64_t& firstPageTimestamp,
+bool SetFileInfo(const bool isFileExist, const std::string outPath, const uint64_t& firstPageTimestamp,
     const uint64_t& lastPageTimestamp, TraceFileInfo& traceFileInfo)
 {
     std::string newFileName = outPath;
-    if (renameFile && !RenameTraceFile(outPath, newFileName, firstPageTimestamp, lastPageTimestamp)) {
+    if (isFileExist && !RenameTraceFile(outPath, newFileName, firstPageTimestamp, lastPageTimestamp)) {
         HILOG_INFO(LOG_CORE, "rename failed, outPath: %{public}s.", outPath.c_str());
         return false;
     }
     traceFileInfo.filename = newFileName;
     traceFileInfo.traceStartTime = ConvertPageTraceTimeToUtTimeMs(firstPageTimestamp);
     traceFileInfo.traceEndTime = ConvertPageTraceTimeToUtTimeMs(lastPageTimestamp);
-    traceFileInfo.fileSize = static_cast<uint64_t>(GetFileSize(newFileName));
+    if (isFileExist) {
+        traceFileInfo.fileSize = static_cast<uint64_t>(GetFileSize(newFileName));
+    } else {
+        traceFileInfo.fileSize = 0;
+    }
     return true;
 }
 } // namespace Hitrace

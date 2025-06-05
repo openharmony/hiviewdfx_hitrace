@@ -24,6 +24,7 @@
 #include <condition_variable>
 
 #include "hitrace_define.h"
+#include "trace_dump_pipe.h"
 #include "trace_file_utils.h"
 #include "trace_source.h"
 
@@ -58,6 +59,13 @@ struct TraceContentPtr {
     std::shared_ptr<ITracePrintkFmtContent> printkFmt;
 };
 
+struct TraceProcessResult {
+    TraceErrorCode code;
+    std::string traceFile;
+    uint64_t traceStartTime;
+    uint64_t traceEndTime;
+};
+
 class ITraceDumpStrategy {
 public:
     virtual ~ITraceDumpStrategy() = default;
@@ -74,11 +82,17 @@ public:
 class RecordTraceDumpStrategy : public ITraceDumpStrategy {
 public:
     TraceDumpRet Execute(std::shared_ptr<ITraceSource> traceSource, const TraceDumpRequest& request) override;
+private:
+    bool ProcessTraceContent(std::shared_ptr<ITraceSource> traceSource, const TraceDumpRequest& request,
+        TraceContentPtr& traceContentPtr, TraceProcessResult& result);
 };
 
 class CacheTraceDumpStrategy : public ITraceDumpStrategy {
 public:
     TraceDumpRet Execute(std::shared_ptr<ITraceSource> traceSource, const TraceDumpRequest& request) override;
+private:
+    bool ProcessTraceContent(std::shared_ptr<ITraceSource> traceSource, const TraceDumpRequest& request,
+        TraceContentPtr& traceContentPtr, TraceProcessResult& result, uint64_t& sliceDuration);
 };
 
 class AsyncTraceReadStrategy : public ITraceDumpStrategy {
@@ -117,11 +131,11 @@ public:
     void WriteTraceLoop();
     void TraceDumpTaskMonitor();
 
-    // bool GetTraceDumpTaskByTime(const uint64_t time, TraceDumpTask& task);
     void RemoveTraceDumpTask(const uint64_t time);
     bool UpdateTraceDumpTask(const TraceDumpTask& task);
     void AddTraceDumpTask(const TraceDumpTask& task);
     bool IsTraceDumpTaskEmpty();
+    size_t GetTraceDumpTaskCount();
 
 #ifdef HITRACE_UNITTEST
     void ClearCacheTraceFiles();
@@ -139,6 +153,11 @@ private:
     TraceDumpRet DumpTraceInner(const TraceDumpParam& param, const std::string& traceFile);
     bool DoReadRawTrace(TraceDumpTask& task);
     bool DoWriteRawTrace(TraceDumpTask& task);
+
+    // New helper functions for TraceDumpTaskMonitor
+    void DoProcessTraceDumpTask(std::shared_ptr<HitraceDumpPipe>& dumpPipe, TraceDumpTask& task,
+        std::vector<TraceDumpTask>& completedTasks);
+    void ProcessNewTask(std::shared_ptr<HitraceDumpPipe>& dumpPipe, int& sleepCnt);
 
     std::string tracefsDir_ = "";
     std::vector<TraceFileInfo> traceFiles_; // for cache

@@ -511,16 +511,16 @@ bool TraceCpuRawHM::WriteTraceContent()
     return true;
 }
 
-void ITraceCpuRawRead::CopyTracePipeRawLoop(const int srcFd, const int cpu, ssize_t& writeLen, bool& endFlag,
+bool ITraceCpuRawRead::CopyTracePipeRawLoop(const int srcFd, const int cpu, ssize_t& writeLen,
     int& pageChkFailedTime, bool& printFirstPageTime)
 {
     const size_t bufferSz = TraceBufferManager::GetInstance().GetBlockSize();
     auto buffer = TraceBufferManager::GetInstance().AllocateBlock(request_.taskId, cpu);
     if (buffer == nullptr) {
         HILOG_ERROR(LOG_CORE, "CopyTracePipeRawLoop: Failed to allocate memory block.");
-        endFlag = true;
-        return;
+        return true;
     }
+    bool isStopRead = false;
     size_t blockReadSz = 0;
     uint8_t pageBuffer[PAGE_SIZE] = {};
     while (blockReadSz <= bufferSz - static_cast<size_t>(PAGE_SIZE)) {
@@ -532,20 +532,19 @@ void ITraceCpuRawRead::CopyTracePipeRawLoop(const int srcFd, const int cpu, ssiz
         }
         uint64_t pageTraceTime = 0;
         if (memcpy_s(&pageTraceTime, sizeof(uint64_t), pageBuffer, sizeof(uint64_t)) != EOK) {
-            HILOG_ERROR(LOG_CORE, "CopyTracePipeRawLoop: failed to memcpy g_buffer to pageTraceTime.");
+            HILOG_ERROR(LOG_CORE, "CopyTracePipeRawLoop: failed to memcpy pagebuffer to pageTraceTime.");
             break;
         }
         // attention : only capture target duration trace data
         int pageValid = IsCurrentTracePageValid(pageTraceTime, request_.traceStartTime, request_.traceEndTime);
         if (pageValid < 0) {
-            endFlag = true;
+            isStopRead = true;
             blockReadSz += (printFirstPageTime ? readBytes : 0);
             buffer->Append(pageBuffer, readBytes);
             break;
         } else if (pageValid == 0) {
             continue;
         }
-
         lastPageTimeStamp_ = std::max(lastPageTimeStamp_, pageTraceTime);
         if (UNEXPECTANTLY(!printFirstPageTime)) {
             HILOG_INFO(LOG_CORE, "CopyTracePipeRawLoop: First page trace time(%{public}" PRIu64 ")", pageTraceTime);
@@ -558,11 +557,12 @@ void ITraceCpuRawRead::CopyTracePipeRawLoop(const int srcFd, const int cpu, ssiz
         blockReadSz += static_cast<size_t>(readBytes);
         buffer->Append(pageBuffer, readBytes);
         if (pageChkFailedTime >= 2) { // 2 : check failed times threshold
-            endFlag = true;
+            isStopRead = true;
             break;
         }
     }
     writeLen += blockReadSz;
+    return isStopRead;
 }
 
 bool ITraceCpuRawRead::CacheTracePipeRawData(const std::string& srcPath, const int cpuIdx)
@@ -576,9 +576,7 @@ bool ITraceCpuRawRead::CacheTracePipeRawData(const std::string& srcPath, const i
     int pageChkFailedTime = 0;
     bool printFirstPageTime = false; // attention: update first page time in every WriteTracePipeRawData calling.
     while (true) {
-        bool endFlag = false;
-        CopyTracePipeRawLoop(traceSourceFd_, cpuIdx, writeLen, endFlag, pageChkFailedTime, printFirstPageTime);
-        if (endFlag) {
+        if (CopyTracePipeRawLoop(traceSourceFd_, cpuIdx, writeLen, pageChkFailedTime, printFirstPageTime)) {
             break;
         }
     }
@@ -644,7 +642,7 @@ bool TraceCpuRawWriteLinux::WriteTraceContent()
         UpdateTraceContentHeader(rawHeader, static_cast<uint32_t>(writeLen));
     }
     TraceBufferManager::GetInstance().ReleaseTaskBlocks(taskId_);
-    HILOG_INFO(LOG_CORE, "TraceCpuRawWriteLinux::WriteTraceContent write len %{public}d", writeLen);
+    HILOG_INFO(LOG_CORE, "TraceCpuRawWriteLinux::WriteTraceContent write len %{public}zd", writeLen);
     return true;
 }
 

@@ -58,7 +58,7 @@ off_t GetFileSize(const std::string& filePath);
 uint64_t GetCurUnixTimeMs();
 void RefreshTraceVec(std::vector<TraceFileInfo>& traceVec, const TRACE_TYPE traceType);
 std::string RenameCacheFile(const std::string& cacheFile);
-bool SetFileInfo(const bool renameFile, const std::string outPath, const uint64_t& firstPageTimestamp,
+bool SetFileInfo(const bool isFileExist, const std::string outPath, const uint64_t& firstPageTimestamp,
     const uint64_t& lastPageTimestamp, TraceFileInfo& traceFileInfo);
 } // namespace HiTrace
 } // namespace HiviewDFX

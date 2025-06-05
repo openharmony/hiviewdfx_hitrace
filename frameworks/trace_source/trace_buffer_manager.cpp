@@ -27,6 +27,7 @@
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
+namespace {
 #ifdef LOG_DOMAIN
 #undef LOG_DOMAIN
 #define LOG_DOMAIN 0xD002D33
@@ -35,6 +36,7 @@ namespace Hitrace {
 #undef LOG_TAG
 #define LOG_TAG "HitraceBufferManager"
 #endif
+} // namespace
 
 size_t BufferBlock::FreeBytes() const
 {
@@ -53,12 +55,10 @@ bool BufferBlock::Append(const uint8_t* src, size_t size)
     return true;
 }
 
-// 为指定任务分配一个内存块（线程安全）
 BufferBlockPtr TraceBufferManager::AllocateBlock(task_id_type taskId, int cpu)
 {
     std::lock_guard<std::mutex> lck(mutex_);
 
-    // 检查剩余内存是否足够
     if (curTotalSz_ + blockSz_ > maxTotalSz_) {
         return nullptr;
     }
@@ -69,7 +69,6 @@ BufferBlockPtr TraceBufferManager::AllocateBlock(task_id_type taskId, int cpu)
     return buffer;
 }
 
-// 释放指定任务的所有内存块（线程安全）
 void TraceBufferManager::ReleaseTaskBlocks(task_id_type taskId)
 {
     std::lock_guard<std::mutex> lck(mutex_);
@@ -81,7 +80,6 @@ void TraceBufferManager::ReleaseTaskBlocks(task_id_type taskId)
     }
 }
 
-// 获取指定任务的内存块列表（线程安全）
 BufferList TraceBufferManager::GetTaskBuffers(task_id_type taskId)
 {
     std::lock_guard<std::mutex> lck(mutex_);
@@ -103,7 +101,6 @@ size_t TraceBufferManager::GetTaskTotalUsedBytes(task_id_type taskId)
     return totalUsed;
 }
 
-// 获取当前已使用内存总量（线程安全）
 size_t TraceBufferManager::GetCurrentTotalSize()
 {
     std::lock_guard<std::mutex> lck(mutex_);

@@ -188,7 +188,7 @@ public:
     bool WriteTraceContent() override = 0;
 
     bool CacheTracePipeRawData(const std::string& srcPath, const int cpuIdx);
-    void CopyTracePipeRawLoop(const int srcFd, const int cpu, ssize_t& writeLen, bool& endFlag,
+    bool CopyTracePipeRawLoop(const int srcFd, const int cpu, ssize_t& writeLen,
         int& pageChkFailedTime, bool& printFirstPageTime);
 
     TraceErrorCode GetDumpStatus() { return dumpStatus_; }

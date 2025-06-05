@@ -73,9 +73,8 @@ TraceRetInfo DumpTrace(int maxDuration = 0, uint64_t utTraceEndTime = 0);
  * ----If fileSizeLimit is 0, it is not set.
  * asyncCallback: the callback function to handle the trace result.
  * ----If asyncCallback is nullptr, it is not set.
- * return TraceErrorCode::SUCCESS if any trace is captured between the designated interval and return in 5 seconds
- * return TraceErrorCode::ASYNC_DUMP if any trace is captured between the designated interval, but can not
- *      return in 5 seconds
+ * return TraceErrorCode::SUCCESS if any trace is captured between the designated interval
+ * return TraceErrorCode::OUT_OF_TIME otherwise.
  */
 TraceRetInfo DumpTraceAsync(int maxDuration = 0, uint64_t utTraceEndTime = 0, int64_t fileSizeLimit = 0,
     std::function<void(TraceRetInfo)> asyncCallback = nullptr);

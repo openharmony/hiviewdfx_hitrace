@@ -21,6 +21,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <vector>
+#include <functional>
 
 #include "hitrace_dump.h"
 #include "hitrace_fuzztest_common.h"
@@ -28,6 +29,10 @@
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
+namespace {
+constexpr int MAX_DURATION = 30;
+constexpr int MAX_FILE_SIZE = 1024 * 1024;
+}
 void HitraceDumpCmdModeTest(const uint8_t* data, size_t size)
 {
     uint64_t traceTags = 0;
@@ -109,6 +114,40 @@ void HitraceDumpTest(const uint8_t* data, size_t size)
     StreamToValueInfo(data, enable);
     SetTraceStatus(enable);
 }
+
+void HitraceDumpAsyncTest(const uint8_t* data, size_t size)
+{
+    int maxDuration = 0;
+    uint64_t utTraceEndTime = 0;
+    int64_t fileSizeLimit = 0;
+    if (size < sizeof(maxDuration) + sizeof(utTraceEndTime) + sizeof(fileSizeLimit)) {
+        return;
+    }
+    StreamToValueInfo(data, maxDuration);
+    StreamToValueInfo(data, utTraceEndTime);
+    StreamToValueInfo(data, fileSizeLimit);
+
+    maxDuration = maxDuration > MAX_DURATION ? MAX_DURATION : maxDuration;
+    fileSizeLimit = fileSizeLimit > MAX_FILE_SIZE ? MAX_FILE_SIZE : fileSizeLimit;
+
+    std::vector<std::string> hitraceTags = { "sched", "freq", "idle", "disk" };
+    std::cout << "trace mode : " << GetTraceMode() << std::endl;
+    (void)OpenTrace(hitraceTags);
+    std::cout << "trace mode : " << GetTraceMode() << std::endl;
+
+    // 定义异步回调函数
+    std::function<void(TraceRetInfo)> asyncCallback = [](TraceRetInfo traceInfo) {
+        std::cout << "Async dump completed with error code: " << static_cast<int>(traceInfo.errorCode) << std::endl;
+        for (const auto& file : traceInfo.outputFiles) {
+            std::cout << "Output file: " << file << std::endl;
+        }
+    };
+
+    (void)DumpTraceAsync(maxDuration, utTraceEndTime, fileSizeLimit, asyncCallback);
+    sleep(1);
+    (void)CloseTrace();
+    std::cout << "trace mode : " << GetTraceMode() << std::endl;
+}
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS
@@ -125,5 +164,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     OHOS::HiviewDFX::Hitrace::HitraceDumpCacheTest(data, size);
     OHOS::HiviewDFX::Hitrace::HitraceDumpServiceModeTest(data, size);
     OHOS::HiviewDFX::Hitrace::HitraceDumpTest(data, size);
+    OHOS::HiviewDFX::Hitrace::HitraceDumpAsyncTest(data, size);
     return 0;
 }

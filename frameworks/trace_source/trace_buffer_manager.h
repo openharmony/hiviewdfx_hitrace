@@ -30,49 +30,40 @@ struct BufferBlock {
     std::vector<uint8_t> data;
     size_t usedBytes = 0;
     BufferBlock(int cpuIdx, size_t size) : cpu(cpuIdx), data(size) {}
-
-    // 获取空闲空间
     size_t FreeBytes() const;
-
-    // 追加数据到缓冲区
     bool Append(const uint8_t* src, size_t size);
 };
-using task_id_type = uint64_t; // 可根据实际情况调整任务ID类型
+
+using task_id_type = uint64_t;
 using BufferBlockPtr = std::shared_ptr<BufferBlock>;
 using BufferList = std::list<BufferBlockPtr>;
+
+constexpr size_t DEFAULT_MAX_TOTAL_SZ = 300 * 1024 * 1024; // 300 MB
+constexpr size_t DEFAULT_BLOCK_SZ = 10 * 1024 * 1024; // 10 MB
 
 class TraceBufferManager {
 public:
     TraceBufferManager();
-    // 构造函数：初始化总内存上限和块大小（默认10MB）
-    TraceBufferManager(size_t maxTotalSz, size_t blockSz = 10 * 1024 * 1024)
-        : maxTotalSz_(maxTotalSz),
-          blockSz_(blockSz),
-          curTotalSz_(0) {}
+    explicit TraceBufferManager(size_t maxTotalSz, size_t blockSz = DEFAULT_BLOCK_SZ)
+        : maxTotalSz_(maxTotalSz), blockSz_(blockSz), curTotalSz_(0) {}
 
     static TraceBufferManager& GetInstance()
     {
-        static TraceBufferManager instance(300 * 1024 * 1024); // 300 MB
+        static TraceBufferManager instance(DEFAULT_MAX_TOTAL_SZ);
         return instance;
     }
 
-    // 为指定任务分配一个内存块（线程安全）
     BufferBlockPtr AllocateBlock(task_id_type taskId, int cpu);
-    // 释放指定任务的所有内存块（线程安全）
     void ReleaseTaskBlocks(task_id_type taskId);
-    // 获取指定任务的内存块列表（线程安全）
     BufferList GetTaskBuffers(task_id_type taskId);
-    // 获取指定任务的总实际使用内存（线程安全）
     size_t GetTaskTotalUsedBytes(task_id_type taskId);
-    // 获取当前已使用内存总量（线程安全）
     size_t GetCurrentTotalSize();
-
     size_t GetBlockSize() const;
 
 private:
-    size_t maxTotalSz_;  // 总内存上限
-    size_t blockSz_;      // 每个内存块的大小
-    size_t curTotalSz_; // 当前已分配内存总量
+    size_t maxTotalSz_;
+    size_t blockSz_;
+    size_t curTotalSz_;
 
     mutable std::mutex mutex_;
     std::unordered_map<task_id_type, BufferList> taskBuffers_;
