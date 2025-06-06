@@ -39,12 +39,14 @@
         "hiview",
         "init",
         "napi",
-        "zlib"
+        "zlib",
+        "runtime_core"
       ]
     },
     "build": {
       "sub_component": [
-        "//base/hiviewdfx/hitrace:hitrace_all_target"
+        "//base/hiviewdfx/hitrace:hitrace_all_target",
+        "//base/hiviewdfx/hitrace/interfaces/ets/ani:ani_hitracemeter_package"
       ],
       "inner_kits": [
         {
