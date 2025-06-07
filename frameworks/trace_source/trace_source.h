@@ -36,6 +36,8 @@ public:
     virtual std::shared_ptr<TraceEventFmtContent> GetTraceEventFmt() = 0;
     virtual std::shared_ptr<TraceCmdLinesContent> GetTraceCmdLines() = 0;
     virtual std::shared_ptr<TraceTgidsContent> GetTraceTgids() = 0;
+    virtual std::shared_ptr<ITraceCpuRawRead> GetTraceCpuRawRead(const TraceDumpRequest& request) = 0;
+    virtual std::shared_ptr<ITraceCpuRawWrite> GetTraceCpuRawWrite(const uint64_t taskId) = 0;
     virtual std::string GetTraceFilePath() = 0;
     virtual bool UpdateTraceFile(const std::string& traceFilePath) = 0;
 };
@@ -54,6 +56,8 @@ public:
     std::shared_ptr<TraceEventFmtContent> GetTraceEventFmt() override;
     std::shared_ptr<TraceCmdLinesContent> GetTraceCmdLines() override;
     std::shared_ptr<TraceTgidsContent> GetTraceTgids() override;
+    std::shared_ptr<ITraceCpuRawRead> GetTraceCpuRawRead(const TraceDumpRequest& request) override;
+    std::shared_ptr<ITraceCpuRawWrite> GetTraceCpuRawWrite(const uint64_t taskId) override;
     std::string GetTraceFilePath() override;
     bool UpdateTraceFile(const std::string& traceFilePath) override;
 
@@ -77,6 +81,8 @@ public:
     std::shared_ptr<TraceEventFmtContent> GetTraceEventFmt() override;
     std::shared_ptr<TraceCmdLinesContent> GetTraceCmdLines() override;
     std::shared_ptr<TraceTgidsContent> GetTraceTgids() override;
+    std::shared_ptr<ITraceCpuRawRead> GetTraceCpuRawRead(const TraceDumpRequest& request) override;
+    std::shared_ptr<ITraceCpuRawWrite> GetTraceCpuRawWrite(const uint64_t taskId) override;
     std::string GetTraceFilePath() override;
     bool UpdateTraceFile(const std::string& traceFilePath) override;
 

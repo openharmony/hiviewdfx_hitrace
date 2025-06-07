@@ -1859,7 +1859,7 @@ HWTEST_F(HitraceMeterTest, ROMBaselineTest001, TestSize.Level2)
         }
     }
     printf("Total file size is %lldKB\n", totalSize);
-    constexpr long long baseline = 750;
+    constexpr long long baseline = 794;
     EXPECT_LT(totalSize, baseline);
     GTEST_LOG_(INFO) << "ROMBaselineTest001: end.";
 }

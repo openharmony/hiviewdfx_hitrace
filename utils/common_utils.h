@@ -16,6 +16,7 @@
 #ifndef HITRACE_COMMON_UTILS_H
 #define HITRACE_COMMON_UTILS_H
 
+#include <cinttypes>
 #include <string>
 
 namespace OHOS {
@@ -28,6 +29,8 @@ bool MarkClockSync(const std::string& traceRootPath);
 bool IsNumber(const std::string& str);
 
 int GetCpuProcessors();
+
+uint64_t GetCurBootTime();
 
 void ReadCurrentCpuFrequencies(std::string& freqs);
 

@@ -21,7 +21,10 @@ ohos_static_library("trace_dump_executor") {
     "$hitrace_frameworks_path/trace_source",
     "$hitrace_utils_path",
   ]
-  sources = [ "trace_dump_executor.cpp" ]
+  sources = [
+    "trace_dump_executor.cpp",
+    "trace_dump_pipe.cpp",
+  ]
 
   deps = [
     "$hitrace_frameworks_path/trace_source:trace_source",

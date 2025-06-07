@@ -27,15 +27,6 @@ namespace Hitrace {
 constexpr uint64_t DEFAULT_TRACE_SLICE_DURATION = 10;
 constexpr uint64_t DEFAULT_TOTAL_CACHE_FILE_SIZE = 800;
 
-struct TraceRetInfo {
-    TraceErrorCode errorCode;
-    uint8_t mode = 0;
-    std::vector<std::string> outputFiles;
-    int32_t coverRatio = 0;
-    int32_t coverDuration = 0;
-    std::vector<std::string> tags;
-};
-
 #ifdef HITRACE_UNITTEST
 void SetSysInitParamTags(uint64_t sysInitParamTags);
 bool SetCheckParam();
@@ -60,15 +51,33 @@ TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups);
 /**
  * Reading trace data once from ftrace ringbuffer in the kernel.
  * Using child processes to process trace tasks.
- * happenTime: the retrospective starting time stamp of target trace.
- * ----If happenTime = 0, it is not set.
- * return TraceErrorCode::SUCCESS if any trace is captured between the designated interval
- * return TraceErrorCode::OUT_OF_TIME otherwise.
  * maxDuration: the maximum time(s) allowed for the trace task.
  * ---- If maxDuration is 0, means that is no limit for the trace task.
  * ---- If maxDuration is less than 0, it is illegal input parameter.
+ * utTraceEndTime: the retrospective starting time stamp of target trace.
+ * ----If utTraceEndTime = 0, it is not set.
+ * return TraceErrorCode::SUCCESS if any trace is captured between the designated interval
+ * return TraceErrorCode::OUT_OF_TIME otherwise.
 */
-TraceRetInfo DumpTrace(int maxDuration = 0, uint64_t happenTime = 0);
+TraceRetInfo DumpTrace(int maxDuration = 0, uint64_t utTraceEndTime = 0);
+
+/**
+ * Reading trace data once from ftrace ringbuffer in the kernel.
+ * Using child processes to process trace tasks.
+ * maxDuration: the maximum time(s) allowed for the trace task.
+ * ---- If maxDuration is 0, means that is no limit for the trace task.
+ * ---- If maxDuration is less than 0, it is illegal input parameter.
+ * utTraceEndTime: the retrospective starting time stamp of target trace.
+ * ----If utTraceEndTime = 0, it is not set.
+ * fileSizeLimit: the maximum size(bytes) of the trace file.
+ * ----If fileSizeLimit is 0, it is not set.
+ * asyncCallback: the callback function to handle the trace result.
+ * ----If asyncCallback is nullptr, it is not set.
+ * return TraceErrorCode::SUCCESS if any trace is captured between the designated interval
+ * return TraceErrorCode::OUT_OF_TIME otherwise.
+ */
+TraceRetInfo DumpTraceAsync(int maxDuration = 0, uint64_t utTraceEndTime = 0, int64_t fileSizeLimit = 0,
+    std::function<void(TraceRetInfo)> asyncCallback = nullptr);
 
 /**
  * Enable sub threads to periodically drop disk trace data.

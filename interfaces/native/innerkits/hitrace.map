@@ -42,6 +42,8 @@
         "OHOS::HiviewDFX::Hitrace::OpenTrace(std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&)";
         "OHOS::HiviewDFX::Hitrace::DumpTrace(int, unsigned long)";
         "OHOS::HiviewDFX::Hitrace::DumpTrace(int, unsigned long long)";
+        "OHOS::HiviewDFX::Hitrace::DumpTraceAsync(int, unsigned long, long, std::__h::function<void (OHOS::HiviewDFX::Hitrace::TraceRetInfo)>)";
+        "OHOS::HiviewDFX::Hitrace::DumpTraceAsync(int, unsigned long long, long long, std::__h::function<void (OHOS::HiviewDFX::Hitrace::TraceRetInfo)>)";
         "OHOS::HiviewDFX::Hitrace::RecordTraceOn()";
         "OHOS::HiviewDFX::Hitrace::RecordTraceOff()";
         "OHOS::HiviewDFX::Hitrace::CacheTraceOn(unsigned long, unsigned long)";
