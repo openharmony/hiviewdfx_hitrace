@@ -129,19 +129,8 @@ ohos_shared_library("hitrace_dump") {
   sources = [
     "$hitrace_frameworks_path/native/dynamic_buffer.cpp",
     "src/hitrace_dump.cpp",
+    "$hitrace_utils_path/file_ageing_utils.cpp"
   ]
-  defines = []
-
-  if (hitrace_snapshot_tracebuffer_size != 0) {
-    defines +=
-        [ "SNAPSHOT_TRACEBUFFER_SIZE=${hitrace_snapshot_tracebuffer_size}" ]
-  }
-  if (hitrace_snapshot_file_limit != 0) {
-    defines += [ "SNAPSHOT_FILE_LIMIT=${hitrace_snapshot_file_limit}" ]
-  }
-  if (hitrace_record_file_limit != 0) {
-    defines += [ "RECORD_FILE_LIMIT=${hitrace_record_file_limit}" ]
-  }
 
   deps = [
     ":hitrace_meter",

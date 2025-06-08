@@ -60,6 +60,18 @@ ohos_source_set("hitrace_json_parser") {
   } else {
     external_deps = [ "hilog:libhilog" ]
   }
+
+  defines = []
+  if (hitrace_snapshot_tracebuffer_size != 0) {
+    defines += [ "SNAPSHOT_TRACEBUFFER_SIZE=${hitrace_snapshot_tracebuffer_size}" ]
+  }
+  if (hitrace_snapshot_file_limit != 0) {
+    defines += [ "SNAPSHOT_FILE_LIMIT=${hitrace_snapshot_file_limit}" ]
+  }
+  if (hitrace_record_file_limit != 0) {
+    defines += [ "RECORD_FILE_LIMIT=${hitrace_record_file_limit}" ]
+  }
+
   external_deps += [ "cJSON:cjson" ]
   part_name = "hitrace"
   subsystem_name = "hiviewdfx"

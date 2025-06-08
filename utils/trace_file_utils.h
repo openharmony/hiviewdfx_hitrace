@@ -17,6 +17,7 @@
 #define TRACE_FILE_UTILS_H
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -27,32 +28,25 @@ namespace HiviewDFX {
 namespace Hitrace {
 const std::string CACHE_FILE_PREFIX = "cache_";
 
-struct FileWithTime {
-    std::string filename;
-    time_t ctime;
-    uint64_t fileSize;
-    bool isNewFile = true;
-
-    explicit FileWithTime(const std::string& name);
-    FileWithTime(const std::string& name, time_t time, uint64_t size, bool newFile);
-};
-
 struct TraceFileInfo {
-    std::string filename;
-    uint64_t traceStartTime; // in ms
-    uint64_t traceEndTime; // in ms
-    int64_t fileSize;
+    std::string filename = "";
+    uint64_t traceStartTime = 0; // in ms
+    uint64_t traceEndTime = 0; // in ms
+    int64_t fileSize = 0;
+    time_t ctime = 0;
+    bool isNewFile = true;  // only used in record mode
+
+    TraceFileInfo() = default;
+    explicit TraceFileInfo(const std::string& name);
+    TraceFileInfo(const std::string& name, time_t time, uint64_t sizekB, bool newFile);
 };
 
-void GetTraceFilesInDir(std::vector<FileWithTime>& fileList, TRACE_TYPE traceType);
+void GetTraceFilesInDir(std::vector<TraceFileInfo>& fileList, TRACE_TYPE traceType);
+void GetTraceFileNamesInDir(std::set<std::string>& fileSet, TRACE_TYPE traceType);
 bool RemoveFile(const std::string& fileName);
 std::string GenerateTraceFileName(TRACE_TYPE traceType);
 std::string GenerateTraceFileNameByTraceTime(TRACE_TYPE traceType,
     const uint64_t& firstPageTraceTime, const uint64_t& lastPageTraceTime);
-void DelSnapshotTraceFile(const int keepFileCount, std::vector<TraceFileInfo>& traceFileVec,
-    const uint64_t fileLimitSizeKb);
-void DelOldRecordTraceFile(std::vector<FileWithTime>& fileList, const int fileLimit, const uint64_t fileLimitSizeKb);
-void ClearOldTraceFile(std::vector<FileWithTime>& fileLists, const int fileLimit, const uint64_t fileLimitSizeKb);
 void DelSavedEventsFormat();
 void ClearCacheTraceFileByDuration(std::vector<TraceFileInfo>& cacheFileVec);
 void ClearCacheTraceFileBySize(std::vector<TraceFileInfo>& cacheFileVec, const uint64_t& fileSizeLimit);

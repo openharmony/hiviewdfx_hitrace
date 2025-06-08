@@ -54,13 +54,9 @@ uint8_t g_buffer[BUFFER_SIZE] = { 0 };
 
 static void PreWriteAllTraceEventsFormat(const int fd, const std::string& tracefsPath)
 {
-    auto traceJsonParser = std::make_shared<TraceJsonParser>();
-    if (!traceJsonParser->ParseTraceJson(PARSE_TRACE_FORMAT_INFO)) {
-        HILOG_ERROR(LOG_CORE, "PreWriteAllTraceEventsFormat: Failed to parse trace format infos.");
-        return;
-    }
-    auto allTags = traceJsonParser->GetAllTagInfos();
-    auto traceFormats = traceJsonParser->GetBaseFmtPath();
+    const TraceJsonParser& TraceJsonParser = TraceJsonParser::Instance();
+    const std::map<std::string, TraceTag>& allTags = TraceJsonParser.GetAllTagInfos();
+    std::vector<std::string> traceFormats = TraceJsonParser.GetBaseFmtPath();
     for (auto& tag : allTags) {
         for (auto& fmt : tag.second.formatPath) {
             traceFormats.emplace_back(fmt);

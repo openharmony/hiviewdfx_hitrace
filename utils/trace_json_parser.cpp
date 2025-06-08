@@ -26,6 +26,8 @@
 #include "cJSON.h"
 #include "hilog/log.h"
 
+#include "common_utils.h"
+
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
@@ -38,29 +40,57 @@ namespace Hitrace {
 #define LOG_TAG "HitraceUtils"
 #endif
 namespace {
-const std::string HTIRACE_TAG_CONFIG_FILE = "/system/etc/hiview/hitrace_utils.json";
+const std::string HTIRACE_UTILS_JSON = "/system/etc/hiview/hitrace_utils.json";
+const std::string PRODUCT_CONFIG_JSON = "/sys_prod/etc/hiview/hitrace/hitrace_param.json";
 
-void ParseEnablePath(cJSON *tagNode, TraceTag& tag)
+// default snapshot buffer size
+constexpr int DEFAULT_SNAPSHOT_BUFFER_SIZE_KB = 12 * 1024;
+constexpr int HM_DEFAULT_SNAPSHOT_BUFFER_SIZE_KB = 144 * 1024;
+
+// record file number limit
+constexpr uint32_t DEFAULT_RECORD_FILE_NUMBER_LIMIT = 15;
+
+// snapshot file number limit
+constexpr uint32_t DEFAULT_SNAPSHOT_FILE_NUMBER_LIMIT = 20;
+
+bool GetInt64FromJson(cJSON* jsonNode, const std::string& key, int64_t& value)
 {
-    cJSON *enablePathNode = cJSON_GetObjectItem(tagNode, "enable_path");
-    if (enablePathNode != nullptr && cJSON_IsArray(enablePathNode)) {
-        cJSON *pathItem = nullptr;
-        cJSON_ArrayForEach(pathItem, enablePathNode) {
-            if (cJSON_IsString(pathItem)) {
-                tag.enablePath.push_back(pathItem->valuestring);
-            }
-        }
+    cJSON* item = cJSON_GetObjectItem(jsonNode, key.c_str());
+    if (item == nullptr) {
+        HILOG_ERROR(LOG_CORE, "GetInt64FromJson: [%{public}s] not found.", key.c_str());
+        return false;
     }
+    if (!cJSON_IsNumber(item)) {
+        HILOG_ERROR(LOG_CORE, "GetInt64FromJson: [%{public}s] item is illegal.", key.c_str());
+        return false;
+    }
+    value = static_cast<int64_t>(item->valueint);
+    return true;
 }
 
-void ParseFormatPath(cJSON *tagNode, TraceTag& tag)
+bool GetIntFromJson(cJSON* jsonNode, const std::string& key, int& value)
 {
-    cJSON *formatPathNode = cJSON_GetObjectItem(tagNode, "format_path");
-    if (formatPathNode != nullptr && cJSON_IsArray(formatPathNode)) {
-        cJSON *pathItem = nullptr;
-        cJSON_ArrayForEach(pathItem, formatPathNode) {
-            if (cJSON_IsString(pathItem)) {
-                tag.formatPath.push_back(pathItem->valuestring);
+    cJSON* item = cJSON_GetObjectItem(jsonNode, key.c_str());
+    if (item == nullptr) {
+        HILOG_ERROR(LOG_CORE, "GetIntFromJson: [%{public}s] not found.", key.c_str());
+        return false;
+    }
+    if (!cJSON_IsNumber(item)) {
+        HILOG_ERROR(LOG_CORE, "GetIntFromJson: [%{public}s] item is illegal.", key.c_str());
+        return false;
+    }
+    value = item->valueint;
+    return true;
+}
+
+void GetStringFromJsonVector(cJSON *jsonNode, const std::string& key, std::vector<std::string>& vec)
+{
+    cJSON* node = cJSON_GetObjectItem(jsonNode, key.c_str());
+    if (node != nullptr && cJSON_IsArray(node)) {
+        cJSON *item = nullptr;
+        cJSON_ArrayForEach(item, node) {
+            if (cJSON_IsString(item)) {
+                vec.push_back(item->valuestring);
             }
         }
     }
@@ -82,7 +112,7 @@ cJSON* ParseJsonFromFile(const std::string& filePath)
     return rootNode;
 }
 
-bool ParseTagCategory(cJSON* jsonNode, bool parseEnable, bool parseFmt, std::map<std::string, TraceTag>& tagInfos)
+bool ParseTagCategory(cJSON* jsonNode, std::map<std::string, TraceTag>& tagInfos)
 {
     cJSON* tagCategoryNode = cJSON_GetObjectItem(jsonNode, "tag_category");
     if (tagCategoryNode == nullptr) {
@@ -96,12 +126,8 @@ bool ParseTagCategory(cJSON* jsonNode, bool parseEnable, bool parseFmt, std::map
         }
         // when base info has been parsed, only try to parse particial trace infos.
         if (tagInfos.find(tagNode->string) != tagInfos.end()) {
-            if (parseEnable) {
-                ParseEnablePath(tagNode, tagInfos[tagNode->string]);
-            }
-            if (parseFmt) {
-                ParseFormatPath(tagNode, tagInfos[tagNode->string]);
-            }
+            GetStringFromJsonVector(tagNode, "enable_path", tagInfos[tagNode->string].enablePath);
+            GetStringFromJsonVector(tagNode, "format_path", tagInfos[tagNode->string].formatPath);
             continue;
         }
         TraceTag tag;
@@ -114,34 +140,13 @@ bool ParseTagCategory(cJSON* jsonNode, bool parseEnable, bool parseFmt, std::map
             tag.tag = 1ULL << tagOffset->valueint;
         }
         cJSON* type = cJSON_GetObjectItem(tagNode, "type");
+
         if (type != nullptr && cJSON_IsNumber(type)) {
             tag.type = static_cast<TraceType>(type->valueint);
         }
-        if (parseEnable) {
-            ParseEnablePath(tagNode, tag);
-        }
-        if (parseFmt) {
-            ParseFormatPath(tagNode, tag);
-        }
+        GetStringFromJsonVector(tagNode, "enable_path", tag.enablePath);
+        GetStringFromJsonVector(tagNode, "format_path", tag.formatPath);
         tagInfos.insert(std::pair<std::string, TraceTag>(tagNode->string, tag));
-    }
-    return true;
-}
-
-bool ParseBaseFormatPath(cJSON* jsonNode, std::vector<std::string>& baseTraceFormats)
-{
-    cJSON* baseTraceFormatsNode = cJSON_GetObjectItem(jsonNode, "base_format_path");
-    if (baseTraceFormatsNode == nullptr) {
-        HILOG_ERROR(LOG_CORE, "ParseTraceJson: base_format_path json node not found.");
-        return false;
-    }
-    if (cJSON_IsArray(baseTraceFormatsNode)) {
-        cJSON *formatItem = nullptr;
-        cJSON_ArrayForEach(formatItem, baseTraceFormatsNode) {
-            if (cJSON_IsString(formatItem)) {
-                baseTraceFormats.push_back(formatItem->valuestring);
-            }
-        }
     }
     return true;
 }
@@ -170,167 +175,120 @@ bool ParseTagGroups(cJSON* jsonNode, std::map<std::string, std::vector<std::stri
     }
     return true;
 }
-
-bool ParseTraceBufSz(cJSON* jsonNode, int& bufSz)
-{
-    cJSON* bufSzNode = cJSON_GetObjectItem(jsonNode, "snapshot_buffer_kb");
-    if (bufSzNode == nullptr) {
-        HILOG_ERROR(LOG_CORE, "ParseTraceJson: snapshot_buffer_kb json node not found.");
-        return false;
-    }
-    if (!cJSON_IsNumber(bufSzNode)) {
-        HILOG_ERROR(LOG_CORE, "ParseTraceJson: snapshot_buffer_kb item is illegal.");
-        return false;
-    }
-    bufSz = bufSzNode->valueint;
-    return true;
 }
 
-bool ParseTraceFileAge(cJSON* jsonNode, const std::string& jsonLabel, bool& agingSwitcher)
+TraceJsonParser& TraceJsonParser::Instance()
 {
-    cJSON* agingNode = cJSON_GetObjectItem(jsonNode, jsonLabel.c_str());
-    if (agingNode == nullptr) {
-        HILOG_ERROR(LOG_CORE, "ParseTraceJson: %{public}s json node not found.", jsonLabel.c_str());
-        return false;
-    }
-    if (!cJSON_IsNumber(agingNode)) {
-        HILOG_ERROR(LOG_CORE, "ParseTraceJson:  %{public}s item is illegal.", jsonLabel.c_str());
-        return false;
-    }
-    agingSwitcher = agingNode->valueint == 0 ? false : true;
-    return true;
+    static TraceJsonParser parser(HTIRACE_UTILS_JSON, PRODUCT_CONFIG_JSON);
+    return parser;
 }
 
-uint8_t UpdateParseItem(const uint8_t parseItem)
+TraceJsonParser::TraceJsonParser(const std::string& hitraceUtilsJson, const std::string& productConfigJson)
 {
-    uint8_t retParseItem = parseItem;
-    if ((parseItem & TRACE_TAG_ENABLE_INFO) > 0 || (parseItem & TRACE_TAG_FORMAT_INFO) > 0 ||
-        (parseItem & TRACE_TAG_GROUP_INFO) > 0) {
-        retParseItem |= TRACE_TAG_BASE_INFO;
-    }
-    return retParseItem;
-}
+    InitSnapshotDefaultBufferSize();
+    InitAgeingParam();
+
+    ParseHitraceUtilsJson(hitraceUtilsJson);
+    ParseProductConfigJson(productConfigJson);
+
+    PrintParseResult();
 }
 
-bool TraceJsonParser::ParseTraceJson(const uint8_t policy)
+void TraceJsonParser::ParseHitraceUtilsJson(const std::string& hitraceUtilsJson)
 {
-    if ((policy & parserState_) == policy) {
-        return true;
-    }
+    cJSON* hitraceUtilsJsonRoot = ParseJsonFromFile(hitraceUtilsJson);
+    if (hitraceUtilsJsonRoot == nullptr) {
+        HILOG_ERROR(LOG_CORE, "ParseTraceJson: open %{public}s fail", hitraceUtilsJson.c_str());
+    } else {
+        ParseTagCategory(hitraceUtilsJsonRoot, traceTagInfos_);
+        GetStringFromJsonVector(hitraceUtilsJsonRoot, "base_format_path", baseTraceFormats_);
+        ParseTagGroups(hitraceUtilsJsonRoot, tagGroups_);
 
-    uint8_t needParseItem = UpdateParseItem(policy);
-    needParseItem &= (~parserState_);
-
-    cJSON* rootNode = ParseJsonFromFile(HTIRACE_TAG_CONFIG_FILE);
-    if (rootNode == nullptr) {
-        return false;
+        int value = 0;
+        if (GetIntFromJson(hitraceUtilsJsonRoot, "snapshot_file_aging", value)) {
+            snapShotAgeingParam_.rootEnable = (value != 0);
+        }
+        if (GetIntFromJson(hitraceUtilsJsonRoot, "record_file_aging", value)) {
+            recordAgeingParam_.rootEnable = (value != 0);
+        }
+        if (GetIntFromJson(hitraceUtilsJsonRoot, "snapshot_buffer_kb", value) && value != 0) {
+            snapshotBufSzKb_ = (value != 0);
+        }
     }
+    cJSON_Delete(hitraceUtilsJsonRoot);
+}
 
-    if ((needParseItem & TRACE_SNAPSHOT_BUFSZ) > 0 && ParseTraceBufSz(rootNode, snapshotBufSzKb_)) {
-        parserState_ |= TRACE_SNAPSHOT_BUFSZ;
-    }
-    if ((needParseItem & TRACE_SNAPSHOT_FILE_AGE) > 0 &&
-        ParseTraceFileAge(rootNode, "snapshot_file_aging", snapshotFileAge_)) {
-        parserState_ |= TRACE_SNAPSHOT_FILE_AGE;
-    }
+void TraceJsonParser::ParseProductConfigJson(const std::string& productConfigJson)
+{
+    cJSON* productConfigJsonRoot = ParseJsonFromFile(productConfigJson);
+    if (productConfigJsonRoot == nullptr) {
+        HILOG_DEBUG(LOG_CORE, "ParseTraceJson: open %{public}s fail", productConfigJson.c_str());
+    } else {
+        GetInt64FromJson(productConfigJsonRoot, "record_file_kb_size", recordAgeingParam_.fileSizeKbLimit);
+        GetInt64FromJson(productConfigJsonRoot, "snapshot_file_kb_size", snapShotAgeingParam_.fileSizeKbLimit);
+        GetIntFromJson(productConfigJsonRoot, "default_buffer_kb_size", snapshotBufSzKb_);
 
-    bool needParseTagEnableInfo = (needParseItem & TRACE_TAG_ENABLE_INFO) > 0;
-    bool needParseTagFmtInfo = (needParseItem & TRACE_TAG_FORMAT_INFO) > 0;
-    if ((needParseItem & TRACE_TAG_BASE_INFO) > 0 || needParseTagEnableInfo || needParseTagFmtInfo) {
-        if (ParseTagCategory(rootNode, needParseTagEnableInfo, needParseTagFmtInfo, traceTagInfos_)) {
-            parserState_ |= TRACE_TAG_BASE_INFO;
-            if (needParseTagEnableInfo) {
-                parserState_ |= TRACE_TAG_ENABLE_INFO;
-            }
+        int tRootAgeingEnable = -1;
+        if (GetIntFromJson(productConfigJsonRoot, "root_ageing_enable", tRootAgeingEnable)) {
+            bool enable = (tRootAgeingEnable != 0);
+            snapShotAgeingParam_.rootEnable = enable;
+            recordAgeingParam_.rootEnable = enable;
         }
     }
 
-    if (needParseTagFmtInfo && ParseBaseFormatPath(rootNode, baseTraceFormats_)) {
-        parserState_ |= TRACE_TAG_FORMAT_INFO;
-    }
-
-    if ((needParseItem & TRACE_TAG_GROUP_INFO) > 0 && ParseTagGroups(rootNode, tagGroups_)) {
-        parserState_ |= TRACE_TAG_GROUP_INFO;
-    }
-
-    cJSON_Delete(rootNode);
-    HILOG_INFO(LOG_CORE, "ParseTraceJson: parse done, input policy(%{public}u), parser state(%{public}u)",
-        policy, parserState_);
-    return (policy & parserState_) == policy;
+    cJSON_Delete(productConfigJsonRoot);
 }
 
-bool GetUint64FromJson(cJSON* jsonNode, const std::string& key, uint64_t& value)
+const AgeingParam& TraceJsonParser::GetAgeingParam(TRACE_TYPE type) const
 {
-    cJSON* item = cJSON_GetObjectItem(jsonNode, key.c_str());
-    if (item == nullptr) {
-        HILOG_ERROR(LOG_CORE, "GetUint64FromJson: [%{public}s] not found.", key.c_str());
-        return false;
+    if (type == TRACE_TYPE::TRACE_RECORDING) {
+        return recordAgeingParam_;
     }
-    if (!cJSON_IsNumber(item)) {
-        HILOG_ERROR(LOG_CORE, "GetUint64FromJson: [%{public}s] item is illegal.", key.c_str());
-        return false;
-    }
-    value = static_cast<uint64_t>(item->valueint);
-    return true;
-}
-
-bool GetIntFromJson(cJSON* jsonNode, const std::string& key, int& value)
-{
-    cJSON* item = cJSON_GetObjectItem(jsonNode, key.c_str());
-    if (item == nullptr) {
-        HILOG_ERROR(LOG_CORE, "GetIntFromJson: [%{public}s] not found.", key.c_str());
-        return false;
-    }
-    if (!cJSON_IsNumber(item)) {
-        HILOG_ERROR(LOG_CORE, "GetIntFromJson: [%{public}s] item is illegal.", key.c_str());
-        return false;
-    }
-    value = item->valueint;
-    return true;
-}
-
-ProductConfigJsonParser::ProductConfigJsonParser(const std::string& configJsonPath)
-{
-    cJSON* rootNode = ParseJsonFromFile(configJsonPath);
-    if (rootNode == nullptr) {
-        return;
+    if (type == TRACE_TYPE::TRACE_SNAPSHOT) {
+        return snapShotAgeingParam_;
     }
 
-    GetUint64FromJson(rootNode, "record_file_kb_size", recordFileSizeKb);
-    GetUint64FromJson(rootNode, "snapshot_file_kb_size", snapshotFileSizeKb);
-    GetIntFromJson(rootNode, "default_buffer_kb_size", defaultBufferSize);
+    static AgeingParam defaultParam;
+    return defaultParam;
+}
 
-    int tRootAgeingEnable = -1;
-    if (GetIntFromJson(rootNode, "root_ageing_enable", tRootAgeingEnable)) {
-        if (tRootAgeingEnable == 0) {
-            rootAgeingEnable = ConfigStatus::DISABLE;
-        } else {
-            rootAgeingEnable = ConfigStatus::ENABLE;
-        }
+void TraceJsonParser::InitSnapshotDefaultBufferSize()
+{
+    snapshotBufSzKb_ = DEFAULT_SNAPSHOT_BUFFER_SIZE_KB;
+
+    if (IsHmKernel()) {
+        snapshotBufSzKb_ = HM_DEFAULT_SNAPSHOT_BUFFER_SIZE_KB;
     }
 
-    cJSON_Delete(rootNode);
+#if defined(SNAPSHOT_TRACEBUFFER_SIZE) && (SNAPSHOT_TRACEBUFFER_SIZE != 0)
+    snapshotBufSzKb_ = SNAPSHOT_TRACEBUFFER_SIZE;
+#endif
 }
 
-uint64_t ProductConfigJsonParser::GetRecordFileSizeKb() const
+void TraceJsonParser::InitAgeingParam()
 {
-    return recordFileSizeKb;
+    // record file number limit
+    recordAgeingParam_.fileNumberLimit = DEFAULT_RECORD_FILE_NUMBER_LIMIT;
+#if defined(RECORD_FILE_LIMIT) && (RECORD_FILE_LIMIT != 0)
+    recordAgeingParam_.fileNumberLimit = RECORD_FILE_LIMIT;
+#endif
+
+    // snapshot file number limit
+    snapShotAgeingParam_.fileNumberLimit = DEFAULT_SNAPSHOT_FILE_NUMBER_LIMIT;
+#if defined(SNAPSHOT_FILE_LIMIT) && (SNAPSHOT_FILE_LIMIT != 0)
+    snapShotAgeingParam_.fileNumberLimit = SNAPSHOT_FILE_LIMIT;
+#endif
 }
 
-uint64_t ProductConfigJsonParser::GetSnapshotFileSizeKb() const
+void TraceJsonParser::PrintParseResult()
 {
-    return snapshotFileSizeKb;
+    HILOG_INFO(LOG_CORE, "PrintParseResult snap:[%{public}d %{public}" PRId64" %{public}" PRId64 "] "
+        "reco:[%{public}d %{public}" PRId64 " %{public}" PRId64 "] bufsz:[%{public}d]",
+        snapShotAgeingParam_.rootEnable, snapShotAgeingParam_.fileNumberLimit, snapShotAgeingParam_.fileSizeKbLimit,
+        recordAgeingParam_.rootEnable, recordAgeingParam_.fileNumberLimit, recordAgeingParam_.fileSizeKbLimit,
+        snapshotBufSzKb_);
 }
 
-int ProductConfigJsonParser::GetDefaultBufferSize() const
-{
-    return defaultBufferSize;
-}
-
-ConfigStatus ProductConfigJsonParser::GetRootAgeingStatus() const
-{
-    return rootAgeingEnable;
-}
 } // namespace HiTrace
 } // namespace HiviewDFX
 } // namespace OHOS

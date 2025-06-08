@@ -44,15 +44,12 @@ namespace Hitrace {
 #define LOG_TAG "HitraceUtils"
 #endif
 namespace {
-#if defined(RECORD_FILE_LIMIT) && (RECORD_FILE_LIMIT != 0)
-const size_t DEFAULT_TRACE_FILE_LIMIT = RECORD_FILE_LIMIT;
-#else
-const size_t DEFAULT_TRACE_FILE_LIMIT = 15;
-#endif
 const int TIME_BUFFER_SIZE = 16;
 const int DEFAULT_TRACE_DURATION = 30;
 const int TIME_INIT = 1900;
-constexpr uint64_t KILO = 1000;
+constexpr uint64_t MS_TO_NS = 1000000;
+constexpr uint64_t S_TO_MS = 1000;
+constexpr uint64_t S_TO_NS = 1000000000;
 const std::string TRACE_SNAPSHOT_PREFIX = "trace_";
 const std::string TRACE_RECORDING_PREFIX = "record_trace_";
 const std::string TRACE_CACHE_PREFIX = "cache_trace_";
@@ -61,26 +58,6 @@ std::map<TRACE_TYPE, std::string> tracePrefixMap = {
     {TRACE_TYPE::TRACE_RECORDING, TRACE_RECORDING_PREFIX},
     {TRACE_TYPE::TRACE_CACHE, TRACE_CACHE_PREFIX},
 };
-
-template<class T>
-void DeleteTraceByFileSize(std::vector<T>& fileList, const uint64_t sizeKb)
-{
-    const uint64_t availableSizeByte = sizeKb * KILO;
-    uint64_t sumSizeByte = 0;
-    size_t fileNumber = 0;
-    for (auto file = fileList.rbegin(); file != fileList.rend(); file++) {
-        std::string currentFilename = file->filename;
-        uint64_t currentFileSize = file->fileSize;
-
-        if (sumSizeByte >= availableSizeByte) {
-            RemoveFile(currentFilename);
-        } else {
-            sumSizeByte += currentFileSize;
-            fileNumber++;
-        }
-    }
-    fileList.erase(fileList.begin(), fileList.begin() + (fileList.size() - fileNumber));
-}
 
 uint64_t ConvertPageTraceTimeToUtTimeMs(const uint64_t& pageTraceTime)
 {
@@ -171,7 +148,20 @@ bool RenameTraceFile(const std::string& fileName, std::string& newFileName,
 }
 }
 
-void GetTraceFilesInDir(std::vector<FileWithTime>& fileList, TRACE_TYPE traceType)
+TraceFileInfo::TraceFileInfo(const std::string& name)
+{
+    filename = name;
+}
+
+TraceFileInfo::TraceFileInfo(const std::string& name, time_t time, uint64_t sizekB, bool newFile)
+{
+    filename = name;
+    ctime = time;
+    fileSize = sizekB;
+    isNewFile = newFile;
+}
+
+void GetTraceFilesInDir(std::vector<TraceFileInfo>& fileList, TRACE_TYPE traceType)
 {
     struct stat fileStat;
     for (const auto &entry : std::filesystem::directory_iterator(TRACE_FILE_DEFAULT_DIR)) {
@@ -187,25 +177,24 @@ void GetTraceFilesInDir(std::vector<FileWithTime>& fileList, TRACE_TYPE traceTyp
         }
     }
     HILOG_INFO(LOG_CORE, "GetTraceFilesInDir fileList size: %{public}d.", static_cast<int>(fileList.size()));
-    std::sort(fileList.begin(), fileList.end(), [](const FileWithTime& a, const FileWithTime& b) {
+    std::sort(fileList.begin(), fileList.end(), [](const TraceFileInfo& a, const TraceFileInfo& b) {
         return a.ctime < b.ctime;
     });
 }
 
-FileWithTime::FileWithTime(const std::string& name)
+void GetTraceFileNamesInDir(std::set<std::string>& fileSet, TRACE_TYPE traceType)
 {
-    this->filename = name;
-    this->ctime = 0;
-    this->fileSize = static_cast<uint64_t>(GetFileSize(name));
-    this->isNewFile = true;
-}
-
-FileWithTime::FileWithTime(const std::string& name, time_t time, uint64_t size, bool newFile)
-{
-    this->filename = name;
-    this->ctime = time;
-    this->fileSize = size;
-    this->isNewFile = newFile;
+    for (const auto &entry : std::filesystem::directory_iterator(TRACE_FILE_DEFAULT_DIR)) {
+        if (!entry.is_regular_file()) {
+            continue;
+        }
+        std::string fileName = entry.path().filename().string();
+        if (fileName.substr(0, tracePrefixMap[traceType].size()) == tracePrefixMap[traceType]) {
+            fileName = TRACE_FILE_DEFAULT_DIR + fileName;
+            fileSet.emplace(fileName);
+        }
+    }
+    HILOG_INFO(LOG_CORE, "GetTraceFileNamesInDir fileSet size: %{public}d.", static_cast<int>(fileSet.size()));
 }
 
 bool RemoveFile(const std::string& fileName)
@@ -286,108 +275,6 @@ std::string GenerateTraceFileNameByTraceTime(TRACE_TYPE traceType,
     name += std::string(timeBuf);
     name += "@" + std::to_string(firstPageTraceTime / S_TO_NS) + "-" + std::to_string(traceDuration) + ".sys";
     return name;
-}
-
-/**
- * When the SERVICE_MODE is started, clear the remaining trace files in the folder.
-*/
-void DelSnapshotTraceFile(const int keepFileCount, std::vector<TraceFileInfo>& traceFileVec,
-    const uint64_t fileLimitSizeKb)
-{
-    if (fileLimitSizeKb != 0) {
-        DeleteTraceByFileSize<TraceFileInfo>(traceFileVec, fileLimitSizeKb);
-        return;
-    }
-
-    int vecSize = static_cast<int>(traceFileVec.size());
-    if (traceFileVec.empty() || vecSize <= keepFileCount) {
-        HILOG_INFO(LOG_CORE, "DelSnapshotTraceFile: no trace file need to be deleted.");
-        return;
-    }
-
-    int deleteFileCnt = vecSize - keepFileCount;
-    for (int i = 0; i < deleteFileCnt; i++) {
-        auto it = traceFileVec.begin();
-        if (!RemoveFile((*it).filename)) {
-            HILOG_INFO(LOG_CORE, "DelSnapshotTraceFile: remove file %{public}s failed.", (*it).filename.c_str());
-        }
-        traceFileVec.erase(it);
-    }
-}
-
-/**
- * open trace file aging mechanism
- */
-void DelOldRecordTraceFile(std::vector<FileWithTime>& fileList, const int fileLimit, const uint64_t fileLimitSizeKb)
-{
-    size_t traceFileLimit = DEFAULT_TRACE_FILE_LIMIT;
-    if (fileLimit != 0) {
-        traceFileLimit = static_cast<size_t>(fileLimit);
-    }
-    HILOG_INFO(LOG_CORE, "DelOldRecordTraceFile: activate aging mechanism with file limit %{public}zu", traceFileLimit);
-
-    if (fileLimitSizeKb != 0) {
-        DeleteTraceByFileSize<FileWithTime>(fileList, fileLimitSizeKb);
-        return;
-    }
-
-    if (fileList.size() <= traceFileLimit) {
-        HILOG_INFO(LOG_CORE, "DelOldRecordTraceFile: no record trace file need be deleted.");
-        return;
-    }
-
-    size_t deleteNum = fileList.size() - traceFileLimit;
-    for (size_t i = 0; i < deleteNum; ++i) {
-        if (remove(fileList[i].filename.c_str()) == 0) {
-            HILOG_INFO(LOG_CORE, "DelOldRecordTraceFile: delete first: %{public}s success.",
-                fileList[i].filename.c_str());
-        } else {
-            HILOG_ERROR(LOG_CORE, "DelOldRecordTraceFile: delete first: %{public}s failed, errno: %{public}d.",
-                fileList[i].filename.c_str(), errno);
-        }
-    }
-}
-
-void ClearOldTraceFile(std::vector<FileWithTime>& fileLists, const int fileLimit, const uint64_t fileLimitSizeKb)
-{
-    if (fileLists.size() == 0) {
-        return;
-    }
-
-    if (fileLimitSizeKb != 0) {
-        HILOG_INFO(LOG_CORE, "ClearOldTraceFile: activate aging mechanism with size limit %{public}" PRIu64,
-                   fileLimitSizeKb);
-        DeleteTraceByFileSize<FileWithTime>(fileLists, fileLimitSizeKb);
-        return;
-    }
-
-    size_t traceFileLimit = DEFAULT_TRACE_FILE_LIMIT;
-    if (fileLimit != 0) {
-        traceFileLimit = static_cast<size_t>(fileLimit);
-    }
-    HILOG_INFO(LOG_CORE, "ClearOldTraceFile: activate aging mechanism with file limit %{public}zu, "
-        "current files %{public}zu", traceFileLimit, fileLists.size());
-
-    if (fileLists.size() <= traceFileLimit) {
-        return;
-    }
-
-    int32_t deleteNum = static_cast<int32_t>(fileLists.size() - traceFileLimit);
-    for (int32_t index = deleteNum - 1; index >= 0; index--) {
-        if (access(fileLists[index].filename.c_str(), F_OK) != 0) {
-            HILOG_ERROR(LOG_CORE, "ClearOldTraceFile: access file failed, skip delete %{public}s, errno: %{public}d.",
-                        fileLists[index].filename.c_str(), errno);
-            continue;
-        }
-
-        if (remove(fileLists[index].filename.c_str()) == 0) {
-            HILOG_INFO(LOG_CORE, "ClearOldTraceFile: delete %{public}s success.", fileLists[index].filename.c_str());
-            fileLists.erase(fileLists.begin() + index);
-        } else {
-            HILOG_ERROR(LOG_CORE, "ClearOldTraceFile: delete %{public}s failed, errno: %{public}d.",
-                        fileLists[index].filename.c_str(), errno);
-        }
-    }
 }
 
 /**
@@ -488,7 +375,7 @@ uint64_t GetCurUnixTimeMs()
 void RefreshTraceVec(std::vector<TraceFileInfo>& traceVec, const TRACE_TYPE traceType)
 {
     traceVec.clear();
-    std::vector<FileWithTime> traceFileList;
+    std::vector<TraceFileInfo> traceFileList;
     GetTraceFilesInDir(traceFileList, traceType);
     for (size_t i = 0; i < traceFileList.size(); i++) {
         TraceFileInfo traceFileInfo;

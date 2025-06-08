@@ -17,6 +17,7 @@
     <target name="HitraceUtilsTest">
         <preparer>
             <option name="push" value="test_product_config.json -> /data/test/resource/testdata/" src="res"/>
+            <option name="push" value="test_hitrace_utils.json -> /data/test/resource/testdata/" src="res"/>
         </preparer>
     </target>
 </configuration>

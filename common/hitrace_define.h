@@ -96,6 +96,12 @@ struct TraceDumpTask {
     TraceErrorCode code = TraceErrorCode::UNSET;
     TraceDumpStatus status = TraceDumpStatus::START;
 };
+
+struct AgeingParam {
+    bool rootEnable = true;
+    int64_t fileNumberLimit = 0;
+    int64_t fileSizeKbLimit = 0;
+};
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS

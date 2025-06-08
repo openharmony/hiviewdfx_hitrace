@@ -25,6 +25,11 @@
 using namespace testing::ext;
 using namespace std;
 
+namespace {
+const std::string TEST_TAG_UTILS_JSON = "/data/test/resource/testdata/test_hitrace_utils.json";
+const std::string TEST_PRODUCT_CONFIG_JSON = "/data/test/resource/testdata/test_product_config.json";
+} // namespace
+
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
@@ -111,49 +116,16 @@ HWTEST_F(HitraceUtilsTest, CommonUtilsTest004, TestSize.Level2)
     ASSERT_TRUE(freqStr.find("state=") != std::string::npos);
 }
 
-/**
- * @tc.name: JsonParserTest001
- * @tc.desc: Test TraceJsonParser function, parse json infos step by step, check all data and every step state.
- * @tc.type: FUNC
-*/
 HWTEST_F(HitraceUtilsTest, JsonParserTest001, TestSize.Level2)
 {
-    std::shared_ptr<TraceJsonParser> jsonParser = std::make_shared<TraceJsonParser>();
-    ASSERT_TRUE(jsonParser->GetAllTagInfos().empty());
-    ASSERT_TRUE(jsonParser->GetTagGroups().empty());
-    ASSERT_TRUE(jsonParser->GetBaseFmtPath().empty());
-
-    ASSERT_TRUE(jsonParser->ParseTraceJson(PARSE_TRACE_BUFSZ_INFO));
-    ASSERT_TRUE(jsonParser->GetTagGroups().empty());
-    ASSERT_TRUE(jsonParser->GetBaseFmtPath().empty());
-    ASSERT_TRUE(jsonParser->GetAllTagInfos().empty());
-    ASSERT_EQ(jsonParser->GetSnapShotBufSzKb(), 0);
-
-    ASSERT_TRUE(jsonParser->ParseTraceJson(PARSE_TRACE_BASE_INFO));
-    ASSERT_TRUE(jsonParser->GetTagGroups().empty());
-    ASSERT_TRUE(jsonParser->GetBaseFmtPath().empty());
+    std::shared_ptr<TraceJsonParser> jsonParser
+        = std::make_shared<TraceJsonParser>(TEST_TAG_UTILS_JSON, TEST_PRODUCT_CONFIG_JSON);
     auto tags = jsonParser->GetAllTagInfos();
-    ASSERT_FALSE(tags.empty());
     ASSERT_FALSE(tags.find("sched") == tags.end());
-    ASSERT_TRUE(tags["sched"].enablePath.empty());
-    ASSERT_TRUE(tags["sched"].formatPath.empty());
+    EXPECT_FALSE(tags["sched"].enablePath.empty());
+    EXPECT_FALSE(tags["sched"].formatPath.empty());
 
-    ASSERT_TRUE(jsonParser->ParseTraceJson(PARSE_TRACE_ENABLE_INFO));
-    tags = jsonParser->GetAllTagInfos();
-    ASSERT_FALSE(tags.find("sched") == tags.end());
-    ASSERT_FALSE(tags["sched"].enablePath.empty());
-    ASSERT_TRUE(tags["sched"].formatPath.empty());
-
-    ASSERT_TRUE(jsonParser->ParseTraceJson(PARSE_TRACE_FORMAT_INFO));
-    ASSERT_FALSE(jsonParser->GetBaseFmtPath().empty()) << "base format path size:" <<
-        jsonParser->GetBaseFmtPath().size();
-    tags = jsonParser->GetAllTagInfos();
-    ASSERT_FALSE(tags.find("sched") == tags.end());
-    ASSERT_FALSE(tags["sched"].enablePath.empty());
-    ASSERT_FALSE(tags["sched"].formatPath.empty());
-
-    ASSERT_TRUE(jsonParser->ParseTraceJson(PARSE_TRACE_GROUP_INFO));
-    ASSERT_FALSE(jsonParser->GetTagGroups().empty());
+    EXPECT_FALSE(jsonParser->GetTagGroups().empty());
 }
 
 /**
@@ -163,16 +135,16 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest001, TestSize.Level2)
 */
 HWTEST_F(HitraceUtilsTest, JsonParserTest002, TestSize.Level2)
 {
-    std::shared_ptr<TraceJsonParser> jsonParser = std::make_shared<TraceJsonParser>();
-    ASSERT_TRUE(jsonParser->ParseTraceJson(TRACE_TAG_FORMAT_INFO));
+    std::shared_ptr<TraceJsonParser> jsonParser
+        = std::make_shared<TraceJsonParser>(TEST_TAG_UTILS_JSON, TEST_PRODUCT_CONFIG_JSON);
     ASSERT_FALSE(jsonParser->GetBaseFmtPath().empty()) << "base format path size:" <<
         jsonParser->GetBaseFmtPath().size();
 
     auto tags = jsonParser->GetAllTagInfos();
     ASSERT_FALSE(tags.empty());
     ASSERT_FALSE(tags.find("sched") == tags.end());
-    ASSERT_TRUE(tags["sched"].enablePath.empty());
-    ASSERT_FALSE(tags["sched"].formatPath.empty());
+    EXPECT_FALSE(tags["sched"].enablePath.empty());
+    EXPECT_FALSE(tags["sched"].formatPath.empty());
 }
 
 /**
@@ -182,14 +154,13 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest002, TestSize.Level2)
 */
 HWTEST_F(HitraceUtilsTest, JsonParserTest003, TestSize.Level2)
 {
-    std::shared_ptr<TraceJsonParser> jsonParser = std::make_shared<TraceJsonParser>();
-    ASSERT_TRUE(jsonParser->ParseTraceJson(PARSE_TRACE_FORMAT_INFO));
+    std::shared_ptr<TraceJsonParser> jsonParser
+        = std::make_shared<TraceJsonParser>(TEST_TAG_UTILS_JSON, TEST_PRODUCT_CONFIG_JSON);
     ASSERT_FALSE(jsonParser->GetBaseFmtPath().empty()) << "base format path size:" <<
         jsonParser->GetBaseFmtPath().size();
 
     int basePathCnt1 = jsonParser->GetBaseFmtPath().size();
     GTEST_LOG_(INFO) << "base format path size:" << basePathCnt1;
-    jsonParser->ParseTraceJson(PARSE_TRACE_FORMAT_INFO);
     ASSERT_FALSE(jsonParser->GetBaseFmtPath().empty()) << "base format path size:" <<
         jsonParser->GetBaseFmtPath().size();
 }
@@ -201,15 +172,15 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest003, TestSize.Level2)
 */
 HWTEST_F(HitraceUtilsTest, JsonParserTest004, TestSize.Level2)
 {
-    std::shared_ptr<TraceJsonParser> jsonParser = std::make_shared<TraceJsonParser>();
-    ASSERT_TRUE(jsonParser->ParseTraceJson(PARSE_TRACE_BASE_INFO));
-    ASSERT_TRUE(jsonParser->GetTagGroups().empty());
-    ASSERT_TRUE(jsonParser->GetBaseFmtPath().empty());
+    std::shared_ptr<TraceJsonParser> jsonParser
+        = std::make_shared<TraceJsonParser>(TEST_TAG_UTILS_JSON, TEST_PRODUCT_CONFIG_JSON);
+    ASSERT_FALSE(jsonParser->GetTagGroups().empty());
+    EXPECT_FALSE(jsonParser->GetBaseFmtPath().empty());
     auto tags = jsonParser->GetAllTagInfos();
     ASSERT_FALSE(tags.empty());
     ASSERT_FALSE(tags.find("sched") == tags.end());
-    ASSERT_TRUE(tags["sched"].enablePath.empty());
-    ASSERT_TRUE(tags["sched"].formatPath.empty());
+    EXPECT_FALSE(tags["sched"].enablePath.empty());
+    EXPECT_FALSE(tags["sched"].formatPath.empty());
 }
 
 /**
@@ -219,9 +190,9 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest004, TestSize.Level2)
 */
 HWTEST_F(HitraceUtilsTest, JsonParserTest005, TestSize.Level2)
 {
-    std::shared_ptr<TraceJsonParser> jsonParser = std::make_shared<TraceJsonParser>();
-    ASSERT_TRUE(jsonParser->ParseTraceJson(PARSE_TRACE_GROUP_INFO));
-    ASSERT_EQ(jsonParser->GetSnapShotBufSzKb(), 0);
+    std::shared_ptr<TraceJsonParser> jsonParser
+        = std::make_shared<TraceJsonParser>(TEST_TAG_UTILS_JSON, TEST_PRODUCT_CONFIG_JSON);
+    ASSERT_EQ(jsonParser->GetSnapshotDefaultBufferSizeKb(), 2580);
     auto groups = jsonParser->GetTagGroups();
     ASSERT_FALSE(groups.empty());
     ASSERT_FALSE(groups.find("default") == groups.end());
@@ -241,9 +212,9 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest005, TestSize.Level2)
 */
 HWTEST_F(HitraceUtilsTest, JsonParserTest006, TestSize.Level2)
 {
-    std::shared_ptr<TraceJsonParser> jsonParser = std::make_shared<TraceJsonParser>();
-    ASSERT_TRUE(jsonParser->ParseTraceJson(PARSE_ALL_INFO));
-    ASSERT_EQ(jsonParser->GetSnapShotBufSzKb(), 0);
+    std::shared_ptr<TraceJsonParser> jsonParser
+        = std::make_shared<TraceJsonParser>(TEST_TAG_UTILS_JSON, TEST_PRODUCT_CONFIG_JSON);
+    ASSERT_EQ(jsonParser->GetSnapshotDefaultBufferSizeKb(), 2580);
     auto groups = jsonParser->GetTagGroups();
     ASSERT_FALSE(groups.empty());
     ASSERT_FALSE(groups.find("default") == groups.end());
@@ -263,9 +234,62 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest006, TestSize.Level2)
 */
 HWTEST_F(HitraceUtilsTest, JsonParserTest007, TestSize.Level2)
 {
-    std::shared_ptr<TraceJsonParser> jsonParser = std::make_shared<TraceJsonParser>();
-    ASSERT_TRUE(jsonParser->ParseTraceJson(TRACE_SNAPSHOT_FILE_AGE));
-    ASSERT_TRUE(jsonParser->GetSnapShotFileAge());
+    std::shared_ptr<TraceJsonParser> jsonParser
+        = std::make_shared<TraceJsonParser>(TEST_TAG_UTILS_JSON, TEST_PRODUCT_CONFIG_JSON);
+    ASSERT_TRUE(jsonParser->GetAgeingParam(TRACE_TYPE::TRACE_SNAPSHOT).rootEnable);
+    ASSERT_TRUE(jsonParser->GetAgeingParam(TRACE_TYPE::TRACE_RECORDING).rootEnable);
+}
+
+HWTEST_F(HitraceUtilsTest, JsonParserTest008, TestSize.Level2)
+{
+    std::shared_ptr<TraceJsonParser> jsonParser
+        = std::make_shared<TraceJsonParser>(TEST_TAG_UTILS_JSON, TEST_PRODUCT_CONFIG_JSON);
+
+    AgeingParam param = jsonParser->GetAgeingParam(TRACE_TYPE::TRACE_SNAPSHOT);
+    EXPECT_EQ(param.rootEnable, true);
+    EXPECT_EQ(param.fileNumberLimit, 20);
+    EXPECT_EQ(param.fileSizeKbLimit, 1024);
+
+    param = jsonParser->GetAgeingParam(TRACE_TYPE::TRACE_RECORDING);
+    EXPECT_EQ(param.rootEnable, true);
+    EXPECT_EQ(param.fileNumberLimit, 15);
+    EXPECT_EQ(param.fileSizeKbLimit, 2048);
+
+    param = jsonParser->GetAgeingParam(TRACE_TYPE::TRACE_CACHE);
+    EXPECT_EQ(param.rootEnable, true);
+    EXPECT_EQ(param.fileNumberLimit, 0);
+    EXPECT_EQ(param.fileSizeKbLimit, 0);
+
+    EXPECT_EQ(jsonParser->GetSnapshotDefaultBufferSizeKb(), 2580);
+}
+
+HWTEST_F(HitraceUtilsTest, JsonParserTest009, TestSize.Level2)
+{
+    std::shared_ptr<TraceJsonParser> jsonParser
+        = std::make_shared<TraceJsonParser>(TEST_TAG_UTILS_JSON, TEST_PRODUCT_CONFIG_JSON);
+
+    const std::map<std::string, TraceTag>& allTagInfos = jsonParser->GetAllTagInfos();
+    EXPECT_EQ(allTagInfos.size(), 78);
+
+    auto it = allTagInfos.find("pagecache");
+    ASSERT_NE(it, allTagInfos.end());
+    TraceTag tag = it->second;
+    EXPECT_EQ(tag.description, "Page cache");
+    EXPECT_EQ(tag.tag, 1);
+    EXPECT_EQ(tag.type, TraceType::KERNEL);
+
+    std::vector<std::string> vec = {
+        "events/filemap/file_check_and_advance_wb_err/format",
+        "events/filemap/filemap_set_wb_err/format",
+        "events/filemap/mm_filemap_add_to_page_cache/format",
+        "events/filemap/mm_filemap_delete_from_page_cache/format"
+    };
+    EXPECT_EQ(tag.formatPath, vec);
+
+    vec = {
+        "events/filemap/enable"
+    };
+    EXPECT_EQ(tag.enablePath, vec);
 }
 
 /**
@@ -417,30 +441,6 @@ HWTEST_F(HitraceUtilsTest, StringToDoubleErrorTest, TestSize.Level2)
     EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToDouble(traceParamsStr, paramsDouble));
     traceParamsStr = "abc";
     EXPECT_FALSE(OHOS::HiviewDFX::Hitrace::StringToDouble(traceParamsStr, paramsDouble));
-}
-
-HWTEST_F(HitraceUtilsTest, ProductConfigJsonParser_001, TestSize.Level2)
-{
-    constexpr uint64_t recordFileSizekb = 2048;
-    constexpr uint64_t snapshotFileSizekb = 1024;
-    constexpr int defaultBufferSize = 2580;
-    constexpr ConfigStatus rootAgeingStatus = ConfigStatus::ENABLE;
-    ProductConfigJsonParser parser("/data/test/resource/testdata/test_product_config.json");
-
-    EXPECT_EQ(parser.GetRecordFileSizeKb(), recordFileSizekb);
-    EXPECT_EQ(parser.GetSnapshotFileSizeKb(), snapshotFileSizekb);
-    EXPECT_EQ(parser.GetDefaultBufferSize(), defaultBufferSize);
-    EXPECT_EQ(parser.GetRootAgeingStatus(), rootAgeingStatus);
-}
-
-HWTEST_F(HitraceUtilsTest, ProductConfigJsonParser_002, TestSize.Level2)
-{
-    ProductConfigJsonParser parser("/data/test/resource/testdata/test_product_config_none.json");
-
-    EXPECT_EQ(parser.GetRecordFileSizeKb(), 0);
-    EXPECT_EQ(parser.GetSnapshotFileSizeKb(), 0);
-    EXPECT_EQ(parser.GetDefaultBufferSize(), 0);
-    EXPECT_EQ(parser.GetRootAgeingStatus(), ConfigStatus::UNKNOWN);
 }
 
 HWTEST_F(HitraceUtilsTest, GetRemainingSpace_001, TestSize.Level2)

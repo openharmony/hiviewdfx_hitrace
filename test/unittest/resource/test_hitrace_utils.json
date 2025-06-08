@@ -580,53 +580,6 @@
                 "events/thermal_power_allocator/thermal_power_allocator/format",
                 "events/thermal_power_allocator/thermal_power_allocator_pid/format"
             ]
-        },
-        "erofs": {
-            "description": "EROFS command",
-            "tag_offset": 0,
-            "enable_path": [
-                "events/erofs/erofs_read_enter/enable",
-                "events/erofs/erofs_read_exit/enable",
-                "events/erofs/erofs_read_iter_enter/enable",
-                "events/erofs/erofs_read_iter_exit/enable",
-                "events/erofs/erofs_readdir/enable",
-                "events/erofs/erofs_lookup_start/enable",
-                "events/erofs/erofs_lookup_end/enable",
-                "events/erofs/erofs_getattr_enter/enable",
-                "events/erofs/erofs_getattr_exit/enable",
-                "events/erofs/erofs_listxattr_enter/enable",
-                "events/erofs/erofs_listxattr_exit/enable",
-                "events/erofs/erofs_raw_access_readpages_start/enable",
-                "events/erofs/erofs_raw_access_readpages_end/enable",
-                "events/erofs/erofs_read_raw_page_start/enable",
-                "events/erofs/erofs_read_raw_page_end/enable",
-                "events/erofs/z_erofs_vle_normalaccess_readpage_end/enable",
-                "events/erofs/z_erofs_vle_normalaccess_readpage_start/enable",
-                "events/erofs/z_erofs_vle_normalaccess_readpages_end/enable",
-                "events/erofs/z_erofs_vle_normalaccess_readpages_start/enable"
-            ],
-            "type": 1,
-            "format_path": [
-                "events/erofs/erofs_read_enter/format",
-                "events/erofs/erofs_read_exit/format",
-                "events/erofs/erofs_read_iter_enter/format",
-                "events/erofs/erofs_read_iter_exit/format",
-                "events/erofs/erofs_readdir/format",
-                "events/erofs/erofs_lookup_start/format",
-                "events/erofs/erofs_lookup_end/format",
-                "events/erofs/erofs_getattr_enter/format",
-                "events/erofs/erofs_getattr_exit/format",
-                "events/erofs/erofs_listxattr_enter/format",
-                "events/erofs/erofs_listxattr_exit/format",
-                "events/erofs/erofs_raw_access_readpages_start/format",
-                "events/erofs/erofs_raw_access_readpages_end/format",
-                "events/erofs/erofs_read_raw_page_start/format",
-                "events/erofs/erofs_read_raw_page_end/format",
-                "events/erofs/z_erofs_vle_normalaccess_readpage_end/format",
-                "events/erofs/z_erofs_vle_normalaccess_readpage_start/format",
-                "events/erofs/z_erofs_vle_normalaccess_readpages_end/format",
-                "events/erofs/z_erofs_vle_normalaccess_readpages_start/format"
-            ]
         }
     },
     "base_format_path": [
