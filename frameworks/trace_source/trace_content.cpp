@@ -601,6 +601,7 @@ bool TraceCpuRawReadLinux::WriteTraceContent()
     }
     if (dumpStatus_ != TraceErrorCode::SUCCESS) {
         HILOG_ERROR(LOG_CORE, "TraceCpuRawReadLinux WriteTraceContent failed, dump status: %{public}hhu.", dumpStatus_);
+        TraceBufferManager::GetInstance().ReleaseTaskBlocks(request_.taskId);
         return false;
     }
     return true;
@@ -614,6 +615,7 @@ bool TraceCpuRawReadHM::WriteTraceContent()
     }
     if (dumpStatus_ != TraceErrorCode::SUCCESS) {
         HILOG_ERROR(LOG_CORE, "TraceCpuRawReadHM WriteTraceContent failed, dump status: %{public}hhu.", dumpStatus_);
+        TraceBufferManager::GetInstance().ReleaseTaskBlocks(request_.taskId);
         return false;
     }
     return true;

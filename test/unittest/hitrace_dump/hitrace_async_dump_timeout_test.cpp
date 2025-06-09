@@ -25,8 +25,16 @@ namespace Hitrace {
 using namespace testing::ext;
 class HitraceAsyncDumpTimeoutTest : public testing::Test {
 public:
-    static void SetUpTestCase(void) {}
-    static void TearDownTestCase(void) {}
+    static void SetUpTestCase(void)
+    {
+        system("service_control stop hiview");
+    }
+
+    static void TearDownTestCase(void)
+    {
+        system("service_control start hiview");
+    }
+
     void SetUp();
     void TearDown() {}
 };

@@ -295,8 +295,16 @@ static bool CheckBaseInfo(const std::string filePath)
 
 class HitraceDumpTest : public testing::Test {
 public:
-    static void SetUpTestCase(void) {}
-    static void TearDownTestCase(void) {}
+    static void SetUpTestCase(void)
+    {
+        system("service_control stop hiview");
+    }
+
+    static void TearDownTestCase(void)
+    {
+        system("service_control start hiview");
+    }
+
     void SetUp();
     void TearDown() {}
 };
@@ -1279,6 +1287,42 @@ HWTEST_F(HitraceDumpTest, DumpTraceAsyncTest003, TestSize.Level2)
     EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(ret.errorCode);
     GTEST_LOG_(INFO) << "interface return file size :" << ret.fileSize;
     for (auto file : ret.outputFiles) {
+        GTEST_LOG_(INFO) << "interface return file :" << file;
+    }
+    // Close trace after async dump
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: DumpTraceAsyncTest004
+ * @tc.desc: Test DumpTraceAsync func, test out of time.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DumpTraceAsyncTest004, TestSize.Level2)
+{
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    sleep(1);
+    uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr));
+    auto ret = DumpTrace(0, traceEndTime);
+    EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
+    for (auto& file : ret.outputFiles) {
+        GTEST_LOG_(INFO) << "interface return file :" << file;
+    }
+
+    std::function<void(TraceRetInfo)> func = [](TraceRetInfo traceInfo) {
+        EXPECT_EQ(traceInfo.errorCode, TraceErrorCode::SUCCESS);
+        off_t totalFileSz = 0;
+        for (auto& files : traceInfo.outputFiles) {
+            totalFileSz += GetFileSize(files);
+            GTEST_LOG_(INFO) << "output: " << files << " file size: " << GetFileSize(files);
+        }
+        EXPECT_EQ(totalFileSz, traceInfo.fileSize);
+    };
+    ret = DumpTraceAsync(1, traceEndTime - 2, INT64_MAX, func); // 2 : 2 seconds
+    EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
+    GTEST_LOG_(INFO) << "interface return file size :" << ret.fileSize;
+    for (auto& file : ret.outputFiles) {
         GTEST_LOG_(INFO) << "interface return file :" << file;
     }
     // Close trace after async dump
