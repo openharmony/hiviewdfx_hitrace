@@ -510,13 +510,12 @@ void RefreshTraceVec(std::vector<TraceFileInfo>& traceVec, const TRACE_TYPE trac
 std::string RenameCacheFile(const std::string& cacheFile)
 {
     std::string fileName = cacheFile.substr(cacheFile.find_last_of("/") + 1);
-    std::string cacheFileSuffix = "cache_";
-    std::string::size_type pos = fileName.find(cacheFileSuffix);
+    std::string::size_type pos = fileName.find(CACHE_FILE_PREFIX);
     if (pos == std::string::npos) {
         return cacheFile;
     }
     std::string dirPath = cacheFile.substr(0, cacheFile.find_last_of("/") + 1);
-    std::string newFileName = fileName.substr(pos + cacheFileSuffix.size());
+    std::string newFileName = fileName.substr(pos + CACHE_FILE_PREFIX.size());
     std::string newFilePath = dirPath + newFileName;
     if (rename(cacheFile.c_str(), newFilePath.c_str()) != 0) {
         HILOG_ERROR(LOG_CORE, "rename %{public}s to %{public}s failed, errno: %{public}d.",

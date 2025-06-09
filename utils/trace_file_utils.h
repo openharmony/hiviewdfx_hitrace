@@ -25,6 +25,8 @@
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
+const std::string CACHE_FILE_PREFIX = "cache_";
+
 struct FileWithTime {
     std::string filename;
     time_t ctime;
