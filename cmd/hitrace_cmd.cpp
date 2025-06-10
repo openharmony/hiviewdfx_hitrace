@@ -114,7 +114,8 @@ enum RunningState {
     SHOW_LIST_CATEGORY = 32, // -l, --list_categories
 
     /* Set system parameter */
-    SET_TRACE_LEVEL = 33,    // --trace_level
+    SET_TRACE_LEVEL = 33,    // --trace_level level
+    GET_TRACE_LEVEL = 34,    // --trace_level
 };
 
 enum CmdErrorCode {
@@ -138,6 +139,7 @@ const std::map<RunningState, std::string> STATE_INFO = {
     { SHOW_HELP, "SHOW_HELP" },
     { SHOW_LIST_CATEGORY, "SHOW_LIST_CATEGORY" },
     { SET_TRACE_LEVEL, "SET_TRACE_LEVEL"},
+    { GET_TRACE_LEVEL, "GET_TRACE_LEVEL"},
 };
 
 constexpr struct option LONG_OPTIONS[] = {
@@ -159,7 +161,7 @@ constexpr struct option LONG_OPTIONS[] = {
     { "dump_bgsrv",          no_argument,       nullptr, 0 },
     { "stop_bgsrv",          no_argument,       nullptr, 0 },
     { "file_size",           required_argument, nullptr, 0 },
-    { "trace_level",         required_argument, nullptr, 0 },
+    { "trace_level",         optional_argument, nullptr, 0 },
     { nullptr,               0,                 nullptr, 0 },
 };
 const unsigned int CHUNK_SIZE = 65536;
@@ -293,9 +295,10 @@ static void ShowHelp(const std::string& cmd)
            "  --stop_bgsrv           Disable trace_service in snapshot mode.\n"
            "  --file_size            Sets the size of the raw trace (KB). The default file size is 102400 KB.\n"
            "                         Only effective in raw trace mode\n"
-           "  --trace_level level    Set the system parameter \"persist.hitrace.level.threshold\", which can control\n"
-           "                         the level threshold of trace dotting. Valid values for \"level\" include\n"
-           "                         D or Debug, I or Info, C or Critical, M or Commercial.\n"
+           "  --trace_level [level]  Query or set the system parameter \"persist.hitrace.level.threshold\",\n"
+           "                         which can control the level threshold for trace dotting. When used without\n"
+           "                         parameters, it queries the level; when used with parameters, it sets the level.\n"
+           "                         Valid values for \"level\" include D/I/C/M or Debug/Info/Critical/Commercial.\n"
     );
 }
 
@@ -327,6 +330,26 @@ static bool SetTraceLevel()
         ConsoleLog("success to set trace level.");
     }
     return isSuccess;
+}
+
+static bool GetTraceLevel()
+{
+    std::string level = OHOS::system::GetParameter(TRACE_LEVEL_THRESHOLD, "");
+    static const std::unordered_map<std::string, std::string> traceLevels = {
+        {"0", "Debug"},
+        {"1", "Info"},
+        {"2", "Critical"},
+        {"3", "Commercial"},
+    };
+
+    auto it = traceLevels.find(level);
+    if (it != traceLevels.end()) {
+        ConsoleLog("the current trace level threshold is " + it->second);
+        return true;
+    } else {
+        ConsoleLog("error: get trace level threshold failed, level(" + level + ") cannot be parsed.");
+        return false;
+    }
 }
 
 template <typename T>
@@ -441,34 +464,45 @@ static bool ParseLongOpt(const std::string& cmd, int optionIndex)
         }
         g_traceArgs.fileSize = fileSizeKB;
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_level")) {
-        isTrue = SetRunningState(SET_TRACE_LEVEL);
-        if (!CheckTraceLevel(optarg)) {
-            isTrue = false;
+        if (optarg == nullptr) {
+            isTrue = SetRunningState(GET_TRACE_LEVEL);
+        } else {
+            isTrue = SetRunningState(SET_TRACE_LEVEL);
+            if (!CheckTraceLevel(optarg)) {
+                isTrue = false;
+            }
         }
     }
 
     return isTrue;
 }
 
-static bool ParseOpt(int opt, char** argv, int optIndex)
+static bool SetBufferSize()
+{
+    bool isTrue = true;
+    int bufferSizeKB = 0;
+    int maxBufferSizeKB = MAX_BUFFER_SIZE;
+    if (IsHmKernel()) {
+        maxBufferSizeKB = HM_MAX_BUFFER_SIZE;
+    }
+    if (!StrToNum(optarg, bufferSizeKB)) {
+        ConsoleLog("error: buffer size is illegal input. eg: \"--buffer_size 18432\".");
+        isTrue = false;
+    } else if (bufferSizeKB < MIN_BUFFER_SIZE || bufferSizeKB > maxBufferSizeKB) {
+        ConsoleLog("error: buffer size must be from 256 KB to " + std::to_string(maxBufferSizeKB / KB_PER_MB) +
+        " MB. eg: \"--buffer_size 18432\".");
+        isTrue = false;
+    }
+    g_traceArgs.bufferSize = bufferSizeKB / PAGE_SIZE_KB * PAGE_SIZE_KB;
+    return isTrue;
+}
+
+static bool ParseOpt(int opt, int argc, char** argv, int optIndex)
 {
     bool isTrue = true;
     switch (opt) {
         case 'b': {
-            int bufferSizeKB = 0;
-            int maxBufferSizeKB = MAX_BUFFER_SIZE;
-            if (IsHmKernel()) {
-                maxBufferSizeKB = HM_MAX_BUFFER_SIZE;
-            }
-            if (!StrToNum(optarg, bufferSizeKB)) {
-                ConsoleLog("error: buffer size is illegal input. eg: \"--buffer_size 18432\".");
-                isTrue = false;
-            } else if (bufferSizeKB < MIN_BUFFER_SIZE || bufferSizeKB > maxBufferSizeKB) {
-                ConsoleLog("error: buffer size must be from 256 KB to " + std::to_string(maxBufferSizeKB / KB_PER_MB) +
-                " MB. eg: \"--buffer_size 18432\".");
-                isTrue = false;
-            }
-            g_traceArgs.bufferSize = bufferSizeKB / PAGE_SIZE_KB * PAGE_SIZE_KB;
+            isTrue = SetBufferSize();
             break;
         }
         case 'h':
@@ -495,6 +529,12 @@ static bool ParseOpt(int opt, char** argv, int optIndex)
             g_traceArgs.isCompress = true;
             break;
         case 0: // long options
+            if (!strcmp(LONG_OPTIONS[optIndex].name, "trace_level")) {
+                // handle "--trace_level level"
+                if (optarg == nullptr && optind < argc) {
+                    optarg = argv[optind++];
+                }
+            }
             isTrue = ParseLongOpt(argv[0], optIndex);
             break;
         case '?':
@@ -539,7 +579,7 @@ static bool HandleOpt(int argc, char** argv)
             isTrue = false;
             break;
         }
-        isTrue = ParseOpt(opt, argv, optionIndex);
+        isTrue = ParseOpt(opt, argc, argv, optionIndex);
     }
 
     return isTrue;
@@ -1074,6 +1114,9 @@ int main(int argc, char **argv)
             break;
         case SET_TRACE_LEVEL:
             isSuccess = SetTraceLevel();
+            break;
+        case GET_TRACE_LEVEL:
+            isSuccess = GetTraceLevel();
             break;
         default:
             ShowHelp(argv[0]);
