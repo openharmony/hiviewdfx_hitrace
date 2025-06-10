@@ -89,7 +89,6 @@ struct TraceDumpTask {
     uint64_t time = 0;
     uint64_t traceStartTime = 0;
     uint64_t traceEndTime = 0;
-    int bufferIdx = -1;
     char outputFile[TRACE_FILE_LEN] = { 0 };
     int64_t fileSize = 0;
     int64_t fileSizeLimit = 0;
