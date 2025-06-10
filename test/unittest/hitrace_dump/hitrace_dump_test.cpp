@@ -1302,7 +1302,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceAsyncTest004, TestSize.Level2)
 {
     const std::vector<std::string> tagGroups = {"scene_performance"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    sleep(1);
+    sleep(3); // 3 : 3 seconds
     uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr));
     auto ret = DumpTrace(0, traceEndTime);
     EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);

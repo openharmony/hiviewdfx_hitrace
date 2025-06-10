@@ -461,7 +461,7 @@ int32_t GetTraceFileFromVec(const uint64_t& inputTraceStartTime, const uint64_t&
             HILOG_ERROR(LOG_CORE, "GetTraceFileFromVec: %{public}s is not exist.", it->filename.c_str());
             continue;
         }
-        HILOG_INFO(LOG_CORE, "GetTraceFileFromVec: %{public}s, [(%{public}" PRIu64 ", %{public}" PRIu64 "].",
+        HILOG_INFO(LOG_CORE, "GetTraceFileFromVec: %{public}s, [%{public}" PRIu64 ", %{public}" PRIu64 "].",
             it->filename.c_str(), it->traceStartTime, it->traceEndTime);
         if (((it->traceEndTime >= utTargetStartTimeMs && it->traceStartTime <= utTargetEndTimeMs)) &&
             (it->traceEndTime - it->traceStartTime < 2000 * S_TO_MS)) { // 2000 : max trace duration 2000s
@@ -570,6 +570,11 @@ void TimeoutSignalHandler(int signum)
 {
     if (signum == SIGUSR1) {
         _exit(EXIT_SUCCESS);
+    } else if (signum == SIGCHLD) {
+        pid_t pid;
+        do {
+            pid = waitpid(-1, nullptr, WNOHANG);
+        } while (pid > 0);
     }
 }
 
@@ -764,6 +769,7 @@ TraceDumpTask WaitSyncDumpRetLoop(const pid_t pid, const std::shared_ptr<Hitrace
     } else {
         task.code = TraceErrorCode::TRACE_TASK_DUMP_TIMEOUT;
         kill(pid, SIGUSR1);
+        HILOG_WARN(LOG_CORE, "WaitSyncDumpRetLoop: HitraceDumpAsync process timeout, kill it.");
     }
     HILOG_INFO(LOG_CORE, "WaitSyncDumpRetLoop: exit.");
     return task;
@@ -838,6 +844,19 @@ TraceErrorCode SubmitTaskAndWaitReturn(const TraceDumpTask& task, const bool clo
     return TraceErrorCode::TRACE_TASK_DUMP_TIMEOUT;
 }
 
+bool SetSigChldHandler()
+{
+    struct sigaction sa;
+    sa.sa_handler = TimeoutSignalHandler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+    if (sigaction(SIGCHLD, &sa, nullptr) == -1) {
+        HILOG_ERROR(LOG_CORE, "ProcessDumpAsync: Failed to setup SIGCHLD handler.");
+        return false;
+    }
+    return true;
+}
+
 TraceErrorCode ProcessDumpAsync(const uint64_t taskid, const int64_t fileSizeLimit, TraceRetInfo& traceRetInfo)
 {
     auto taskCnt = TraceDumpExecutor::GetInstance().GetTraceDumpTaskCount();
@@ -845,15 +864,15 @@ TraceErrorCode ProcessDumpAsync(const uint64_t taskid, const int64_t fileSizeLim
         HILOG_ERROR(LOG_CORE, "ProcessDumpAsync: remaining space not enough");
         return TraceErrorCode::FILE_ERROR;
     }
+    if (!SetSigChldHandler()) {
+        return TraceErrorCode::FORK_ERROR;
+    }
+
     struct TraceDumpTask task = {
         .time = taskid,
         .traceStartTime = g_traceStartTime,
         .traceEndTime = g_traceEndTime,
-        .bufferIdx = -1,
-        .outputFile = "",
-        .fileSizeLimit = fileSizeLimit,
-        .code = TraceErrorCode::UNSET,
-        .status = TraceDumpStatus::START
+        .fileSizeLimit = fileSizeLimit
     };
     HILOG_INFO(LOG_CORE, "ProcessDumpAsync: new task id[%{public}" PRIu64 "]", task.time);
     if (taskCnt > 0) {
