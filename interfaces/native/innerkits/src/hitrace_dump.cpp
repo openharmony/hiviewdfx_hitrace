@@ -87,6 +87,7 @@ constexpr int DEFAULT_FULL_TRACE_LENGTH = 30;
 constexpr uint64_t SNAPSHOT_MIN_REMAINING_SPACE = 300 * 1024 * 1024;     // 300M
 constexpr uint64_t DEFAULT_ASYNC_TRACE_SIZE = 50 * 1024 * 1024;          // 50M
 constexpr int HUNDRED_MILLISECONDS = 100 * 1000; // 100ms
+constexpr int ASYNC_WAIT_EMPTY_LOOP_MS = 15 * 1000; // 15 seconds
 
 std::atomic<pid_t> g_traceDumpTaskPid(-1);
 
@@ -778,19 +779,22 @@ TraceDumpTask WaitSyncDumpRetLoop(const pid_t pid, const std::shared_ptr<Hitrace
 void WaitAsyncDumpRetLoop(const std::shared_ptr<HitraceDumpPipe> pipe)
 {
     HILOG_INFO(LOG_CORE, "WaitAsyncDumpRetLoop: start.");
+    int emptyLoopMs = 0;
     do {
         HILOG_INFO(LOG_CORE, "WaitAsyncDumpRetLoop: loop start.");
-        if (TraceDumpExecutor::GetInstance().IsTraceDumpTaskEmpty()) {
+        if (TraceDumpExecutor::GetInstance().IsTraceDumpTaskEmpty() && emptyLoopMs >= ASYNC_WAIT_EMPTY_LOOP_MS) {
             HILOG_INFO(LOG_CORE, "WaitAsyncDumpRetLoop: task queue is empty.");
-            // todo : empty loop run 15 seconds.
             HitraceDumpPipe::ClearTraceDumpPipe();
             break;
         }
 
         TraceDumpTask task;
         if (!pipe->ReadAsyncDumpRet(1, task)) {
+            usleep(HUNDRED_MILLISECONDS);
+            emptyLoopMs += HUNDRED_MILLISECONDS / 1000; // 1000 : us to ms ratio
             continue;
         }
+        emptyLoopMs = 0;
         if (task.status == TraceDumpStatus::WRITE_DONE) {
             task.status = TraceDumpStatus::FINISH;
             HILOG_INFO(LOG_CORE, "WaitAsyncDumpRetLoop: task finished.");
@@ -803,7 +807,6 @@ void WaitAsyncDumpRetLoop(const std::shared_ptr<HitraceDumpPipe> pipe)
             if (traceRetInfo.fileSize > task.fileSizeLimit) {
                 traceRetInfo.errorCode = TraceErrorCode::SIZE_EXCEED_LIMIT;
             }
-            TraceDumpExecutor::GetInstance().RemoveTraceDumpTask(task.time);
             if (g_callbacks[task.time] != nullptr) {
                 g_callbacks[task.time](traceRetInfo);
                 HILOG_INFO(LOG_CORE, "WaitAsyncDumpRetLoop: call callback func done, taskid[%{public}" PRIu64 "]",
@@ -812,10 +815,9 @@ void WaitAsyncDumpRetLoop(const std::shared_ptr<HitraceDumpPipe> pipe)
             g_callbacks.erase(task.time);
             g_traceRetInfos.erase(task.time);
         } else {
-            // should not happen, but just in case.
             HILOG_ERROR(LOG_CORE, "WaitAsyncDumpRetLoop: task status is not FINISH.");
         }
-        usleep(HUNDRED_MILLISECONDS);
+        TraceDumpExecutor::GetInstance().RemoveTraceDumpTask(task.time);
     } while (true);
     HILOG_INFO(LOG_CORE, "WaitAsyncDumpRetLoop: exit.");
 }

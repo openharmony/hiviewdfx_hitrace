@@ -76,6 +76,7 @@ public:
     std::string GetTraceFilePath() const { return traceFilePath_; }
     static int GetCurrentFileSize();
     static void ResetCurrentFileSize();
+    void WriteProcessLists(ssize_t& writeLen);
 
 protected:
     int traceFileFd_ = -1;

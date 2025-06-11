@@ -15,7 +15,9 @@
 
 #include "trace_content.h"
 
+#include <dirent.h>
 #include <fcntl.h>
+#include <fstream>
 #include <hilog/log.h>
 #include <string>
 #include <unistd.h>
@@ -146,6 +148,9 @@ bool ITraceContent::WriteTraceData(const uint8_t contentType)
             break;
         }
     }
+    if (contentType == CONTENT_TYPE_CMDLINES) {
+        WriteProcessLists(writeLen);
+    }
     UpdateTraceContentHeader(contentHeader, static_cast<uint32_t>(writeLen));
     HILOG_INFO(LOG_CORE, "WriteTraceData end, type: %{public}d, byte: %{public}zd. g_writeFileLimit: %{public}d",
         contentType, writeLen, g_writeFileLimit);
@@ -230,6 +235,57 @@ int ITraceContent::GetCurrentFileSize()
 void ITraceContent::ResetCurrentFileSize()
 {
     g_outputFileSize = 0;
+}
+
+void ITraceContent::WriteProcessLists(ssize_t& writeLen)
+{
+    std::string result;
+    DIR* procDir = opendir("/proc");
+    if (procDir == nullptr) {
+        HILOG_ERROR(LOG_CORE, "WriteProcessLists: open /proc failed, errno: %{public}d.", errno);
+        return;
+    }
+    int bytes = 0;
+    struct dirent* entry;
+    while ((entry = readdir(procDir)) != nullptr) {
+        if (entry->d_type != DT_DIR || std::string(entry->d_name) == "." || std::string(entry->d_name) == "..") {
+            continue;
+        }
+        std::string dirName(entry->d_name);
+        if (!std::all_of(dirName.begin(), dirName.end(), ::isdigit)) {
+            continue;
+        }
+        std::ifstream statusFile("/proc/" + dirName + "/status");
+        if (!statusFile.is_open()) {
+            continue;
+        }
+        std::string line;
+        std::string processName;
+        while (std::getline(statusFile, line)) {
+            if (line.find("Name:") != std::string::npos) {
+                processName = line.substr(line.find(":") + 1);
+                break;
+            }
+        }
+        if (processName.empty()) {
+            continue;
+        }
+        result += dirName + " " + processName + "\n";
+        if (memcpy_s(g_buffer + bytes, result.length(), result.c_str(), result.length()) != EOK) {
+            HILOG_ERROR(LOG_CORE, "WriteProcessLists: failed to memcpy result to g_buffer.");
+            continue;
+        }
+        bytes += result.length();
+        if (bytes <= BUFFER_SIZE - static_cast<int>(PAGE_SIZE)) {
+            continue;
+        }
+        DoWriteTraceData(g_buffer, bytes, writeLen);
+        bytes = 0;
+    }
+    if (bytes > 0) {
+        DoWriteTraceData(g_buffer, bytes, writeLen);
+    }
+    closedir(procDir);
 }
 
 bool ITraceFileHdrContent::InitTraceFileHdr(TraceFileHeader& fileHdr)
@@ -521,9 +577,9 @@ bool ITraceCpuRawRead::CopyTracePipeRawLoop(const int srcFd, const int cpu, ssiz
         return true;
     }
     bool isStopRead = false;
-    size_t blockReadSz = 0;
+    ssize_t blockReadSz = 0;
     uint8_t pageBuffer[PAGE_SIZE] = {};
-    while (blockReadSz <= bufferSz - static_cast<size_t>(PAGE_SIZE)) {
+    while (blockReadSz <= static_cast<ssize_t>(bufferSz - PAGE_SIZE)) {
         ssize_t readBytes = TEMP_FAILURE_RETRY(read(srcFd, pageBuffer, PAGE_SIZE));
         if (readBytes <= 0) {
             HILOG_DEBUG(LOG_CORE, "CopyTracePipeRawLoop: read raw trace done, size(%{public}zd), err(%{public}s).",
@@ -554,7 +610,7 @@ bool ITraceCpuRawRead::CopyTracePipeRawLoop(const int srcFd, const int cpu, ssiz
         if (!CheckPage(pageBuffer)) {
             pageChkFailedTime++;
         }
-        blockReadSz += static_cast<size_t>(readBytes);
+        blockReadSz += readBytes;
         buffer->Append(pageBuffer, readBytes);
         if (pageChkFailedTime >= 2) { // 2 : check failed times threshold
             isStopRead = true;

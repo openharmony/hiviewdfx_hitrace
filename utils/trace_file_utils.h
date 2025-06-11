@@ -41,7 +41,7 @@ struct TraceFileInfo {
     std::string filename;
     uint64_t traceStartTime; // in ms
     uint64_t traceEndTime; // in ms
-    uint64_t fileSize;
+    int64_t fileSize;
 };
 
 void GetTraceFilesInDir(std::vector<FileWithTime>& fileList, TRACE_TYPE traceType);
