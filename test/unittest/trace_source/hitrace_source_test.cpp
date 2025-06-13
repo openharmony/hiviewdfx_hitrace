@@ -431,6 +431,72 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest017, TestSize.Level2)
 }
 
 /**
+ * @tc.name: TraceSourceTest018
+ * @tc.desc: Test TraceSourceLinux class GetTraceCpuRawRead function.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSourceTest, TraceSourceTest018, TestSize.Level2)
+{
+    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    std::string appArgs = "tags:sched,binder,ohos bufferSize:102400 overwrite:1";
+    EXPECT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
+    sleep(1);
+    std::shared_ptr<ITraceSource> traceSource = nullptr;
+    if (IsHmKernel()) {
+        traceSource = std::make_shared<TraceSourceHM>(TRACEFS_DIR, "");
+    } else {
+        traceSource = std::make_shared<TraceSourceLinux>(TRACEFS_DIR, "");
+    }
+    EXPECT_TRUE(traceSource != nullptr);
+    TraceDumpRequest request = { TRACE_TYPE::TRACE_SNAPSHOT, 0, false, 0, std::numeric_limits<uint64_t>::max(), 1 };
+    auto traceCpuRawRead = traceSource->GetTraceCpuRawRead(request);
+    EXPECT_TRUE(traceCpuRawRead != nullptr);
+    EXPECT_TRUE(traceCpuRawRead->WriteTraceContent());
+    EXPECT_GT(TraceBufferManager::GetInstance().GetTaskTotalUsedBytes(1), 0);
+    TraceBufferManager::GetInstance().ReleaseTaskBlocks(1);
+    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: TraceSourceTest019
+ * @tc.desc: Test TraceSourceLinux class GetTraceCpuRawWrite function.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSourceTest, TraceSourceTest019, TestSize.Level2)
+{
+    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    std::string appArgs = "tags:sched,binder,ohos bufferSize:102400 overwrite:1";
+    EXPECT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
+    sleep(1);
+    std::shared_ptr<ITraceSource> traceSourceRead = nullptr;
+    std::shared_ptr<ITraceSource> traceSourceWrite = nullptr;
+    if (IsHmKernel()) {
+        traceSourceRead = std::make_shared<TraceSourceHM>(TRACEFS_DIR, "");
+        traceSourceWrite = std::make_shared<TraceSourceHM>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+    } else {
+        traceSourceRead = std::make_shared<TraceSourceLinux>(TRACEFS_DIR, "");
+        traceSourceWrite = std::make_shared<TraceSourceLinux>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+    }
+    EXPECT_TRUE(traceSourceRead != nullptr);
+    EXPECT_TRUE(traceSourceWrite != nullptr);
+    TraceDumpRequest request = { TRACE_TYPE::TRACE_SNAPSHOT, 0, false, 0, std::numeric_limits<uint64_t>::max(), 1 };
+    auto traceCpuRawRead = traceSourceRead->GetTraceCpuRawRead(request);
+    EXPECT_TRUE(traceCpuRawRead != nullptr);
+    EXPECT_TRUE(traceCpuRawRead->WriteTraceContent());
+    EXPECT_GT(TraceBufferManager::GetInstance().GetTaskTotalUsedBytes(1), 0);
+    auto traceCpuRawWrite = traceSourceWrite->GetTraceCpuRawWrite(1);
+    EXPECT_TRUE(traceCpuRawWrite != nullptr);
+    EXPECT_TRUE(traceCpuRawWrite->WriteTraceContent());
+    EXPECT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
+    EXPECT_EQ(traceCpuRawRead->GetDumpStatus(), TraceErrorCode::SUCCESS);
+    TraceBufferManager::GetInstance().ReleaseTaskBlocks(1);
+    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    if (remove(TEST_TRACE_TEMP_FILE) != 0) {
+        GTEST_LOG_(ERROR) << "Delete test trace file failed.";
+    }
+}
+
+/**
  * @tc.name: TraceBufferManagerTest01
  * @tc.desc: Test TraceBufferManager class AllocateBlock/GetTaskBuffers/GetCurrentTotalSize function.
  * @tc.type: FUNC

@@ -51,6 +51,9 @@ static bool UpdateFileFd(const std::string& traceFile, int& fd)
 TraceSourceLinux::TraceSourceLinux(const std::string& tracefsPath, const std::string& traceFilePath)
     : tracefsPath_(tracefsPath), traceFilePath_(traceFilePath)
 {
+    if (traceFilePath.empty()) {
+        return;
+    }
     traceFileFd_ = open(traceFilePath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644 : -rw-r--r--
     if (traceFileFd_ < 0) {
         HILOG_ERROR(LOG_CORE, "TraceSourceLinux: open %{public}s failed.", traceFilePath.c_str());
@@ -131,6 +134,9 @@ bool TraceSourceLinux::UpdateTraceFile(const std::string& traceFilePath)
 TraceSourceHM::TraceSourceHM(const std::string& tracefsPath, const std::string& traceFilePath)
     : tracefsPath_(tracefsPath), traceFilePath_(traceFilePath)
 {
+    if (traceFilePath.empty()) {
+        return;
+    }
     traceFileFd_ = open(traceFilePath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644 : -rw-r--r--
     if (traceFileFd_ < 0) {
         HILOG_ERROR(LOG_CORE, "TraceSourceHM: open %{public}s failed.", traceFilePath.c_str());
