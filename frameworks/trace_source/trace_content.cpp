@@ -25,6 +25,7 @@
 #include "common_define.h"
 #include "common_utils.h"
 #include "securec.h"
+#include "trace_file_utils.h"
 #include "trace_json_parser.h"
 
 namespace OHOS {
@@ -44,8 +45,6 @@ constexpr int JUDGE_FILE_EXIST = 10;  // Check whether the trace file exists eve
 constexpr int BUFFER_SIZE = 256 * PAGE_SIZE; // 1M
 constexpr uint8_t HM_FILE_RAW_TRACE = 1;
 constexpr int DEFAULT_FILE_SIZE = 100 * 1024;
-
-const char* const KERNEL_VERSION = "KERNEL_VERSION: ";
 
 static int g_writeFileLimit = 0;
 static int g_outputFileSize = 0;
@@ -348,21 +347,50 @@ bool TraceBaseInfoContent::WriteTraceContent()
         return false;
     }
     auto writeLen = WriteKernelVersion();
+    writeLen += WriteUnixTimeMs();
+    writeLen += WriteBootTimeMs();
     UpdateTraceContentHeader(contentHeader, writeLen);
     return true;
 }
 
-ssize_t TraceBaseInfoContent::WriteKernelVersion()
+ssize_t TraceBaseInfoContent::WriteKeyValue(const std::string& key, const std::string& value)
 {
-    static std::string kernelVersion = KERNEL_VERSION + GetKernelVersion() + "\n";
-    HILOG_INFO(LOG_CORE, "WriteKernelVersion : current version %{public}s", kernelVersion.c_str());
-    ssize_t writeRet = write(traceFileFd_, kernelVersion.data(), kernelVersion.size());
+    if (key.empty() || value.empty()) {
+        HILOG_ERROR(LOG_CORE, "WriteKeyValue: key or value is empty.");
+        return 0;
+    }
+    std::string keyValue = key + ": " + value + "\n";
+    ssize_t writeRet = write(traceFileFd_, keyValue.data(), keyValue.size());
     if (writeRet < 0) {
-        HILOG_WARN(LOG_CORE, "WriteKernelVersion failed, errno: %{public}d.", errno);
+        HILOG_WARN(LOG_CORE, "Write Key %{public}s Value %{public}s failed, errno: %{public}d.",
+            key.c_str(), value.c_str(), errno);
         return 0;
     } else {
         return writeRet;
     }
+}
+
+ssize_t TraceBaseInfoContent::WriteKernelVersion()
+{
+    std::string kernelVersion = GetKernelVersion();
+    HILOG_INFO(LOG_CORE, "WriteKernelVersion : current version %{public}s", kernelVersion.c_str());
+    return WriteKeyValue("KERNEL_VERSION", kernelVersion);
+}
+
+ssize_t TraceBaseInfoContent::WriteUnixTimeMs()
+{
+    uint64_t unixTimeMs = GetCurUnixTimeMs();
+    HILOG_INFO(LOG_CORE, "WriteUnixTimeMs : current time %{public}" PRIu64, unixTimeMs);
+    std::string timeStr = std::to_string(unixTimeMs);
+    return WriteKeyValue("UNIX_TIME_MS", timeStr);
+}
+
+ssize_t TraceBaseInfoContent::WriteBootTimeMs()
+{
+    uint64_t bootTimeMs = GetCurBootTime() / MS_TO_NS;
+    HILOG_INFO(LOG_CORE, "WriteBootTimeMs : current time %{public}" PRIu64, bootTimeMs);
+    std::string timeStr = std::to_string(bootTimeMs);
+    return WriteKeyValue("BOOT_TIME_MS", timeStr);
 }
 
 TraceEventFmtContent::TraceEventFmtContent(const int fd,

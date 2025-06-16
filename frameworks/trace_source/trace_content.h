@@ -117,6 +117,9 @@ public:
     bool WriteTraceContent() override;
 
 private:
+    ssize_t WriteKeyValue(const std::string& key, const std::string& value);
+    ssize_t WriteUnixTimeMs();
+    ssize_t WriteBootTimeMs();
     ssize_t WriteKernelVersion();
 };
 
