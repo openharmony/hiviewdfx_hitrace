@@ -270,8 +270,8 @@ void ITraceContent::WriteProcessLists(ssize_t& writeLen)
         if (processName.empty()) {
             continue;
         }
-        result += dirName + " " + processName + "\n";
-        if (memcpy_s(g_buffer + bytes, result.length(), result.c_str(), result.length()) != EOK) {
+        result = dirName + " " + processName + "\n";
+        if (memcpy_s(g_buffer + bytes, BUFFER_SIZE - bytes, result.c_str(), result.length()) != EOK) {
             HILOG_ERROR(LOG_CORE, "WriteProcessLists: failed to memcpy result to g_buffer.");
             continue;
         }
