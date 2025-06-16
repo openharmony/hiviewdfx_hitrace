@@ -452,3 +452,46 @@ ohos_unittest("HitraceDumpExecutorTest") {
     external_deps += [ "hilog:libhilog" ]
   }
 }
+
+ohos_unittest("HitraceCMDTest") {
+  module_out_path = module_output_path
+
+  cflags = [ "-DHITRACE_UNITTEST" ]
+
+  include_dirs = [
+    "$hitrace_cmd_path",
+    "$hitrace_common_path",
+    "$hitrace_frameworks_path/include",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
+    "$hitrace_utils_path",
+  ]
+
+  sources = [
+    "hitrace_cmd/hitrace_cmd_test.cpp",
+    "$hitrace_cmd_path/hitrace_cmd.cpp",
+  ]
+
+  deps = [
+    "$hitrace_config_path:hitrace_tags",
+    "$hitrace_utils_path:hitrace_common_utils",
+    "$hitrace_utils_path:hitrace_json_parser",
+  ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "googletest:gtest_main",
+    "hisysevent:libhisysevent",
+    "init:libbegetutil",
+    "zlib:libz",
+  ]
+
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+
+  if (device_company != "qemu" && hitrace_support_executable_file) {
+    external_deps += [ "hiview:libucollection_client" ]
+  }
+}

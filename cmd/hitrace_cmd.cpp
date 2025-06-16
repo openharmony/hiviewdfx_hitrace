@@ -186,6 +186,23 @@ std::shared_ptr<TraceJsonParser> g_traceJsonParser = nullptr;
 RunningState g_runningState = STATE_NULL;
 }
 
+#ifdef HITRACE_UNITTEST
+void Reset()
+{
+    optind = 0;
+    opterr = 1;
+    optopt = 0;
+    optarg = nullptr;
+    g_traceRootPath = "";
+    g_traceCollector = nullptr;
+    g_needSysEvent = false;
+    g_traceJsonParser = nullptr;
+    g_runningState = STATE_NULL;
+    g_traceSysEventParams = {};
+    g_traceArgs = {};
+}
+#endif
+
 static void SetTraceSysEventParams()
 {
     g_needSysEvent = true;
@@ -1027,7 +1044,11 @@ static void RecordSysEvent()
     }
 }
 
+#ifdef HITRACE_UNITTEST
+int HiTraceCMDTestMain(int argc, char **argv)
+#else
 int main(int argc, char **argv)
+#endif
 {
     if (!IsDeveloperMode()) {
         ConsoleLog("error: not in developermode, exit");
