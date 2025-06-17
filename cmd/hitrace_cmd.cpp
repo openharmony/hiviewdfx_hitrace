@@ -182,7 +182,6 @@ std::shared_ptr<OHOS::HiviewDFX::UCollectClient::TraceCollector> g_traceCollecto
 TraceArgs g_traceArgs;
 TraceSysEventParams g_traceSysEventParams;
 bool g_needSysEvent = false;
-std::shared_ptr<TraceJsonParser> g_traceJsonParser = nullptr;
 RunningState g_runningState = STATE_NULL;
 }
 
@@ -196,7 +195,6 @@ void Reset()
     g_traceRootPath = "";
     g_traceCollector = nullptr;
     g_needSysEvent = false;
-    g_traceJsonParser = nullptr;
     g_runningState = STATE_NULL;
     g_traceSysEventParams = {};
     g_traceArgs = {};
@@ -272,7 +270,7 @@ static void ShowListCategory()
 {
     g_traceSysEventParams.opt = "ShowListCategory";
     printf("  %18s   description:\n", "tagName:");
-    auto traceTags = g_traceJsonParser->GetAllTagInfos();
+    auto traceTags = TraceJsonParser::Instance().GetAllTagInfos();
     for (auto it = traceTags.begin(); it != traceTags.end(); ++it) {
         printf("  %18s - %s\n", it->first.c_str(), it->second.description.c_str());
     }
@@ -565,7 +563,7 @@ static bool ParseOpt(int opt, int argc, char** argv, int optIndex)
 
 static bool AddTagItems(int argc, char** argv)
 {
-    auto traceTags = g_traceJsonParser->GetAllTagInfos();
+    auto traceTags = TraceJsonParser::Instance().GetAllTagInfos();
     for (int i = optind; i < argc; i++) {
         std::string tag = std::string(argv[i]);
         if (traceTags.find(tag) == traceTags.end()) {
@@ -733,18 +731,6 @@ static void DumpTrace()
         close(outFd);
     }
     close(traceFd);
-}
-
-static bool InitAllSupportTags()
-{
-    if (g_traceJsonParser == nullptr) {
-        g_traceJsonParser = std::make_shared<TraceJsonParser>();
-    }
-    if (!g_traceJsonParser->ParseTraceJson(PARSE_TRACE_BASE_INFO)) {
-        ConsoleLog("error: failed to parse trace tag information from configuration file.");
-        return false;
-    }
-    return true;
 }
 
 static std::string ReloadTraceArgs()
@@ -1070,10 +1056,6 @@ int main(int argc, char **argv)
 
     if (!IsTraceMounted(g_traceRootPath)) {
         ConsoleLog("error: trace isn't mounted, exit.");
-        return -1;
-    }
-
-    if (!InitAllSupportTags()) {
         return -1;
     }
 

@@ -186,6 +186,7 @@ ohos_unittest("HitraceDumpTest") {
     "$hitrace_frameworks_path/native/dynamic_buffer.cpp",
     "$hitrace_interfaces_path/native/innerkits/src/hitrace_dump.cpp",
     "hitrace_dump/hitrace_dump_test.cpp",
+    "$hitrace_utils_path/file_ageing_utils.cpp"
   ]
 
   cflags = [ "-DHITRACE_UNITTEST" ]
@@ -232,6 +233,7 @@ ohos_unittest("HitraceAsyncDumpTimeoutTest") {
     "$hitrace_frameworks_path/trace_dump_executor/trace_dump_pipe.cpp",
     "$hitrace_interfaces_path/native/innerkits/src/hitrace_dump.cpp",
     "hitrace_dump/hitrace_async_dump_timeout_test.cpp",
+    "$hitrace_utils_path/file_ageing_utils.cpp"
   ]
 
   cflags = [ "-DHITRACE_UNITTEST" ]
@@ -278,6 +280,11 @@ ohos_unittest("HitraceUtilsTest") {
   ]
 
   sources = [ "hitrace_utils/hitrace_utils_test.cpp" ]
+
+  cflags = [
+    "-Dprivate=public",  #allow test code access private members
+    "-Dprotected=public",  #allow test code access protected members
+  ]
 
   deps = [
     "$hitrace_utils_path:hitrace_common_utils",
@@ -437,6 +444,7 @@ ohos_unittest("HitraceDumpExecutorTest") {
     "$hitrace_frameworks_path/trace_dump_executor/trace_dump_executor.cpp",
     "$hitrace_frameworks_path/trace_dump_executor/trace_dump_pipe.cpp",
     "trace_dump_executor/trace_dump_executor_test.cpp",
+    "$hitrace_utils_path/file_ageing_utils.cpp"
   ]
 
   deps = [
@@ -497,5 +505,37 @@ ohos_unittest("HitraceCMDTest") {
 
   if (device_company != "qemu" && hitrace_support_executable_file) {
     external_deps += [ "hiview:libucollection_client" ]
+  }
+}
+
+ohos_unittest("HitraceAgeingTest") {
+  module_out_path = module_output_path
+  resource_config_file = "resource/ohos_test.xml"
+
+  include_dirs = [
+    "$hitrace_common_path",
+    "$hitrace_utils_path",
+  ]
+
+  sources = [
+    "hitrace_utils/hitrace_ageing_test.cpp",
+  ]
+
+  deps = [
+    "$hitrace_utils_path:hitrace_file_utils",
+    "$hitrace_utils_path:hitrace_json_parser",
+    "$hitrace_utils_path:hitrace_common_utils",
+  ]
+
+  cflags = [
+    "-Dprivate=public",  #allow test code access private members
+    "-Dprotected=public",  #allow test code access protected members
+  ]
+
+  external_deps = [ "googletest:gtest_main" ]
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
   }
 }

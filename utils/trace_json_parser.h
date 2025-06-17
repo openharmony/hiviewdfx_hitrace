@@ -20,6 +20,8 @@
 #include <string>
 #include <vector>
 
+#include "hitrace_define.h"
+
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
@@ -36,65 +38,42 @@ struct TraceTag {
     std::vector<std::string> formatPath;
 };
 
-enum TraceJsonInfo : uint8_t {
-    TRACE_SNAPSHOT_BUFSZ = 1,
-    TRACE_TAG_BASE_INFO = 1 << 1,
-    TRACE_TAG_ENABLE_INFO = 1 << 2,
-    TRACE_TAG_FORMAT_INFO = 1 << 3,
-    TRACE_TAG_GROUP_INFO = 1 << 4,
-    TRACE_SNAPSHOT_FILE_AGE = 1 << 5,
-};
-
-enum ParsePolicy : uint8_t {
-    PARSE_NONE = 0,
-    PARSE_TRACE_BUFSZ_INFO = TRACE_SNAPSHOT_BUFSZ,
-    PARSE_TRACE_BASE_INFO = TRACE_TAG_BASE_INFO,
-    PARSE_TRACE_ENABLE_INFO = TRACE_TAG_BASE_INFO | TRACE_TAG_ENABLE_INFO,
-    PARSE_TRACE_FORMAT_INFO = TRACE_TAG_BASE_INFO | TRACE_TAG_FORMAT_INFO,
-    PARSE_TRACE_GROUP_INFO = PARSE_TRACE_ENABLE_INFO | PARSE_TRACE_FORMAT_INFO | TRACE_TAG_GROUP_INFO,
-    PARSE_ALL_INFO = PARSE_TRACE_GROUP_INFO | TRACE_SNAPSHOT_BUFSZ,
-};
-
-enum class ConfigStatus : uint8_t {
-    UNKNOWN,
-    ENABLE,
-    DISABLE
-};
-
 class TraceJsonParser {
 public:
-    TraceJsonParser() = default;
-    bool ParseTraceJson(const uint8_t policy);
-    std::map<std::string, TraceTag>& GetAllTagInfos() { return traceTagInfos_; }
-    std::map<std::string, std::vector<std::string>>& GetTagGroups() { return tagGroups_; }
-    std::vector<std::string> GetBaseFmtPath() { return baseTraceFormats_; }
-    int GetSnapShotBufSzKb() { return snapshotBufSzKb_; }
-    bool GetSnapShotFileAge() { return snapshotFileAge_; }
+    static TraceJsonParser& Instance();
 
+    const std::map<std::string, TraceTag>& GetAllTagInfos() const { return traceTagInfos_; }
+    const std::map<std::string, std::vector<std::string>>& GetTagGroups() const { return tagGroups_; }
+    const std::vector<std::string>& GetBaseFmtPath() const { return baseTraceFormats_; }
+
+    const AgeingParam& GetAgeingParam(TRACE_TYPE type) const;
+
+    int GetSnapshotDefaultBufferSizeKb() const { return snapshotBufSzKb_; }
 private:
-    uint8_t parserState_ = PARSE_NONE;
     std::map<std::string, TraceTag> traceTagInfos_ = {};
     std::map<std::string, std::vector<std::string>> tagGroups_ = {};
     std::vector<std::string> baseTraceFormats_ = {};
+
     int snapshotBufSzKb_ = 0;
-    bool snapshotFileAge_ = true;
-};
 
-class ProductConfigJsonParser {
-public:
-    explicit ProductConfigJsonParser(const std::string& configJsonPath);
-    ~ProductConfigJsonParser() = default;
+    AgeingParam snapShotAgeingParam_ = {};
+    AgeingParam recordAgeingParam_ = {};
 
-    uint64_t GetRecordFileSizeKb() const;
-    uint64_t GetSnapshotFileSizeKb() const;
-    int GetDefaultBufferSize() const;
-    ConfigStatus GetRootAgeingStatus() const;
+    TraceJsonParser(const std::string& hitraceUtilsJson, const std::string& productConfigJson);
 
-private:
-    uint64_t recordFileSizeKb = 0;
-    uint64_t snapshotFileSizeKb = 0;
-    int defaultBufferSize = 0;
-    ConfigStatus rootAgeingEnable = ConfigStatus::UNKNOWN;
+    void InitSnapshotDefaultBufferSize();
+    void InitAgeingParam();
+
+    void ParseHitraceUtilsJson(const std::string& hitraceUtilsJson);
+    void ParseProductConfigJson(const std::string& productConfigJson);
+
+    void PrintParseResult();
+
+    ~TraceJsonParser() = default;
+    TraceJsonParser(TraceJsonParser&) = delete;
+    TraceJsonParser(TraceJsonParser&&) = delete;
+    TraceJsonParser& operator=(const TraceJsonParser&) = delete;
+    TraceJsonParser&& operator=(const TraceJsonParser&&) = delete;
 };
 } // namespace HiTrace
 } // namespace HiviewDFX

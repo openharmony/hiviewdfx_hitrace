@@ -36,6 +36,7 @@
 #include "common_define.h"
 #include "common_utils.h"
 #include "dynamic_buffer.h"
+#include "file_ageing_utils.h"
 #include "hitrace_meter.h"
 #include "hitrace_option/hitrace_option.h"
 #include "hilog/log.h"
@@ -71,18 +72,11 @@ struct TraceParams {
     int appPid;
 };
 
-std::shared_ptr<ProductConfigJsonParser> g_ProductConfigParser
-    = std::make_shared<ProductConfigJsonParser>("/sys_prod/etc/hiview/hitrace/hitrace_param.json");
 const int DEFAULT_FILE_SIZE = 100 * 1024;
 const int SAVED_CMDLINES_SIZE = 3072; // 3M
 const int BYTE_PER_MB = 1024 * 1024;
 constexpr int32_t MAX_RATIO_UNIT = 1000;
 constexpr uint32_t DURATION_TOLERANCE = 100;
-#if defined(SNAPSHOT_FILE_LIMIT) && (SNAPSHOT_FILE_LIMIT != 0)
-const int SNAPSHOT_FILE_MAX_COUNT = SNAPSHOT_FILE_LIMIT;
-#else
-const int SNAPSHOT_FILE_MAX_COUNT = 20;
-#endif
 constexpr int DEFAULT_FULL_TRACE_LENGTH = 30;
 constexpr uint64_t SNAPSHOT_MIN_REMAINING_SPACE = 300 * 1024 * 1024;     // 300M
 constexpr uint64_t DEFAULT_ASYNC_TRACE_SIZE = 50 * 1024 * 1024;          // 50M
@@ -109,32 +103,10 @@ uint8_t g_dumpStatus(TraceErrorCode::UNSET);
 std::vector<TraceFileInfo> g_traceFileVec{};
 
 TraceParams g_currentTraceParams = {};
-std::shared_ptr<TraceJsonParser> g_traceJsonParser = nullptr;
 
 std::mutex g_traceRetAndCallbackMutex;
 std::unordered_map<uint64_t, std::function<void(TraceRetInfo)>> g_callbacks;
 std::unordered_map<uint64_t, TraceRetInfo> g_traceRetInfos;
-
-int GetDefaultBufferSize()
-{
-    constexpr int defaultBufferSize = 12 * 1024;
-#if defined(SNAPSHOT_TRACEBUFFER_SIZE) && (SNAPSHOT_TRACEBUFFER_SIZE != 0)
-    constexpr int hmDefaultBufferSize = SNAPSHOT_TRACEBUFFER_SIZE;
-#else
-    constexpr int hmDefaultBufferSize = 144 * 1024;
-#endif
-
-    if (!IsHmKernel()) {
-        return defaultBufferSize;
-    }
-
-    int bufferSize = g_ProductConfigParser->GetDefaultBufferSize();
-    if (bufferSize != 0) {
-        return bufferSize;
-    }
-
-    return hmDefaultBufferSize;
-}
 
 const std::string TELEMETRY_APP_PARAM = "debug.hitrace.telemetry.app";
 
@@ -477,17 +449,6 @@ int32_t GetTraceFileFromVec(const uint64_t& inputTraceStartTime, const uint64_t&
 void SearchTraceFiles(const uint64_t& inputTraceStartTime, const uint64_t& inputTraceEndTime,
     TraceRetInfo& traceRetInfo)
 {
-    if (g_traceJsonParser == nullptr) {
-        g_traceJsonParser = std::make_shared<TraceJsonParser>();
-    }
-    if (!g_traceJsonParser->ParseTraceJson(TRACE_SNAPSHOT_FILE_AGE)) {
-        HILOG_WARN(LOG_CORE, "ProcessDump: Failed to parse TRACE_SNAPSHOT_FILE_AGE.");
-    }
-    if ((!IsRootVersion()) || g_ProductConfigParser->GetRootAgeingStatus() == ConfigStatus::ENABLE ||
-        (g_ProductConfigParser->GetRootAgeingStatus() == ConfigStatus::UNKNOWN &&
-        g_traceJsonParser->GetSnapShotFileAge())) {
-        DelSnapshotTraceFile(SNAPSHOT_FILE_MAX_COUNT, g_traceFileVec, g_ProductConfigParser->GetSnapshotFileSizeKb());
-    }
     HILOG_INFO(LOG_CORE, "target trace time: [%{public}" PRIu64 ", %{public}" PRIu64 "].",
         inputTraceStartTime, inputTraceEndTime);
     uint64_t curTime = GetCurUnixTimeMs();
@@ -1018,17 +979,11 @@ TraceErrorCode HandleTraceOpen(const TraceParams& traceParams,
 
 TraceErrorCode HandleDefaultTraceOpen(const std::vector<std::string>& tagGroups)
 {
-    if (g_traceJsonParser == nullptr) {
-        g_traceJsonParser = std::make_shared<TraceJsonParser>();
-    }
-    if (!g_traceJsonParser->ParseTraceJson(PARSE_ALL_INFO)) {
-        HILOG_ERROR(LOG_CORE, "WriteEventsFormat: Failed to parse trace tag total infos.");
-        return FILE_ERROR;
-    }
-    auto allTags = g_traceJsonParser->GetAllTagInfos();
-    auto tagGroupTable = g_traceJsonParser->GetTagGroups();
-    auto tagFmts = g_traceJsonParser->GetBaseFmtPath();
-    auto custBufSz = g_traceJsonParser->GetSnapShotBufSzKb();
+    TraceJsonParser& traceJsonParser = TraceJsonParser::Instance();
+    const std::map<std::string, TraceTag>& allTags = traceJsonParser.GetAllTagInfos();
+    const std::map<std::string, std::vector<std::string>>& tagGroupTable = traceJsonParser.GetTagGroups();
+    std::vector<std::string> tagFmts = traceJsonParser.GetBaseFmtPath();
+    const int custBufSz = traceJsonParser.GetSnapshotDefaultBufferSizeKb();
 
     if (tagGroups.size() == 0 || !CheckTagGroup(tagGroups, tagGroupTable)) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: TAG_ERROR.");
@@ -1041,7 +996,7 @@ TraceErrorCode HandleDefaultTraceOpen(const std::vector<std::string>& tagGroups)
     if (custBufSz > 0) {
         defaultTraceParams.bufferSize = std::to_string(custBufSz);
     } else {
-        int traceBufSz = GetDefaultBufferSize();
+        int traceBufSz = traceJsonParser.GetSnapshotDefaultBufferSizeKb();
         defaultTraceParams.bufferSize = std::to_string(traceBufSz);
     }
     defaultTraceParams.clockType = "boot";
@@ -1253,9 +1208,6 @@ TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups)
         HILOG_ERROR(LOG_CORE, "OpenTrace: failed.");
         return ret;
     }
-    if (!g_traceJsonParser->ParseTraceJson(TRACE_SNAPSHOT_FILE_AGE)) {
-        HILOG_WARN(LOG_CORE, "OpenTrace: Failed to parse TRACE_SNAPSHOT_FILE_AGE.");
-    }
     RefreshTraceVec(g_traceFileVec, TRACE_SNAPSHOT);
     std::vector<TraceFileInfo> cacheFileVec;
     RefreshTraceVec(cacheFileVec, TRACE_CACHE);
@@ -1281,16 +1233,10 @@ TraceErrorCode OpenTrace(const std::string& args)
         return TRACE_NOT_SUPPORTED;
     }
 
-    if (g_traceJsonParser == nullptr) {
-        g_traceJsonParser = std::make_shared<TraceJsonParser>();
-    }
-    if (!g_traceJsonParser->ParseTraceJson(PARSE_TRACE_GROUP_INFO)) {
-        HILOG_ERROR(LOG_CORE, "WriteEventsFormat: Failed to parse trace tag format and group infos.");
-        return FILE_ERROR;
-    }
-    auto allTags = g_traceJsonParser->GetAllTagInfos();
-    auto tagGroupTable = g_traceJsonParser->GetTagGroups();
-    auto traceFormats = g_traceJsonParser->GetBaseFmtPath();
+    TraceJsonParser& traceJsonParser = TraceJsonParser::Instance();
+    const std::map<std::string, TraceTag>& allTags = traceJsonParser.GetAllTagInfos();
+    const std::map<std::string, std::vector<std::string>>& tagGroupTable = traceJsonParser.GetTagGroups();
+    std::vector<std::string> traceFormats = traceJsonParser.GetBaseFmtPath();
 
     if (allTags.size() == 0 || tagGroupTable.size() == 0) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: ParseTagInfo TAG_ERROR.");
@@ -1360,6 +1306,7 @@ TraceRetInfo DumpTrace(int maxDuration, uint64_t utTraceEndTime)
     if (!CheckTraceDumpStatus(maxDuration, utTraceEndTime, ret)) {
         return ret;
     }
+    FileAgeingUtils::HandleAgeing(g_traceFileVec, TRACE_TYPE::TRACE_SNAPSHOT);
     HILOG_INFO(LOG_CORE, "DumpTrace start, target duration is %{public}d, target endtime is (%{public}" PRIu64 ").",
         maxDuration, utTraceEndTime);
     SetDestTraceTimeAndDuration(maxDuration, utTraceEndTime);
@@ -1495,14 +1442,8 @@ TraceErrorCode CloseTrace()
     g_traceMode = TraceMode::CLOSE;
     OHOS::system::SetParameter(TRACE_KEY_APP_PID, "-1");
 
-    if (g_traceJsonParser == nullptr) {
-        g_traceJsonParser = std::make_shared<TraceJsonParser>();
-    }
-    if (!g_traceJsonParser->ParseTraceJson(PARSE_TRACE_ENABLE_INFO)) {
-        HILOG_ERROR(LOG_CORE, "WriteEventsFormat: Failed to parse trace tag enable infos.");
-        return FILE_ERROR;
-    }
-    auto allTags = g_traceJsonParser->GetAllTagInfos();
+    const std::map<std::string, TraceTag>& allTags = TraceJsonParser::Instance().GetAllTagInfos();
+
     if (allTags.size() == 0) {
         HILOG_ERROR(LOG_CORE, "CloseTrace: ParseTagInfo TAG_ERROR.");
         return TAG_ERROR;

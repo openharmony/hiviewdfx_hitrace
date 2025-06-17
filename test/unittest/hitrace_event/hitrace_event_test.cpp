@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include <ctime>
 #include <gtest/gtest.h>
 #include <iostream>
 #include <string>

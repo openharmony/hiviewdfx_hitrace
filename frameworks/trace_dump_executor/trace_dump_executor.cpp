@@ -23,6 +23,7 @@
 
 #include "common_define.h"
 #include "common_utils.h"
+#include "file_ageing_utils.h"
 #include "hilog/log.h"
 #include "trace_file_utils.h"
 #include "trace_json_parser.h"
@@ -50,9 +51,7 @@ constexpr int DEFAULT_CACHE_FILE_SIZE = 150 * 1024;
 constexpr uint64_t SYNC_RETURN_TIMEOUT_NS = 5000000000; // 5s
 constexpr int64_t ASYNC_DUMP_FILE_SIZE_ADDITION = 1024 * 1024; // 1MB
 
-std::vector<FileWithTime> g_looptraceFiles;
-std::shared_ptr<ProductConfigJsonParser> g_ProductConfigParser
-    = std::make_shared<ProductConfigJsonParser>("/sys_prod/etc/hiview/hitrace/hitrace_param.json");
+std::vector<TraceFileInfo> g_looptraceFiles;
 uint64_t g_sliceMaxDuration;
 
 static bool g_isRootVer = IsRootVersion();
@@ -64,7 +63,7 @@ std::atomic<bool> g_interruptCache(false);
 std::atomic<bool> g_readFlag(true);
 std::atomic<bool> g_writeFlag(true);
 
-std::vector<std::string> FilterLoopTraceResult(const std::vector<FileWithTime>& looptraceFiles)
+std::vector<std::string> FilterLoopTraceResult(const std::vector<TraceFileInfo>& looptraceFiles)
 {
     std::vector<std::string> outputFiles = {};
     for (const auto& output : looptraceFiles) {
@@ -363,10 +362,7 @@ bool TraceDumpExecutor::StartDumpTraceLoop(const TraceDumpParam& param)
         std::lock_guard<std::mutex> lck(traceFileMutex_);
         g_looptraceFiles.clear();
         GetTraceFilesInDir(g_looptraceFiles, TRACE_TYPE::TRACE_RECORDING);
-        if (param.type == TRACE_TYPE::TRACE_RECORDING &&
-            (!g_isRootVer || g_ProductConfigParser->GetRootAgeingStatus() == ConfigStatus::ENABLE)) {
-            DelOldRecordTraceFile(g_looptraceFiles, param.fileLimit, g_ProductConfigParser->GetRecordFileSizeKb());
-        }
+        FileAgeingUtils::HandleAgeing(g_looptraceFiles, TRACE_TYPE::TRACE_RECORDING);
     }
 
     if (param.fileSize == 0 && g_isRootVer) {
@@ -381,10 +377,7 @@ bool TraceDumpExecutor::StartDumpTraceLoop(const TraceDumpParam& param)
     }
 
     while (g_isDumpRunning.load()) {
-        if (!g_isRootVer || g_ProductConfigParser->GetRootAgeingStatus() == ConfigStatus::ENABLE) {
-            std::lock_guard<std::mutex> lck(traceFileMutex_);
-            ClearOldTraceFile(g_looptraceFiles, param.fileLimit, g_ProductConfigParser->GetRecordFileSizeKb());
-        }
+        FileAgeingUtils::HandleAgeing(g_looptraceFiles, param.type);
         std::string traceFile = GenerateTraceFileName(param.type);
         if (DoDumpTraceLoop(param, traceFile, true)) {
             std::lock_guard<std::mutex> lck(traceFileMutex_);
