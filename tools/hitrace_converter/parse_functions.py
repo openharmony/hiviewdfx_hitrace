@@ -68,7 +68,6 @@ def parse_sched_wakeup_hm(data, one_event):
     pname = parse_bytes_to_str(one_event["fields"]["pname[16]"])
     pid = parse_int_field(one_event, "pid", True)
     prio = parse_int_field(one_event, "prio", True)
-    success = parse_int_field(one_event, "success", True)
     target_cpu = parse_int_field(one_event, "target_cpu", True)
 
     return "comm=%s pid=%d prio=%d target_cpu=%03d" % (pname, pid, prio, target_cpu)
