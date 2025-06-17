@@ -241,8 +241,8 @@ static inline HiTraceIdStruct HiTraceChainBytesToId(const uint8_t* pIdArray, int
 
     uint64_t tmp1 = 0;
     uint64_t tmp2 = 0;
-    if (memcpy_s(&tmp1, sizeof(uint64_t), pIdArray, sizeof(uint64_t)) != EOK ||
-        memcpy_s(&tmp2, sizeof(uint64_t), pIdArray + sizeof(uint64_t), sizeof(uint64_t)) != EOK) {
+    if (memcpy_s(&tmp1, sizeof(tmp1), pIdArray, sizeof(uint64_t)) != EOK ||
+        memcpy_s(&tmp2, sizeof(tmp2), pIdArray + sizeof(uint64_t), sizeof(uint64_t)) != EOK) {
         return id;
     }
     *((uint64_t*)(&id)) = be64toh(tmp1);

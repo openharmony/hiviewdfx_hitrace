@@ -481,7 +481,7 @@ void ITraceCpuRawContent::ReadTracePipeRawLoop(const int srcFd,
             break;
         }
         uint64_t pageTraceTime = 0;
-        if (memcpy_s(&pageTraceTime, sizeof(uint64_t), g_buffer + bytes, sizeof(uint64_t)) != EOK) {
+        if (memcpy_s(&pageTraceTime, sizeof(pageTraceTime), g_buffer + bytes, sizeof(uint64_t)) != EOK) {
             HILOG_ERROR(LOG_CORE, "ReadTracePipeRawLoop: failed to memcpy g_buffer to pageTraceTime.");
             break;
         }
@@ -587,7 +587,7 @@ bool ITraceCpuRawRead::CopyTracePipeRawLoop(const int srcFd, const int cpu, ssiz
             break;
         }
         uint64_t pageTraceTime = 0;
-        if (memcpy_s(&pageTraceTime, sizeof(uint64_t), pageBuffer, sizeof(uint64_t)) != EOK) {
+        if (memcpy_s(&pageTraceTime, sizeof(pageTraceTime), pageBuffer, sizeof(uint64_t)) != EOK) {
             HILOG_ERROR(LOG_CORE, "CopyTracePipeRawLoop: failed to memcpy pagebuffer to pageTraceTime.");
             break;
         }
