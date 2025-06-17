@@ -76,7 +76,7 @@ public:
         }
     }
 
-    int fd()
+    int Fd()
     {
         return fd_;
     }
@@ -100,7 +100,7 @@ bool AppendToFile(const std::string& filename, const std::string& str)
 {
     FileLock fileLock(filename, O_RDWR);
 
-    int fd = fileLock.fd();
+    int fd = fileLock.Fd();
     if (fd == -1) {
         return false;
     }

@@ -337,6 +337,10 @@ ohos_unittest("HitraceMeterFfiTest") {
 
   sources = [
     "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter.cpp",
+    "$hitrace_interfaces_path/cj/kits/ffi/src/hitracemeter_ffi.cpp",
+    "$hitrace_interfaces_path/cj/kits/ffi/src/hitracechain_ffi.cpp",
+    "$hitrace_interfaces_path/cj/kits/ffi/src/hitracechain_impl.cpp",
+    "$hitrace_interfaces_path/cj/kits/ffi/src/hitracemeter_impl.cpp",
     "hitrace_meter/hitrace_meter_ffi_test.cpp",
     "hitrace_meter/hitrace_meter_test_utils.cpp",
   ]
