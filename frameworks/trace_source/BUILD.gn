@@ -26,7 +26,10 @@ ohos_static_library("trace_source") {
     "trace_source.cpp",
   ]
 
-  deps = [ "$hitrace_utils_path:hitrace_json_parser" ]
+  deps = [
+    "$hitrace_utils_path:hitrace_file_utils",
+    "$hitrace_utils_path:hitrace_json_parser",
+  ]
 
   if (defined(ohos_lite)) {
     external_deps = [ "hilog_lite:hilog_lite" ]
