@@ -107,9 +107,6 @@ public:
 
 class TraceDumpExecutor final {
 public:
-    TraceDumpExecutor();
-    ~TraceDumpExecutor() = default;
-
     static TraceDumpExecutor& GetInstance()
     {
         static TraceDumpExecutor instance;
@@ -147,6 +144,7 @@ public:
     TraceDumpExecutor& operator=(TraceDumpExecutor&&) = delete;
 
 private:
+    TraceDumpExecutor();
     void SetTraceDumpStrategy(std::unique_ptr<ITraceDumpStrategy> strategy);
     TraceDumpRet ExecuteDumpTrace(std::shared_ptr<ITraceSource> traceSource, const TraceDumpRequest& request);
     bool DoDumpTraceLoop(const TraceDumpParam& param, std::string& traceFile, bool isLimited);

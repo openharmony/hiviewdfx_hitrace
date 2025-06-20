@@ -105,11 +105,14 @@ bool HitraceDumpPipe::InitTraceDumpPipe()
     if (mkfifo(TRACE_SYNC_RETURN_PIPE, PIPE_FILE_MODE) < 0) {
         HILOG_ERROR(LOG_CORE, "HitraceDumpPipe: create %{public}s failed, errno(%{public}d)",
             TRACE_SYNC_RETURN_PIPE, errno);
+        unlink(TRACE_TASK_SUBMIT_PIPE);
         return false;
     }
     if (mkfifo(TRACE_ASYNC_RETURN_PIPE, PIPE_FILE_MODE) < 0) {
         HILOG_ERROR(LOG_CORE, "HitraceDumpPipe: create %{public}s failed, errno(%{public}d)",
             TRACE_ASYNC_RETURN_PIPE, errno);
+        unlink(TRACE_TASK_SUBMIT_PIPE);
+        unlink(TRACE_SYNC_RETURN_PIPE);
         return false;
     }
     return true;
@@ -143,7 +146,7 @@ bool HitraceDumpPipe::CheckFdValidity(int fd, const char* operation, const char*
 
 bool HitraceDumpPipe::WriteToPipe(int fd, const TraceDumpTask& task, const char* operation)
 {
-    ssize_t ret = write(fd, &task, sizeof(task));
+    ssize_t ret = TEMP_FAILURE_RETRY(write(fd, &task, sizeof(task)));
     if (ret < 0) {
         HILOG_ERROR(LOG_CORE, "%{public}s: write pipe failed.", operation);
         return false;
@@ -156,7 +159,7 @@ bool HitraceDumpPipe::ReadFromPipe(int fd, TraceDumpTask& task, const int timeou
 {
     int msCnt = 0;
     while (msCnt <= timeoutMs) {
-        ssize_t readSize = read(fd, &task, sizeof(task));
+        ssize_t readSize = TEMP_FAILURE_RETRY(read(fd, &task, sizeof(task)));
         if (readSize > 0) {
             HILOG_INFO(LOG_CORE, "%{public}s: read task done, task id: %{public}" PRIu64 ".", operation, task.time);
             return true;

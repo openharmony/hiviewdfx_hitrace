@@ -55,7 +55,7 @@ bool BufferBlock::Append(const uint8_t* src, size_t size)
     return true;
 }
 
-BufferBlockPtr TraceBufferManager::AllocateBlock(task_id_type taskId, int cpu)
+BufferBlockPtr TraceBufferManager::AllocateBlock(const uint64_t taskId, const int cpu)
 {
     std::lock_guard<std::mutex> lck(mutex_);
 
@@ -69,7 +69,7 @@ BufferBlockPtr TraceBufferManager::AllocateBlock(task_id_type taskId, int cpu)
     return buffer;
 }
 
-void TraceBufferManager::ReleaseTaskBlocks(task_id_type taskId)
+void TraceBufferManager::ReleaseTaskBlocks(const uint64_t taskId)
 {
     std::lock_guard<std::mutex> lck(mutex_);
     if (auto it = taskBuffers_.find(taskId); it != taskBuffers_.end()) {
@@ -80,7 +80,7 @@ void TraceBufferManager::ReleaseTaskBlocks(task_id_type taskId)
     }
 }
 
-BufferList TraceBufferManager::GetTaskBuffers(task_id_type taskId)
+BufferList TraceBufferManager::GetTaskBuffers(const uint64_t taskId)
 {
     std::lock_guard<std::mutex> lck(mutex_);
     if (auto it = taskBuffers_.find(taskId); it != taskBuffers_.end()) {
@@ -89,7 +89,7 @@ BufferList TraceBufferManager::GetTaskBuffers(task_id_type taskId)
     return {};
 }
 
-size_t TraceBufferManager::GetTaskTotalUsedBytes(task_id_type taskId)
+size_t TraceBufferManager::GetTaskTotalUsedBytes(const uint64_t taskId)
 {
     size_t totalUsed = 0;
     std::lock_guard<std::mutex> lck(mutex_);
