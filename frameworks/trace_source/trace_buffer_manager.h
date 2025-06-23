@@ -34,31 +34,36 @@ struct BufferBlock {
     bool Append(const uint8_t* src, size_t size);
 };
 
-using task_id_type = uint64_t;
 using BufferBlockPtr = std::shared_ptr<BufferBlock>;
 using BufferList = std::list<BufferBlockPtr>;
 
 constexpr size_t DEFAULT_MAX_TOTAL_SZ = 300 * 1024 * 1024; // 300 MB
 constexpr size_t DEFAULT_BLOCK_SZ = 10 * 1024 * 1024; // 10 MB
 
-class TraceBufferManager {
+class TraceBufferManager final {
 public:
-    TraceBufferManager();
-    explicit TraceBufferManager(size_t maxTotalSz, size_t blockSz = DEFAULT_BLOCK_SZ)
-        : maxTotalSz_(maxTotalSz), blockSz_(blockSz), curTotalSz_(0) {}
-
     static TraceBufferManager& GetInstance()
     {
         static TraceBufferManager instance(DEFAULT_MAX_TOTAL_SZ);
         return instance;
     }
 
-    BufferBlockPtr AllocateBlock(task_id_type taskId, int cpu);
-    void ReleaseTaskBlocks(task_id_type taskId);
-    BufferList GetTaskBuffers(task_id_type taskId);
-    size_t GetTaskTotalUsedBytes(task_id_type taskId);
+    BufferBlockPtr AllocateBlock(const uint64_t taskId, const int cpu);
+    void ReleaseTaskBlocks(const uint64_t taskId);
+    BufferList GetTaskBuffers(const uint64_t taskId);
+    size_t GetTaskTotalUsedBytes(const uint64_t taskId);
     size_t GetCurrentTotalSize();
     size_t GetBlockSize() const;
+
+    TraceBufferManager(const TraceBufferManager&) = delete;
+    TraceBufferManager(TraceBufferManager&&) = delete;
+    TraceBufferManager& operator=(const TraceBufferManager&) = delete;
+    TraceBufferManager& operator=(TraceBufferManager&&) = delete;
+
+private:
+    TraceBufferManager();
+    explicit TraceBufferManager(size_t maxTotalSz, size_t blockSz = DEFAULT_BLOCK_SZ)
+        : maxTotalSz_(maxTotalSz), blockSz_(blockSz), curTotalSz_(0) {}
 
 private:
     size_t maxTotalSz_;
@@ -66,7 +71,7 @@ private:
     size_t curTotalSz_;
 
     mutable std::mutex mutex_;
-    std::unordered_map<task_id_type, BufferList> taskBuffers_;
+    std::unordered_map<uint64_t, BufferList> taskBuffers_;
 };
 } // namespace Hitrace
 } // namespace HiviewDFX

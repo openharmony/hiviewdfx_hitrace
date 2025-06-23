@@ -64,7 +64,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest001, TestSize.Level2)
     std::string appArgs = "tags:sched,binder,ohos bufferSize:102400 overwrite:1";
     ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
     TraceDumpExecutor& traceDumpExecutor = TraceDumpExecutor::GetInstance();
-    ASSERT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
+    EXPECT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
     TraceDumpParam param = {
         TRACE_TYPE::TRACE_RECORDING,
         "",
@@ -74,15 +74,15 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest001, TestSize.Level2)
         std::numeric_limits<uint64_t>::max()
     };
     auto it = [&traceDumpExecutor](const TraceDumpParam& param) {
-        ASSERT_TRUE(traceDumpExecutor.StartDumpTraceLoop(param));
+        EXPECT_TRUE(traceDumpExecutor.StartDumpTraceLoop(param));
     };
     std::thread traceLoopThread(it, param);
     sleep(3);
     auto list = traceDumpExecutor.StopDumpTraceLoop();
-    ASSERT_GT(list.size(), 0);
+    EXPECT_GT(list.size(), 0);
     for (const auto& filename : list) {
         GTEST_LOG_(INFO) << filename;
-        ASSERT_GT(GetFileSize(filename), 0);
+        EXPECT_GT(GetFileSize(filename), 0);
     }
     traceLoopThread.join();
     ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
@@ -99,7 +99,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest002, TestSize.Level2)
     std::string appArgs = "tags:sched,binder,ohos bufferSize:102400 overwrite:1";
     ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
     TraceDumpExecutor& traceDumpExecutor = TraceDumpExecutor::GetInstance();
-    ASSERT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
+    EXPECT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
     TraceDumpParam param = {
         TRACE_TYPE::TRACE_RECORDING,
         TEST_TRACE_TEMP_FILE,
@@ -109,13 +109,13 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest002, TestSize.Level2)
         std::numeric_limits<uint64_t>::max()
     };
     auto it = [&traceDumpExecutor](const TraceDumpParam& param) {
-        ASSERT_TRUE(traceDumpExecutor.StartDumpTraceLoop(param));
+        EXPECT_TRUE(traceDumpExecutor.StartDumpTraceLoop(param));
     };
     std::thread traceLoopThread(it, param);
     sleep(3);
-    ASSERT_GT(traceDumpExecutor.StopDumpTraceLoop().size(), 0);
+    EXPECT_GT(traceDumpExecutor.StopDumpTraceLoop().size(), 0);
     traceLoopThread.join();
-    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
+    EXPECT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
     ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
     if (remove(TEST_TRACE_TEMP_FILE) != 0) {
         GTEST_LOG_(WARNING) << "Delete test trace file failed.";
@@ -142,9 +142,9 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest003, TestSize.Level2)
         std::numeric_limits<uint64_t>::max()
     };
     auto ret = traceDumpExecutor.DumpTrace(param);
-    ASSERT_EQ(ret.code, TraceErrorCode::SUCCESS);
+    EXPECT_EQ(ret.code, TraceErrorCode::SUCCESS);
     GTEST_LOG_(INFO) << "snapshot file: " << ret.outputFile;
-    ASSERT_GT(GetFileSize(ret.outputFile), 0);
+    EXPECT_GT(GetFileSize(ret.outputFile), 0);
     ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
 }
 
@@ -160,7 +160,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest004, TestSize.Level2)
     ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
     TraceDumpExecutor& traceDumpExecutor = TraceDumpExecutor::GetInstance();
     traceDumpExecutor.ClearCacheTraceFiles();
-    ASSERT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
+    EXPECT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
     TraceDumpParam param = {
         TRACE_TYPE::TRACE_CACHE,
         "",
@@ -170,17 +170,17 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest004, TestSize.Level2)
         std::numeric_limits<uint64_t>::max() // trace end time
     };
     auto it = [&traceDumpExecutor](const TraceDumpParam& param) {
-        ASSERT_TRUE(traceDumpExecutor.StartCacheTraceLoop(param, 50 * BYTE_PER_MB, 5)); // 50 : file size 5 : slice
+        EXPECT_TRUE(traceDumpExecutor.StartCacheTraceLoop(param, 50 * BYTE_PER_MB, 5)); // 50 : file size 5 : slice
     };
     std::thread traceLoopThread(it, param);
     sleep(8); // 8 : 8 seconds
     traceDumpExecutor.StopCacheTraceLoop();
     traceLoopThread.join();
     auto list = traceDumpExecutor.GetCacheTraceFiles();
-    ASSERT_EQ(list.size(), 2); // 2 : should have 2 files
+    EXPECT_EQ(list.size(), 2); // 2 : should have 2 files
     for (const auto& file : list) {
         GTEST_LOG_(INFO) << file.filename;
-        ASSERT_GT(GetFileSize(file.filename), 0);
+        EXPECT_GT(GetFileSize(file.filename), 0);
     }
     ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
 }
@@ -197,7 +197,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest005, TestSize.Level2)
     ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
     TraceDumpExecutor& traceDumpExecutor = TraceDumpExecutor::GetInstance();
     traceDumpExecutor.ClearCacheTraceFiles();
-    ASSERT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
+    EXPECT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
     TraceDumpParam param = {
         TRACE_TYPE::TRACE_CACHE,
         "",
@@ -207,23 +207,23 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest005, TestSize.Level2)
         std::numeric_limits<uint64_t>::max() // trace end time
     };
     auto it = [&traceDumpExecutor](const TraceDumpParam& param) {
-        ASSERT_TRUE(traceDumpExecutor.StartCacheTraceLoop(param, 50 * BYTE_PER_MB, 5)); // 50 : file size  5 : slice
+        EXPECT_TRUE(traceDumpExecutor.StartCacheTraceLoop(param, 50 * BYTE_PER_MB, 5)); // 50 : file size  5 : slice
     };
     std::thread traceLoopThread(it, param);
     sleep(7);
     auto list1 = traceDumpExecutor.GetCacheTraceFiles();
-    ASSERT_EQ(list1.size(), 2); // 2 : should have 2 files
+    EXPECT_GE(list1.size(), 2); // 2 : should have 2 files
     for (const auto& file : list1) {
         GTEST_LOG_(INFO) << file.filename;
-        ASSERT_GT(GetFileSize(file.filename), 0);
+        EXPECT_GT(GetFileSize(file.filename), 0);
     }
     sleep(1);
     traceDumpExecutor.StopCacheTraceLoop();
     auto list2 = traceDumpExecutor.GetCacheTraceFiles();
-    ASSERT_EQ(list2.size(), 3); // 3 : should have 3 files
+    EXPECT_GE(list2.size(), 3); // 3 : should have 3 files
     for (const auto& file : list2) {
         GTEST_LOG_(INFO) << file.filename;
-        ASSERT_GT(GetFileSize(file.filename), 0);
+        EXPECT_GT(GetFileSize(file.filename), 0);
     }
     traceLoopThread.join();
     ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);

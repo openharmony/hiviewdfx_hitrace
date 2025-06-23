@@ -98,12 +98,14 @@ static void GetLibPathsBySystemBits(std::vector<std::string> &filePaths)
         "/system/lib64/libhitrace_meter_rust.dylib.so",
         "/system/lib64/libhitracechain.dylib.so",
         "/system/lib64/libhitracechain_c_wrapper.so",
+        "/system/lib64/module/libbytrace.z.so",
         "/system/lib64/module/libhitracechain_napi.z.so",
         "/system/lib64/module/libhitracemeter_napi.z.so",
         "/system/lib64/ndk/libhitrace_ndk.z.so",
         "/system/lib64/platformsdk/libcj_hitracechain_ffi.z.so",
         "/system/lib64/platformsdk/libcj_hitracemeter_ffi.z.so",
-        "/system/lib64/platformsdk/libhitrace_dump.z.so"
+        "/system/lib64/platformsdk/libhitrace_dump.z.so",
+        "/system/lib64/platformsdk/libhitrace_option.so"
     };
     std::vector<std::string> libFilePaths = {
         "/system/lib/chipset-sdk-sp/libhitracechain.so",
@@ -111,12 +113,14 @@ static void GetLibPathsBySystemBits(std::vector<std::string> &filePaths)
         "/system/lib/libhitrace_meter_rust.dylib.so",
         "/system/lib/libhitracechain.dylib.so",
         "/system/lib/libhitracechain_c_wrapper.so",
+        "/system/lib/module/libbytrace.z.so",
         "/system/lib/module/libhitracechain_napi.z.so",
         "/system/lib/module/libhitracemeter_napi.z.so",
         "/system/lib/ndk/libhitrace_ndk.z.so",
         "/system/lib/platformsdk/libcj_hitracechain_ffi.z.so",
         "/system/lib/platformsdk/libcj_hitracemeter_ffi.z.so",
-        "/system/lib/platformsdk/libhitrace_dump.z.so"
+        "/system/lib/platformsdk/libhitrace_dump.z.so",
+        "/system/lib/platformsdk/libhitrace_option.so"
     };
 #ifdef __LP64__
     filePaths.insert(filePaths.end(), lib64FilePaths.begin(), lib64FilePaths.end());
@@ -1841,25 +1845,30 @@ HWTEST_F(HitraceMeterTest, ROMBaselineTest001, TestSize.Level2)
         "/system/etc/init/hitrace.cfg",
         "/system/etc/param/hitrace.para",
         "/system/etc/param/hitrace.para.dac",
-        "/system/bin/hitrace"
+        "/system/bin/hitrace",
+        "/system/bin/bytrace"
     };
     GetLibPathsBySystemBits(filePaths);
     struct stat fileStat;
-    long long totalSize = 0;
-    constexpr long long sectorSize = 4;
-    for (const auto &filePath : filePaths) {
-        int ret = stat(filePath.c_str(), &fileStat);
+    int64_t totalSize = 0;
+    constexpr int64_t bytePerKB = 1024;
+    constexpr int64_t pageSize = 4 * bytePerKB;
+    for (const auto& filePath : filePaths) {
+        int ret = lstat(filePath.c_str(), &fileStat);
         if (ret != 0) {
             EXPECT_EQ(ret, 0) << "Failed to get file size of " << filePath;
         } else {
-            long long size = fileStat.st_size / 1024;
-            size = size + sectorSize - size % sectorSize;
-            GTEST_LOG_(INFO) << "File size of " << filePath << " is " << size << "KB";
+            int64_t size = (fileStat.st_size / pageSize) * pageSize / bytePerKB;
+            if (fileStat.st_size % pageSize != 0) {
+                size += (pageSize / bytePerKB);
+            }
+            GTEST_LOG_(INFO) << "File size of " << filePath << " is " << fileStat.st_size / bytePerKB <<
+                " KB, caculate as " << size << " KB";
             totalSize += size;
         }
     }
-    printf("Total file size is %lldKB\n", totalSize);
-    constexpr long long baseline = 794;
+    GTEST_LOG_(INFO) << "Total file size is " << totalSize << " KB";
+    constexpr int64_t baseline = 834;
     EXPECT_LE(totalSize, baseline);
     GTEST_LOG_(INFO) << "ROMBaselineTest001: end.";
 }
