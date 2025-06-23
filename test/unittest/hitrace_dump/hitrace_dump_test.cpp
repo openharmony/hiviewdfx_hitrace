@@ -1240,7 +1240,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceAsyncTest002, TestSize.Level2)
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
 
     std::function<void(TraceRetInfo)> func = [](TraceRetInfo traceInfo) {
-        EXPECT_EQ(traceInfo.errorCode, TraceErrorCode::SIZE_EXCEED_LIMIT);
+        EXPECT_EQ(traceInfo.isOverflowControl, true);
         off_t totalFileSz = 0;
         for (auto& files : traceInfo.outputFiles) {
             totalFileSz += GetFileSize(files);
@@ -1249,7 +1249,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceAsyncTest002, TestSize.Level2)
         EXPECT_EQ(totalFileSz, traceInfo.fileSize);
     };
     auto ret = DumpTraceAsync(0, 0, 100, func); // 100 : 100 bytes
-    EXPECT_EQ(ret.errorCode, TraceErrorCode::SIZE_EXCEED_LIMIT) << "errorCode: " << static_cast<int>(ret.errorCode);
+    EXPECT_EQ(ret.isOverflowControl, true) << "errorCode: " << static_cast<int>(ret.errorCode);
     GTEST_LOG_(INFO) << "interface return file size :" << ret.fileSize;
     for (auto file : ret.outputFiles) {
         GTEST_LOG_(INFO) << "interface return file :" << file;

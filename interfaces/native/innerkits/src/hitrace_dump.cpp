@@ -32,6 +32,7 @@
 #include <thread>
 #include <unistd.h>
 #include <unordered_map>
+#include <functional>
 
 #include "common_define.h"
 #include "common_utils.h"
@@ -627,7 +628,7 @@ void HandleAsyncDumpResult(TraceDumpTask& task, TraceRetInfo& traceRetInfo)
 {
     SearchTraceFiles(g_utDestTraceStartTime, g_utDestTraceEndTime, traceRetInfo);
     TraceFileInfo traceFileInfo;
-    if (task.code == TraceErrorCode::SUCCESS || task.code == TraceErrorCode::SIZE_EXCEED_LIMIT) {
+    if (task.code == TraceErrorCode::SUCCESS) {
         if (!SetFileInfo(false, std::string(task.outputFile),
             g_firstPageTimestamp, g_lastPageTimestamp, traceFileInfo)) {
             // trace rename error
@@ -644,8 +645,8 @@ void HandleAsyncDumpResult(TraceDumpTask& task, TraceRetInfo& traceRetInfo)
     } else {
         traceRetInfo.errorCode = traceRetInfo.outputFiles.empty() ? task.code : TraceErrorCode::SUCCESS;
     }
-    if (traceRetInfo.fileSize > task.fileSizeLimit) {
-        traceRetInfo.errorCode = TraceErrorCode::SIZE_EXCEED_LIMIT;
+    if (task.isFileSizeOverLimit || traceRetInfo.fileSize > task.fileSizeLimit) {
+        traceRetInfo.isOverflowControl = true;
     }
 }
 
@@ -766,7 +767,7 @@ void WaitAsyncDumpRetLoop(const std::shared_ptr<HitraceDumpPipe> pipe)
                 traceRetInfo.fileSize += GetFileSize(file);
             }
             if (traceRetInfo.fileSize > task.fileSizeLimit) {
-                traceRetInfo.errorCode = TraceErrorCode::SIZE_EXCEED_LIMIT;
+                traceRetInfo.isOverflowControl = true;
             }
             if (g_callbacks[task.time] != nullptr) {
                 g_callbacks[task.time](traceRetInfo);
@@ -831,7 +832,7 @@ TraceErrorCode ProcessDumpAsync(const uint64_t taskid, const int64_t fileSizeLim
         return TraceErrorCode::FORK_ERROR;
     }
 
-    struct TraceDumpTask task = {
+    TraceDumpTask task = {
         .time = taskid,
         .traceStartTime = g_traceStartTime,
         .traceEndTime = g_traceEndTime,
@@ -842,18 +843,18 @@ TraceErrorCode ProcessDumpAsync(const uint64_t taskid, const int64_t fileSizeLim
         // must have a trace dump process running, just submit trace dump task, or need check child process is alive.
         HILOG_INFO(LOG_CORE, "ProcessDumpAsync: task queue is not empty, do not fork new process.");
         return SubmitTaskAndWaitReturn(task, false, traceRetInfo);
-    } else {
-        HitraceDumpPipe::ClearTraceDumpPipe();
-        if (!HitraceDumpPipe::InitTraceDumpPipe()) {
-            HILOG_ERROR(LOG_CORE, "ProcessDumpAsync: create fifo failed.");
-            return TraceErrorCode::PIPE_CREATE_ERROR;
-        }
+    }
+    HitraceDumpPipe::ClearTraceDumpPipe();
+    if (!HitraceDumpPipe::InitTraceDumpPipe()) {
+        HILOG_ERROR(LOG_CORE, "ProcessDumpAsync: create fifo failed.");
+        return TraceErrorCode::PIPE_CREATE_ERROR;
     }
     pid_t pid = fork();
     if (pid < 0) {
         HILOG_ERROR(LOG_CORE, "ProcessDumpAsync: fork failed.");
         return TraceErrorCode::FORK_ERROR;
-    } else if (pid == 0) {
+    }
+    if (pid == 0) {
         signal(SIGUSR1, TimeoutSignalHandler);
         std::string processName = "HitraceDumpAsync";
         SetProcessName(processName);
