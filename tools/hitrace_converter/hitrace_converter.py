@@ -541,7 +541,7 @@ def main():
                 global out_file
                 binary_file = os.path.join(file_dir, file)
                 out_file = os.path.join(os.path.split(binary_file)[0],
-                                        os.path.split(binary_file)[-1].split('.')[0] + '.ftrace')
+                                        '%s%s' % (os.path.split(binary_file)[-1].split('.')[0], '.ftrace'))
                 parse_binary_trace_file()
 
 

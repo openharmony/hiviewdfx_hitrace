@@ -171,7 +171,7 @@ static void ParseHiTraceId(ani_env *env, ani_object HiTraceIdAni, HiTraceId& tra
     }
     uint64_t spanId = UINT64_T_PRO_DEFAULT_VALUE;
     if (!HiTraceChainAniUtil::IsRefUndefined(env, spanIdRef)) {
-        spanId = HiTraceChainAniUtil::ParseNumberValueInt64(env, spanIdRef);
+        spanId = static_cast<uint64_t>(HiTraceChainAniUtil::ParseNumberValueInt64(env, spanIdRef));
         traceId.SetSpanId(spanId);
     }
 
@@ -182,7 +182,7 @@ static void ParseHiTraceId(ani_env *env, ani_object HiTraceIdAni, HiTraceId& tra
     }
     uint64_t parentSpanId = UINT64_T_PRO_DEFAULT_VALUE;
     if (!HiTraceChainAniUtil::IsRefUndefined(env, parentSpanIdRef)) {
-        parentSpanId = HiTraceChainAniUtil::ParseNumberValueInt64(env, parentSpanIdRef);
+        parentSpanId = static_cast<uint64_t>(HiTraceChainAniUtil::ParseNumberValueInt64(env, parentSpanIdRef));
         traceId.SetParentSpanId(parentSpanId);
     }
 
