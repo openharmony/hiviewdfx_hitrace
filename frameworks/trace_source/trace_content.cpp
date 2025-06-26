@@ -250,7 +250,8 @@ void ITraceContent::WriteProcessLists(ssize_t& writeLen)
         if (!std::all_of(dirName.begin(), dirName.end(), ::isdigit)) {
             continue;
         }
-        std::ifstream statusFile("/proc/" + dirName + "/status");
+        std::string statusPath = CanonicalizeSpecPath(std::string("/proc/" + dirName + "/status").c_str());
+        std::ifstream statusFile(statusPath);
         if (!statusFile.is_open()) {
             continue;
         }
@@ -270,7 +271,7 @@ void ITraceContent::WriteProcessLists(ssize_t& writeLen)
             HILOG_ERROR(LOG_CORE, "WriteProcessLists: failed to memcpy result to g_buffer.");
             continue;
         }
-        bytes += result.length();
+        bytes += static_cast<int>(result.length());
         if (bytes <= BUFFER_SIZE - static_cast<int>(PAGE_SIZE)) {
             continue;
         }
@@ -456,7 +457,8 @@ bool ITraceCpuRawContent::WriteTracePipeRawData(const std::string& srcPath, cons
         HILOG_ERROR(LOG_CORE, "WriteTracePipeRawData: trace file (%{public}s) not found.", traceFilePath_.c_str());
         return false;
     }
-    traceSourceFd_ = open(srcPath.c_str(), O_RDONLY | O_NONBLOCK);
+    std::string path = CanonicalizeSpecPath(srcPath.c_str());
+    traceSourceFd_ = open(path.c_str(), O_RDONLY | O_NONBLOCK);
     if (traceSourceFd_ < 0) {
         HILOG_ERROR(LOG_CORE, "WriteTracePipeRawData: open %{public}s failed.", srcPath.c_str());
         return false;
@@ -647,7 +649,8 @@ bool ITraceCpuRawRead::CopyTracePipeRawLoop(const int srcFd, const int cpu, ssiz
 
 bool ITraceCpuRawRead::CacheTracePipeRawData(const std::string& srcPath, const int cpuIdx)
 {
-    traceSourceFd_ = open(srcPath.c_str(), O_RDONLY | O_NONBLOCK);
+    std::string path = CanonicalizeSpecPath(srcPath.c_str());
+    traceSourceFd_ = open(path.c_str(), O_RDONLY | O_NONBLOCK);
     if (traceSourceFd_ < 0) {
         HILOG_ERROR(LOG_CORE, "CacheTracePipeRawData: open %{public}s failed.", srcPath.c_str());
         return false;

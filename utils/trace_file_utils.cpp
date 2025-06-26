@@ -157,7 +157,7 @@ TraceFileInfo::TraceFileInfo(const std::string& name, time_t time, uint64_t size
 {
     filename = name;
     ctime = time;
-    fileSize = sizekB;
+    fileSize = static_cast<int64_t>(sizekB);
     isNewFile = newFile;
 }
 
@@ -328,11 +328,11 @@ void ClearCacheTraceFileBySize(std::vector<TraceFileInfo>& cacheFileVec, const u
         HILOG_INFO(LOG_CORE, "ClearCacheTraceFileBySize: no cache file need to be deleted.");
         return;
     }
-    uint64_t totalCacheFileSize = 0;
+    int64_t totalCacheFileSize = 0;
     for (size_t i = 0; i < cacheFileVec.size(); ++i) {
         totalCacheFileSize += cacheFileVec[i].fileSize;
     }
-    while (totalCacheFileSize > fileSizeLimit) {
+    while (totalCacheFileSize > static_cast<int64_t>(fileSizeLimit)) {
         if (cacheFileVec.empty()) {
             HILOG_INFO(LOG_CORE, "ClearCacheTraceFileBySize: cacheFileVec is empty.");
             return;
@@ -425,7 +425,7 @@ bool SetFileInfo(const bool isFileExist, const std::string outPath, const uint64
     traceFileInfo.traceStartTime = ConvertPageTraceTimeToUtTimeMs(firstPageTimestamp);
     traceFileInfo.traceEndTime = ConvertPageTraceTimeToUtTimeMs(lastPageTimestamp);
     if (isFileExist) {
-        traceFileInfo.fileSize = static_cast<uint64_t>(GetFileSize(newFileName));
+        traceFileInfo.fileSize = GetFileSize(newFileName);
     } else {
         traceFileInfo.fileSize = 0;
     }

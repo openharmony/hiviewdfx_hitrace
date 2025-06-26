@@ -357,8 +357,6 @@ ohos_unittest("HitraceMeterFfiTest") {
   cflags = [ "-DHITRACE_UNITTEST" ]
 
   deps = [
-    "$hitrace_interfaces_path/cj/kits/ffi:cj_hitracechain_ffi",
-    "$hitrace_interfaces_path/cj/kits/ffi:cj_hitracemeter_ffi",
     "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
     "$hitrace_interfaces_path/native/innerkits:libhitracechain",
     "$hitrace_utils_path:hitrace_common_utils",

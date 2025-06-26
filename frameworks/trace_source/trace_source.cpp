@@ -20,6 +20,8 @@
 #include <string>
 #include <unistd.h>
 
+#include "common_utils.h"
+
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
@@ -35,7 +37,8 @@ namespace {
 
 static bool UpdateFileFd(const std::string& traceFile, int& fd)
 {
-    int newFd = open(traceFile.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644 : -rw-r--r--
+    std::string path = CanonicalizeSpecPath(traceFile.c_str());
+    int newFd = open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644 : -rw-r--r--
     if (newFd < 0) {
         HILOG_ERROR(LOG_CORE, "TraceSource: open %{public}s failed.", traceFile.c_str());
         return false;
@@ -54,7 +57,8 @@ TraceSourceLinux::TraceSourceLinux(const std::string& tracefsPath, const std::st
     if (traceFilePath.empty()) {
         return;
     }
-    traceFileFd_ = open(traceFilePath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644 : -rw-r--r--
+    std::string path = CanonicalizeSpecPath(traceFilePath.c_str());
+    traceFileFd_ = open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644 : -rw-r--r--
     if (traceFileFd_ < 0) {
         HILOG_ERROR(LOG_CORE, "TraceSourceLinux: open %{public}s failed.", traceFilePath.c_str());
     }
@@ -137,7 +141,8 @@ TraceSourceHM::TraceSourceHM(const std::string& tracefsPath, const std::string& 
     if (traceFilePath.empty()) {
         return;
     }
-    traceFileFd_ = open(traceFilePath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644 : -rw-r--r--
+    std::string path = CanonicalizeSpecPath(traceFilePath.c_str());
+    traceFileFd_ = open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644 : -rw-r--r--
     if (traceFileFd_ < 0) {
         HILOG_ERROR(LOG_CORE, "TraceSourceHM: open %{public}s failed.", traceFilePath.c_str());
     }
