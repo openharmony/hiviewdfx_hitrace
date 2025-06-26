@@ -24,16 +24,16 @@ constexpr uint64_t UINT64_T_PRO_DEFAULT_VALUE = 0;
 
 const char* const FUNC_NAME_GETLONG = "getLong";
 const char* const FUNC_NAME_UNBOXED = "unboxed";
-const char* const CLASS_NAME_INT = "Lstd/core/Int;";
-const char* const CLASS_NAME_DOUBLE = "Lstd/core/Double;";
-const char* const CLASS_NAME_BIGINT = "Lescompat/BigInt;";
+const char* const CLASS_NAME_INT = "std.core.Int";
+const char* const CLASS_NAME_DOUBLE = "std.core.Double";
+const char* const CLASS_NAME_BIGINT = "escompat.BigInt";
 
-const char* const CLASS_NAME_HITRACEID = "L@ohos/hiTraceChain/HiTraceIdAni;";
-const char* const CLASS_NAME_HITRACECHAIN = "L@ohos/hiTraceChain/hiTraceChain;";
-const char* const CLASS_NAME_HITRACEID_CHAINID = "L@ohos/hiTraceChain/HiTraceIdAni/chainId;";
-const char* const CLASS_NAME_HITRACEID_SPANID = "L@ohos/hiTraceChain/HiTraceIdAni/spanId;";
-const char* const CLASS_NAME_HITRACEID_PARENTSSPANID = "L@ohos/hiTraceChain/HiTraceIdAni/parentSpanId;";
-const char* const CLASS_NAME_HITRACEID_FLAGS = "L@ohos/hiTraceChain/HiTraceIdAni/flags;";
+const char* const CLASS_NAME_HITRACEID = "@ohos.hiTraceChain.HiTraceIdAni";
+const char* const CLASS_NAME_HITRACECHAIN = "@ohos.hiTraceChain.hiTraceChain";
+const char* const CLASS_NAME_HITRACEID_CHAINID = "@ohos.hiTraceChain.HiTraceIdAni.chainId";
+const char* const CLASS_NAME_HITRACEID_SPANID = "@ohos.hiTraceChain.HiTraceIdAni.spanId";
+const char* const CLASS_NAME_HITRACEID_PARENTSSPANID = "@ohos.hiTraceChain.HiTraceIdAni.parentSpanId";
+const char* const CLASS_NAME_HITRACEID_FLAGS = "@ohos.hiTraceChain.HiTraceIdAni.flags";
 } // namespace HiviewDFX
 } // namespace OHOS
 
