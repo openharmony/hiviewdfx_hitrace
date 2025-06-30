@@ -537,3 +537,21 @@ ohos_unittest("HitraceAgeingTest") {
     external_deps += [ "hilog:libhilog" ]
   }
 }
+
+ohos_unittest("HitraceChainNDKTest") {
+  module_out_path = module_output_path
+
+  include_dirs = [ "$hitrace_interfaces_path/native/kits/include/hitrace" ]
+
+  sources = [
+    "$hitrace_frameworks_path/hitrace_ndk/hitrace_chain_ndk.c",
+    "hitrace_chain/hitrace_chain_ndk_test.cpp",
+  ]
+
+  deps = [ "$hitrace_interfaces_path/native/innerkits:libhitracechain" ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "googletest:gtest_main",
+  ]
+}
