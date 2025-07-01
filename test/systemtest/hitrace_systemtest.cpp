@@ -893,19 +893,19 @@ HWTEST_F(HitraceSystemTest, HitraceSystemSetLevelTest002, TestSize.Level2)
 
 /**
  * @tc.name: HitraceSystemGetLevelTest001
- * @tc.desc: when excute hitrace command with --trace_level, success to get level
+ * @tc.desc: when excute hitrace command with --get_level, success to get level
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceSystemTest, HitraceSystemGetLevelTest001, TestSize.Level2)
 {
     std::vector<std::string> traceLists = {};
-    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_level",
+    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --get_level",
                                         {"GET_TRACE_LEVEL", "the current trace level threshold is"}, traceLists));
 }
 
 /**
  * @tc.name: HitraceSystemGetLevelTest002
- * @tc.desc: when excute hitrace command with --trace_level, fail to get level
+ * @tc.desc: when excute hitrace command with --get_level, fail to get level
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceSystemTest, HitraceSystemGetLevelTest002, TestSize.Level2)
@@ -914,7 +914,7 @@ HWTEST_F(HitraceSystemTest, HitraceSystemGetLevelTest002, TestSize.Level2)
     constexpr int hitraceOutputLevelInfo = 1;
     ASSERT_TRUE(SetPropertyInner(TRACE_LEVEL_THRESHOLD, std::to_string(invalidLevel)));
     std::vector<std::string> traceLists = {};
-    EXPECT_TRUE(CheckTraceCommandOutput("hitrace --trace_level",
+    EXPECT_TRUE(CheckTraceCommandOutput("hitrace --get_level",
                                         {"GET_TRACE_LEVEL", "error: get trace level threshold failed"}, traceLists));
     ASSERT_TRUE(SetPropertyInner(TRACE_LEVEL_THRESHOLD, std::to_string(hitraceOutputLevelInfo)));
 }
