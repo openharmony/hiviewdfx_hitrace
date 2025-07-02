@@ -160,7 +160,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest002, TestSize.Level1)
 
 /**
  * @tc.name: HitraceCMDTest003
- * @tc.desc: test --trace_level command without parameters when the value of level is normal
+ * @tc.desc: test --get_level command when the value of level is normal
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceCMDTest, HitraceCMDTest003, TestSize.Level1)
@@ -174,7 +174,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest003, TestSize.Level1)
     };
     ASSERT_TRUE(CheckTraceCommandOutput(cmd, keywords));
 
-    cmd = "hitrace --trace_level";
+    cmd = "hitrace --get_level";
     keywords = {
         "GET_TRACE_LEVEL",
         "the current trace level threshold is Info",
@@ -186,7 +186,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest003, TestSize.Level1)
 
 /**
  * @tc.name: HitraceCMDTest004
- * @tc.desc: test --trace_level command without parameters when the value of level is abnormal
+ * @tc.desc: test --get_level command when the value of level is abnormal
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceCMDTest, HitraceCMDTest004, TestSize.Level1)
@@ -196,7 +196,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest004, TestSize.Level1)
     constexpr int invalidLevel = -1;
     ASSERT_TRUE(SetPropertyInner(TRACE_LEVEL_THRESHOLD, std::to_string(invalidLevel)));
 
-    std::string cmd = "hitrace --trace_level";
+    std::string cmd = "hitrace --get_level";
     std::vector<std::string> keywords = {
         "GET_TRACE_LEVEL",
         "error: get trace level threshold failed, level(-1) cannot be parsed",
