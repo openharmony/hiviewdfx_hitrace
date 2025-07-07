@@ -14,12 +14,15 @@
  */
 
 #include <fcntl.h>
+#include <filesystem>
 #include <gtest/gtest.h>
 #include <string>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "common_define.h"
 #include "common_utils.h"
+#include "trace_file_utils.h"
 #include "trace_json_parser.h"
 
 using namespace testing::ext;
@@ -448,6 +451,17 @@ HWTEST_F(HitraceUtilsTest, GetRemainingSpace_001, TestSize.Level2)
     uint64_t remainingSpace = GetRemainingSpace("/data");
     EXPECT_NE(remainingSpace, 0);
     EXPECT_NE(remainingSpace, UINT64_MAX);
+}
+
+HWTEST_F(HitraceUtilsTest, GetTraceFileNamesInDir_001, TestSize.Level2)
+{
+    std::filesystem::remove_all(TRACE_FILE_DEFAULT_DIR);
+    std::set<std::string> fileSet = {};
+    GetTraceFileNamesInDir(fileSet, TRACE_TYPE::TRACE_SNAPSHOT);
+
+    EXPECT_TRUE(fileSet.empty());
+    system("service_control stop hiview");
+    system("service_control start hiview");
 }
 } // namespace
 } // namespace Hitrace

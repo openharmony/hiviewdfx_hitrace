@@ -102,12 +102,12 @@ HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest01, TestSize.Level1)
 
     const char* name = "HitraceFfiTest01";
     int32_t taskId = 3;
-    
+
     FfiOHOSHiTraceStartAsyncTrace(name, taskId);
     FfiOHOSHiTraceFinishAsyncTrace(name, taskId);
 
     std::vector<std::string> list = ReadTrace();
-    
+
     char record[RECORD_SIZE_MAX + 1] = {0};
     TraceInfo traceInfo = {'S', HITRACE_LEVEL_INFO, TAG, taskId, name, "", ""};
     bool isStartSuc = GetTraceResult(traceInfo, list, record);
@@ -131,7 +131,7 @@ HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest02, TestSize.Level1)
 
     const char* name = nullptr;
     int32_t taskId = 3;
-    
+
     FfiOHOSHiTraceStartAsyncTrace(name, taskId);
     FfiOHOSHiTraceFinishAsyncTrace(name, taskId);
 
@@ -182,11 +182,11 @@ HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest04, TestSize.Level1)
     const char* name = nullptr;
 
     CHiTraceId hiTraceId = FfiOHOSHiTraceChainBegin(name, HiTraceFlag::HITRACE_FLAG_DEFAULT);
-    
+
     OHOS::HiviewDFX::HiTraceId id = Parse(hiTraceId);
-    
+
     CHiTraceId traceId = Parse(id);
-    
+
     ASSERT_EQ(hiTraceId.chainId, traceId.chainId);
     ASSERT_EQ(hiTraceId.spanId, traceId.spanId);
     ASSERT_EQ(hiTraceId.parentSpanId, traceId.parentSpanId);
@@ -207,12 +207,12 @@ HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest05, TestSize.Level1)
 
     const char* name = "HitraceFfiTest05";
     int32_t taskId = 3;
-    
+
     FfiOHOSHiTraceStartAsyncTrace(name, taskId);
     FfiOHOSHiTraceFinishAsyncTrace(name, taskId);
 
     std::vector<std::string> list = ReadTrace();
-    
+
     char record[RECORD_SIZE_MAX + 1] = {0};
     TraceInfo traceInfo = {'S', HITRACE_LEVEL_COMMERCIAL, TAG, taskId, name, "", ""};
     bool isCommercialStartSuc = GetTraceResult(traceInfo, list, record);

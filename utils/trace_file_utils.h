@@ -38,7 +38,7 @@ struct TraceFileInfo {
 
     TraceFileInfo() = default;
     explicit TraceFileInfo(const std::string& name);
-    TraceFileInfo(const std::string& name, time_t time, uint64_t sizekB, bool newFile);
+    TraceFileInfo(const std::string& name, time_t time, int64_t sizekB, bool newFile);
 };
 
 void GetTraceFilesInDir(std::vector<TraceFileInfo>& fileList, TRACE_TYPE traceType);
@@ -56,7 +56,7 @@ void RefreshTraceVec(std::vector<TraceFileInfo>& traceVec, const TRACE_TYPE trac
 std::string RenameCacheFile(const std::string& cacheFile);
 bool SetFileInfo(const bool isFileExist, const std::string outPath, const uint64_t& firstPageTimestamp,
     const uint64_t& lastPageTimestamp, TraceFileInfo& traceFileInfo);
-} // namespace HiTrace
+} // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS
 #endif // TRACE_FILE_UTILS_H

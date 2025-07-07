@@ -286,6 +286,7 @@ HWTEST_F(HitraceSystemTest, HitraceSystemTest002, TestSize.Level2)
         const int recordCnt = 20;
         for (int i = 0; i < recordCnt; ++i) {
             ASSERT_TRUE(RunCmd("hitrace --trace_begin --record sched"));
+            sleep(1);
             ASSERT_TRUE(RunCmd("hitrace --trace_finish --record"));
         }
         int filecnt = CountRecordingTraceFile();
@@ -434,6 +435,33 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest009, TestSize.Level1)
     EXPECT_TRUE(CheckTraceCommandOutput("hitrace --dump_bgsrv", {"SNAPSHOT_DUMP", "DumpSnapshot done"}, traceLists));
     EXPECT_GE(traceLists.size(), count + 1);
     EXPECT_TRUE(RunCmd("hitrace --stop_bgsrv"));
+}
+
+/**
+ * @tc.name: SnapShotModeTest010
+ * @tc.desc: test dump snapshot trace with 20 files aging
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSystemTest, SnapShotModeTest010, TestSize.Level1)
+{
+    ASSERT_TRUE(RunCmd("hitrace --start_bgsrv"));
+    const int dumpCnt = 30; // 30 : dump 30 times
+    for (int i = 0; i < dumpCnt; ++i) {
+        ASSERT_TRUE(RunCmd("hitrace --dump_bgsrv"));
+        sleep(1); // wait 1s
+    }
+    const int snapshotFileAge = 21;
+    std::vector<std::string> traceLists = {};
+    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --dump_bgsrv", {"SNAPSHOT_DUMP", "DumpSnapshot done"}, traceLists));
+    ASSERT_GE(traceLists.size(), snapshotFileAge);
+    ASSERT_TRUE(RunCmd("hitrace --stop_bgsrv"));
+    std::vector<std::string> dirTraceLists = {};
+    GetSnapShotTraceFileList(dirTraceLists);
+    ASSERT_LE(dirTraceLists.size(), snapshotFileAge);
+    for (int i = 0; i < dirTraceLists.size(); ++i) {
+        ASSERT_NE(std::find(traceLists.begin(), traceLists.end(), dirTraceLists[i]), traceLists.end()) <<
+            "not found: " << dirTraceLists[i];
+    }
 }
 
 /**

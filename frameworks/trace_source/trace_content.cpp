@@ -44,7 +44,6 @@ constexpr int KB_PER_MB = 1024;
 constexpr int JUDGE_FILE_EXIST = 10;  // Check whether the trace file exists every 10 times.
 constexpr int BUFFER_SIZE = 256 * PAGE_SIZE; // 1M
 constexpr uint8_t HM_FILE_RAW_TRACE = 1;
-constexpr int DEFAULT_FILE_SIZE = 100 * 1024;
 
 static int g_writeFileLimit = 0;
 static int g_outputFileSize = 0;
@@ -142,9 +141,6 @@ bool ITraceContent::WriteTraceData(const uint8_t contentType)
         if (endFlag) {
             break;
         }
-    }
-    if (contentType == CONTENT_TYPE_CMDLINES) {
-        WriteProcessLists(writeLen);
     }
     UpdateTraceContentHeader(contentHeader, static_cast<uint32_t>(writeLen));
     HILOG_INFO(LOG_CORE, "WriteTraceData end, type: %{public}d, byte: %{public}zd. g_writeFileLimit: %{public}d",
