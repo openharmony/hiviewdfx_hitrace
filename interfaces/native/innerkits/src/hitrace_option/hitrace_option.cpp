@@ -49,7 +49,7 @@ private:
 public:
     explicit FileLock(const std::string& filename, int flags)
     {
-        char canonicalPath[PATH_MAX];
+        char canonicalPath[PATH_MAX + 1] = {0};
         if (realpath(filename.c_str(), canonicalPath) == nullptr) {
             HILOG_ERROR(LOG_CORE, "FileLock: %{public}s realpath failed, errno%{public}d", filename.c_str(), errno);
             return;
