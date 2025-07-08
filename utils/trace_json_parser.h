@@ -75,7 +75,7 @@ private:
     TraceJsonParser& operator=(const TraceJsonParser&) = delete;
     TraceJsonParser&& operator=(const TraceJsonParser&&) = delete;
 };
-} // namespace HiTrace
+} // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS
 #endif // TRACE_JSON_PARSER_H

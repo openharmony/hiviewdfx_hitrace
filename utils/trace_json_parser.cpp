@@ -43,14 +43,11 @@ namespace {
 const std::string HTIRACE_UTILS_JSON = "/system/etc/hiview/hitrace_utils.json";
 const std::string PRODUCT_CONFIG_JSON = "/sys_prod/etc/hiview/hitrace/hitrace_param.json";
 
-// default snapshot buffer size
 constexpr int DEFAULT_SNAPSHOT_BUFFER_SIZE_KB = 12 * 1024;
 constexpr int HM_DEFAULT_SNAPSHOT_BUFFER_SIZE_KB = 144 * 1024;
 
-// record file number limit
 constexpr uint32_t DEFAULT_RECORD_FILE_NUMBER_LIMIT = 15;
 
-// snapshot file number limit
 constexpr uint32_t DEFAULT_SNAPSHOT_FILE_NUMBER_LIMIT = 20;
 
 bool GetInt64FromJson(cJSON* jsonNode, const std::string& key, int64_t& value)
@@ -212,7 +209,7 @@ void TraceJsonParser::ParseHitraceUtilsJson(const std::string& hitraceUtilsJson)
             recordAgeingParam_.rootEnable = (value != 0);
         }
         if (GetIntFromJson(hitraceUtilsJsonRoot, "snapshot_buffer_kb", value) && value != 0) {
-            snapshotBufSzKb_ = (value != 0);
+            snapshotBufSzKb_ = value;
         }
     }
     cJSON_Delete(hitraceUtilsJsonRoot);

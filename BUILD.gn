@@ -24,8 +24,8 @@ group("hitrace_all_target") {
     "$hitrace_interfaces_path/js/kits:hitrace_napi",
     "$hitrace_interfaces_path/native/innerkits:hitrace_dump",
     "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
-    "$hitrace_interfaces_path/native/innerkits:libhitrace_option",
     "$hitrace_interfaces_path/native/innerkits:libhitracechain",
+    "$hitrace_interfaces_path/native/innerkits:libhitrace_option",
     "$hitrace_interfaces_path/rust/innerkits/hitrace_meter:hitrace_meter_rust",
     "$hitrace_interfaces_path/rust/innerkits/hitracechain:hitracechain_rust",
   ]

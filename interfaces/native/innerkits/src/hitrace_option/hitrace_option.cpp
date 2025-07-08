@@ -49,7 +49,12 @@ private:
 public:
     explicit FileLock(const std::string& filename, int flags)
     {
-        fd_ = open(filename.c_str(), flags);
+        char canonicalPath[PATH_MAX + 1] = {0};
+        if (realpath(filename.c_str(), canonicalPath) == nullptr) {
+            HILOG_ERROR(LOG_CORE, "FileLock: %{public}s realpath failed, errno%{public}d", filename.c_str(), errno);
+            return;
+        }
+        fd_ = open(canonicalPath, flags);
         if (fd_ == -1) {
             HILOG_ERROR(LOG_CORE, "FileLock: %{public}s open failed, errno%{public}d", filename.c_str(), errno);
             return;
@@ -108,6 +113,7 @@ bool AppendToFile(const std::string& filename, const std::string& str)
     off_t offset = lseek(fd, 0, SEEK_END);
     if (offset == -1) {
         HILOG_ERROR(LOG_CORE, "AppendToFile: %{public}s lseek failed %{public}d", filename.c_str(), errno);
+        return false;
     }
 
     if (write(fd, str.c_str(), str.size()) < 0) {

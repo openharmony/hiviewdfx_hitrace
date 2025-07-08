@@ -29,6 +29,8 @@ constexpr uint64_t S_TO_NS = 1000000000;
 constexpr uint64_t MS_TO_NS = 1000000;
 constexpr uint64_t S_TO_MS = 1000;
 
+constexpr int DEFAULT_FILE_SIZE = 100 * 1024;
+
 const std::string TRACE_TAG_ENABLE_FLAGS = "debug.hitrace.tags.enableflags";
 const std::string TRACE_KEY_APP_PID = "debug.hitrace.app_pid";
 const std::string TRACE_LEVEL_THRESHOLD = "persist.hitrace.level.threshold";
