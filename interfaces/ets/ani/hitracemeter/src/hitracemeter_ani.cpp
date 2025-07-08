@@ -16,16 +16,25 @@
 #include <array>
 #include <iostream>
 #include <ani.h>
+#include <hilog/log.h>
+#include <string>
 #include "hitrace_meter.h"
-#include "hilog/log.h"
-#include "hilog/log_cpp.h"
+
+#ifdef LOG_DOMAIN
+#undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD002D33
+#endif
+#ifdef LOG_TAG
+#undef LOG_TAG
+#define LOG_TAG "HitraceMeterAni"
+#endif
 
 using namespace OHOS::HiviewDFX;
-static const std::string CLASS_NAME_HITRACEMETER = "L@ohos/hiTraceMeter/HiTraceMeter;";
+static const char NAMESPACE_HITRACEMETER[] = "L@ohos/hiTraceMeter/hiTraceMeter;";
 constexpr size_t MIN_SIZE = 1;
 constexpr size_t MAX_SIZE = 1024;
 
-static bool ANIStringToStdString(ani_env *env, ani_string aniStr, std::string &content)
+static bool AniStringToStdString(ani_env* env, ani_string aniStr, std::string& content)
 {
     ani_size strSize = 0;
     env->String_GetUTF8Size(aniStr, &strSize);
@@ -44,66 +53,166 @@ static bool ANIStringToStdString(ani_env *env, ani_string aniStr, std::string &c
     return true;
 }
 
-static void StartTraceMeter([[maybe_unused]] ani_env *env, [[maybe_unused]] ani_object object,
-    ani_string name, ani_double taskId)
+static bool AniEnumToInt32(ani_env* env, ani_enum_item enumItem, int32_t& value)
 {
-    std::string nameStr;
-    if (!ANIStringToStdString(env, name, nameStr)) {
-        return;
+    ani_int aniInt = 0;
+    if (env->EnumItem_GetValue_Int(enumItem, &aniInt) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "Failed to get the int32 value of enum.");
+        return false;
     }
-    if (nameStr == "null" || nameStr == "undefined") {
-        return;
-    }
-
-    int32_t taskIdTemp = static_cast<int32_t>(taskId);
-    StartAsyncTrace(HITRACE_TAG_APP, nameStr, taskIdTemp);
+    value = static_cast<int32_t>(aniInt);
+    return true;
 }
 
-static void FinishTraceMeter([[maybe_unused]] ani_env *env, [[maybe_unused]] ani_object object,
-    ani_string name, ani_double taskId)
+static bool IsRefUndefined(ani_env* env, ani_ref value)
 {
-    std::string nameStr;
-    if (!ANIStringToStdString(env, name, nameStr)) {
-        return;
-    }
-    if (nameStr == "null" || nameStr == "undefined") {
-        return;
-    }
-
-    int32_t taskIdTemp = static_cast<int32_t>(taskId);
-    FinishAsyncTrace(HITRACE_TAG_APP, nameStr, taskIdTemp);
+    ani_boolean isUndefined = ANI_FALSE;
+    env->Reference_IsUndefined(value, &isUndefined);
+    return isUndefined;
 }
 
-static ani_status HiTraceMeterAniInit(ani_env *env)
+static void EtsStartTrace(ani_env* env, ani_string name, ani_double taskId)
 {
-    ani_class cls;
-    if (ANI_OK != env->FindClass(CLASS_NAME_HITRACEMETER.c_str(), &cls)) {
+    std::string nameStr = "";
+    if (!AniStringToStdString(env, name, nameStr)) {
+        return;
+    }
+    StartAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_APP, nameStr.c_str(), static_cast<int32_t>(taskId), "", "");
+}
+
+static void EtsFinishTrace(ani_env* env, ani_string name, ani_double taskId)
+{
+    std::string nameStr = "";
+    if (!AniStringToStdString(env, name, nameStr)) {
+        return;
+    }
+    FinishAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_APP, nameStr.c_str(), static_cast<int32_t>(taskId));
+}
+
+static void EtsCountTrace(ani_env* env, ani_string name, ani_double count)
+{
+    std::string nameStr = "";
+    if (!AniStringToStdString(env, name, nameStr)) {
+        return;
+    }
+    CountTraceEx(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_APP, nameStr.c_str(), static_cast<int64_t>(count));
+}
+
+static void EtsTraceByValue(ani_env* env, ani_enum_item level, ani_string name, ani_double count)
+{
+    int32_t levelVal = 0;
+    if (!AniEnumToInt32(env, level, levelVal)) {
+        return;
+    }
+    std::string nameStr = "";
+    if (!AniStringToStdString(env, name, nameStr)) {
+        return;
+    }
+    CountTraceEx(static_cast<HiTraceOutputLevel>(levelVal), HITRACE_TAG_APP, nameStr.c_str(),
+        static_cast<int64_t>(count));
+}
+
+static void EtsStartSyncTrace(ani_env* env, ani_enum_item level, ani_string name, ani_object customArgs)
+{
+    int32_t levelVal = 0;
+    if (!AniEnumToInt32(env, level, levelVal)) {
+        return;
+    }
+    std::string nameStr = "";
+    if (!AniStringToStdString(env, name, nameStr)) {
+        return;
+    }
+    std::string customArgsStr = "";
+    if (!IsRefUndefined(env, static_cast<ani_ref>(customArgs))) {
+        if (!AniStringToStdString(env, static_cast<ani_string>(customArgs), customArgsStr)) {
+            return;
+        }
+    }
+    StartTraceEx(static_cast<HiTraceOutputLevel>(levelVal), HITRACE_TAG_APP, nameStr.c_str(), customArgsStr.c_str());
+}
+
+static void EtsFinishSyncTrace(ani_env* env, ani_enum_item level)
+{
+    int32_t levelVal = 0;
+    if (!AniEnumToInt32(env, level, levelVal)) {
+        return;
+    }
+    FinishTraceEx(static_cast<HiTraceOutputLevel>(levelVal), HITRACE_TAG_APP);
+}
+
+static void EtsStartAsyncTrace(ani_env* env, ani_enum_item level, ani_string name, ani_double taskId,
+    ani_string customCategory, ani_object customArgs)
+{
+    int32_t levelVal = 0;
+    if (!AniEnumToInt32(env, level, levelVal)) {
+        return;
+    }
+    std::string nameStr = "";
+    if (!AniStringToStdString(env, name, nameStr)) {
+        return;
+    }
+    std::string customCategoryStr = "";
+    if (!AniStringToStdString(env, customCategory, customCategoryStr)) {
+        return;
+    }
+    std::string customArgsStr = "";
+    if (!IsRefUndefined(env, static_cast<ani_ref>(customArgs))) {
+        if (!AniStringToStdString(env, static_cast<ani_string>(customArgs), customArgsStr)) {
+            return;
+        }
+    }
+    StartAsyncTraceEx(static_cast<HiTraceOutputLevel>(levelVal), HITRACE_TAG_APP, nameStr.c_str(),
+        static_cast<int32_t>(taskId), customCategoryStr.c_str(), customArgsStr.c_str());
+}
+
+static void EtsFinishAsyncTrace(ani_env* env, ani_enum_item level, ani_string name, ani_double taskId)
+{
+    int32_t levelVal = 0;
+    if (!AniEnumToInt32(env, level, levelVal)) {
+        return;
+    }
+    std::string nameStr = "";
+    if (!AniStringToStdString(env, name, nameStr)) {
+        return;
+    }
+    FinishAsyncTraceEx(static_cast<HiTraceOutputLevel>(levelVal), HITRACE_TAG_APP, nameStr.c_str(),
+        static_cast<int32_t>(taskId));
+}
+
+static ani_boolean EtsIsTraceEnabled(ani_env* env)
+{
+    return static_cast<ani_boolean>(IsTagEnabled(HITRACE_TAG_APP));
+}
+
+ANI_EXPORT ani_status ANI_Constructor(ani_vm* vm, uint32_t* result)
+{
+    ani_env* env;
+    if (vm->GetEnv(ANI_VERSION_1, &env) != ANI_OK) {
+        return ANI_ERROR;
+    }
+
+    ani_namespace ns;
+    if (env->FindNamespace(NAMESPACE_HITRACEMETER, &ns) != ANI_OK) {
         return ANI_ERROR;
     }
 
     std::array methods = {
-        ani_native_function {"startTrace", nullptr, reinterpret_cast<void *>(StartTraceMeter) },
-        ani_native_function {"finishTrace", nullptr, reinterpret_cast<void *>(FinishTraceMeter) },
+        ani_native_function {"startTrace", nullptr, reinterpret_cast<void *>(EtsStartTrace)},
+        ani_native_function {"finishTrace", nullptr, reinterpret_cast<void *>(EtsFinishTrace)},
+        ani_native_function {"traceByValue", "Lstd/core/String;D:V", reinterpret_cast<void *>(EtsCountTrace)},
+        ani_native_function {"traceByValue", "L@ohos/hiTraceMeter/hiTraceMeter/HiTraceOutputLevel;Lstd/core/String;D:V",
+            reinterpret_cast<void *>(EtsTraceByValue)},
+        ani_native_function {"startSyncTrace", nullptr, reinterpret_cast<void *>(EtsStartSyncTrace)},
+        ani_native_function {"finishSyncTrace", nullptr, reinterpret_cast<void *>(EtsFinishSyncTrace)},
+        ani_native_function {"startAsyncTrace", nullptr, reinterpret_cast<void *>(EtsStartAsyncTrace)},
+        ani_native_function {"finishAsyncTrace", nullptr, reinterpret_cast<void *>(EtsFinishAsyncTrace)},
+        ani_native_function {"isTraceEnabled", nullptr, reinterpret_cast<void *>(EtsIsTraceEnabled)},
     };
 
-    if (ANI_OK != env->Class_BindNativeMethods(cls, methods.data(), methods.size())) {
+    if (env->Namespace_BindNativeFunctions(ns, methods.data(), methods.size()) != ANI_OK) {
         return ANI_ERROR;
     };
 
-    return ANI_OK;
-}
-
-ANI_EXPORT ani_status ANI_Constructor(ani_vm *vm, uint32_t *result)
-{
-    ani_env *env;
-    if (ANI_OK != vm->GetEnv(ANI_VERSION_1, &env)) {
-        return ANI_ERROR;
-    }
-
-    auto status = HiTraceMeterAniInit(env);
-    if (status != ANI_OK) {
-        return status;
-    }
     *result = ANI_VERSION_1;
     return ANI_OK;
 }

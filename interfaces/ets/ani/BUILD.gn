@@ -22,3 +22,13 @@ group("ani_hitracemeter_package") {
     ]
   }
 }
+
+group("ani_hitracechain_package") {
+  deps = []
+  if (support_jsapi) {
+    deps += [
+      "hitracechain:hitrace_chain_ani",
+      "hitracechain:hitrace_chain_etc",
+    ]
+  }
+}
