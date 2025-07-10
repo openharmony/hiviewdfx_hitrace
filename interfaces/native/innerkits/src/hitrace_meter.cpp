@@ -688,7 +688,7 @@ static int FmtSyncBeginRecord(TraceMarker& traceMarker, const char* bitsStr,
     }
     if (bytes == -1) {
         bytes = RECORD_SIZE_MAX;
-        HILOG_INFO(LOG_CORE, "Trace record buffer may be truncated");
+        HILOG_DEBUG(LOG_CORE, "Trace record buffer may be truncated");
     }
     return bytes;
 }
@@ -732,7 +732,7 @@ static int FmtAsyncBeginRecord(TraceMarker& traceMarker, const char* bitsStr,
     }
     if (bytes == -1) {
         bytes = RECORD_SIZE_MAX;
-        HILOG_INFO(LOG_CORE, "Trace record buffer may be truncated");
+        HILOG_DEBUG(LOG_CORE, "Trace record buffer may be truncated");
     }
     return bytes;
 }
@@ -756,7 +756,7 @@ static int FmtOtherTypeRecord(TraceMarker& traceMarker, const char* bitsStr,
     }
     if (bytes == -1) {
         bytes = RECORD_SIZE_MAX;
-        HILOG_INFO(LOG_CORE, "Trace record buffer may be truncated");
+        HILOG_DEBUG(LOG_CORE, "Trace record buffer may be truncated");
     }
     return bytes;
 }
@@ -929,7 +929,7 @@ void StartTraceArgs(uint64_t tag, const char* fmt, ...)
     int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
     if (res < 0) {
-        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
+        HILOG_DEBUG(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
         return;
     }
     TraceMarker traceMarker = {MARKER_BEGIN, HITRACE_LEVEL_INFO, tag, 0, name, EMPTY, EMPTY};
@@ -948,7 +948,7 @@ void StartTraceArgsEx(HiTraceOutputLevel level, uint64_t tag, const char* custom
     int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
     if (res < 0) {
-        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
+        HILOG_DEBUG(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
         return;
     }
     TraceMarker traceMarker = {MARKER_BEGIN, level, tag, 0, name, EMPTY, customArgs};
@@ -968,7 +968,7 @@ void StartTraceArgsDebug(bool isDebug, uint64_t tag, const char* fmt, ...)
     int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
     if (res < 0) {
-        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
+        HILOG_DEBUG(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
         return;
     }
     TraceMarker traceMarker = {MARKER_BEGIN, HITRACE_LEVEL_INFO, tag, 0, name, EMPTY, EMPTY};
@@ -1044,7 +1044,7 @@ void StartAsyncTraceArgs(uint64_t tag, int32_t taskId, const char* fmt, ...)
     int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
     if (res < 0) {
-        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
+        HILOG_DEBUG(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
         return;
     }
     TraceMarker traceMarker = {MARKER_ASYNC_BEGIN, HITRACE_LEVEL_INFO, tag, taskId, name, EMPTY, EMPTY};
@@ -1065,7 +1065,7 @@ void StartAsyncTraceArgsEx(HiTraceOutputLevel level, uint64_t tag, int32_t taskI
     int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
     if (res < 0) {
-        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
+        HILOG_DEBUG(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
         return;
     }
     TraceMarker traceMarker = {MARKER_ASYNC_BEGIN, level, tag, taskId, name, customCategory, customArgs};
@@ -1085,7 +1085,7 @@ void StartAsyncTraceArgsDebug(bool isDebug, uint64_t tag, int32_t taskId, const 
     int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
     if (res < 0) {
-        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
+        HILOG_DEBUG(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
         return;
     }
     TraceMarker traceMarker = {MARKER_ASYNC_BEGIN, HITRACE_LEVEL_INFO, tag, taskId, name, EMPTY, EMPTY};
@@ -1132,7 +1132,7 @@ void FinishAsyncTraceArgs(uint64_t tag, int32_t taskId, const char* fmt, ...)
     int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
     if (res < 0) {
-        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
+        HILOG_DEBUG(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
         return;
     }
     TraceMarker traceMarker = {MARKER_ASYNC_END, HITRACE_LEVEL_INFO, tag, taskId, name, EMPTY, EMPTY};
@@ -1152,7 +1152,7 @@ void FinishAsyncTraceArgsEx(HiTraceOutputLevel level, uint64_t tag, int32_t task
     int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
     if (res < 0) {
-        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
+        HILOG_DEBUG(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
         return;
     }
     TraceMarker traceMarker = {MARKER_ASYNC_END, level, tag, taskId, name, EMPTY, EMPTY};
@@ -1172,7 +1172,7 @@ void FinishAsyncTraceArgsDebug(bool isDebug, uint64_t tag, int32_t taskId, const
     int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
     if (res < 0) {
-        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
+        HILOG_DEBUG(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
         return;
     }
     TraceMarker traceMarker = {MARKER_ASYNC_END, HITRACE_LEVEL_INFO, tag, taskId, name, EMPTY, EMPTY};
@@ -1239,7 +1239,7 @@ HitraceMeterFmtScoped::HitraceMeterFmtScoped(uint64_t tag, const char* fmt, ...)
     int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
     if (res < 0) {
-        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
+        HILOG_DEBUG(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
         return;
     }
     TraceMarker traceMarker = {MARKER_BEGIN, HITRACE_LEVEL_INFO, tag, 0, name, EMPTY, EMPTY};
@@ -1260,7 +1260,7 @@ HitraceMeterFmtScopedEx::HitraceMeterFmtScopedEx(HiTraceOutputLevel level, uint6
     int res = vsnprintf_s(name, sizeof(name), sizeof(name) - 1, fmt, args);
     va_end(args);
     if (res < 0) {
-        HILOG_ERROR(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
+        HILOG_DEBUG(LOG_CORE, "vsnprintf_s failed: %{public}d, name: %{public}s", errno, fmt);
         return;
     }
     TraceMarker traceMarker = {MARKER_BEGIN, level, tag, 0, name, EMPTY, customArgs};
