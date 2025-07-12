@@ -32,7 +32,7 @@ bool HiTraceChainAniUtil::IsRefUndefined(ani_env* env, ani_ref ref)
     return isUndefined;
 }
 
-ani_status HiTraceChainAniUtil::ParseStringValue(ani_env* env, ani_ref aniStrRef, std::string& name)
+ani_status HiTraceChainAniUtil::GetAniStringValue(ani_env* env, ani_ref aniStrRef, std::string& name)
 {
     ani_size strSize = 0;
     if (env->String_GetUTF8Size(static_cast<ani_string>(aniStrRef), &strSize) != ANI_OK) {
@@ -51,67 +51,36 @@ ani_status HiTraceChainAniUtil::ParseStringValue(ani_env* env, ani_ref aniStrRef
     return ANI_OK;
 }
 
-int64_t HiTraceChainAniUtil::ParseBigIntValue(ani_env* env, ani_ref elementRef)
+ani_long HiTraceChainAniUtil::GetAniBigIntValue(ani_env* env, ani_ref elementRef)
 {
-    ani_long longNum = static_cast<ani_long>(0);
+    ani_long aniLong = 0;
     ani_class cls {};
     if (env->FindClass(CLASS_NAME_BIGINT, &cls) != ANI_OK) {
         HILOG_ERROR(LOG_CORE, "find class %{public}s failed", CLASS_NAME_BIGINT);
-        return static_cast<int64_t>(longNum);
+        return aniLong;
     }
     ani_method getLongMethod {};
     if (env->Class_FindMethod(cls, FUNC_NAME_GETLONG, ":l", &getLongMethod) != ANI_OK) {
         HILOG_ERROR(LOG_CORE, "find method %{public}s failed", FUNC_NAME_GETLONG);
-        return static_cast<int64_t>(longNum);
+        return aniLong;
     }
-    if (env->Object_CallMethod_Long(static_cast<ani_object>(elementRef), getLongMethod, &longNum) != ANI_OK) {
+    if (env->Object_CallMethod_Long(static_cast<ani_object>(elementRef), getLongMethod, &aniLong) != ANI_OK) {
         HILOG_ERROR(LOG_CORE, "call method %{public}s failed", FUNC_NAME_GETLONG);
-        return static_cast<int64_t>(longNum);
     }
-    return static_cast<int64_t>(longNum);
+    return aniLong;
 }
 
-int64_t HiTraceChainAniUtil::ParseNumberValueInt64(ani_env* env, ani_ref elementRef)
+ani_int HiTraceChainAniUtil::GetAniIntValue(ani_env* env, ani_ref elementRef)
 {
-    ani_double doubleVal = 0;
-    ani_class cls {};
-    if (env->FindClass(CLASS_NAME_DOUBLE, &cls) != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "find class %{public}s failed", CLASS_NAME_DOUBLE);
-        return static_cast<int64_t>(doubleVal);
-    }
-    ani_method unboxedMethod {};
-    if (env->Class_FindMethod(cls, FUNC_NAME_UNBOXED, ":d", &unboxedMethod) != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "find method %{public}s failed", FUNC_NAME_UNBOXED);
-        return static_cast<int64_t>(doubleVal);
-    }
-    if (env->Object_CallMethod_Double(static_cast<ani_object>(elementRef), unboxedMethod, &doubleVal) != ANI_OK) {
+    ani_int aniInt = 0;
+    ani_object intObj = static_cast<ani_object>(elementRef);
+    if (env->Object_CallMethodByName_Int(intObj, FUNC_NAME_UNBOXED, ":i", &aniInt) != ANI_OK) {
         HILOG_ERROR(LOG_CORE, "call method %{public}s failed", FUNC_NAME_UNBOXED);
-        return static_cast<int64_t>(doubleVal);
     }
-    return static_cast<int64_t>(doubleVal);
+    return aniInt;
 }
 
-int32_t HiTraceChainAniUtil::ParseNumberValueInt32(ani_env* env, ani_ref elementRef)
-{
-    ani_double doubleVal = 0;
-    ani_class cls {};
-    if (env->FindClass(CLASS_NAME_DOUBLE, &cls) != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "find class %{public}s failed", CLASS_NAME_DOUBLE);
-        return static_cast<int32_t>(doubleVal);
-    }
-    ani_method unboxedMethod {};
-    if (env->Class_FindMethod(cls, FUNC_NAME_UNBOXED, ":d", &unboxedMethod) != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "find method %{public}s failed", FUNC_NAME_UNBOXED);
-        return static_cast<int32_t>(doubleVal);
-    }
-    if (env->Object_CallMethod_Double(static_cast<ani_object>(elementRef), unboxedMethod, &doubleVal) != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "call method %{public}s failed", FUNC_NAME_UNBOXED);
-        return static_cast<int32_t>(doubleVal);
-    }
-    return static_cast<int32_t>(doubleVal);
-}
-
-ani_status HiTraceChainAniUtil::EnumGetValueInt32(ani_env* env, ani_enum_item enumItem, int32_t& value)
+ani_status HiTraceChainAniUtil::AniEnumToInt(ani_env* env, ani_enum_item enumItem, int& value)
 {
     ani_int aniInt {};
     ani_status result = env->EnumItem_GetValue_Int(enumItem, &aniInt);
@@ -119,55 +88,46 @@ ani_status HiTraceChainAniUtil::EnumGetValueInt32(ani_env* env, ani_enum_item en
         HILOG_ERROR(LOG_CORE, "get Int32 %{public}d failed", result);
         return result;
     }
-    value = static_cast<int32_t>(aniInt);
+    value = static_cast<int>(aniInt);
     return result;
 }
 
-ani_object HiTraceChainAniUtil::CreateBigInt(ani_env* env, uint64_t traceId)
+ani_object HiTraceChainAniUtil::CreateAniBigInt(ani_env* env, uint64_t value)
 {
-    ani_object bigintCtor = nullptr;
+    ani_object bigIntObj = nullptr;
     ani_class bigIntCls;
     if (env->FindClass(CLASS_NAME_BIGINT, &bigIntCls) != ANI_OK) {
         HILOG_ERROR(LOG_CORE, "find Class %{public}s failed", CLASS_NAME_BIGINT);
-        return bigintCtor;
+        return bigIntObj;
     }
     ani_method createLongMethod;
     if (env->Class_FindMethod(bigIntCls, "<ctor>", "l:", &createLongMethod) != ANI_OK) {
         HILOG_ERROR(LOG_CORE, "find method %{public}s constructor failed", CLASS_NAME_BIGINT);
-        return bigintCtor;
+        return bigIntObj;
     }
-    ani_long longNum = static_cast<ani_long>(traceId);
-    if (env->Object_New(bigIntCls, createLongMethod, &bigintCtor, longNum) != ANI_OK) {
+    ani_long longNum = static_cast<ani_long>(value);
+    if (env->Object_New(bigIntCls, createLongMethod, &bigIntObj, longNum) != ANI_OK) {
         HILOG_ERROR(LOG_CORE, "create object %{public}s failed", CLASS_NAME_BIGINT);
-        return bigintCtor;
     }
-    return bigintCtor;
+    return bigIntObj;
 }
 
-ani_object HiTraceChainAniUtil::CreateDoubleUint64(ani_env* env, uint64_t number)
+ani_object HiTraceChainAniUtil::CreateAniInt(ani_env* env, uint64_t value)
 {
-    ani_object personInfoObj = nullptr;
-    ani_class personCls;
-    if (env->FindClass(CLASS_NAME_DOUBLE, &personCls) != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "find class %{public}s failed", CLASS_NAME_DOUBLE);
-        return personInfoObj;
+    ani_object intObj = nullptr;
+    ani_class intCls;
+    if (env->FindClass(CLASS_NAME_INT, &intCls) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "find class %{public}s failed", CLASS_NAME_INT);
+        return intObj;
     }
-    ani_method personInfoCtor;
-    env->Class_FindMethod(personCls, "<ctor>", "d:", &personInfoCtor);
-    env->Object_New(personCls, personInfoCtor, &personInfoObj, static_cast<ani_double>(number));
-    return personInfoObj;
-}
-
-ani_object HiTraceChainAniUtil::CreateDoubleInt(ani_env* env, int number)
-{
-    ani_object personInfoObj = nullptr;
-    ani_class personCls;
-    if (env->FindClass(CLASS_NAME_DOUBLE, &personCls) != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "find class %{public}s failed", CLASS_NAME_DOUBLE);
-        return personInfoObj;
+    ani_method createIntMethod;
+    if (env->Class_FindMethod(intCls, "<ctor>", "i:", &createIntMethod) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "find method %{public}s constructor failed", CLASS_NAME_INT);
+        return intObj;
     }
-    ani_method personInfoCtor;
-    env->Class_FindMethod(personCls, "<ctor>", "d:", &personInfoCtor);
-    env->Object_New(personCls, personInfoCtor, &personInfoObj, static_cast<ani_double>(number));
-    return personInfoObj;
+    ani_int intNum = static_cast<ani_int>(value);
+    if (env->Object_New(intCls, createIntMethod, &intObj, intNum) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "create object %{public}s failed", CLASS_NAME_INT);
+    }
+    return intObj;
 }
