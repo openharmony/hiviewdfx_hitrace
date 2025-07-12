@@ -25,21 +25,19 @@
 #include <iostream>
 #include <map>
 #include <memory>
-#include <regex>
-#include <sstream>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <thread>
 #include <unistd.h>
-#include <unordered_map>
+#include <map>
 #include <vector>
 #include <zlib.h>
 
 #include "common_define.h"
 #include "common_utils.h"
 #include "hilog/log.h"
-#include "hisysevent.h"
+#include "hisysevent_c.h"
 #include "hitrace_meter.h"
 #include "parameters.h"
 #include "securec.h"
@@ -321,7 +319,7 @@ static void ShowHelp(const std::string& cmd)
 
 static bool CheckTraceLevel(const std::string& arg)
 {
-    static const std::unordered_map<std::string, std::string> traceLevels = {
+    static const std::map<std::string, std::string> traceLevels = {
         {"D", "0"}, {"Debug", "0"},
         {"I", "1"}, {"Info", "1"},
         {"C", "2"}, {"Critical", "2"},
@@ -352,7 +350,7 @@ static bool SetTraceLevel()
 static bool GetTraceLevel()
 {
     std::string level = OHOS::system::GetParameter(TRACE_LEVEL_THRESHOLD, "");
-    static const std::unordered_map<std::string, std::string> traceLevels = {
+    static const std::map<std::string, std::string> traceLevels = {
         {"0", "Debug"},
         {"1", "Info"},
         {"2", "Critical"},
@@ -367,14 +365,6 @@ static bool GetTraceLevel()
         ConsoleLog("error: get trace level threshold failed, level(" + level + ") cannot be parsed.");
         return false;
     }
-}
-
-template <typename T>
-inline bool StrToNum(const std::string& sString, T &tX)
-{
-    std::istringstream iStream(sString);
-    iStream >> tX;
-    return !iStream.fail();
 }
 
 static bool SetRunningState(const RunningState& setValue)
@@ -400,6 +390,30 @@ static bool CheckOutputFile(const char* path)
     return true;
 }
 
+static bool CheckClock(const char* clock)
+{
+    if (clock == nullptr) {
+        return false;
+    }
+
+    static constexpr size_t maxLen = 6;
+    static constexpr size_t minLen = 4;
+    size_t len = strlen(clock);
+    if (len < minLen || len > maxLen) {
+        return false;
+    }
+
+    const char* c = clock;
+    while (*c != '\0') {
+        if ((*c >= 'a' && *c <= 'z') || (*c >= 'A' && *c <= 'Z')) {
+            ++c;
+            continue;
+        }
+        return false;
+    }
+    return true;
+}
+
 static bool ParseLongOpt(const std::string& cmd, int optionIndex)
 {
     bool isTrue = true;
@@ -409,7 +423,7 @@ static bool ParseLongOpt(const std::string& cmd, int optionIndex)
         if (IsHmKernel()) {
             maxBufferSizeKB = HM_MAX_BUFFER_SIZE;
         }
-        if (!StrToNum(optarg, bufferSizeKB)) {
+        if (!StringToInt(optarg, bufferSizeKB)) {
             ConsoleLog("error: buffer size is illegal input. eg: \"--buffer_size 18432\".");
             isTrue = false;
         } else if (bufferSizeKB < MIN_BUFFER_SIZE || bufferSizeKB > maxBufferSizeKB) {
@@ -419,8 +433,7 @@ static bool ParseLongOpt(const std::string& cmd, int optionIndex)
         }
         g_traceArgs.bufferSize = bufferSizeKB / PAGE_SIZE_KB * PAGE_SIZE_KB;
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_clock")) {
-        std::regex re("[a-zA-Z]{4,6}");
-        if (regex_match(optarg, re)) {
+        if (CheckClock(optarg)) {
             g_traceArgs.clockType = optarg;
         } else {
             ConsoleLog("error: \"--trace_clock\" is illegal input. eg: \"--trace_clock boot\".");
@@ -429,7 +442,7 @@ static bool ParseLongOpt(const std::string& cmd, int optionIndex)
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "help")) {
         isTrue = SetRunningState(SHOW_HELP);
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "time")) {
-        if (!StrToNum(optarg, g_traceArgs.duration)) {
+        if (!StringToInt(optarg, g_traceArgs.duration)) {
             ConsoleLog("error: the time is illegal input. eg: \"--time 5\".");
             isTrue = false;
         } else if (g_traceArgs.duration < 1) {
@@ -472,7 +485,7 @@ static bool ParseLongOpt(const std::string& cmd, int optionIndex)
         isTrue = SetRunningState(RECORDING_SHORT_RAW);
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "file_size")) {
         int fileSizeKB = 0;
-        if (!StrToNum(optarg, fileSizeKB)) {
+        if (!StringToInt(optarg, fileSizeKB)) {
             ConsoleLog("error: file size is illegal input. eg: \"--file_size 102400\".");
             isTrue = false;
         } else if (fileSizeKB < MIN_FILE_SIZE || fileSizeKB > MAX_FILE_SIZE) {
@@ -500,7 +513,7 @@ static bool SetBufferSize()
     if (IsHmKernel()) {
         maxBufferSizeKB = HM_MAX_BUFFER_SIZE;
     }
-    if (!StrToNum(optarg, bufferSizeKB)) {
+    if (!StringToInt(optarg, bufferSizeKB)) {
         ConsoleLog("error: buffer size is illegal input. eg: \"--buffer_size 18432\".");
         isTrue = false;
     } else if (bufferSizeKB < MIN_BUFFER_SIZE || bufferSizeKB > maxBufferSizeKB) {
@@ -527,7 +540,7 @@ static bool ParseOpt(int opt, char** argv, int optIndex)
             isTrue = SetRunningState(SHOW_LIST_CATEGORY);
             break;
         case 't': {
-            if (!StrToNum(optarg, g_traceArgs.duration)) {
+            if (!StringToInt(optarg, g_traceArgs.duration)) {
                 ConsoleLog("error: the time is illegal input. eg: \"--time 5\".");
                 isTrue = false;
             } else if (g_traceArgs.duration < 1) {
@@ -1004,21 +1017,23 @@ static void RecordSysEvent()
     if (!g_needSysEvent) {
         return;
     }
-    int ret = HiSysEventWrite(OHOS::HiviewDFX::HiSysEvent::Domain::PROFILER, "HITRACE_USAGE",
-        OHOS::HiviewDFX::HiSysEvent::EventType::BEHAVIOR,
-        "OPT", g_traceSysEventParams.opt,
-        "CALLER", g_traceSysEventParams.caller,
-        "TRACE_TAG", g_traceSysEventParams.tags,
-        "DURATION", g_traceSysEventParams.duration,
-        "BUFFER_SIZE", g_traceSysEventParams.bufferSize,
-        "FILE_LIMIT", g_traceSysEventParams.fileLimit,
-        "FILE_SIZE", g_traceSysEventParams.fileSize,
-        "CLOCK_TYPE", g_traceSysEventParams.clockType,
-        "IS_COMPRESSED", g_traceSysEventParams.isCompress,
-        "IS_RAW", g_traceSysEventParams.isRaw,
-        "IS_OVERWRITE", g_traceSysEventParams.isOverwrite,
-        "ERROR_CODE", g_traceSysEventParams.errorCode,
-        "ERROR_MESSAGE", g_traceSysEventParams.errorMessage);
+    HiSysEventParam params[] = {
+        {"OPT",           HISYSEVENT_STRING, {.s = const_cast<char*>(g_traceSysEventParams.opt.c_str())},          0},
+        {"CALLER",        HISYSEVENT_STRING, {.s = const_cast<char*>(g_traceSysEventParams.caller.c_str())},       0},
+        {"TRACE_TAG",     HISYSEVENT_STRING, {.s = const_cast<char*>(g_traceSysEventParams.tags.c_str())},         0},
+        {"DURATION",      HISYSEVENT_INT32,  {.i32 = g_traceSysEventParams.duration},                              0},
+        {"BUFFER_SIZE",   HISYSEVENT_INT32,  {.i32 = g_traceSysEventParams.bufferSize},                            0},
+        {"FILE_LIMIT",    HISYSEVENT_INT32,  {.i32 = g_traceSysEventParams.fileLimit},                             0},
+        {"FILE_SIZE",     HISYSEVENT_INT32,  {.i32 = g_traceSysEventParams.fileSize},                              0},
+        {"CLOCK_TYPE",    HISYSEVENT_STRING, {.s = const_cast<char*>(g_traceSysEventParams.clockType.c_str())},    0},
+        {"IS_COMPRESSED", HISYSEVENT_BOOL,   {.b = g_traceSysEventParams.isCompress},                              0},
+        {"IS_RAW",        HISYSEVENT_BOOL,   {.b = g_traceSysEventParams.isRaw},                                   0},
+        {"IS_OVERWRITE",  HISYSEVENT_BOOL,   {.b = g_traceSysEventParams.isOverwrite},                             0},
+        {"ERROR_CODE",    HISYSEVENT_INT32,  {.i32 = g_traceSysEventParams.errorCode},                             0},
+        {"ERROR_MESSAGE", HISYSEVENT_STRING, {.s = const_cast<char*>(g_traceSysEventParams.errorMessage.c_str())}, 0},
+    };
+    int ret = OH_HiSysEvent_Write("PROFILER", "HITRACE_USAGE",
+        HISYSEVENT_BEHAVIOR, params, sizeof(params) / sizeof(params[0]));
     if (ret != 0) {
         HILOG_ERROR(LOG_CORE, "HiSysEventWrite failed, ret is %{public}d", ret);
     }

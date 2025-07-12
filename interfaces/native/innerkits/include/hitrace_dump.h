@@ -109,16 +109,6 @@ TraceErrorCode CacheTraceOff();
 TraceErrorCode CloseTrace();
 
 /**
- * Get g_traceFilesTable.
-*/
-std::vector<std::pair<std::string, int>> GetTraceFilesTable();
-
-/**
- * Set g_traceFilesTable.
-*/
-void SetTraceFilesTable(const std::vector<std::pair<std::string, int>>& traceFilesTable);
-
-/**
  * Set Tracing On Node
  */
 TraceErrorCode SetTraceStatus(bool enable);

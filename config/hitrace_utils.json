@@ -1,645 +1,667 @@
 {
-    "snapshot_buffer_kb" : 0,
-    "snapshot_file_aging": 1,
-    "record_file_aging": 0,
-    "tag_category": {
-        "commercial": {
-            "description": "Commercial version tag",
-            "tag_offset": 5,
-            "type": 0
-        },
-        "drm": {
-            "description": "Digital Rights Management",
-            "tag_offset": 6,
-            "type": 0
-        },
-        "security": {
-            "description": "Security subsystem",
-            "tag_offset": 7,
-            "type": 0
-        },
-        "animation": {
-            "description": "Animation",
-            "tag_offset": 9,
-            "type": 0
-        },
-        "push": {
-            "description": "Push subsystem",
-            "tag_offset": 10,
-            "type": 0
-        },
-        "virse": {
-            "description": "Virtualization Service",
-            "tag_offset": 11,
-            "type": 0
-        },
-        "musl": {
-            "description": "musl module",
-            "tag_offset": 12,
-            "type": 0
-        },
-        "ffrt": {
-            "description": "ffrt tasks",
-            "tag_offset": 13,
-            "type": 0
-        },
-        "cloud": {
-            "description": "Cloud subsystem tag",
-            "tag_offset": 14,
-            "type": 0
-        },
-        "deviceauth": {
-            "description": "Device Auth",
-            "tag_offset": 15,
-            "type": 0
-        },
-        "commonlibrary": {
-            "description": "commonlibrary subsystem",
-            "tag_offset": 16,
-            "type": 0
-        },
-        "hdcd": {
-            "description": "hdcd",
-            "tag_offset": 17,
-            "type": 0
-        },
-        "hdf": {
-            "description": "hdf subsystem",
-            "tag_offset": 18,
-            "type": 0
-        },
-        "usb": {
-            "description": "usb subsystem",
-            "tag_offset": 19,
-            "type": 0
-        },
-        "interconn": {
-            "description": "Interconnection subsystem",
-            "tag_offset": 20,
-            "type": 0
-        },
-        "dlpcre": {
-            "description": "Dlp Credential Service",
-            "tag_offset": 21,
-            "type": 0
-        },
-        "accesscontrol": {
-            "description": "Access Control Module",
-            "tag_offset": 22,
-            "type": 0
-        },
-        "net": {
-            "description": "net",
-            "tag_offset": 23,
-            "type": 0
-        },
-        "nweb": {
-            "description": "NWEB Module",
-            "tag_offset": 24,
-            "type": 0
-        },
-        "huks": {
-            "description": "Universal KeyStore",
-            "tag_offset": 25,
-            "type": 0
-        },
-        "useriam": {
-            "description": "useriam",
-            "tag_offset": 26,
-            "type": 0
-        },
-        "daudio": {
-            "description": "Distributed Audio",
-            "tag_offset": 27,
-            "type": 0
-        },
-        "dslm": {
-            "description": "device security level",
-            "tag_offset": 28,
-            "type": 0
-        },
-        "filemanagement": {
-            "description": "filemanagement",
-            "tag_offset": 29,
-            "type": 0
-        },
-        "ohos": {
-            "description": "OpenHarmony",
-            "tag_offset": 30,
-            "type": 0
-        },
-        "ability": {
-            "description": "Ability Manager",
-            "tag_offset": 31,
-            "type": 0
-        },
-        "zcamera": {
-            "description": "OpenHarmony Camera Module",
-            "tag_offset": 32,
-            "type": 0
-        },
-        "zmedia": {
-            "description": "OpenHarmony Media Module",
-            "tag_offset": 33,
-            "type": 0
-        },
-        "zimage": {
-            "description": "OpenHarmony Image Module",
-            "tag_offset": 34,
-            "type": 0
-        },
-        "zaudio": {
-            "description": "OpenHarmony Audio Module",
-            "tag_offset": 35,
-            "type": 0
-        },
-        "distributeddatamgr": {
-            "description": "Distributed Data Manager",
-            "tag_offset": 36,
-            "type": 0
-        },
-        "mdfs": {
-            "description": "Mobile Distributed File System",
-            "tag_offset": 37,
-            "type": 0
-        },
-        "graphic": {
-            "description": "Graphic Module",
-            "tag_offset": 38,
-            "type": 0
-        },
-        "ace": {
-            "description": "ACE development framework",
-            "tag_offset": 39,
-            "type": 0
-        },
-        "notification": {
-            "description": "Notification Module",
-            "tag_offset": 40,
-            "type": 0
-        },
-        "misc": {
-            "description": "Misc Module",
-            "tag_offset": 41,
-            "type": 0
-        },
-        "multimodalinput": {
-            "description": "HITRACE_TAG_MULTIMODALINPUT",
-            "tag_offset": 42,
-            "type": 0
-        },
-        "sensors": {
-            "description": "Sensors Module",
-            "tag_offset": 43,
-            "type": 0
-        },
-        "msdp": {
-            "description": "Multimodal Sensor Data Platform",
-            "tag_offset": 44,
-            "type": 0
-        },
-        "dsoftbus": {
-            "description": "Distributed Softbus",
-            "tag_offset": 45,
-            "type": 0
-        },
-        "rpc": {
-            "description": "RPC and IPC",
-            "tag_offset": 46,
-            "type": 0
-        },
-        "ark": {
-            "description": "ARK Module",
-            "tag_offset": 47,
-            "type": 0
-        },
-        "window": {
-            "description": "Window Manager",
-            "tag_offset": 48,
-            "type": 0
-        },
-        "account": {
-            "description": "Account Manager",
-            "tag_offset": 49,
-            "type": 0
-        },
-        "dscreen": {
-            "description": "Distributed Screen",
-            "tag_offset": 50,
-            "type": 0
-        },
-        "dcamera": {
-            "description": "Distributed Camera",
-            "tag_offset": 51,
-            "type": 0
-        },
-        "dhfwk": {
-            "description": "Distributed Hardware FWK",
-            "tag_offset": 52,
-            "type": 0
-        },
-        "gresource": {
-            "description": "Global Resource Manager",
-            "tag_offset": 53,
-            "type": 0
-        },
-        "devicemanager": {
-            "description": "Device Manager",
-            "tag_offset": 54,
-            "type": 0
-        },
-        "samgr": {
-            "description": "samgr",
-            "tag_offset": 55,
-            "type": 0
-        },
-        "power": {
-            "description": "Power Manager",
-            "tag_offset": 56,
-            "type": 0
-        },
-        "dsched": {
-            "description": "Distributed Schedule",
-            "tag_offset": 57,
-            "type": 0
-        },
-        "deviceprofile": {
-            "description": "Device Profile",
-            "tag_offset": 58,
-            "type": 0
-        },
-        "dinput": {
-            "description": "Distributed Input",
-            "tag_offset": 59,
-            "type": 0
-        },
-        "bluetooth": {
-            "description": "communicatio bluetooth",
-            "tag_offset": 60,
-            "type": 0
-        },
-        "accessibility": {
-            "description": "Accessibility Manager",
-            "tag_offset": 61,
-            "type": 0
-        },
-        "app": {
-            "description": "APP Module",
-            "tag_offset": 62,
-            "type": 0
-        },
-        "sched": {
-            "description": "CPU Scheduling",
-            "tag_offset": 0,
-            "enable_path": [
-                "events/sched/sched_switch/enable",
-                "events/sched/sched_wakeup/enable",
-                "events/sched/sched_blocked_reason/enable"
-            ],
-            "type": 1,
-            "format_path": [
-                "events/sched/sched_wakeup/format",
-                "events/sched/sched_switch/format",
-                "events/sched/sched_blocked_reason/format"
-            ]
-        },
-        "preemptoff": {
-            "description": "Preempt-disabled code section tracing",
-            "tag_offset": 0,
-            "enable_path": [
-                "events/preemptirq/preempt_enable/enable",
-                "events/preemptirq/preempt_disable/enable"
-            ],
-            "type": 1
-        },
-        "binder": {
-            "description": "Binder kernel Info",
-            "tag_offset": 0,
-            "enable_path": [
-                "events/binder/binder_transaction/enable",
-                "events/binder/binder_transaction_received/enable"
-            ],
-            "type": 1,
-            "format_path": [
-                "events/binder/binder_transaction/format",
-                "events/binder/binder_transaction_received/format"
-            ]
-        },
-        "sync": {
-            "description": "Synchronization",
-            "tag_offset": 0,
-            "enable_path": [ "events/dma_fence/enable" ],
-            "type": 1,
-            "format_path": [
-                "events/dma_fence/dma_fence_emit/format",
-                "events/dma_fence/dma_fence_destroy/format",
-                "events/dma_fence/dma_fence_enable_signal/format",
-                "events/dma_fence/dma_fence_signaled/format",
-                "events/dma_fence/dma_fence_wait_end/format",
-                "events/dma_fence/dma_fence_wait_start/format",
-                "events/dma_fence/dma_fence_init/format"
-            ]
-        },
-        "workq": {
-            "description": "Kernel Workqueues",
-            "tag_offset": 0,
-            "enable_path": [
-                "events/workqueue/workqueue_execute_end/enable",
-                "events/workqueue/workqueue_execute_start/enable"
-            ],
-            "type": 1,
-            "format_path": [
-                "events/workqueue/workqueue_execute_end/format",
-                "events/workqueue/workqueue_execute_start/format"
-            ]
-        },
-        "memreclaim": {
-            "description": "Kernel Memory Reclaim",
-            "tag_offset": 0,
-            "enable_path": [
-                "events/vmscan/mm_vmscan_direct_reclaim_begin/enable",
-                "events/vmscan/mm_vmscan_direct_reclaim_end/enable",
-                "events/vmscan/mm_vmscan_kswapd_wake/enable",
-                "events/vmscan/mm_vmscan_kswapd_sleep/enable",
-                "events/lowmemorykiller/enable"
-            ],
-            "type": 1,
-            "format_path": [
-                "events/vmscan/mm_vmscan_direct_reclaim_begin/format",
-                "events/vmscan/mm_vmscan_direct_reclaim_end/format",
-                "events/vmscan/mm_vmscan_kswapd_sleep/format",
-                "events/vmscan/mm_vmscan_kswapd_wake/format"
-            ]
-        },
-        "pagecache": {
-            "description": "Page cache",
-            "tag_offset": 0,
-            "enable_path": [ "events/filemap/enable" ],
-            "type": 1,
-            "format_path": [
-                "events/filemap/file_check_and_advance_wb_err/format",
-                "events/filemap/filemap_set_wb_err/format",
-                "events/filemap/mm_filemap_add_to_page_cache/format",
-                "events/filemap/mm_filemap_delete_from_page_cache/format"
-            ]
-        },
-        "memory": {
-            "description": "Memory",
-            "tag_offset": 0,
-            "enable_path": [
-                "events/kmem/rss_stat/enable",
-                "events/kmem/ion_heap_grow/enable",
-                "events/kmem/ion_heap_shrink/enable"
-            ],
-            "type": 1,
-            "format_path": [ "events/kmem/rss_stat/format" ]
-        },
-        "zbinder": {
-            "description": "OpenHarmony binder communication",
-            "tag_offset": 0,
-            "enable_path": [ "events/zbinder/enable" ],
-            "type": 1
-        },
-        "freq": {
-            "description": "CPU Frequency",
-            "tag_offset": 0,
-            "enable_path": [
-                "events/power/cpu_frequency/enable",
-                "events/power/clock_set_rate/enable",
-                "events/power_kernel/clock_set_rate/enable",
-                "events/power_kernel/cpu_frequency/enable",
-                "events/power_kernel/cpu_frequency_limits/enable",
-                "events/power/cpu_frequency_limits/enable"
-            ],
-            "type": 1,
-            "format_path": [
-                "events/power/cpu_frequency/format",
-                "events/power/clock_set_rate/format",
-                "events/power_kernel/clock_set_rate/format",
-                "events/power_kernel/cpu_frequency/format",
-                "events/power_kernel/cpu_frequency_limits/format",
-                "events/power/cpu_frequency_limits/format"
-            ]
-        },
-        "idle": {
-            "description": "CPU Idle",
-            "tag_offset": 0,
-            "enable_path": [
-                "events/power/cpu_idle/enable",
-                "events/power_kernel/cpu_idle/enable"
-            ],
-            "type": 1,
-            "format_path": [
-                "events/power/cpu_idle/format",
-                "events/power_kernel/cpu_idle/format"
-            ]
-        },
-        "load": {
-            "description": "CPU Load",
-            "tag_offset": 0,
-            "enable_path": [ "events/cpufreq_interactive/enable" ],
-            "type": 1,
-            "format_path": [ "events/cpufreq_interactive/format" ]
-        },
-        "irq": {
-            "description": "IRQ Events",
-            "tag_offset": 0,
-            "enable_path": [
-                "events/irq/enable",
-                "events/ipi/enable"
-            ],
-            "type": 1,
-            "format_path": [
-                "events/irq/irq_handler_entry/format",
-                "events/irq/irq_handler_exit/format",
-                "events/irq/softirq_entry/format",
-                "events/irq/softirq_exit/format"
-            ]
-        },
-        "irqoff": {
-            "description": "IRQ-disabled code section tracing",
-            "tag_offset": 0,
-            "enable_path": [
-                "events/preemptirq/irq_enable/enable",
-                "events/preemptirq/irq_disable/enable"
-            ],
-            "type": 1
-        },
-        "disk": {
-            "description": "Disk I/O",
-            "tag_offset": 0,
-            "enable_path": [
-                "events/f2fs/f2fs_sync_file_enter/enable",
-                "events/f2fs/f2fs_sync_file_exit/enable",
-                "events/f2fs/f2fs_readpage/enable",
-                "events/f2fs/f2fs_readpages/enable",
-                "events/f2fs/f2fs_sync_fs/enable",
-                "events/hmdfs/hmdfs_syncfs_enter/enable",
-                "events/hmdfs/hmdfs_syncfs_exit/enable",
-                "events/erofs/erofs_readpage/enable",
-                "events/erofs/erofs_readpages/enable",
-                "events/ext4/ext4_da_write_begin/enable",
-                "events/ext4/ext4_da_write_end/enable",
-                "events/ext4/ext4_sync_file_enter/enable",
-                "events/ext4/ext4_sync_file_exit/enable",
-                "events/block/block_bio_remap/enable",
-                "events/block/block_rq_issue/enable",
-                "events/block/block_rq_complete/enable",
-                "events/block/block_rq_insert/enable"
-            ],
-            "type": 1,
-            "format_path": [
-                "events/f2fs/f2fs_sync_file_enter/format",
-                "events/f2fs/f2fs_sync_file_exit/format",
-                "events/f2fs/f2fs_readpage/format",
-                "events/f2fs/f2fs_readpages/format",
-                "events/f2fs/f2fs_sync_fs/format",
-                "events/hmdfs/hmdfs_syncfs_enter/format",
-                "events/hmdfs/hmdfs_syncfs_exit/format",
-                "events/erofs/erofs_readpage/format",
-                "events/erofs/erofs_readpages/format",
-                "events/ext4/ext4_da_write_begin/format",
-                "events/ext4/ext4_da_write_end/format",
-                "events/ext4/ext4_sync_file_enter/format",
-                "events/ext4/ext4_sync_file_exit/format",
-                "events/block/block_bio_remap/format",
-                "events/block/block_rq_issue/format",
-                "events/block/block_rq_complete/format",
-                "events/block/block_rq_insert/format"
-            ]
-        },
-        "mmc": {
-            "description": "eMMC commands",
-            "tag_offset": 0,
-            "enable_path": [ "events/mmc/enable" ],
-            "type": 1,
-            "format": [
-                "events/mmc/mmc_request_start/format",
-                "events/mmc/mmc_request_done/format"
-            ]
-        },
-        "ufs": {
-            "description": "UFS commands",
-            "tag_offset": 0,
-            "enable_path": [ "events/ufs/enable" ],
-            "type": 1,
-            "format_path": [ "events/ufs/ufshcd_command/format" ]
-        },
-        "i2c": {
-            "description": "I2C Events",
-            "tag_offset": 0,
-            "enable_path": [
-                "events/i2c/enable",
-                "events/i2c/i2c_read/enable",
-                "events/i2c/i2c_write/enable",
-                "events/i2c/i2c_result/enable",
-                "events/i2c/i2c_reply/enable",
-                "events/smbus/enable",
-                "events/smbus/smbus_read/enable",
-                "events/smbus/smbus_write/enable",
-                "events/smbus/smbus_result/enable",
-                "events/smbus/smbus_reply/enable"
-            ],
-            "type": 1,
-            "format_path": [
-                "events/i2c/i2c_read/format",
-                "events/i2c/i2c_write/format",
-                "events/i2c/i2c_result/format",
-                "events/i2c/i2c_reply/format",
-                "events/smbus/smbus_read/format",
-                "events/smbus/smbus_write/format",
-                "events/smbus/smbus_result/format",
-                "events/smbus/smbus_reply/format"
-            ]
-        },
-        "regulators": {
-            "description": "Voltage and Current Regulators",
-            "tag_offset": 0,
-            "enable_path": [ "events/regulator/enable" ],
-            "type": 1
-        },
-        "membus": {
-            "description": "Memory Bus Utilization",
-            "tag_offset": 0,
-            "enable_path": [
-                "events/memory_bus/enable",
-                "events/xacct/enable"
-            ],
-            "type": 1,
-            "format_path": [
-                "events/memory_bus/format",
-                "events/xacct/tracing_mark_write/format"
-            ]
-        },
-        "ipa": {
-            "description": "thermal power allocator",
-            "tag_offset": 0,
-            "enable_path": ["events/thermal_power_allocator/enable"],
-            "type": 1,
-            "format_path": [
-                "events/thermal_power_allocator/thermal_power_allocator/format",
-                "events/thermal_power_allocator/thermal_power_allocator_pid/format"
-            ]
-        },
-        "erofs": {
-            "description": "EROFS command",
-            "tag_offset": 0,
-            "enable_path": [
-                "events/erofs/erofs_read_enter/enable",
-                "events/erofs/erofs_read_exit/enable",
-                "events/erofs/erofs_read_iter_enter/enable",
-                "events/erofs/erofs_read_iter_exit/enable",
-                "events/erofs/erofs_readdir/enable",
-                "events/erofs/erofs_lookup_start/enable",
-                "events/erofs/erofs_lookup_end/enable",
-                "events/erofs/erofs_getattr_enter/enable",
-                "events/erofs/erofs_getattr_exit/enable",
-                "events/erofs/erofs_listxattr_enter/enable",
-                "events/erofs/erofs_listxattr_exit/enable",
-                "events/erofs/erofs_raw_access_readpages_start/enable",
-                "events/erofs/erofs_raw_access_readpages_end/enable",
-                "events/erofs/erofs_read_raw_page_start/enable",
-                "events/erofs/erofs_read_raw_page_end/enable",
-                "events/erofs/z_erofs_vle_normalaccess_readpage_end/enable",
-                "events/erofs/z_erofs_vle_normalaccess_readpage_start/enable",
-                "events/erofs/z_erofs_vle_normalaccess_readpages_end/enable",
-                "events/erofs/z_erofs_vle_normalaccess_readpages_start/enable"
-            ],
-            "type": 1,
-            "format_path": [
-                "events/erofs/erofs_read_enter/format",
-                "events/erofs/erofs_read_exit/format",
-                "events/erofs/erofs_read_iter_enter/format",
-                "events/erofs/erofs_read_iter_exit/format",
-                "events/erofs/erofs_readdir/format",
-                "events/erofs/erofs_lookup_start/format",
-                "events/erofs/erofs_lookup_end/format",
-                "events/erofs/erofs_getattr_enter/format",
-                "events/erofs/erofs_getattr_exit/format",
-                "events/erofs/erofs_listxattr_enter/format",
-                "events/erofs/erofs_listxattr_exit/format",
-                "events/erofs/erofs_raw_access_readpages_start/format",
-                "events/erofs/erofs_raw_access_readpages_end/format",
-                "events/erofs/erofs_read_raw_page_start/format",
-                "events/erofs/erofs_read_raw_page_end/format",
-                "events/erofs/z_erofs_vle_normalaccess_readpage_end/format",
-                "events/erofs/z_erofs_vle_normalaccess_readpage_start/format",
-                "events/erofs/z_erofs_vle_normalaccess_readpages_end/format",
-                "events/erofs/z_erofs_vle_normalaccess_readpages_start/format"
-            ]
-        }
+  "snapshot_buffer_kb": 0,
+  "snapshot_file_aging": 1,
+  "record_file_aging": 0,
+  "tag_category": {
+    "commercial": {
+      "description": "Commercial version tag",
+      "tag_offset": 5,
+      "type": 0
     },
-    "base_format_path": [
-        "events/ftrace/print/format",
-        "events/tracing_mark_write/tracing_mark_write/format"
-    ],
-    "tag_groups": {
-        "default": ["sched", "freq", "disk", "sync", "binder", "mmc", "membus", "load", "pagecache", "workq", "ipa",
-                    "hdf", "virse"],
-        "scene_performance": ["net", "dsched", "graphic", "multimodalinput", "dinput", "ark", "ace", "window",
-                              "zaudio", "daudio", "zmedia", "dcamera", "zcamera", "dhfwk", "app", "gresource",
-                              "ability", "power", "samgr", "ffrt", "ufs", "nweb", "hdf", "virse", "workq", "ipa",
-                            "sched", "freq", "disk", "sync", "binder", "mmc", "membus", "load", "pagecache"],
-        "telemetry": ["ace", "app", "ark", "binder", "freq", "graphic", "multimodalinput", "nweb", "sched", "window"]
+    "drm": {
+      "description": "Digital Rights Management",
+      "tag_offset": 6,
+      "type": 0
+    },
+    "security": {
+      "description": "Security subsystem",
+      "tag_offset": 7,
+      "type": 0
+    },
+    "animation": {
+      "description": "Animation",
+      "tag_offset": 9,
+      "type": 0
+    },
+    "push": {
+      "description": "Push subsystem",
+      "tag_offset": 10,
+      "type": 0
+    },
+    "virse": {
+      "description": "Virtualization Service",
+      "tag_offset": 11,
+      "type": 0
+    },
+    "musl": {
+      "description": "musl module",
+      "tag_offset": 12,
+      "type": 0
+    },
+    "ffrt": {
+      "description": "ffrt tasks",
+      "tag_offset": 13,
+      "type": 0
+    },
+    "cloud": {
+      "description": "Cloud subsystem tag",
+      "tag_offset": 14,
+      "type": 0
+    },
+    "deviceauth": {
+      "description": "Device Auth",
+      "tag_offset": 15,
+      "type": 0
+    },
+    "commonlibrary": {
+      "description": "commonlibrary subsystem",
+      "tag_offset": 16,
+      "type": 0
+    },
+    "hdcd": {
+      "description": "hdcd",
+      "tag_offset": 17,
+      "type": 0
+    },
+    "hdf": {
+      "description": "hdf subsystem",
+      "tag_offset": 18,
+      "type": 0
+    },
+    "usb": {
+      "description": "usb subsystem",
+      "tag_offset": 19,
+      "type": 0
+    },
+    "interconn": {
+      "description": "Interconnection subsystem",
+      "tag_offset": 20,
+      "type": 0
+    },
+    "dlpcre": {
+      "description": "Dlp Credential Service",
+      "tag_offset": 21,
+      "type": 0
+    },
+    "accesscontrol": {
+      "description": "Access Control Module",
+      "tag_offset": 22,
+      "type": 0
+    },
+    "net": {
+      "description": "net",
+      "tag_offset": 23,
+      "type": 0
+    },
+    "nweb": {
+      "description": "NWEB Module",
+      "tag_offset": 24,
+      "type": 0
+    },
+    "huks": {
+      "description": "Universal KeyStore",
+      "tag_offset": 25,
+      "type": 0
+    },
+    "useriam": {
+      "description": "useriam",
+      "tag_offset": 26,
+      "type": 0
+    },
+    "daudio": {
+      "description": "Distributed Audio",
+      "tag_offset": 27,
+      "type": 0
+    },
+    "dslm": {
+      "description": "device security level",
+      "tag_offset": 28,
+      "type": 0
+    },
+    "filemanagement": {
+      "description": "filemanagement",
+      "tag_offset": 29,
+      "type": 0
+    },
+    "ohos": {
+      "description": "OpenHarmony",
+      "tag_offset": 30,
+      "type": 0
+    },
+    "ability": {
+      "description": "Ability Manager",
+      "tag_offset": 31,
+      "type": 0
+    },
+    "zcamera": {
+      "description": "OpenHarmony Camera Module",
+      "tag_offset": 32,
+      "type": 0
+    },
+    "zmedia": {
+      "description": "OpenHarmony Media Module",
+      "tag_offset": 33,
+      "type": 0
+    },
+    "zimage": {
+      "description": "OpenHarmony Image Module",
+      "tag_offset": 34,
+      "type": 0
+    },
+    "zaudio": {
+      "description": "OpenHarmony Audio Module",
+      "tag_offset": 35,
+      "type": 0
+    },
+    "distributeddatamgr": {
+      "description": "Distributed Data Manager",
+      "tag_offset": 36,
+      "type": 0
+    },
+    "mdfs": {
+      "description": "Mobile Distributed File System",
+      "tag_offset": 37,
+      "type": 0
+    },
+    "graphic": {
+      "description": "Graphic Module",
+      "tag_offset": 38,
+      "type": 0
+    },
+    "ace": {
+      "description": "ACE development framework",
+      "tag_offset": 39,
+      "type": 0
+    },
+    "notification": {
+      "description": "Notification Module",
+      "tag_offset": 40,
+      "type": 0
+    },
+    "misc": {
+      "description": "Misc Module",
+      "tag_offset": 41,
+      "type": 0
+    },
+    "multimodalinput": {
+      "description": "HITRACE_TAG_MULTIMODALINPUT",
+      "tag_offset": 42,
+      "type": 0
+    },
+    "sensors": {
+      "description": "Sensors Module",
+      "tag_offset": 43,
+      "type": 0
+    },
+    "msdp": {
+      "description": "Multimodal Sensor Data Platform",
+      "tag_offset": 44,
+      "type": 0
+    },
+    "dsoftbus": {
+      "description": "Distributed Softbus",
+      "tag_offset": 45,
+      "type": 0
+    },
+    "rpc": {
+      "description": "RPC and IPC",
+      "tag_offset": 46,
+      "type": 0
+    },
+    "ark": {
+      "description": "ARK Module",
+      "tag_offset": 47,
+      "type": 0
+    },
+    "window": {
+      "description": "Window Manager",
+      "tag_offset": 48,
+      "type": 0
+    },
+    "account": {
+      "description": "Account Manager",
+      "tag_offset": 49,
+      "type": 0
+    },
+    "dscreen": {
+      "description": "Distributed Screen",
+      "tag_offset": 50,
+      "type": 0
+    },
+    "dcamera": {
+      "description": "Distributed Camera",
+      "tag_offset": 51,
+      "type": 0
+    },
+    "dhfwk": {
+      "description": "Distributed Hardware FWK",
+      "tag_offset": 52,
+      "type": 0
+    },
+    "gresource": {
+      "description": "Global Resource Manager",
+      "tag_offset": 53,
+      "type": 0
+    },
+    "devicemanager": {
+      "description": "Device Manager",
+      "tag_offset": 54,
+      "type": 0
+    },
+    "samgr": {
+      "description": "samgr",
+      "tag_offset": 55,
+      "type": 0
+    },
+    "power": {
+      "description": "Power Manager",
+      "tag_offset": 56,
+      "type": 0
+    },
+    "dsched": {
+      "description": "Distributed Schedule",
+      "tag_offset": 57,
+      "type": 0
+    },
+    "deviceprofile": {
+      "description": "Device Profile",
+      "tag_offset": 58,
+      "type": 0
+    },
+    "dinput": {
+      "description": "Distributed Input",
+      "tag_offset": 59,
+      "type": 0
+    },
+    "bluetooth": {
+      "description": "communicatio bluetooth",
+      "tag_offset": 60,
+      "type": 0
+    },
+    "accessibility": {
+      "description": "Accessibility Manager",
+      "tag_offset": 61,
+      "type": 0
+    },
+    "app": {
+      "description": "APP Module",
+      "tag_offset": 62,
+      "type": 0
+    },
+    "sched": {
+      "description": "CPU Scheduling",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/sched/sched_switch/enable",
+        "events/sched/sched_wakeup/enable",
+        "events/sched/sched_blocked_reason/enable"
+      ],
+      "type": 1,
+      "format_path": [
+        "events/sched/sched_wakeup/format",
+        "events/sched/sched_switch/format",
+        "events/sched/sched_blocked_reason/format"
+      ]
+    },
+    "preemptoff": {
+      "description": "Preempt-disabled code section tracing",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/preemptirq/preempt_enable/enable",
+        "events/preemptirq/preempt_disable/enable"
+      ],
+      "type": 1
+    },
+    "binder": {
+      "description": "Binder kernel Info",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/binder/binder_transaction/enable",
+        "events/binder/binder_transaction_received/enable"
+      ],
+      "type": 1,
+      "format_path": [
+        "events/binder/binder_transaction/format",
+        "events/binder/binder_transaction_received/format"
+      ]
+    },
+    "sync": {
+      "description": "Synchronization",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/dma_fence/enable"
+      ],
+      "type": 1,
+      "format_path": [
+        "events/dma_fence/dma_fence_emit/format",
+        "events/dma_fence/dma_fence_destroy/format",
+        "events/dma_fence/dma_fence_enable_signal/format",
+        "events/dma_fence/dma_fence_signaled/format",
+        "events/dma_fence/dma_fence_wait_end/format",
+        "events/dma_fence/dma_fence_wait_start/format",
+        "events/dma_fence/dma_fence_init/format"
+      ]
+    },
+    "workq": {
+      "description": "Kernel Workqueues",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/workqueue/workqueue_execute_end/enable",
+        "events/workqueue/workqueue_execute_start/enable"
+      ],
+      "type": 1,
+      "format_path": [
+        "events/workqueue/workqueue_execute_end/format",
+        "events/workqueue/workqueue_execute_start/format"
+      ]
+    },
+    "memreclaim": {
+      "description": "Kernel Memory Reclaim",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/vmscan/mm_vmscan_direct_reclaim_begin/enable",
+        "events/vmscan/mm_vmscan_direct_reclaim_end/enable",
+        "events/vmscan/mm_vmscan_kswapd_wake/enable",
+        "events/vmscan/mm_vmscan_kswapd_sleep/enable",
+        "events/lowmemorykiller/enable"
+      ],
+      "type": 1,
+      "format_path": [
+        "events/vmscan/mm_vmscan_direct_reclaim_begin/format",
+        "events/vmscan/mm_vmscan_direct_reclaim_end/format",
+        "events/vmscan/mm_vmscan_kswapd_sleep/format",
+        "events/vmscan/mm_vmscan_kswapd_wake/format"
+      ]
+    },
+    "pagecache": {
+      "description": "Page cache",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/filemap/enable"
+      ],
+      "type": 1,
+      "format_path": [
+        "events/filemap/file_check_and_advance_wb_err/format",
+        "events/filemap/filemap_set_wb_err/format",
+        "events/filemap/mm_filemap_add_to_page_cache/format",
+        "events/filemap/mm_filemap_delete_from_page_cache/format"
+      ]
+    },
+    "memory": {
+      "description": "Memory",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/kmem/rss_stat/enable",
+        "events/kmem/ion_heap_grow/enable",
+        "events/kmem/ion_heap_shrink/enable"
+      ],
+      "type": 1,
+      "format_path": [
+        "events/kmem/rss_stat/format"
+      ]
+    },
+    "zbinder": {
+      "description": "OpenHarmony binder communication",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/zbinder/enable"
+      ],
+      "type": 1
+    },
+    "freq": {
+      "description": "CPU Frequency",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/power/cpu_frequency/enable",
+        "events/power/clock_set_rate/enable",
+        "events/power_kernel/clock_set_rate/enable",
+        "events/power_kernel/cpu_frequency/enable",
+        "events/power_kernel/cpu_frequency_limits/enable",
+        "events/power/cpu_frequency_limits/enable"
+      ],
+      "type": 1,
+      "format_path": [
+        "events/power/cpu_frequency/format",
+        "events/power/clock_set_rate/format",
+        "events/power_kernel/clock_set_rate/format",
+        "events/power_kernel/cpu_frequency/format",
+        "events/power_kernel/cpu_frequency_limits/format",
+        "events/power/cpu_frequency_limits/format"
+      ]
+    },
+    "idle": {
+      "description": "CPU Idle",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/power/cpu_idle/enable",
+        "events/power_kernel/cpu_idle/enable"
+      ],
+      "type": 1,
+      "format_path": [
+        "events/power/cpu_idle/format",
+        "events/power_kernel/cpu_idle/format"
+      ]
+    },
+    "load": {
+      "description": "CPU Load",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/cpufreq_interactive/enable"
+      ],
+      "type": 1,
+      "format_path": [
+        "events/cpufreq_interactive/format"
+      ]
+    },
+    "irq": {
+      "description": "IRQ Events",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/irq/enable",
+        "events/ipi/enable"
+      ],
+      "type": 1,
+      "format_path": [
+        "events/irq/irq_handler_entry/format",
+        "events/irq/irq_handler_exit/format",
+        "events/irq/softirq_entry/format",
+        "events/irq/softirq_exit/format"
+      ]
+    },
+    "irqoff": {
+      "description": "IRQ-disabled code section tracing",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/preemptirq/irq_enable/enable",
+        "events/preemptirq/irq_disable/enable"
+      ],
+      "type": 1
+    },
+    "disk": {
+      "description": "Disk I/O",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/f2fs/f2fs_sync_file_enter/enable",
+        "events/f2fs/f2fs_sync_file_exit/enable",
+        "events/f2fs/f2fs_readpage/enable",
+        "events/f2fs/f2fs_readpages/enable",
+        "events/f2fs/f2fs_sync_fs/enable",
+        "events/hmdfs/hmdfs_syncfs_enter/enable",
+        "events/hmdfs/hmdfs_syncfs_exit/enable",
+        "events/erofs/erofs_readpage/enable",
+        "events/erofs/erofs_readpages/enable",
+        "events/ext4/ext4_da_write_begin/enable",
+        "events/ext4/ext4_da_write_end/enable",
+        "events/ext4/ext4_sync_file_enter/enable",
+        "events/ext4/ext4_sync_file_exit/enable",
+        "events/block/block_bio_remap/enable",
+        "events/block/block_rq_issue/enable",
+        "events/block/block_rq_complete/enable",
+        "events/block/block_rq_insert/enable"
+      ],
+      "type": 1,
+      "format_path": [
+        "events/f2fs/f2fs_sync_file_enter/format",
+        "events/f2fs/f2fs_sync_file_exit/format",
+        "events/f2fs/f2fs_readpage/format",
+        "events/f2fs/f2fs_readpages/format",
+        "events/f2fs/f2fs_sync_fs/format",
+        "events/hmdfs/hmdfs_syncfs_enter/format",
+        "events/hmdfs/hmdfs_syncfs_exit/format",
+        "events/erofs/erofs_readpage/format",
+        "events/erofs/erofs_readpages/format",
+        "events/ext4/ext4_da_write_begin/format",
+        "events/ext4/ext4_da_write_end/format",
+        "events/ext4/ext4_sync_file_enter/format",
+        "events/ext4/ext4_sync_file_exit/format",
+        "events/block/block_bio_remap/format",
+        "events/block/block_rq_issue/format",
+        "events/block/block_rq_complete/format",
+        "events/block/block_rq_insert/format"
+      ]
+    },
+    "mmc": {
+      "description": "eMMC commands",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/mmc/enable"
+      ],
+      "type": 1,
+      "format": [
+        "events/mmc/mmc_request_start/format",
+        "events/mmc/mmc_request_done/format"
+      ]
+    },
+    "ufs": {
+      "description": "UFS commands",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/ufs/enable"
+      ],
+      "type": 1,
+      "format_path": [
+        "events/ufs/ufshcd_command/format"
+      ]
+    },
+    "i2c": {
+      "description": "I2C Events",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/i2c/enable",
+        "events/i2c/i2c_read/enable",
+        "events/i2c/i2c_write/enable",
+        "events/i2c/i2c_result/enable",
+        "events/i2c/i2c_reply/enable",
+        "events/smbus/enable",
+        "events/smbus/smbus_read/enable",
+        "events/smbus/smbus_write/enable",
+        "events/smbus/smbus_result/enable",
+        "events/smbus/smbus_reply/enable"
+      ],
+      "type": 1,
+      "format_path": [
+        "events/i2c/i2c_read/format",
+        "events/i2c/i2c_write/format",
+        "events/i2c/i2c_result/format",
+        "events/i2c/i2c_reply/format",
+        "events/smbus/smbus_read/format",
+        "events/smbus/smbus_write/format",
+        "events/smbus/smbus_result/format",
+        "events/smbus/smbus_reply/format"
+      ]
+    },
+    "regulators": {
+      "description": "Voltage and Current Regulators",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/regulator/enable"
+      ],
+      "type": 1
+    },
+    "membus": {
+      "description": "Memory Bus Utilization",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/memory_bus/enable",
+        "events/xacct/enable"
+      ],
+      "type": 1,
+      "format_path": [
+        "events/memory_bus/format",
+        "events/xacct/tracing_mark_write/format"
+      ]
+    },
+    "ipa": {
+      "description": "thermal power allocator",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/thermal_power_allocator/enable"
+      ],
+      "type": 1,
+      "format_path": [
+        "events/thermal_power_allocator/thermal_power_allocator/format",
+        "events/thermal_power_allocator/thermal_power_allocator_pid/format"
+      ]
+    },
+    "erofs": {
+      "description": "EROFS command",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/erofs/erofs_read_enter/enable",
+        "events/erofs/erofs_read_exit/enable",
+        "events/erofs/erofs_read_iter_enter/enable",
+        "events/erofs/erofs_read_iter_exit/enable",
+        "events/erofs/erofs_readdir/enable",
+        "events/erofs/erofs_lookup_start/enable",
+        "events/erofs/erofs_lookup_end/enable",
+        "events/erofs/erofs_getattr_enter/enable",
+        "events/erofs/erofs_getattr_exit/enable",
+        "events/erofs/erofs_listxattr_enter/enable",
+        "events/erofs/erofs_listxattr_exit/enable",
+        "events/erofs/erofs_raw_access_readpages_start/enable",
+        "events/erofs/erofs_raw_access_readpages_end/enable",
+        "events/erofs/erofs_read_raw_page_start/enable",
+        "events/erofs/erofs_read_raw_page_end/enable",
+        "events/erofs/z_erofs_vle_normalaccess_readpage_end/enable",
+        "events/erofs/z_erofs_vle_normalaccess_readpage_start/enable",
+        "events/erofs/z_erofs_vle_normalaccess_readpages_end/enable",
+        "events/erofs/z_erofs_vle_normalaccess_readpages_start/enable"
+      ],
+      "type": 1,
+      "format_path": [
+        "events/erofs/erofs_read_enter/format",
+        "events/erofs/erofs_read_exit/format",
+        "events/erofs/erofs_read_iter_enter/format",
+        "events/erofs/erofs_read_iter_exit/format",
+        "events/erofs/erofs_readdir/format",
+        "events/erofs/erofs_lookup_start/format",
+        "events/erofs/erofs_lookup_end/format",
+        "events/erofs/erofs_getattr_enter/format",
+        "events/erofs/erofs_getattr_exit/format",
+        "events/erofs/erofs_listxattr_enter/format",
+        "events/erofs/erofs_listxattr_exit/format",
+        "events/erofs/erofs_raw_access_readpages_start/format",
+        "events/erofs/erofs_raw_access_readpages_end/format",
+        "events/erofs/erofs_read_raw_page_start/format",
+        "events/erofs/erofs_read_raw_page_end/format",
+        "events/erofs/z_erofs_vle_normalaccess_readpage_end/format",
+        "events/erofs/z_erofs_vle_normalaccess_readpage_start/format",
+        "events/erofs/z_erofs_vle_normalaccess_readpages_end/format",
+        "events/erofs/z_erofs_vle_normalaccess_readpages_start/format"
+      ]
     }
+  },
+  "base_format_path": [
+    "events/ftrace/print/format",
+    "events/tracing_mark_write/tracing_mark_write/format"
+  ],
+  "tag_groups": {
+    "default": ["sched", "freq", "disk", "sync", "binder", "mmc", "membus", "load", "pagecache", "workq", "ipa",
+                "hdf", "virse"],
+    "scene_performance": ["net", "dsched", "graphic", "multimodalinput", "dinput", "ark", "ace", "window",
+                          "zaudio", "daudio", "zmedia", "dcamera", "zcamera", "dhfwk", "app", "gresource",
+                          "ability", "power", "samgr", "ffrt", "ufs", "nweb", "hdf", "virse", "workq", "ipa",
+                          "sched", "freq", "disk", "sync", "binder", "mmc", "membus", "load", "pagecache"],
+    "telemetry": ["ace", "app", "ark", "binder", "freq", "graphic", "multimodalinput", "nweb", "sched", "window"]
+  }
 }
