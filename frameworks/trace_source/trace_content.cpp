@@ -454,13 +454,14 @@ bool ITraceCpuRawContent::WriteTracePipeRawData(const std::string& srcPath, cons
         return false;
     }
     std::string path = CanonicalizeSpecPath(srcPath.c_str());
-    traceSourceFd_ = open(path.c_str(), O_RDONLY | O_NONBLOCK);
-    if (traceSourceFd_ < 0) {
+    auto rawTraceFd = open(path.c_str(), O_RDONLY | O_NONBLOCK);
+    if (rawTraceFd < 0) {
         HILOG_ERROR(LOG_CORE, "WriteTracePipeRawData: open %{public}s failed.", srcPath.c_str());
         return false;
     }
     struct TraceFileContentHeader rawtraceHdr;
     if (!DoWriteTraceContentHeader(rawtraceHdr, CONTENT_TYPE_CPU_RAW + cpuIdx)) {
+        close(rawTraceFd);
         return false;
     }
     ssize_t writeLen = 0;
@@ -469,7 +470,7 @@ bool ITraceCpuRawContent::WriteTracePipeRawData(const std::string& srcPath, cons
     while (true) {
         int bytes = 0;
         bool endFlag = false;
-        ReadTracePipeRawLoop(traceSourceFd_, bytes, endFlag, pageChkFailedTime, printFirstPageTime);
+        ReadTracePipeRawLoop(rawTraceFd, bytes, endFlag, pageChkFailedTime, printFirstPageTime);
         DoWriteTraceData(g_buffer, bytes, writeLen);
         if (IsWriteFileOverflow(g_outputFileSize, writeLen,
             request_.fileSize != 0 ? request_.fileSize : DEFAULT_FILE_SIZE * KB_PER_MB)) {
@@ -488,6 +489,7 @@ bool ITraceCpuRawContent::WriteTracePipeRawData(const std::string& srcPath, cons
     }
     HILOG_INFO(LOG_CORE, "WriteTracePipeRawData end, path: %{public}s, byte: %{public}zd. g_writeFileLimit: %{public}d",
         srcPath.c_str(), writeLen, g_writeFileLimit);
+    close(rawTraceFd);
     return true;
 }
 
@@ -646,8 +648,8 @@ bool ITraceCpuRawRead::CopyTracePipeRawLoop(const int srcFd, const int cpu, ssiz
 bool ITraceCpuRawRead::CacheTracePipeRawData(const std::string& srcPath, const int cpuIdx)
 {
     std::string path = CanonicalizeSpecPath(srcPath.c_str());
-    traceSourceFd_ = open(path.c_str(), O_RDONLY | O_NONBLOCK);
-    if (traceSourceFd_ < 0) {
+    auto rawTraceFd = open(path.c_str(), O_RDONLY | O_NONBLOCK);
+    if (rawTraceFd < 0) {
         HILOG_ERROR(LOG_CORE, "CacheTracePipeRawData: open %{public}s failed.", srcPath.c_str());
         return false;
     }
@@ -655,7 +657,7 @@ bool ITraceCpuRawRead::CacheTracePipeRawData(const std::string& srcPath, const i
     int pageChkFailedTime = 0;
     bool printFirstPageTime = false; // attention: update first page time in every WriteTracePipeRawData calling.
     while (true) {
-        if (CopyTracePipeRawLoop(traceSourceFd_, cpuIdx, writeLen, pageChkFailedTime, printFirstPageTime)) {
+        if (CopyTracePipeRawLoop(rawTraceFd, cpuIdx, writeLen, pageChkFailedTime, printFirstPageTime)) {
             break;
         }
     }
@@ -666,6 +668,7 @@ bool ITraceCpuRawRead::CacheTracePipeRawData(const std::string& srcPath, const i
     }
     HILOG_INFO(LOG_CORE, "CacheTracePipeRawData end, path: %{public}s, byte: %{public}zd. g_writeFileLimit: %{public}d",
         srcPath.c_str(), writeLen, g_writeFileLimit);
+    close(rawTraceFd);
     return true;
 }
 

@@ -50,9 +50,9 @@ constexpr int DEFAULT_CACHE_FILE_SIZE = 150 * 1024;
 constexpr uint64_t SYNC_RETURN_TIMEOUT_NS = 5000000000; // 5s
 constexpr int64_t ASYNC_DUMP_FILE_SIZE_ADDITION = 1024 * 1024; // 1MB
 
-uint64_t g_sliceMaxDuration;
-
 static bool g_isRootVer = IsRootVersion();
+
+uint64_t g_sliceMaxDuration = 30; // 30 : 30 seconds as default cache trace slice duration
 
 // use for control status of trace dump loop.
 std::atomic<bool> g_isDumpRunning(false);
