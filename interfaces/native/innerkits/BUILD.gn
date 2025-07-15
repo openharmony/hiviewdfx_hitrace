@@ -152,6 +152,15 @@ ohos_shared_library("hitrace_dump") {
   } else {
     external_deps += [ "hilog:libhilog" ]
   }
+
+  cflags_cc = [
+    "-Os"
+  ]
+
+  ldflags = [
+    "-Wl,--gc-sections"
+  ]
+
   version_script = "hitrace.map"
   innerapi_tags = [ "platformsdk" ]
   part_name = "hitrace"

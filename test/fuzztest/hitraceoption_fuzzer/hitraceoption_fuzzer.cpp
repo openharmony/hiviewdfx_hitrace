@@ -39,7 +39,6 @@ void FilterAppTest(const uint8_t* data, size_t size)
     std::string app(reinterpret_cast<const char*>(data), size - sizeof(pid));
     SetFilterAppName(app);
     AddFilterPid(pid);
-    FilterAppTrace(app, pid);
     FilterAppTrace(app.c_str(), pid);
     ClearFilterPid();
 }

@@ -31,7 +31,7 @@
 #include <sys/wait.h>
 #include <thread>
 #include <unistd.h>
-#include <unordered_map>
+#include <map>
 
 #include "common_define.h"
 #include "common_utils.h"
@@ -89,7 +89,6 @@ bool g_serviceThreadIsStart = false;
 uint64_t g_sysInitParamTags = 0;
 uint8_t g_traceMode = TraceMode::CLOSE;
 std::string g_traceRootPath;
-std::vector<std::pair<std::string, int>> g_traceFilesTable;
 uint64_t g_totalFileSizeLimit = 0;
 uint64_t g_sliceMaxDuration = 0;
 uint64_t g_traceStartTime = 0;
@@ -104,8 +103,8 @@ std::vector<TraceFileInfo> g_traceFileVec{};
 TraceParams g_currentTraceParams = {};
 
 std::mutex g_traceRetAndCallbackMutex;
-std::unordered_map<uint64_t, std::function<void(TraceRetInfo)>> g_callbacks;
-std::unordered_map<uint64_t, TraceRetInfo> g_traceRetInfos;
+std::map<uint64_t, std::function<void(TraceRetInfo)>> g_callbacks;
+std::map<uint64_t, TraceRetInfo> g_traceRetInfos;
 
 const std::string TELEMETRY_APP_PARAM = "debug.hitrace.telemetry.app";
 
@@ -1447,16 +1446,6 @@ TraceErrorCode CloseTrace()
     TruncateFile(TRACE_NODE);
     HILOG_INFO(LOG_CORE, "CloseTrace done.");
     return SUCCESS;
-}
-
-std::vector<std::pair<std::string, int>> GetTraceFilesTable()
-{
-    return g_traceFilesTable;
-}
-
-void SetTraceFilesTable(const std::vector<std::pair<std::string, int>>& traceFilesTable)
-{
-    g_traceFilesTable = traceFilesTable;
 }
 
 TraceErrorCode SetTraceStatus(bool enable)

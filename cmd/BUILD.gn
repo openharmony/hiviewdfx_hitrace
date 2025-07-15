@@ -36,7 +36,6 @@ ohos_executable("hitrace") {
     "bounds_checking_function:libsec_shared",
     "hisysevent:libhisysevent",
     "init:libbegetutil",
-    "zlib:libz",
   ]
 
   if (defined(ohos_lite)) {
@@ -48,6 +47,18 @@ ohos_executable("hitrace") {
   if (device_company != "qemu" && hitrace_support_executable_file) {
     external_deps += [ "hiview:libucollection_client" ]
   }
+
+  if (use_shared_libz) {
+    external_deps += [ "zlib:shared_libz" ]
+  }
+
+  cflags_cc = [
+    "-Os"
+  ]
+
+  ldflags = [
+    "-Wl,--gc-sections"
+  ]
 
   symlink_target_name = [ "bytrace" ]
 

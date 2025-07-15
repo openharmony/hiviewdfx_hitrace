@@ -69,8 +69,8 @@ std::atomic<uint64_t> g_appTag(HITRACE_TAG_NOT_READY);
 std::atomic<int64_t> g_appTagMatchPid(-1);
 std::atomic<HiTraceOutputLevel> g_levelThreshold(HITRACE_LEVEL_MAX);
 
-const std::string SANDBOX_PATH = "/data/storage/el2/log/";
-const std::string PHYSICAL_PATH = "/data/app/el2/100/log/";
+static const std::string SANDBOX_PATH = "/data/storage/el2/log/";
+static const char* PHYSICAL_PATH = "/data/app/el2/100/log/";
 const char* const EMPTY = "";
 
 constexpr int VAR_NAME_MAX_SIZE = 400;
@@ -140,7 +140,7 @@ const uint64_t VALID_TAGS = HITRACE_TAG_FFRT | HITRACE_TAG_COMMONLIBRARY | HITRA
     HITRACE_TAG_GLOBAL_RESMGR | HITRACE_TAG_DEVICE_MANAGER | HITRACE_TAG_SAMGR | HITRACE_TAG_POWER |
     HITRACE_TAG_DISTRIBUTED_SCHEDULE | HITRACE_TAG_DISTRIBUTED_INPUT | HITRACE_TAG_BLUETOOTH | HITRACE_TAG_APP;
 
-const std::string TRACE_TXT_HEADER_FORMAT = R"(# tracer: nop
+static const char* TRACE_TXT_HEADER_FORMAT = R"(# tracer: nop
 #
 # entries-in-buffer/entries-written: %-21s   #P:%-3s
 #
@@ -168,13 +168,13 @@ inline void CreateCacheHandle()
 {
     const char* devValue = "true";
     if (g_cachedHandle == nullptr) {
-        g_cachedHandle = CachedParameterCreate(TRACE_TAG_ENABLE_FLAGS.c_str(), devValue);
+        g_cachedHandle = CachedParameterCreate(TRACE_TAG_ENABLE_FLAGS, devValue);
     }
     if (g_appPidCachedHandle == nullptr) {
-        g_appPidCachedHandle = CachedParameterCreate(TRACE_KEY_APP_PID.c_str(), devValue);
+        g_appPidCachedHandle = CachedParameterCreate(TRACE_KEY_APP_PID, devValue);
     }
     if (g_levelThresholdCachedHandle == nullptr) {
-        g_levelThresholdCachedHandle = CachedParameterCreate(TRACE_LEVEL_THRESHOLD.c_str(), devValue);
+        g_levelThresholdCachedHandle = CachedParameterCreate(TRACE_LEVEL_THRESHOLD, devValue);
     }
 }
 
@@ -435,7 +435,7 @@ int InitTraceHead()
 {
     // write reserved trace header
     std::vector<char> buffer(TRACE_TXT_HEADER_MAX, '\0');
-    int used = snprintf_s(buffer.data(), buffer.size(), buffer.size() - 1, TRACE_TXT_HEADER_FORMAT.c_str(), "", "");
+    int used = snprintf_s(buffer.data(), buffer.size(), buffer.size() - 1, TRACE_TXT_HEADER_FORMAT, "", "");
     if (used <= 0) {
         HILOG_ERROR(LOG_CORE, "format reserved trace header failed: %{public}d(%{public}s)", errno, strerror(errno));
         return RET_FAILD;
@@ -1339,7 +1339,7 @@ int StopCaptureAppTrace()
 
     std::string eventNumStr = std::to_string(g_traceEventNum) + "/" + std::to_string(g_traceEventNum);
     std::vector<char> buffer(TRACE_TXT_HEADER_MAX, '\0');
-    int used = snprintf_s(buffer.data(), buffer.size(), buffer.size() - 1, TRACE_TXT_HEADER_FORMAT.c_str(),
+    int used = snprintf_s(buffer.data(), buffer.size(), buffer.size() - 1, TRACE_TXT_HEADER_FORMAT,
         eventNumStr.c_str(), std::to_string(CPU_CORE_NUM).c_str());
     if (used <= 0) {
         HILOG_ERROR(LOG_CORE, "format trace header failed: %{public}d(%{public}s)", errno, strerror(errno));

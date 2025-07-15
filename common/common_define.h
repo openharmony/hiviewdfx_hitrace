@@ -31,16 +31,16 @@ constexpr uint64_t S_TO_MS = 1000;
 
 constexpr int DEFAULT_FILE_SIZE = 100 * 1024;
 
-const std::string TRACE_TAG_ENABLE_FLAGS = "debug.hitrace.tags.enableflags";
-const std::string TRACE_KEY_APP_PID = "debug.hitrace.app_pid";
-const std::string TRACE_LEVEL_THRESHOLD = "persist.hitrace.level.threshold";
+static const char* TRACE_TAG_ENABLE_FLAGS = "debug.hitrace.tags.enableflags";
+static const char* TRACE_KEY_APP_PID = "debug.hitrace.app_pid";
+static const char* TRACE_LEVEL_THRESHOLD = "persist.hitrace.level.threshold";
 
-const std::string DEBUGFS_TRACING_DIR = "/sys/kernel/debug/tracing/";
-const std::string TRACEFS_DIR = "/sys/kernel/tracing/";
-const std::string TRACING_ON_NODE = "tracing_on";
-const std::string TRACE_MARKER_NODE = "trace_marker";
-const std::string TRACE_NODE = "trace";
+static const std::string DEBUGFS_TRACING_DIR = "/sys/kernel/debug/tracing/";
+static const std::string TRACEFS_DIR = "/sys/kernel/tracing/";
+static const char* TRACING_ON_NODE = "tracing_on";
+static const char* TRACE_MARKER_NODE = "trace_marker";
+static const char* TRACE_NODE = "trace";
 
-const std::string TRACE_FILE_DEFAULT_DIR = "/data/log/hitrace/";
-const std::string TRACE_SAVED_EVENTS_FORMAT = "saved_events_format";
+static const std::string TRACE_FILE_DEFAULT_DIR = "/data/log/hitrace/";
+static const char* TRACE_SAVED_EVENTS_FORMAT = "saved_events_format";
 #endif // HITRACE_COMMON_DEFINE_H

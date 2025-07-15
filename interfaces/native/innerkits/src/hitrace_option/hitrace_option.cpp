@@ -16,11 +16,8 @@
 #include "hitrace_option/hitrace_option.h"
 
 #include <fcntl.h>
-#include <fstream>
 #include <sstream>
-#include <sys/file.h>
-#include <sys/stat.h>
-#include <sys/types.h>
+#include <filesystem>
 #include <unistd.h>
 
 #include "hilog/log.h"
@@ -39,9 +36,9 @@ namespace Hitrace {
 #define LOG_TAG "HitraceOption"
 #endif
 
-const std::string TELEMETRY_APP_PARAM = "debug.hitrace.telemetry.app";
-const std::string SET_EVENT_PID = "/sys/kernel/tracing/set_event_pid";
-const std::string DEBUG_SET_EVENT_PID = "/sys/kernel/debug/tracing/set_event_pid";
+static const char* TELEMETRY_APP_PARAM = "debug.hitrace.telemetry.app";
+static const char* SET_EVENT_PID = "/sys/kernel/tracing/set_event_pid";
+static const char* DEBUG_SET_EVENT_PID = "/sys/kernel/debug/tracing/set_event_pid";
 
 class FileLock {
 private:
@@ -110,12 +107,6 @@ bool AppendToFile(const std::string& filename, const std::string& str)
         return false;
     }
 
-    off_t offset = lseek(fd, 0, SEEK_END);
-    if (offset == -1) {
-        HILOG_ERROR(LOG_CORE, "AppendToFile: %{public}s lseek failed %{public}d", filename.c_str(), errno);
-        return false;
-    }
-
     if (write(fd, str.c_str(), str.size()) < 0) {
         HILOG_ERROR(LOG_CORE, "AppendToFile: %{public}s write failed %{public}d", filename.c_str(), errno);
         return false;
@@ -157,14 +148,14 @@ int32_t AddFilterPids(const std::vector<std::string>& pids)
 
 int32_t ClearFilterPid()
 {
-    int fd = creat(DEBUG_SET_EVENT_PID.c_str(), 0);
+    int fd = creat(DEBUG_SET_EVENT_PID, 0);
     if (fd != -1) {
         close(fd);
         HILOG_INFO(LOG_CORE, "ClearFilterPid success");
         return HITRACE_NO_ERROR;
     }
 
-    fd = creat(SET_EVENT_PID.c_str(), 0);
+    fd = creat(SET_EVENT_PID, 0);
     if (fd != -1) {
         close(fd);
         HILOG_INFO(LOG_CORE, "ClearFilterPid success");
@@ -175,22 +166,17 @@ int32_t ClearFilterPid()
     return HITRACE_WRITE_FILE_ERROR;
 }
 
-void FilterAppTrace(const std::string& app, pid_t pid)
-{
-    HILOG_INFO(LOG_CORE, "FilterAppTrace %{public}s %{public}d", app.c_str(), pid);
-    std::string paramApp = OHOS::system::GetParameter(TELEMETRY_APP_PARAM, "");
-    if (app == paramApp) {
-        AddFilterPid(pid);
-    }
-}
-
 void FilterAppTrace(const char* app, pid_t pid)
 {
     if (app == nullptr) {
         HILOG_INFO(LOG_CORE, "FilterAppTrace: app is null");
         return;
     }
-    FilterAppTrace(std::string(app), pid);
+    HILOG_INFO(LOG_CORE, "FilterAppTrace %{public}s %{public}d", app, pid);
+    std::string paramApp = OHOS::system::GetParameter(TELEMETRY_APP_PARAM, "");
+    if (paramApp == app) {
+        AddFilterPid(pid);
+    }
 }
 
 } // namespace Hitrace

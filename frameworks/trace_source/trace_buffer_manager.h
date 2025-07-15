@@ -19,7 +19,7 @@
 #include <list>
 #include <memory>
 #include <mutex>
-#include <unordered_map>
+#include <map>
 #include <vector>
 
 namespace OHOS {
@@ -71,7 +71,7 @@ private:
     size_t curTotalSz_;
 
     mutable std::mutex mutex_;
-    std::unordered_map<uint64_t, BufferList> taskBuffers_;
+    std::map<uint64_t, BufferList> taskBuffers_;
 };
 } // namespace Hitrace
 } // namespace HiviewDFX

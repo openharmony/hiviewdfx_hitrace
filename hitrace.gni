@@ -32,4 +32,5 @@ declare_args() {
   hitrace_record_file_limit = 0
   hitrace_feature_enable_pgo = false
   hitrace_feature_pgo_path = ""
+  use_shared_libz = true
 }
