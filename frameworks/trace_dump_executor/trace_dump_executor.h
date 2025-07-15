@@ -158,9 +158,9 @@ private:
     void ProcessNewTask(std::shared_ptr<HitraceDumpPipe>& dumpPipe, int& sleepCnt);
 
     std::string tracefsDir_ = "";
-    std::vector<TraceFileInfo> loopTraceFiles_;
-    std::vector<TraceFileInfo> cacheTraceFiles_;
-    std::vector<TraceDumpTask> traceDumpTaskVec_;
+    std::vector<TraceFileInfo> loopTraceFiles_ = {};
+    std::vector<TraceFileInfo> cacheTraceFiles_ = {};
+    std::vector<TraceDumpTask> traceDumpTaskVec_ = {};
     std::mutex traceFileMutex_;
     std::mutex taskQueueMutex_;
     std::condition_variable readCondVar_;
