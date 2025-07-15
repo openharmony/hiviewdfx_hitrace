@@ -73,7 +73,6 @@ struct TraceParams {
     int appPid;
 };
 
-const int DEFAULT_FILE_SIZE = 100 * 1024;
 const int SAVED_CMDLINES_SIZE = 3072; // 3M
 const int BYTE_PER_MB = 1024 * 1024;
 constexpr int32_t MAX_RATIO_UNIT = 1000;
@@ -984,7 +983,6 @@ TraceErrorCode HandleDefaultTraceOpen(const std::vector<std::string>& tagGroups)
     const std::map<std::string, TraceTag>& allTags = traceJsonParser.GetAllTagInfos();
     const std::map<std::string, std::vector<std::string>>& tagGroupTable = traceJsonParser.GetTagGroups();
     std::vector<std::string> tagFmts = traceJsonParser.GetBaseFmtPath();
-    const int custBufSz = traceJsonParser.GetSnapshotDefaultBufferSizeKb();
 
     if (tagGroups.size() == 0 || !CheckTagGroup(tagGroups, tagGroupTable)) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: TAG_ERROR.");
@@ -993,13 +991,7 @@ TraceErrorCode HandleDefaultTraceOpen(const std::vector<std::string>& tagGroups)
 
     TraceParams defaultTraceParams;
     defaultTraceParams.tagGroups = tagGroups;
-    // attention: the buffer size value in the configuration file is preferred to set.
-    if (custBufSz > 0) {
-        defaultTraceParams.bufferSize = std::to_string(custBufSz);
-    } else {
-        int traceBufSz = traceJsonParser.GetSnapshotDefaultBufferSizeKb();
-        defaultTraceParams.bufferSize = std::to_string(traceBufSz);
-    }
+    defaultTraceParams.bufferSize = std::to_string(traceJsonParser.GetSnapshotDefaultBufferSizeKb());
     defaultTraceParams.clockType = "boot";
     defaultTraceParams.isOverWrite = "1";
     defaultTraceParams.fileSize = DEFAULT_FILE_SIZE;
@@ -1344,6 +1336,7 @@ TraceRetInfo DumpTraceAsync(int maxDuration, uint64_t utTraceEndTime, int64_t fi
     if (!CheckTraceDumpStatus(maxDuration, utTraceEndTime, ret)) {
         return ret;
     }
+    FileAgeingUtils::HandleAgeing(g_traceFileVec, TRACE_TYPE::TRACE_SNAPSHOT);
 
     HILOG_INFO(LOG_CORE, "DumpTraceAsync start, target duration is %{public}d, target endtime is %{public}" PRIu64 ".",
         maxDuration, utTraceEndTime);
@@ -1378,10 +1371,11 @@ TraceRetInfo DumpTraceAsync(int maxDuration, uint64_t utTraceEndTime, int64_t fi
         g_callbacks.erase(taskid);
     } else {
         ret.errorCode = TraceErrorCode::SUCCESS;
+        g_traceRetInfos[taskid] = ret;
     }
     retLck.unlock();
     RestoreTimeIntervalBoundary();
-    HILOG_INFO(LOG_CORE, "DumpTraceAsync with time limit done.");
+    HILOG_INFO(LOG_CORE, "DumpTraceAsync with time limit done. output file size: %{public}zu", ret.outputFiles.size());
     return ret;
 }
 

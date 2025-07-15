@@ -34,7 +34,9 @@
 #include "hilog/log.h"
 #include "parameters.h"
 #include "securec.h"
+#include "test_utils.h"
 #include "trace_file_utils.h"
+#include "trace_json_parser.h"
 
 using namespace OHOS::HiviewDFX::Hitrace;
 using namespace testing::ext;
@@ -1149,6 +1151,33 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_012, TestSize.Level0)
     struct stat afterStat = GetFileStatInfo(TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(afterStat.st_ctime != beforeStat.st_ctime);
+}
+
+HWTEST_F(HitraceDumpTest, DumpForCmdMode_013, TestSize.Level0)
+{
+    std::string args = "tags:sched clockType:boot bufferSize:1024 overwrite:1";
+    ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
+    const int recordCnt = 30; // 30 : dump 30 times
+    const int recordFileAge = 16;
+    TraceJsonParser& parser = TraceJsonParser::Instance();
+    bool rootAgeingEnable = parser.recordAgeingParam_.rootEnable;
+    parser.recordAgeingParam_.rootEnable = true;
+
+    for (int i = 0; i < recordCnt; i++) {
+        TraceErrorCode retCode = RecordTraceOn();
+        EXPECT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
+        sleep(1);
+
+        TraceRetInfo ret = RecordTraceOff();
+        EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
+    }
+
+    int count = CountRecordingTraceFile();
+    EXPECT_GT(count, 0);
+    EXPECT_LE(count, recordFileAge);
+
+    EXPECT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+    parser.recordAgeingParam_.rootEnable = rootAgeingEnable;
 }
 
 /**

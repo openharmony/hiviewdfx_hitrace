@@ -161,7 +161,8 @@ constexpr struct option LONG_OPTIONS[] = {
     { "dump_bgsrv",          no_argument,       nullptr, 0 },
     { "stop_bgsrv",          no_argument,       nullptr, 0 },
     { "file_size",           required_argument, nullptr, 0 },
-    { "trace_level",         optional_argument, nullptr, 0 },
+    { "trace_level",         required_argument, nullptr, 0 },
+    { "get_level",           no_argument,       nullptr, 0 },
     { nullptr,               0,                 nullptr, 0 },
 };
 const unsigned int CHUNK_SIZE = 65536;
@@ -310,10 +311,11 @@ static void ShowHelp(const std::string& cmd)
            "  --stop_bgsrv           Disable trace_service in snapshot mode.\n"
            "  --file_size            Sets the size of the raw trace (KB). The default file size is 102400 KB.\n"
            "                         Only effective in raw trace mode\n"
-           "  --trace_level [level]  Query or set the system parameter \"persist.hitrace.level.threshold\",\n"
-           "                         which can control the level threshold for trace dotting. When used without\n"
-           "                         parameters, it queries the level; when used with parameters, it sets the level.\n"
-           "                         Valid values for \"level\" include D/I/C/M or Debug/Info/Critical/Commercial.\n"
+           "  --trace_level level    Set the system parameter \"persist.hitrace.level.threshold\", which can control\n"
+           "                         the level threshold of trace dotting. Valid values for \"level\" include\n"
+           "                         D or Debug, I or Info, C or Critical, M or Commercial.\n"
+           "  --get_level            Query the system parameter \"persist.hitrace.level.threshold\",\n"
+           "                         which can control the level threshold for trace dotting.\n"
     );
 }
 
@@ -479,14 +481,12 @@ static bool ParseLongOpt(const std::string& cmd, int optionIndex)
         }
         g_traceArgs.fileSize = fileSizeKB;
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_level")) {
-        if (optarg == nullptr) {
-            isTrue = SetRunningState(GET_TRACE_LEVEL);
-        } else {
-            isTrue = SetRunningState(SET_TRACE_LEVEL);
-            if (!CheckTraceLevel(optarg)) {
-                isTrue = false;
-            }
+        isTrue = SetRunningState(SET_TRACE_LEVEL);
+        if (!CheckTraceLevel(optarg)) {
+            isTrue = false;
         }
+    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "get_level")) {
+        isTrue = SetRunningState(GET_TRACE_LEVEL);
     }
 
     return isTrue;
@@ -512,7 +512,7 @@ static bool SetBufferSize()
     return isTrue;
 }
 
-static bool ParseOpt(int opt, int argc, char** argv, int optIndex)
+static bool ParseOpt(int opt, char** argv, int optIndex)
 {
     bool isTrue = true;
     switch (opt) {
@@ -544,12 +544,6 @@ static bool ParseOpt(int opt, int argc, char** argv, int optIndex)
             g_traceArgs.isCompress = true;
             break;
         case 0: // long options
-            if (!strcmp(LONG_OPTIONS[optIndex].name, "trace_level")) {
-                // handle "--trace_level level"
-                if (optarg == nullptr && optind < argc) {
-                    optarg = argv[optind++];
-                }
-            }
             isTrue = ParseLongOpt(argv[0], optIndex);
             break;
         case '?':
@@ -594,7 +588,7 @@ static bool HandleOpt(int argc, char** argv)
             isTrue = false;
             break;
         }
-        isTrue = ParseOpt(opt, argc, argv, optionIndex);
+        isTrue = ParseOpt(opt, argv, optionIndex);
     }
 
     return isTrue;

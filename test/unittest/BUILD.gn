@@ -189,7 +189,11 @@ ohos_unittest("HitraceDumpTest") {
     "$hitrace_utils_path/file_ageing_utils.cpp"
   ]
 
-  cflags = [ "-DHITRACE_UNITTEST" ]
+  cflags = [
+    "-Dprivate=public",  #allow test code access private members
+    "-Dprotected=public",  #allow test code access protected members
+    "-DHITRACE_UNITTEST"
+  ]
 
   include_dirs = [
     "$hitrace_common_path",
@@ -198,6 +202,7 @@ ohos_unittest("HitraceDumpTest") {
     "$hitrace_frameworks_path/trace_dump_executor",
     "$hitrace_frameworks_path/trace_source",
     "$hitrace_interfaces_path/native/innerkits/include",
+    "$hitrace_path/test/utils",
     "$hitrace_utils_path",
   ]
 
@@ -209,6 +214,7 @@ ohos_unittest("HitraceDumpTest") {
     "$hitrace_utils_path:hitrace_common_utils",
     "$hitrace_utils_path:hitrace_file_utils",
     "$hitrace_utils_path:hitrace_json_parser",
+    "$hitrace_path/test/utils:hitrace_test_utils",
   ]
 
   external_deps = [
@@ -357,8 +363,6 @@ ohos_unittest("HitraceMeterFfiTest") {
   cflags = [ "-DHITRACE_UNITTEST" ]
 
   deps = [
-    "$hitrace_interfaces_path/cj/kits/ffi:cj_hitracechain_ffi",
-    "$hitrace_interfaces_path/cj/kits/ffi:cj_hitracemeter_ffi",
     "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
     "$hitrace_interfaces_path/native/innerkits:libhitracechain",
     "$hitrace_utils_path:hitrace_common_utils",
@@ -381,22 +385,65 @@ ohos_unittest("HitraceOptionTest") {
 
   include_dirs = [
     "$hitrace_interfaces_path/native/innerkits/include",
-    "$hitrace_interfaces_path/native/innerkits/src/hitrace_option/hitrace_option.cpp",
+    "$hitrace_interfaces_path/native/innerkits/src/hitrace_option/hitrace_option.cpp"
   ]
 
   sources = [
     "$hitrace_interfaces_path/native/innerkits/src/hitrace_option/hitrace_option.cpp",
-    "hitrace_option/hitrace_option_test.cpp",
+    "hitrace_option/hitrace_option_test.cpp"
   ]
 
   external_deps = [
     "googletest:gtest_main",
-    "init:libbegetutil",
+    "init:libbegetutil"
   ]
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]
   } else {
     external_deps += [ "hilog:libhilog" ]
+  }
+}
+
+ohos_unittest("HitraceCMDTest") {
+  module_out_path = module_output_path
+
+  cflags = [ "-DHITRACE_UNITTEST" ]
+
+  include_dirs = [
+    "$hitrace_cmd_path",
+    "$hitrace_common_path",
+    "$hitrace_frameworks_path/include",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
+    "$hitrace_utils_path",
+  ]
+
+  sources = [
+    "hitrace_cmd/hitrace_cmd_test.cpp",
+    "$hitrace_cmd_path/hitrace_cmd.cpp",
+  ]
+
+  deps = [
+    "$hitrace_config_path:hitrace_tags",
+    "$hitrace_utils_path:hitrace_common_utils",
+    "$hitrace_utils_path:hitrace_json_parser",
+  ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "googletest:gtest_main",
+    "hisysevent:libhisysevent",
+    "init:libbegetutil",
+    "zlib:libz",
+  ]
+
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+
+  if (device_company != "qemu" && hitrace_support_executable_file) {
+    external_deps += [ "hiview:libucollection_client" ]
   }
 }
 
@@ -465,49 +512,6 @@ ohos_unittest("HitraceDumpExecutorTest") {
   }
 }
 
-ohos_unittest("HitraceCMDTest") {
-  module_out_path = module_output_path
-
-  cflags = [ "-DHITRACE_UNITTEST" ]
-
-  include_dirs = [
-    "$hitrace_cmd_path",
-    "$hitrace_common_path",
-    "$hitrace_frameworks_path/include",
-    "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
-    "$hitrace_utils_path",
-  ]
-
-  sources = [
-    "hitrace_cmd/hitrace_cmd_test.cpp",
-    "$hitrace_cmd_path/hitrace_cmd.cpp",
-  ]
-
-  deps = [
-    "$hitrace_config_path:hitrace_tags",
-    "$hitrace_utils_path:hitrace_common_utils",
-    "$hitrace_utils_path:hitrace_json_parser",
-  ]
-
-  external_deps = [
-    "bounds_checking_function:libsec_shared",
-    "googletest:gtest_main",
-    "hisysevent:libhisysevent",
-    "init:libbegetutil",
-    "zlib:libz",
-  ]
-
-  if (defined(ohos_lite)) {
-    external_deps += [ "hilog_lite:hilog_lite" ]
-  } else {
-    external_deps += [ "hilog:libhilog" ]
-  }
-
-  if (device_company != "qemu" && hitrace_support_executable_file) {
-    external_deps += [ "hiview:libucollection_client" ]
-  }
-}
-
 ohos_unittest("HitraceAgeingTest") {
   module_out_path = module_output_path
   resource_config_file = "resource/ohos_test.xml"
@@ -538,4 +542,22 @@ ohos_unittest("HitraceAgeingTest") {
   } else {
     external_deps += [ "hilog:libhilog" ]
   }
+}
+
+ohos_unittest("HitraceChainNDKTest") {
+  module_out_path = module_output_path
+
+  include_dirs = [ "$hitrace_interfaces_path/native/kits/include/hitrace" ]
+
+  sources = [
+    "$hitrace_frameworks_path/hitrace_ndk/hitrace_chain_ndk.c",
+    "hitrace_chain/hitrace_chain_ndk_test.cpp",
+  ]
+
+  deps = [ "$hitrace_interfaces_path/native/innerkits:libhitracechain" ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "googletest:gtest_main",
+  ]
 }

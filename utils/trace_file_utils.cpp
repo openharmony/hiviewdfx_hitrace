@@ -47,9 +47,6 @@ namespace {
 const int TIME_BUFFER_SIZE = 16;
 const int DEFAULT_TRACE_DURATION = 30;
 const int TIME_INIT = 1900;
-constexpr uint64_t MS_TO_NS = 1000000;
-constexpr uint64_t S_TO_MS = 1000;
-constexpr uint64_t S_TO_NS = 1000000000;
 const std::string TRACE_SNAPSHOT_PREFIX = "trace_";
 const std::string TRACE_RECORDING_PREFIX = "record_trace_";
 const std::string TRACE_CACHE_PREFIX = "cache_trace_";
@@ -153,7 +150,7 @@ TraceFileInfo::TraceFileInfo(const std::string& name)
     filename = name;
 }
 
-TraceFileInfo::TraceFileInfo(const std::string& name, time_t time, uint64_t sizekB, bool newFile)
+TraceFileInfo::TraceFileInfo(const std::string& name, time_t time, int64_t sizekB, bool newFile)
 {
     filename = name;
     ctime = time;
@@ -163,6 +160,10 @@ TraceFileInfo::TraceFileInfo(const std::string& name, time_t time, uint64_t size
 
 void GetTraceFilesInDir(std::vector<TraceFileInfo>& fileList, TRACE_TYPE traceType)
 {
+    if (!std::filesystem::exists(TRACE_FILE_DEFAULT_DIR) || !std::filesystem::is_directory(TRACE_FILE_DEFAULT_DIR)) {
+        HILOG_INFO(LOG_CORE, "GetTraceFilesInDir fail, directory not exist");
+        return;
+    }
     struct stat fileStat;
     for (const auto &entry : std::filesystem::directory_iterator(TRACE_FILE_DEFAULT_DIR)) {
         if (!entry.is_regular_file()) {
@@ -184,6 +185,10 @@ void GetTraceFilesInDir(std::vector<TraceFileInfo>& fileList, TRACE_TYPE traceTy
 
 void GetTraceFileNamesInDir(std::set<std::string>& fileSet, TRACE_TYPE traceType)
 {
+    if (!std::filesystem::exists(TRACE_FILE_DEFAULT_DIR) || !std::filesystem::is_directory(TRACE_FILE_DEFAULT_DIR)) {
+        HILOG_INFO(LOG_CORE, "GetTraceFileNamesInDir fail, directory not exist");
+        return;
+    }
     for (const auto &entry : std::filesystem::directory_iterator(TRACE_FILE_DEFAULT_DIR)) {
         if (!entry.is_regular_file()) {
             continue;
@@ -328,11 +333,11 @@ void ClearCacheTraceFileBySize(std::vector<TraceFileInfo>& cacheFileVec, const u
         HILOG_INFO(LOG_CORE, "ClearCacheTraceFileBySize: no cache file need to be deleted.");
         return;
     }
-    uint64_t totalCacheFileSize = 0;
+    int64_t totalCacheFileSize = 0;
     for (size_t i = 0; i < cacheFileVec.size(); ++i) {
         totalCacheFileSize += cacheFileVec[i].fileSize;
     }
-    while (totalCacheFileSize > fileSizeLimit) {
+    while (totalCacheFileSize > static_cast<int64_t>(fileSizeLimit)) {
         if (cacheFileVec.empty()) {
             HILOG_INFO(LOG_CORE, "ClearCacheTraceFileBySize: cacheFileVec is empty.");
             return;
@@ -425,7 +430,7 @@ bool SetFileInfo(const bool isFileExist, const std::string outPath, const uint64
     traceFileInfo.traceStartTime = ConvertPageTraceTimeToUtTimeMs(firstPageTimestamp);
     traceFileInfo.traceEndTime = ConvertPageTraceTimeToUtTimeMs(lastPageTimestamp);
     if (isFileExist) {
-        traceFileInfo.fileSize = static_cast<uint64_t>(GetFileSize(newFileName));
+        traceFileInfo.fileSize = GetFileSize(newFileName);
     } else {
         traceFileInfo.fileSize = 0;
     }

@@ -286,6 +286,7 @@ HWTEST_F(HitraceSystemTest, HitraceSystemTest002, TestSize.Level2)
         const int recordCnt = 20;
         for (int i = 0; i < recordCnt; ++i) {
             ASSERT_TRUE(RunCmd("hitrace --trace_begin --record sched"));
+            sleep(1);
             ASSERT_TRUE(RunCmd("hitrace --trace_finish --record"));
         }
         int filecnt = CountRecordingTraceFile();
@@ -434,6 +435,33 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest009, TestSize.Level1)
     EXPECT_TRUE(CheckTraceCommandOutput("hitrace --dump_bgsrv", {"SNAPSHOT_DUMP", "DumpSnapshot done"}, traceLists));
     EXPECT_GE(traceLists.size(), count + 1);
     EXPECT_TRUE(RunCmd("hitrace --stop_bgsrv"));
+}
+
+/**
+ * @tc.name: SnapShotModeTest010
+ * @tc.desc: test dump snapshot trace with 20 files aging
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSystemTest, SnapShotModeTest010, TestSize.Level1)
+{
+    ASSERT_TRUE(RunCmd("hitrace --start_bgsrv"));
+    const int dumpCnt = 30; // 30 : dump 30 times
+    for (int i = 0; i < dumpCnt; ++i) {
+        EXPECT_TRUE(RunCmd("hitrace --dump_bgsrv"));
+        sleep(1); // wait 1s
+    }
+    const int snapshotFileAge = 21;
+    std::vector<std::string> traceLists = {};
+    EXPECT_TRUE(CheckTraceCommandOutput("hitrace --dump_bgsrv", {"SNAPSHOT_DUMP", "DumpSnapshot done"}, traceLists));
+    EXPECT_GE(traceLists.size(), snapshotFileAge);
+    EXPECT_TRUE(RunCmd("hitrace --stop_bgsrv"));
+    std::vector<std::string> dirTraceLists = {};
+    GetSnapShotTraceFileList(dirTraceLists);
+    EXPECT_LE(dirTraceLists.size(), snapshotFileAge);
+    for (int i = 0; i < dirTraceLists.size(); ++i) {
+        EXPECT_NE(std::find(traceLists.begin(), traceLists.end(), dirTraceLists[i]), traceLists.end()) <<
+            "not found: " << dirTraceLists[i];
+    }
 }
 
 /**
@@ -893,19 +921,19 @@ HWTEST_F(HitraceSystemTest, HitraceSystemSetLevelTest002, TestSize.Level2)
 
 /**
  * @tc.name: HitraceSystemGetLevelTest001
- * @tc.desc: when excute hitrace command with --trace_level, success to get level
+ * @tc.desc: when excute hitrace command with --get_level, success to get level
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceSystemTest, HitraceSystemGetLevelTest001, TestSize.Level2)
 {
     std::vector<std::string> traceLists = {};
-    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_level",
+    ASSERT_TRUE(CheckTraceCommandOutput("hitrace --get_level",
                                         {"GET_TRACE_LEVEL", "the current trace level threshold is"}, traceLists));
 }
 
 /**
  * @tc.name: HitraceSystemGetLevelTest002
- * @tc.desc: when excute hitrace command with --trace_level, fail to get level
+ * @tc.desc: when excute hitrace command with --get_level, fail to get level
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceSystemTest, HitraceSystemGetLevelTest002, TestSize.Level2)
@@ -914,7 +942,7 @@ HWTEST_F(HitraceSystemTest, HitraceSystemGetLevelTest002, TestSize.Level2)
     constexpr int hitraceOutputLevelInfo = 1;
     ASSERT_TRUE(SetPropertyInner(TRACE_LEVEL_THRESHOLD, std::to_string(invalidLevel)));
     std::vector<std::string> traceLists = {};
-    EXPECT_TRUE(CheckTraceCommandOutput("hitrace --trace_level",
+    EXPECT_TRUE(CheckTraceCommandOutput("hitrace --get_level",
                                         {"GET_TRACE_LEVEL", "error: get trace level threshold failed"}, traceLists));
     ASSERT_TRUE(SetPropertyInner(TRACE_LEVEL_THRESHOLD, std::to_string(hitraceOutputLevelInfo)));
 }
