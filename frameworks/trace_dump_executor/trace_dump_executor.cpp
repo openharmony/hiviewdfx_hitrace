@@ -559,7 +559,7 @@ void TraceDumpExecutor::DoProcessTraceDumpTask(std::shared_ptr<HitraceDumpPipe>&
             }
         }
     } else if (task.status == TraceDumpStatus::READ_DONE) {
-        if (task.code != TraceErrorCode::SUCCESS && task.code != TraceErrorCode::SIZE_EXCEED_LIMIT) {
+        if (task.code != TraceErrorCode::SUCCESS) {
             task.status = TraceDumpStatus::WRITE_DONE;
             auto writeRet = false;
             if (!task.hasSyncReturn) {
