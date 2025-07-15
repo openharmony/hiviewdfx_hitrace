@@ -20,7 +20,6 @@
 #include <cstdio>
 #include <fstream>
 #include <fcntl.h>
-#include <sstream>
 #include <sys/statvfs.h>
 #include <sys/time.h>
 #include <sys/utsname.h>
@@ -42,8 +41,8 @@ namespace Hitrace {
 #define LOG_TAG "HitraceUtils"
 #endif
 namespace {
-const std::string CPUFREQ_PREFIX = "/sys/devices/system/cpu/cpu";
-const std::string CPUFREQ_AFTERFIX = "/cpufreq/scaling_cur_freq";
+static const char* CPUFREQ_PREFIX = "/sys/devices/system/cpu/cpu";
+static const char* CPUFREQ_AFTERFIX = "/cpufreq/scaling_cur_freq";
 constexpr int DECIMAL_SCALE = 10;
 }
 
@@ -170,8 +169,7 @@ void ReadCurrentCpuFrequencies(std::string& freqs)
         file.open(cpuFreqPath);
         if (file.is_open()) {
             if (std::getline(file, line)) {
-                std::istringstream iss(line);
-                iss >> freq;
+                freq = line;
             }
             file.close();
         }

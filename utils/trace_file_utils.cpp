@@ -47,9 +47,9 @@ namespace {
 const int TIME_BUFFER_SIZE = 16;
 const int DEFAULT_TRACE_DURATION = 30;
 const int TIME_INIT = 1900;
-const std::string TRACE_SNAPSHOT_PREFIX = "trace_";
-const std::string TRACE_RECORDING_PREFIX = "record_trace_";
-const std::string TRACE_CACHE_PREFIX = "cache_trace_";
+static const char* TRACE_SNAPSHOT_PREFIX = "trace_";
+static const char* TRACE_RECORDING_PREFIX = "record_trace_";
+static const char* TRACE_CACHE_PREFIX = "cache_trace_";
 std::map<TRACE_TYPE, std::string> tracePrefixMap = {
     {TRACE_TYPE::TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
     {TRACE_TYPE::TRACE_RECORDING, TRACE_RECORDING_PREFIX},

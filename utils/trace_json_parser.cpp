@@ -20,7 +20,6 @@
 #include <cstdio>
 #include <fstream>
 #include <fcntl.h>
-#include <sstream>
 
 #include "common_define.h"
 #include "cJSON.h"
@@ -40,8 +39,8 @@ namespace Hitrace {
 #define LOG_TAG "HitraceUtils"
 #endif
 namespace {
-const std::string HTIRACE_UTILS_JSON = "/system/etc/hiview/hitrace_utils.json";
-const std::string PRODUCT_CONFIG_JSON = "/sys_prod/etc/hiview/hitrace/hitrace_param.json";
+static const char* HTIRACE_UTILS_JSON = "/system/etc/hiview/hitrace_utils.json";
+static const char* PRODUCT_CONFIG_JSON = "/sys_prod/etc/hiview/hitrace/hitrace_param.json";
 
 constexpr int DEFAULT_SNAPSHOT_BUFFER_SIZE_KB = 12 * 1024;
 constexpr int HM_DEFAULT_SNAPSHOT_BUFFER_SIZE_KB = 144 * 1024;

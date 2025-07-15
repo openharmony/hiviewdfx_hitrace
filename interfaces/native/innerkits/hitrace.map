@@ -50,8 +50,6 @@
         "OHOS::HiviewDFX::Hitrace::CacheTraceOn(unsigned long long, unsigned long long)";
         "OHOS::HiviewDFX::Hitrace::CacheTraceOff()";
         "OHOS::HiviewDFX::Hitrace::CloseTrace()";
-        "OHOS::HiviewDFX::Hitrace::GetTraceFilesTable()";
-        "OHOS::HiviewDFX::Hitrace::SetTraceFilesTable(std::__h::vector<std::__h::pair<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, int>, std::__h::allocator<std::__h::pair<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, int>>>&)";
         "OHOS::HiviewDFX::Hitrace::SetTraceStatus(bool)";
         "HitraceScoped::HitraceScoped(unsigned long, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
         "HitraceScoped::HitraceScoped(unsigned long long, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
@@ -68,7 +66,6 @@
         "OHOS::HiviewDFX::Hitrace::SetFilterAppName(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
         "OHOS::HiviewDFX::Hitrace::AddFilterPid(int)";
         "OHOS::HiviewDFX::Hitrace::ClearFilterPid()";
-        "OHOS::HiviewDFX::Hitrace::FilterAppTrace(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, int)";
         "OHOS::HiviewDFX::Hitrace::AddFilterPids(std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&)";
     };
     extern "C" {
