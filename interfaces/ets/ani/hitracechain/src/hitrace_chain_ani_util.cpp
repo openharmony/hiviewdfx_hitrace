@@ -60,7 +60,7 @@ int64_t HiTraceChainAniUtil::ParseBigIntValue(ani_env* env, ani_ref elementRef)
         return static_cast<int64_t>(longNum);
     }
     ani_method getLongMethod {};
-    if (env->Class_FindMethod(cls, FUNC_NAME_GETLONG, ":J", &getLongMethod) != ANI_OK) {
+    if (env->Class_FindMethod(cls, FUNC_NAME_GETLONG, ":l", &getLongMethod) != ANI_OK) {
         HILOG_ERROR(LOG_CORE, "find method %{public}s failed", FUNC_NAME_GETLONG);
         return static_cast<int64_t>(longNum);
     }
@@ -80,7 +80,7 @@ int64_t HiTraceChainAniUtil::ParseNumberValueInt64(ani_env* env, ani_ref element
         return static_cast<int64_t>(doubleVal);
     }
     ani_method unboxedMethod {};
-    if (env->Class_FindMethod(cls, FUNC_NAME_UNBOXED, ":D", &unboxedMethod) != ANI_OK) {
+    if (env->Class_FindMethod(cls, FUNC_NAME_UNBOXED, ":d", &unboxedMethod) != ANI_OK) {
         HILOG_ERROR(LOG_CORE, "find method %{public}s failed", FUNC_NAME_UNBOXED);
         return static_cast<int64_t>(doubleVal);
     }
@@ -100,7 +100,7 @@ int32_t HiTraceChainAniUtil::ParseNumberValueInt32(ani_env* env, ani_ref element
         return static_cast<int32_t>(doubleVal);
     }
     ani_method unboxedMethod {};
-    if (env->Class_FindMethod(cls, FUNC_NAME_UNBOXED, ":D", &unboxedMethod) != ANI_OK) {
+    if (env->Class_FindMethod(cls, FUNC_NAME_UNBOXED, ":d", &unboxedMethod) != ANI_OK) {
         HILOG_ERROR(LOG_CORE, "find method %{public}s failed", FUNC_NAME_UNBOXED);
         return static_cast<int32_t>(doubleVal);
     }
@@ -132,7 +132,7 @@ ani_object HiTraceChainAniUtil::CreateBigInt(ani_env* env, uint64_t traceId)
         return bigintCtor;
     }
     ani_method createLongMethod;
-    if (env->Class_FindMethod(bigIntCls, "<ctor>", "J:V", &createLongMethod) != ANI_OK) {
+    if (env->Class_FindMethod(bigIntCls, "<ctor>", "l:", &createLongMethod) != ANI_OK) {
         HILOG_ERROR(LOG_CORE, "find method %{public}s constructor failed", CLASS_NAME_BIGINT);
         return bigintCtor;
     }
@@ -153,7 +153,7 @@ ani_object HiTraceChainAniUtil::CreateDoubleUint64(ani_env* env, uint64_t number
         return personInfoObj;
     }
     ani_method personInfoCtor;
-    env->Class_FindMethod(personCls, "<ctor>", "D:V", &personInfoCtor);
+    env->Class_FindMethod(personCls, "<ctor>", "d:", &personInfoCtor);
     env->Object_New(personCls, personInfoCtor, &personInfoObj, static_cast<ani_double>(number));
     return personInfoObj;
 }
@@ -167,7 +167,7 @@ ani_object HiTraceChainAniUtil::CreateDoubleInt(ani_env* env, int number)
         return personInfoObj;
     }
     ani_method personInfoCtor;
-    env->Class_FindMethod(personCls, "<ctor>", "D:V", &personInfoCtor);
+    env->Class_FindMethod(personCls, "<ctor>", "d:", &personInfoCtor);
     env->Object_New(personCls, personInfoCtor, &personInfoObj, static_cast<ani_double>(number));
     return personInfoObj;
 }

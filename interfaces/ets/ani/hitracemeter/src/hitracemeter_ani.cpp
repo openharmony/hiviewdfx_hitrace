@@ -30,7 +30,7 @@
 #endif
 
 using namespace OHOS::HiviewDFX;
-static const char NAMESPACE_HITRACEMETER[] = "L@ohos/hiTraceMeter/hiTraceMeter;";
+static const char NAMESPACE_HITRACEMETER[] = "@ohos.hiTraceMeter.hiTraceMeter";
 constexpr size_t MIN_SIZE = 1;
 constexpr size_t MAX_SIZE = 1024;
 
@@ -199,8 +199,9 @@ ANI_EXPORT ani_status ANI_Constructor(ani_vm* vm, uint32_t* result)
     std::array methods = {
         ani_native_function {"startTrace", nullptr, reinterpret_cast<void *>(EtsStartTrace)},
         ani_native_function {"finishTrace", nullptr, reinterpret_cast<void *>(EtsFinishTrace)},
-        ani_native_function {"traceByValue", "Lstd/core/String;D:V", reinterpret_cast<void *>(EtsCountTrace)},
-        ani_native_function {"traceByValue", "L@ohos/hiTraceMeter/hiTraceMeter/HiTraceOutputLevel;Lstd/core/String;D:V",
+        ani_native_function {"traceByValue", "C{std.core.String}d:", reinterpret_cast<void *>(EtsCountTrace)},
+        ani_native_function {"traceByValue",
+            "C{@ohos.hiTraceMeter.hiTraceMeter.HiTraceOutputLevel}C{std.core.String}d:",
             reinterpret_cast<void *>(EtsTraceByValue)},
         ani_native_function {"startSyncTrace", nullptr, reinterpret_cast<void *>(EtsStartSyncTrace)},
         ani_native_function {"finishSyncTrace", nullptr, reinterpret_cast<void *>(EtsFinishSyncTrace)},
