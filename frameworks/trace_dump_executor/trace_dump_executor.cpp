@@ -15,6 +15,7 @@
 
 #include "trace_dump_executor.h"
 
+#include <algorithm>
 #include <securec.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
@@ -558,7 +559,7 @@ void TraceDumpExecutor::DoProcessTraceDumpTask(std::shared_ptr<HitraceDumpPipe>&
             }
         }
     } else if (task.status == TraceDumpStatus::READ_DONE) {
-        if (task.code != TraceErrorCode::SUCCESS && task.code != TraceErrorCode::SIZE_EXCEED_LIMIT) {
+        if (task.code != TraceErrorCode::SUCCESS) {
             task.status = TraceDumpStatus::WRITE_DONE;
             auto writeRet = false;
             if (!task.hasSyncReturn) {
@@ -802,13 +803,13 @@ bool TraceDumpExecutor::DoReadRawTrace(TraceDumpTask& task)
     }
     task.status = TraceDumpStatus::READ_DONE;
     if (task.code == TraceErrorCode::SUCCESS && task.fileSize > task.fileSizeLimit) {
-        task.code = TraceErrorCode::SIZE_EXCEED_LIMIT;
+        task.isFileSizeOverLimit = true;
     }
     if (!UpdateTraceDumpTask(task)) {
         HILOG_ERROR(LOG_CORE, "DoReadRawTrace: update trace dump task failed.");
         return false;
     }
-    return task.code == TraceErrorCode::SUCCESS || task.code == TraceErrorCode::SIZE_EXCEED_LIMIT;
+    return task.code == TraceErrorCode::SUCCESS;
 }
 
 bool TraceDumpExecutor::DoWriteRawTrace(TraceDumpTask& task)
@@ -839,7 +840,7 @@ bool TraceDumpExecutor::DoWriteRawTrace(TraceDumpTask& task)
     task.fileSize = static_cast<int64_t>(GetFileSize(std::string(task.outputFile)));
     task.status = TraceDumpStatus::WRITE_DONE;
     if (task.code == TraceErrorCode::SUCCESS && task.fileSize > task.fileSizeLimit) {
-        task.code = TraceErrorCode::SIZE_EXCEED_LIMIT;
+        task.isFileSizeOverLimit = true;
     }
 #ifdef HITRACE_UNITTEST
     sleep(10); // 10 : sleep 10 seconds to construct a timeout task
@@ -848,7 +849,7 @@ bool TraceDumpExecutor::DoWriteRawTrace(TraceDumpTask& task)
         HILOG_ERROR(LOG_CORE, "DoWriteRawTrace: update trace dump task failed.");
         return false;
     }
-    return task.code == TraceErrorCode::SUCCESS || task.code == TraceErrorCode::SIZE_EXCEED_LIMIT;
+    return task.code == TraceErrorCode::SUCCESS;
 }
 } // namespace Hitrace
 } // namespace HiviewDFX
