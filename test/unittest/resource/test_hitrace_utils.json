@@ -274,7 +274,7 @@
             "type": 0
         },
         "bluetooth": {
-            "description": "communicatio bluetooth",
+            "description": "communication bluetooth",
             "tag_offset": 60,
             "type": 0
         },
