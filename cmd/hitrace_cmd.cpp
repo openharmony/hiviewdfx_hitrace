@@ -25,6 +25,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -367,6 +368,14 @@ static bool GetTraceLevel()
     }
 }
 
+template <typename T>
+inline bool StrToNum(const std::string& sString, T &tX)
+{
+    std::istringstream iStream(sString);
+    iStream >> tX;
+    return !iStream.fail();
+}
+
 static bool SetRunningState(const RunningState& setValue)
 {
     if (g_runningState != STATE_NULL) {
@@ -423,7 +432,7 @@ static bool ParseLongOpt(const std::string& cmd, int optionIndex)
         if (IsHmKernel()) {
             maxBufferSizeKB = HM_MAX_BUFFER_SIZE;
         }
-        if (!StringToInt(optarg, bufferSizeKB)) {
+        if (!StrToNum(optarg, bufferSizeKB)) {
             ConsoleLog("error: buffer size is illegal input. eg: \"--buffer_size 18432\".");
             isTrue = false;
         } else if (bufferSizeKB < MIN_BUFFER_SIZE || bufferSizeKB > maxBufferSizeKB) {
@@ -442,7 +451,7 @@ static bool ParseLongOpt(const std::string& cmd, int optionIndex)
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "help")) {
         isTrue = SetRunningState(SHOW_HELP);
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "time")) {
-        if (!StringToInt(optarg, g_traceArgs.duration)) {
+        if (!StrToNum(optarg, g_traceArgs.duration)) {
             ConsoleLog("error: the time is illegal input. eg: \"--time 5\".");
             isTrue = false;
         } else if (g_traceArgs.duration < 1) {
@@ -485,7 +494,7 @@ static bool ParseLongOpt(const std::string& cmd, int optionIndex)
         isTrue = SetRunningState(RECORDING_SHORT_RAW);
     } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "file_size")) {
         int fileSizeKB = 0;
-        if (!StringToInt(optarg, fileSizeKB)) {
+        if (!StrToNum(optarg, fileSizeKB)) {
             ConsoleLog("error: file size is illegal input. eg: \"--file_size 102400\".");
             isTrue = false;
         } else if (fileSizeKB < MIN_FILE_SIZE || fileSizeKB > MAX_FILE_SIZE) {
@@ -513,7 +522,7 @@ static bool SetBufferSize()
     if (IsHmKernel()) {
         maxBufferSizeKB = HM_MAX_BUFFER_SIZE;
     }
-    if (!StringToInt(optarg, bufferSizeKB)) {
+    if (!StrToNum(optarg, bufferSizeKB)) {
         ConsoleLog("error: buffer size is illegal input. eg: \"--buffer_size 18432\".");
         isTrue = false;
     } else if (bufferSizeKB < MIN_BUFFER_SIZE || bufferSizeKB > maxBufferSizeKB) {
@@ -540,7 +549,7 @@ static bool ParseOpt(int opt, char** argv, int optIndex)
             isTrue = SetRunningState(SHOW_LIST_CATEGORY);
             break;
         case 't': {
-            if (!StringToInt(optarg, g_traceArgs.duration)) {
+            if (!StrToNum(optarg, g_traceArgs.duration)) {
                 ConsoleLog("error: the time is illegal input. eg: \"--time 5\".");
                 isTrue = false;
             } else if (g_traceArgs.duration < 1) {
