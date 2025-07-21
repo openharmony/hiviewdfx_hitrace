@@ -397,7 +397,8 @@ TraceEventFmtContent::TraceEventFmtContent(const int fd,
     if (access(savedEventsFormatPath.c_str(), F_OK) != -1) {
         traceSourceFd_ = open(savedEventsFormatPath.c_str(), O_RDONLY | O_NONBLOCK);
     } else {
-        traceSourceFd_ = open(savedEventsFormatPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644:-rw-r--r--
+        traceSourceFd_ = open(savedEventsFormatPath.c_str(),
+            O_CREAT | O_RDWR | O_TRUNC | O_NONBLOCK, 0644); // 0644:-rw-r--r--
         hasPreWrotten = false;
     }
     if (traceSourceFd_ < 0) {
@@ -405,6 +406,7 @@ TraceEventFmtContent::TraceEventFmtContent(const int fd,
     }
     if (!hasPreWrotten && traceFileFd_ >= 0) {
         PreWriteAllTraceEventsFormat(traceSourceFd_, tracefsPath_);
+        (void)lseek(traceFileFd_, 0, SEEK_SET);
     }
 }
 
