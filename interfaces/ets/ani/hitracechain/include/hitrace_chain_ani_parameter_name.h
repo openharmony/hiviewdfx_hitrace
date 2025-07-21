@@ -18,10 +18,6 @@
 
 namespace OHOS {
 namespace HiviewDFX {
-constexpr uint64_t INVALID_CHAIN_ID = 0;
-constexpr uint32_t UINT32_T_PRO_DEFAULT_VALUE = 0;
-constexpr uint64_t UINT64_T_PRO_DEFAULT_VALUE = 0;
-
 const char* const FUNC_NAME_GETLONG = "getLong";
 const char* const FUNC_NAME_UNBOXED = "unboxed";
 const char* const CLASS_NAME_INT = "std.core.Int";

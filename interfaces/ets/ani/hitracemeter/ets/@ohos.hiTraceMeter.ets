@@ -23,14 +23,14 @@ export default namespace hiTraceMeter {
         MAX = 3
     }
 
-    export native function startTrace(name: string, taskId: number): void;
-    export native function finishTrace(name: string, taskId: number): void;
-    export native function traceByValue(name: string, count: number): void;
+    export native function startTrace(name: string, taskId: int): void;
+    export native function finishTrace(name: string, taskId: int): void;
+    export native function traceByValue(name: string, count: long): void;
     export native function startSyncTrace(level: HiTraceOutputLevel, name: string, customArgs?: string): void;
     export native function finishSyncTrace(level: HiTraceOutputLevel): void;
-    export native function startAsyncTrace(level: HiTraceOutputLevel, name: string, taskId: number,
+    export native function startAsyncTrace(level: HiTraceOutputLevel, name: string, taskId: int,
         customCategory: string, customArgs?: string): void;
-    export native function finishAsyncTrace(level: HiTraceOutputLevel, name: string, taskId: number): void;
-    export native function traceByValue(level: HiTraceOutputLevel, name: string, count: number): void;
+    export native function finishAsyncTrace(level: HiTraceOutputLevel, name: string, taskId: int): void;
+    export native function traceByValue(level: HiTraceOutputLevel, name: string, count: long): void;
     export native function isTraceEnabled(): boolean;
 }

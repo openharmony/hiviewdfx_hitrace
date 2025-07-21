@@ -25,7 +25,7 @@ namespace HiviewDFX {
 class HiTraceChainAni {
 public:
     static ani_object Begin(ani_env* env, ani_string nameAni, ani_object flagAni);
-    static ani_object Result(ani_env* env, HiTraceId& traceId);
+    static ani_object CreateHitraceIdAni(ani_env* env, HiTraceId& traceId);
     static void End(ani_env* env, ani_object HiTraceId);
     static ani_object GetId(ani_env* env);
     static void SetId(ani_env* env, ani_object HiTraceId);

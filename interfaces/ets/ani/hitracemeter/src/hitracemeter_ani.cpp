@@ -71,7 +71,7 @@ static bool IsRefUndefined(ani_env* env, ani_ref value)
     return isUndefined;
 }
 
-static void EtsStartTrace(ani_env* env, ani_string name, ani_double taskId)
+static void EtsStartTrace(ani_env* env, ani_string name, ani_int taskId)
 {
     std::string nameStr = "";
     if (!AniStringToStdString(env, name, nameStr)) {
@@ -80,7 +80,7 @@ static void EtsStartTrace(ani_env* env, ani_string name, ani_double taskId)
     StartAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_APP, nameStr.c_str(), static_cast<int32_t>(taskId), "", "");
 }
 
-static void EtsFinishTrace(ani_env* env, ani_string name, ani_double taskId)
+static void EtsFinishTrace(ani_env* env, ani_string name, ani_int taskId)
 {
     std::string nameStr = "";
     if (!AniStringToStdString(env, name, nameStr)) {
@@ -89,7 +89,7 @@ static void EtsFinishTrace(ani_env* env, ani_string name, ani_double taskId)
     FinishAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_APP, nameStr.c_str(), static_cast<int32_t>(taskId));
 }
 
-static void EtsCountTrace(ani_env* env, ani_string name, ani_double count)
+static void EtsCountTrace(ani_env* env, ani_string name, ani_long count)
 {
     std::string nameStr = "";
     if (!AniStringToStdString(env, name, nameStr)) {
@@ -98,7 +98,7 @@ static void EtsCountTrace(ani_env* env, ani_string name, ani_double count)
     CountTraceEx(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_APP, nameStr.c_str(), static_cast<int64_t>(count));
 }
 
-static void EtsTraceByValue(ani_env* env, ani_enum_item level, ani_string name, ani_double count)
+static void EtsTraceByValue(ani_env* env, ani_enum_item level, ani_string name, ani_long count)
 {
     int32_t levelVal = 0;
     if (!AniEnumToInt32(env, level, levelVal)) {
@@ -140,7 +140,7 @@ static void EtsFinishSyncTrace(ani_env* env, ani_enum_item level)
     FinishTraceEx(static_cast<HiTraceOutputLevel>(levelVal), HITRACE_TAG_APP);
 }
 
-static void EtsStartAsyncTrace(ani_env* env, ani_enum_item level, ani_string name, ani_double taskId,
+static void EtsStartAsyncTrace(ani_env* env, ani_enum_item level, ani_string name, ani_int taskId,
     ani_string customCategory, ani_object customArgs)
 {
     int32_t levelVal = 0;
@@ -165,7 +165,7 @@ static void EtsStartAsyncTrace(ani_env* env, ani_enum_item level, ani_string nam
         static_cast<int32_t>(taskId), customCategoryStr.c_str(), customArgsStr.c_str());
 }
 
-static void EtsFinishAsyncTrace(ani_env* env, ani_enum_item level, ani_string name, ani_double taskId)
+static void EtsFinishAsyncTrace(ani_env* env, ani_enum_item level, ani_string name, ani_int taskId)
 {
     int32_t levelVal = 0;
     if (!AniEnumToInt32(env, level, levelVal)) {
@@ -199,9 +199,9 @@ ANI_EXPORT ani_status ANI_Constructor(ani_vm* vm, uint32_t* result)
     std::array methods = {
         ani_native_function {"startTrace", nullptr, reinterpret_cast<void *>(EtsStartTrace)},
         ani_native_function {"finishTrace", nullptr, reinterpret_cast<void *>(EtsFinishTrace)},
-        ani_native_function {"traceByValue", "C{std.core.String}d:", reinterpret_cast<void *>(EtsCountTrace)},
+        ani_native_function {"traceByValue", "C{std.core.String}l:", reinterpret_cast<void *>(EtsCountTrace)},
         ani_native_function {"traceByValue",
-            "C{@ohos.hiTraceMeter.hiTraceMeter.HiTraceOutputLevel}C{std.core.String}d:",
+            "C{@ohos.hiTraceMeter.hiTraceMeter.HiTraceOutputLevel}C{std.core.String}l:",
             reinterpret_cast<void *>(EtsTraceByValue)},
         ani_native_function {"startSyncTrace", nullptr, reinterpret_cast<void *>(EtsStartSyncTrace)},
         ani_native_function {"finishSyncTrace", nullptr, reinterpret_cast<void *>(EtsFinishSyncTrace)},

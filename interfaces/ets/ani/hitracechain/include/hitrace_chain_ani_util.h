@@ -28,14 +28,12 @@ namespace HiviewDFX {
 class HiTraceChainAniUtil {
 public:
     static bool IsRefUndefined(ani_env* env, ani_ref ref);
-    static ani_status ParseStringValue(ani_env* env, ani_ref aniStrRef, std::string& name);
-    static int64_t ParseNumberValueInt64(ani_env* env, ani_ref elementRef);
-    static int32_t ParseNumberValueInt32(ani_env* env, ani_ref elementRef);
-    static int64_t ParseBigIntValue(ani_env* env, ani_ref elementRef);
-    static ani_status EnumGetValueInt32(ani_env* env, ani_enum_item enumItem, int32_t& value);
-    static ani_object CreateBigInt(ani_env* env, uint64_t traceId);
-    static ani_object CreateDoubleUint64(ani_env* env, uint64_t number);
-    static ani_object CreateDoubleInt(ani_env* env, int number);
+    static ani_status GetAniStringValue(ani_env* env, ani_ref aniStrRef, std::string& name);
+    static ani_long GetAniBigIntValue(ani_env* env, ani_ref elementRef);
+    static ani_int GetAniIntValue(ani_env* env, ani_ref elementRef);
+    static ani_status AniEnumToInt(ani_env* env, ani_enum_item enumItem, int& value);
+    static ani_object CreateAniBigInt(ani_env* env, uint64_t value);
+    static ani_object CreateAniInt(ani_env* env, uint64_t value);
 };
 } // namespace HiviewDFX
 } // namespace OHOS
