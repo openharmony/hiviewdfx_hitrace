@@ -656,12 +656,12 @@
     "events/tracing_mark_write/tracing_mark_write/format"
   ],
   "tag_groups": {
-    "default": ["sched", "freq", "disk", "sync", "binder", "mmc", "membus", "load", "pagecache", "workq", "ipa",
+    "default": ["sched", "freq", "disk", "sync", "binder", "mmc", "membus", "load", "workq", "ipa",
                 "hdf", "virse"],
     "scene_performance": ["net", "dsched", "graphic", "multimodalinput", "dinput", "ark", "ace", "window",
                           "zaudio", "daudio", "zmedia", "dcamera", "zcamera", "dhfwk", "app", "gresource",
-                          "ability", "power", "samgr", "ffrt", "ufs", "nweb", "hdf", "virse", "workq", "ipa",
-                          "sched", "freq", "disk", "sync", "binder", "mmc", "membus", "load", "pagecache"],
+                          "ability", "power", "samgr", "ffrt", "nweb", "hdf", "virse", "workq", "ipa",
+                          "sched", "freq", "disk", "sync", "binder", "mmc", "membus", "load"],
     "telemetry": ["ace", "app", "ark", "binder", "freq", "graphic", "multimodalinput", "nweb", "sched", "window"]
   }
 }
