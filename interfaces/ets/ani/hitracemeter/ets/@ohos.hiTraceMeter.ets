@@ -13,18 +13,24 @@
  * limitations under the License.
  */
 
-class HiTraceMeter {
-    native static startTrace(name: string, taskId: number): void;
-    native static finishTrace(name: string, taskId: number): void;
-}
-
 export default namespace hiTraceMeter {
     loadLibrary("hitrace_meter_ani");
+    export enum HiTraceOutputLevel {
+        DEBUG = 0,
+        INFO = 1,
+        CRITICAL = 2,
+        COMMERCIAL = 3,
+        MAX = 3
+    }
 
-    export function startTrace(name: string, taskId: number): void {
-        HiTraceMeter.startTrace(name, taskId)
-    }
-    export function finishTrace(name: string, taskId: number): void {
-        HiTraceMeter.finishTrace(name, taskId)
-    }
+    export native function startTrace(name: string, taskId: number): void;
+    export native function finishTrace(name: string, taskId: number): void;
+    export native function traceByValue(name: string, count: number): void;
+    export native function startSyncTrace(level: HiTraceOutputLevel, name: string, customArgs?: string): void;
+    export native function finishSyncTrace(level: HiTraceOutputLevel): void;
+    export native function startAsyncTrace(level: HiTraceOutputLevel, name: string, taskId: number,
+        customCategory: string, customArgs?: string): void;
+    export native function finishAsyncTrace(level: HiTraceOutputLevel, name: string, taskId: number): void;
+    export native function traceByValue(level: HiTraceOutputLevel, name: string, count: number): void;
+    export native function isTraceEnabled(): boolean;
 }
