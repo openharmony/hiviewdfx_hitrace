@@ -18,6 +18,7 @@
 
 namespace OHOS {
 namespace HiviewDFX {
+const char* const FUNC_NAME_CTOR = "<ctor>";
 const char* const FUNC_NAME_GETLONG = "getLong";
 const char* const FUNC_NAME_UNBOXED = "unboxed";
 const char* const CLASS_NAME_INT = "std.core.Int";
@@ -25,11 +26,7 @@ const char* const CLASS_NAME_DOUBLE = "std.core.Double";
 const char* const CLASS_NAME_BIGINT = "escompat.BigInt";
 
 const char* const CLASS_NAME_HITRACEID = "@ohos.hiTraceChain.HiTraceIdAni";
-const char* const CLASS_NAME_HITRACECHAIN = "@ohos.hiTraceChain.hiTraceChain";
-const char* const CLASS_NAME_HITRACEID_CHAINID = "@ohos.hiTraceChain.HiTraceIdAni.chainId";
-const char* const CLASS_NAME_HITRACEID_SPANID = "@ohos.hiTraceChain.HiTraceIdAni.spanId";
-const char* const CLASS_NAME_HITRACEID_PARENTSSPANID = "@ohos.hiTraceChain.HiTraceIdAni.parentSpanId";
-const char* const CLASS_NAME_HITRACEID_FLAGS = "@ohos.hiTraceChain.HiTraceIdAni.flags";
+const char* const NAMESPACE_HITRACECHAIN = "@ohos.hiTraceChain.hiTraceChain";
 } // namespace HiviewDFX
 } // namespace OHOS
 
