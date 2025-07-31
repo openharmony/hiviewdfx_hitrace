@@ -186,7 +186,8 @@ bool GetTraceResult(TraceInfo& traceInfo, const std::vector<std::string>& list,
 #ifdef HITRACE_METER_SDK_C
     std::string bitsStr = "62";
 #else
-    std::string bitsStr;
+    constexpr uint32_t regularTagSizeLimit = 6;
+    std::string bitsStr(regularTagSizeLimit, '\0');
     ParseTagBits(traceInfo.tag, bitsStr);
 #endif
     std::string chainStr = "";

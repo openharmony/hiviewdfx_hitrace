@@ -538,7 +538,8 @@ int SetAppTraceBuffer(char* buf, const int len, const TraceMarker& traceMarker)
         return -1;
     }
 
-    std::string bitsStr;
+    constexpr uint32_t regularTagSizeLimit = 6;
+    std::string bitsStr(regularTagSizeLimit, '\0');
     ParseTagBits(traceMarker.tag, bitsStr);
     std::string additionalParams = "";
     int bytes = 0;
@@ -686,7 +687,7 @@ static int FmtSyncBeginRecord(TraceMarker& traceMarker, const char* bitsStr,
                 traceMarker.name, g_traceLevel[traceMarker.level], bitsStr, traceMarker.customArgs);
         }
     }
-    if (bytes == -1) {
+    if (UNEXPECTANTLY(bytes == -1)) {
         bytes = RECORD_SIZE_MAX;
         HILOG_DEBUG(LOG_CORE, "Trace record buffer may be truncated");
     }
@@ -794,7 +795,8 @@ void AddHitraceMeterMarker(TraceMarker& traceMarker)
         }
         char record[RECORD_SIZE_MAX + 1] = {0};
         int bytes = 0;
-        std::string bitsStr;
+        constexpr uint32_t regularTagSizeLimit = 6;
+        std::string bitsStr(regularTagSizeLimit, '\0');
         ParseTagBits(traceMarker.tag, bitsStr);
         if (traceMarker.type == MARKER_BEGIN) {
             bytes = FmtSyncBeginRecord(traceMarker, bitsStr.c_str(), record, sizeof(record));
@@ -864,12 +866,33 @@ struct CompareTag {
 
 void ParseTagBits(const uint64_t tag, std::string& bitsStr)
 {
-    auto it = std::lower_bound(std::begin(ORDERED_HITRACE_TAGS), std::end(ORDERED_HITRACE_TAGS), tag, CompareTag());
-    if (it != std::end(ORDERED_HITRACE_TAGS) && it->tag == tag) {
-        bitsStr = it->bitStr;
+    constexpr uint32_t regularTagSizeLimit = 6;
+    bitsStr.reserve(regularTagSizeLimit);
+    constexpr uint64_t tagOptionMask = HITRACE_TAG_ALWAYS | HITRACE_TAG_COMMERCIAL;
+    uint64_t tagOption = tag & tagOptionMask;
+    uint64_t tagWithoutOption = tag & ~tagOptionMask;
+    int writeIndex = 0;
+    switch (tagOption) {
+        case HITRACE_TAG_ALWAYS:
+            bitsStr = "0000";
+            writeIndex = 2;
+            break;
+        case HITRACE_TAG_COMMERCIAL:
+            bitsStr = "0500";
+            writeIndex = 2;
+            break;
+        default:
+            break;
+    }
+    if (EXPECTANTLY((tagWithoutOption & (tagWithoutOption - 1)) == 0 && tagWithoutOption != 0)) {
+        int tagIndex = __builtin_ctzll(tagWithoutOption);
+        bitsStr[writeIndex] = '0' + tagIndex / 10; // 10 : decimal, first digit
+        bitsStr[writeIndex + 1] = '0' + tagIndex % 10; // 10 : decimal, second digit
+        bitsStr[writeIndex + 2] = '\0';
         return;
     }
 
+    bitsStr = "";
     for (const auto& pair : ORDERED_HITRACE_TAGS) {
         if ((tag & pair.tag) != 0) {
             bitsStr += pair.bitStr;
