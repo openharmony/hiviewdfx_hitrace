@@ -51,24 +51,24 @@ ani_status HiTraceChainAniUtil::ParseStringValue(ani_env* env, ani_ref aniStrRef
     return ANI_OK;
 }
 
-int64_t HiTraceChainAniUtil::ParseBigIntValue(ani_env* env, ani_ref elementRef)
+uint64_t HiTraceChainAniUtil::ParseBigIntValue(ani_env* env, ani_ref elementRef)
 {
     ani_long longNum = static_cast<ani_long>(0);
     ani_class cls {};
     if (env->FindClass(CLASS_NAME_BIGINT, &cls) != ANI_OK) {
         HILOG_ERROR(LOG_CORE, "find class %{public}s failed", CLASS_NAME_BIGINT);
-        return static_cast<int64_t>(longNum);
+        return static_cast<uint64_t>(longNum);
     }
     ani_method getLongMethod {};
     if (env->Class_FindMethod(cls, FUNC_NAME_GETLONG, ":J", &getLongMethod) != ANI_OK) {
         HILOG_ERROR(LOG_CORE, "find method %{public}s failed", FUNC_NAME_GETLONG);
-        return static_cast<int64_t>(longNum);
+        return static_cast<uint64_t>(longNum);
     }
     if (env->Object_CallMethod_Long(static_cast<ani_object>(elementRef), getLongMethod, &longNum) != ANI_OK) {
         HILOG_ERROR(LOG_CORE, "call method %{public}s failed", FUNC_NAME_GETLONG);
-        return static_cast<int64_t>(longNum);
+        return static_cast<uint64_t>(longNum);
     }
-    return static_cast<int64_t>(longNum);
+    return static_cast<uint64_t>(longNum);
 }
 
 int64_t HiTraceChainAniUtil::ParseNumberValueInt64(ani_env* env, ani_ref elementRef)
