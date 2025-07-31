@@ -508,7 +508,7 @@ bool SetAllThreadInfo(const int& tid)
     std::string tidStr = std::to_string(tid);
     std::string file = "/proc/self/task/" + tidStr + "/comm";
     char comm[NAME_NORMAL_LEN + 1] = {0};
-    if (!GetProcData(file.c_str(), comm, NAME_NORMAL_LEN)) {
+    if (!GetProcData(file.c_str(), comm, NAME_NORMAL_LEN) || strlen(comm) <= 0) {
         static bool isWriteLog = false;
         WriteOnceLog(LOG_ERROR, "get comm failed", isWriteLog);
         return false;

@@ -31,7 +31,7 @@ public:
     static ani_status ParseStringValue(ani_env* env, ani_ref aniStrRef, std::string& name);
     static int64_t ParseNumberValueInt64(ani_env* env, ani_ref elementRef);
     static int32_t ParseNumberValueInt32(ani_env* env, ani_ref elementRef);
-    static int64_t ParseBigIntValue(ani_env* env, ani_ref elementRef);
+    static uint64_t ParseBigIntValue(ani_env* env, ani_ref elementRef);
     static ani_status EnumGetValueInt32(ani_env* env, ani_enum_item enumItem, int32_t& value);
     static ani_object CreateBigInt(ani_env* env, uint64_t traceId);
     static ani_object CreateDoubleUint64(ani_env* env, uint64_t number);
