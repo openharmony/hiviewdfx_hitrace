@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
-#ifndef HITRACE_DUMP_PIPE
-#define HITRACE_DUMP_PIPE
+#ifndef HITRACE_DUMP_PIPE_H
+#define HITRACE_DUMP_PIPE_H
+
+#include <unique_fd.h>
 
 #include "hitrace_define.h"
 
@@ -25,7 +27,7 @@ class HitraceDumpPipe {
 public:
     HitraceDumpPipe() = delete;
     explicit HitraceDumpPipe(bool isParent);
-    ~HitraceDumpPipe();
+    ~HitraceDumpPipe() = default;
 
     static bool InitTraceDumpPipe();
     static void ClearTraceDumpPipe();
@@ -37,19 +39,19 @@ public:
 
     // child side
     bool ReadTraceTask(const int timeoutMs, TraceDumpTask& task);
-    bool WriteSyncReturn(TraceDumpTask& task);
-    bool WriteAsyncReturn(TraceDumpTask& task);
+    bool WriteSyncReturn(const TraceDumpTask& task);
+    bool WriteAsyncReturn(const TraceDumpTask& task);
 
 private:
     bool CheckProcessRole(bool shouldBeParent, const char* operation) const;
-    bool CheckFdValidity(int fd, const char* operation, const char* pipeName) const;
-    bool WriteToPipe(int fd, const TraceDumpTask& task, const char* operation);
-    bool ReadFromPipe(int fd, TraceDumpTask& task, const int timeoutMs, const char* operation);
+    bool CheckFdValidity(const int fd, const char* operation, const char* pipeName) const;
+    bool WriteToPipe(const int fd, const TraceDumpTask& task, const char* operation);
+    bool ReadFromPipe(const int fd, TraceDumpTask& task, const int timeoutMs, const char* operation);
 
-    bool isParent_;
-    int taskSubmitFd_;
-    int syncRetFd_;
-    int asyncRetFd_;
+    bool isParent_ = false;
+    UniqueFd taskSubmitFd_;
+    UniqueFd syncRetFd_;
+    UniqueFd asyncRetFd_;
 };
 } // namespace Hitrace
 } // namespace HiviewDFX

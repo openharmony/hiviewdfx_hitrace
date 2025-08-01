@@ -128,8 +128,8 @@ ohos_shared_library("hitrace_dump") {
   public_configs = [ ":hitrace_dump_config" ]
   sources = [
     "$hitrace_frameworks_path/native/dynamic_buffer.cpp",
+    "$hitrace_utils_path/file_ageing_utils.cpp",
     "src/hitrace_dump.cpp",
-    "$hitrace_utils_path/file_ageing_utils.cpp"
   ]
 
   deps = [
@@ -144,6 +144,7 @@ ohos_shared_library("hitrace_dump") {
 
   external_deps = [
     "bounds_checking_function:libsec_shared",
+    "c_utils:utils",
     "init:libbegetutil",
   ]
 
@@ -153,13 +154,9 @@ ohos_shared_library("hitrace_dump") {
     external_deps += [ "hilog:libhilog" ]
   }
 
-  cflags_cc = [
-    "-Os"
-  ]
+  cflags_cc = [ "-Os" ]
 
-  ldflags = [
-    "-Wl,--gc-sections"
-  ]
+  ldflags = [ "-Wl,--gc-sections" ]
 
   version_script = "hitrace.map"
   innerapi_tags = [ "platformsdk" ]
@@ -211,18 +208,14 @@ ohos_shared_library("hitrace_meter") {
 config("libhitrace_option_config") {
   visibility = [ ":*" ]
 
-  include_dirs = [
-    "include"
-  ]
+  include_dirs = [ "include" ]
 }
 
 ohos_shared_library("libhitrace_option") {
   branch_protector_ret = "pac_ret"
   public_configs = [ ":libhitrace_option_config" ]
 
-  sources = [
-    "src/hitrace_option/hitrace_option.cpp"
-  ]
+  sources = [ "src/hitrace_option/hitrace_option.cpp" ]
 
   external_deps = [ "init:libbegetutil" ]
   if (defined(ohos_lite)) {
@@ -234,15 +227,11 @@ ohos_shared_library("libhitrace_option") {
   output_extension = "so"
   install_enable = true
 
-  innerapi_tags = [
-    "platformsdk",
-  ]
+  innerapi_tags = [ "platformsdk" ]
 
   version_script = "hitrace.map"
 
-  install_images = [
-    "system",
-  ]
+  install_images = [ "system" ]
 
   part_name = "hitrace"
   subsystem_name = "hiviewdfx"

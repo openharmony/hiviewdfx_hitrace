@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <vector>
 
+#include "nocopyable.h"
 #include "trace_file_utils.h"
 
 namespace OHOS {
@@ -27,16 +28,12 @@ namespace Hitrace {
 
 class FileAgeingUtils {
 public:
-    static void HandleAgeing(std::vector<TraceFileInfo>& fileList, const TRACE_TYPE traceType);
+    static void HandleAgeing(std::vector<TraceFileInfo>& fileList, const TraceDumpType traceType);
 
 private:
     FileAgeingUtils();
     ~FileAgeingUtils() = default;
-
-    FileAgeingUtils(FileAgeingUtils&) = delete;
-    FileAgeingUtils(FileAgeingUtils&&) = delete;
-    FileAgeingUtils& operator=(const FileAgeingUtils&) = delete;
-    FileAgeingUtils& operator=(const FileAgeingUtils&&) = delete;
+    DISALLOW_COPY_AND_MOVE(FileAgeingUtils);
 };
 
 } // namespace HiTrace

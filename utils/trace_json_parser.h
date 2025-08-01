@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "hitrace_define.h"
+#include "nocopyable.h"
 
 namespace OHOS {
 namespace HiviewDFX {
@@ -46,7 +47,7 @@ public:
     const std::map<std::string, std::vector<std::string>>& GetTagGroups() const { return tagGroups_; }
     const std::vector<std::string>& GetBaseFmtPath() const { return baseTraceFormats_; }
 
-    const AgeingParam& GetAgeingParam(TRACE_TYPE type) const;
+    const AgeingParam& GetAgeingParam(TraceDumpType type) const;
 
     int GetSnapshotDefaultBufferSizeKb() const { return snapshotBufSzKb_; }
 private:
@@ -70,10 +71,7 @@ private:
     void PrintParseResult();
 
     ~TraceJsonParser() = default;
-    TraceJsonParser(TraceJsonParser&) = delete;
-    TraceJsonParser(TraceJsonParser&&) = delete;
-    TraceJsonParser& operator=(const TraceJsonParser&) = delete;
-    TraceJsonParser&& operator=(const TraceJsonParser&&) = delete;
+    DISALLOW_COPY_AND_MOVE(TraceJsonParser);
 };
 } // namespace Hitrace
 } // namespace HiviewDFX

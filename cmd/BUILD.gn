@@ -34,6 +34,7 @@ ohos_executable("hitrace") {
 
   external_deps = [
     "bounds_checking_function:libsec_shared",
+    "c_utils:utils",
     "hisysevent:libhisysevent",
     "init:libbegetutil",
   ]
@@ -52,13 +53,9 @@ ohos_executable("hitrace") {
     external_deps += [ "zlib:shared_libz" ]
   }
 
-  cflags_cc = [
-    "-Os"
-  ]
+  cflags_cc = [ "-Os" ]
 
-  ldflags = [
-    "-Wl,--gc-sections"
-  ]
+  ldflags = [ "-Wl,--gc-sections" ]
 
   symlink_target_name = [ "bytrace" ]
 

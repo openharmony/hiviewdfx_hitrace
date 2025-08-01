@@ -185,14 +185,14 @@ ohos_unittest("HitraceDumpTest") {
   sources = [
     "$hitrace_frameworks_path/native/dynamic_buffer.cpp",
     "$hitrace_interfaces_path/native/innerkits/src/hitrace_dump.cpp",
+    "$hitrace_utils_path/file_ageing_utils.cpp",
     "hitrace_dump/hitrace_dump_test.cpp",
-    "$hitrace_utils_path/file_ageing_utils.cpp"
   ]
 
   cflags = [
     "-Dprivate=public",  #allow test code access private members
     "-Dprotected=public",  #allow test code access protected members
-    "-DHITRACE_UNITTEST"
+    "-DHITRACE_UNITTEST",
   ]
 
   include_dirs = [
@@ -211,15 +211,16 @@ ohos_unittest("HitraceDumpTest") {
     "$hitrace_frameworks_path/trace_source:trace_source",
     "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
     "$hitrace_interfaces_path/native/innerkits:libhitrace_option",
+    "$hitrace_path/test/utils:hitrace_test_utils",
     "$hitrace_utils_path:hitrace_common_utils",
     "$hitrace_utils_path:hitrace_file_utils",
     "$hitrace_utils_path:hitrace_json_parser",
-    "$hitrace_path/test/utils:hitrace_test_utils",
   ]
 
   external_deps = [
     "bounds_checking_function:libsec_shared",
     "cJSON:cjson",
+    "c_utils:utils",
     "googletest:gtest_main",
     "init:libbegetutil",
   ]
@@ -238,8 +239,8 @@ ohos_unittest("HitraceAsyncDumpTimeoutTest") {
     "$hitrace_frameworks_path/trace_dump_executor/trace_dump_executor.cpp",
     "$hitrace_frameworks_path/trace_dump_executor/trace_dump_pipe.cpp",
     "$hitrace_interfaces_path/native/innerkits/src/hitrace_dump.cpp",
+    "$hitrace_utils_path/file_ageing_utils.cpp",
     "hitrace_dump/hitrace_async_dump_timeout_test.cpp",
-    "$hitrace_utils_path/file_ageing_utils.cpp"
   ]
 
   cflags = [ "-DHITRACE_UNITTEST" ]
@@ -266,6 +267,7 @@ ohos_unittest("HitraceAsyncDumpTimeoutTest") {
   external_deps = [
     "bounds_checking_function:libsec_shared",
     "cJSON:cjson",
+    "c_utils:utils",
     "googletest:gtest_main",
     "init:libbegetutil",
   ]
@@ -298,7 +300,10 @@ ohos_unittest("HitraceUtilsTest") {
     "$hitrace_utils_path:hitrace_json_parser",
   ]
 
-  external_deps = [ "googletest:gtest_main" ]
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+  ]
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]
   } else {
@@ -349,11 +354,11 @@ ohos_unittest("HitraceMeterFfiTest") {
   module_out_path = module_output_path
 
   sources = [
-    "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter.cpp",
-    "$hitrace_interfaces_path/cj/kits/ffi/src/hitracemeter_ffi.cpp",
     "$hitrace_interfaces_path/cj/kits/ffi/src/hitracechain_ffi.cpp",
     "$hitrace_interfaces_path/cj/kits/ffi/src/hitracechain_impl.cpp",
+    "$hitrace_interfaces_path/cj/kits/ffi/src/hitracemeter_ffi.cpp",
     "$hitrace_interfaces_path/cj/kits/ffi/src/hitracemeter_impl.cpp",
+    "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter.cpp",
     "hitrace_meter/hitrace_meter_ffi_test.cpp",
     "hitrace_meter/hitrace_meter_test_utils.cpp",
   ]
@@ -385,17 +390,17 @@ ohos_unittest("HitraceOptionTest") {
 
   include_dirs = [
     "$hitrace_interfaces_path/native/innerkits/include",
-    "$hitrace_interfaces_path/native/innerkits/src/hitrace_option/hitrace_option.cpp"
+    "$hitrace_interfaces_path/native/innerkits/src/hitrace_option/hitrace_option.cpp",
   ]
 
   sources = [
     "$hitrace_interfaces_path/native/innerkits/src/hitrace_option/hitrace_option.cpp",
-    "hitrace_option/hitrace_option_test.cpp"
+    "hitrace_option/hitrace_option_test.cpp",
   ]
 
   external_deps = [
     "googletest:gtest_main",
-    "init:libbegetutil"
+    "init:libbegetutil",
   ]
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]
@@ -418,8 +423,8 @@ ohos_unittest("HitraceCMDTest") {
   ]
 
   sources = [
-    "hitrace_cmd/hitrace_cmd_test.cpp",
     "$hitrace_cmd_path/hitrace_cmd.cpp",
+    "hitrace_cmd/hitrace_cmd_test.cpp",
   ]
 
   deps = [
@@ -430,6 +435,7 @@ ohos_unittest("HitraceCMDTest") {
 
   external_deps = [
     "bounds_checking_function:libsec_shared",
+    "c_utils:utils",
     "googletest:gtest_main",
     "hisysevent:libhisysevent",
     "init:libbegetutil",
@@ -466,7 +472,10 @@ ohos_unittest("HitraceSourceTest") {
     "$hitrace_utils_path:hitrace_json_parser",
   ]
 
-  external_deps = [ "googletest:gtest_main" ]
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+  ]
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]
   } else {
@@ -490,8 +499,8 @@ ohos_unittest("HitraceDumpExecutorTest") {
   sources = [
     "$hitrace_frameworks_path/trace_dump_executor/trace_dump_executor.cpp",
     "$hitrace_frameworks_path/trace_dump_executor/trace_dump_pipe.cpp",
+    "$hitrace_utils_path/file_ageing_utils.cpp",
     "trace_dump_executor/trace_dump_executor_test.cpp",
-    "$hitrace_utils_path/file_ageing_utils.cpp"
   ]
 
   deps = [
@@ -503,6 +512,7 @@ ohos_unittest("HitraceDumpExecutorTest") {
 
   external_deps = [
     "bounds_checking_function:libsec_shared",
+    "c_utils:utils",
     "googletest:gtest_main",
   ]
   if (defined(ohos_lite)) {
@@ -521,14 +531,12 @@ ohos_unittest("HitraceAgeingTest") {
     "$hitrace_utils_path",
   ]
 
-  sources = [
-    "hitrace_utils/hitrace_ageing_test.cpp",
-  ]
+  sources = [ "hitrace_utils/hitrace_ageing_test.cpp" ]
 
   deps = [
+    "$hitrace_utils_path:hitrace_common_utils",
     "$hitrace_utils_path:hitrace_file_utils",
     "$hitrace_utils_path:hitrace_json_parser",
-    "$hitrace_utils_path:hitrace_common_utils",
   ]
 
   cflags = [
@@ -536,7 +544,10 @@ ohos_unittest("HitraceAgeingTest") {
     "-Dprotected=public",  #allow test code access protected members
   ]
 
-  external_deps = [ "googletest:gtest_main" ]
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+  ]
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]
   } else {

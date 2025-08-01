@@ -480,7 +480,7 @@ void ProcessCacheTask()
     const std::string threadName = "CacheTraceTask";
     prctl(PR_SET_NAME, threadName.c_str());
     struct TraceDumpParam param = {
-        TRACE_TYPE::TRACE_CACHE,
+        TraceDumpType::TRACE_CACHE,
         g_currentTraceParams.outputFile,
         g_currentTraceParams.fileLimit,
         g_currentTraceParams.fileSize,
@@ -499,7 +499,7 @@ void ProcessRecordTask()
     const std::string threadName = "RecordTraceTask";
     prctl(PR_SET_NAME, threadName.c_str());
     struct TraceDumpParam param = {
-        TRACE_TYPE::TRACE_RECORDING,
+        TraceDumpType::TRACE_RECORDING,
         g_currentTraceParams.outputFile,
         g_currentTraceParams.fileLimit,
         g_currentTraceParams.fileSize,
@@ -1299,7 +1299,7 @@ TraceRetInfo DumpTrace(int maxDuration, uint64_t utTraceEndTime)
     if (!CheckTraceDumpStatus(maxDuration, utTraceEndTime, ret)) {
         return ret;
     }
-    FileAgeingUtils::HandleAgeing(g_traceFileVec, TRACE_TYPE::TRACE_SNAPSHOT);
+    FileAgeingUtils::HandleAgeing(g_traceFileVec, TraceDumpType::TRACE_SNAPSHOT);
     HILOG_INFO(LOG_CORE, "DumpTrace start, target duration is %{public}d, target endtime is (%{public}" PRIu64 ").",
         maxDuration, utTraceEndTime);
     SetDestTraceTimeAndDuration(maxDuration, utTraceEndTime);
@@ -1336,7 +1336,7 @@ TraceRetInfo DumpTraceAsync(int maxDuration, uint64_t utTraceEndTime, int64_t fi
     if (!CheckTraceDumpStatus(maxDuration, utTraceEndTime, ret)) {
         return ret;
     }
-    FileAgeingUtils::HandleAgeing(g_traceFileVec, TRACE_TYPE::TRACE_SNAPSHOT);
+    FileAgeingUtils::HandleAgeing(g_traceFileVec, TraceDumpType::TRACE_SNAPSHOT);
 
     HILOG_INFO(LOG_CORE, "DumpTraceAsync start, target duration is %{public}d, target endtime is %{public}" PRIu64 ".",
         maxDuration, utTraceEndTime);

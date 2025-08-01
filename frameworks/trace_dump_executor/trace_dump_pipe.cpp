@@ -15,6 +15,7 @@
 
 #include "trace_dump_pipe.h"
 
+#include <chrono>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/file.h>
@@ -48,50 +49,37 @@ HitraceDumpPipe::HitraceDumpPipe(bool isParent)
 {
     isParent_ = isParent;
     if (isParent_) {
-        taskSubmitFd_ = open(TRACE_TASK_SUBMIT_PIPE, O_WRONLY);
+        taskSubmitFd_ = UniqueFd(open(TRACE_TASK_SUBMIT_PIPE, O_WRONLY));
         if (taskSubmitFd_ < 0) {
             HILOG_ERROR(LOG_CORE, "HitraceDumpPipe: parent open %{public}s failed, errno(%{public}d)",
                 TRACE_TASK_SUBMIT_PIPE, errno);
         }
-        syncRetFd_ = open(TRACE_SYNC_RETURN_PIPE, O_RDONLY | O_NONBLOCK);
+        syncRetFd_ = UniqueFd(open(TRACE_SYNC_RETURN_PIPE, O_RDONLY | O_NONBLOCK));
         if (syncRetFd_ < 0) {
             HILOG_ERROR(LOG_CORE, "HitraceDumpPipe: parent open %{public}s failed, errno(%{public}d)",
                 TRACE_SYNC_RETURN_PIPE, errno);
         }
-        asyncRetFd_ = open(TRACE_ASYNC_RETURN_PIPE, O_RDONLY | O_NONBLOCK);
+        asyncRetFd_ = UniqueFd(open(TRACE_ASYNC_RETURN_PIPE, O_RDONLY | O_NONBLOCK));
         if (asyncRetFd_ < 0) {
             HILOG_ERROR(LOG_CORE, "HitraceDumpPipe: parent open %{public}s failed, errno(%{public}d)",
-                TRACE_TASK_SUBMIT_PIPE, errno);
+                TRACE_ASYNC_RETURN_PIPE, errno);
         }
     } else {
-        taskSubmitFd_ = open(TRACE_TASK_SUBMIT_PIPE, O_RDONLY | O_NONBLOCK);
+        taskSubmitFd_ = UniqueFd(open(TRACE_TASK_SUBMIT_PIPE, O_RDONLY | O_NONBLOCK));
         if (taskSubmitFd_ < 0) {
             HILOG_ERROR(LOG_CORE, "HitraceDumpPipe: child open %{public}s failed, errno(%{public}d)",
                 TRACE_TASK_SUBMIT_PIPE, errno);
         }
-        syncRetFd_ = open(TRACE_SYNC_RETURN_PIPE, O_WRONLY);
+        syncRetFd_ = UniqueFd(open(TRACE_SYNC_RETURN_PIPE, O_WRONLY));
         if (syncRetFd_ < 0) {
             HILOG_ERROR(LOG_CORE, "HitraceDumpPipe: child open %{public}s failed, errno(%{public}d)",
                 TRACE_SYNC_RETURN_PIPE, errno);
         }
-        asyncRetFd_ = open(TRACE_ASYNC_RETURN_PIPE, O_WRONLY);
+        asyncRetFd_ = UniqueFd(open(TRACE_ASYNC_RETURN_PIPE, O_WRONLY));
         if (asyncRetFd_ < 0) {
             HILOG_ERROR(LOG_CORE, "HitraceDumpPipe: child open %{public}s failed, errno(%{public}d)",
-                TRACE_TASK_SUBMIT_PIPE, errno);
+                TRACE_ASYNC_RETURN_PIPE, errno);
         }
-    }
-}
-
-HitraceDumpPipe::~HitraceDumpPipe()
-{
-    if (taskSubmitFd_ != -1) {
-        close(taskSubmitFd_);
-    }
-    if (syncRetFd_ != -1) {
-        close(syncRetFd_);
-    }
-    if (asyncRetFd_ != -1) {
-        close(asyncRetFd_);
     }
 }
 
@@ -135,7 +123,7 @@ bool HitraceDumpPipe::CheckProcessRole(bool shouldBeParent, const char* operatio
     return true;
 }
 
-bool HitraceDumpPipe::CheckFdValidity(int fd, const char* operation, const char* pipeName) const
+bool HitraceDumpPipe::CheckFdValidity(const int fd, const char* operation, const char* pipeName) const
 {
     if (fd < 0) {
         HILOG_ERROR(LOG_CORE, "%{public}s: %{public}s fd is illegal.", operation, pipeName);
@@ -144,7 +132,7 @@ bool HitraceDumpPipe::CheckFdValidity(int fd, const char* operation, const char*
     return true;
 }
 
-bool HitraceDumpPipe::WriteToPipe(int fd, const TraceDumpTask& task, const char* operation)
+bool HitraceDumpPipe::WriteToPipe(const int fd, const TraceDumpTask& task, const char* operation)
 {
     ssize_t ret = TEMP_FAILURE_RETRY(write(fd, &task, sizeof(task)));
     if (ret < 0) {
@@ -155,17 +143,36 @@ bool HitraceDumpPipe::WriteToPipe(int fd, const TraceDumpTask& task, const char*
     return true;
 }
 
-bool HitraceDumpPipe::ReadFromPipe(int fd, TraceDumpTask& task, const int timeoutMs, const char* operation)
+bool HitraceDumpPipe::ReadFromPipe(const int fd, TraceDumpTask& task, const int timeoutMs, const char* operation)
 {
-    int msCnt = 0;
-    while (msCnt <= timeoutMs) {
-        ssize_t readSize = TEMP_FAILURE_RETRY(read(fd, &task, sizeof(task)));
-        if (readSize > 0) {
-            HILOG_INFO(LOG_CORE, "%{public}s: read task done, task id: %{public}" PRIu64 ".", operation, task.time);
-            return true;
+    fd_set readfds;
+    struct timeval tv;
+    int ret;
+    const int waitStepMs = READ_PIPE_TICK;
+    auto start = std::chrono::steady_clock::now();
+    while (true) {
+        auto now = std::chrono::steady_clock::now();
+        int elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+        int remain = timeoutMs - elapsed;
+        if (remain <= 0) {
+            break;
         }
-        usleep(READ_PIPE_TICK * S_TO_MS); // 50 ms
-        msCnt += READ_PIPE_TICK;
+        int waitMs = (remain < waitStepMs) ? remain : waitStepMs;
+        FD_ZERO(&readfds);
+        FD_SET(fd, &readfds);
+        tv.tv_sec = waitMs / S_TO_MS;
+        tv.tv_usec = (waitMs % S_TO_MS) * S_TO_MS;
+        ret = select(fd + 1, &readfds, nullptr, nullptr, &tv);
+        if (ret > 0 && FD_ISSET(fd, &readfds)) {
+            ssize_t readSize = TEMP_FAILURE_RETRY(read(fd, &task, sizeof(task)));
+            if (readSize > 0) {
+                HILOG_INFO(LOG_CORE, "%{public}s: read task done, task id: %{public}" PRIu64 ".", operation, task.time);
+                return true;
+            }
+        } else if (ret < 0) {
+            HILOG_ERROR(LOG_CORE, "%{public}s: select error, errno: %{public}d", operation, errno);
+            return false;
+        }
     }
     HILOG_INFO(LOG_CORE, "%{public}s: read task timeout.", operation);
     return false;
@@ -207,7 +214,7 @@ bool HitraceDumpPipe::ReadTraceTask(const int timeoutMs, TraceDumpTask& task)
     return ReadFromPipe(taskSubmitFd_, task, timeoutMs, operation);
 }
 
-bool HitraceDumpPipe::WriteSyncReturn(TraceDumpTask& task)
+bool HitraceDumpPipe::WriteSyncReturn(const TraceDumpTask& task)
 {
     const char* operation = "WriteSyncReturn";
     if (!CheckProcessRole(false, operation) || !CheckFdValidity(syncRetFd_, operation, "sync return pipe")) {
@@ -216,7 +223,7 @@ bool HitraceDumpPipe::WriteSyncReturn(TraceDumpTask& task)
     return WriteToPipe(syncRetFd_, task, operation);
 }
 
-bool HitraceDumpPipe::WriteAsyncReturn(TraceDumpTask& task)
+bool HitraceDumpPipe::WriteAsyncReturn(const TraceDumpTask& task)
 {
     const char* operation = "WriteAsyncReturn";
     if (!CheckProcessRole(false, operation) || !CheckFdValidity(asyncRetFd_, operation, "async return pipe")) {

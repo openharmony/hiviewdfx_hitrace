@@ -44,7 +44,10 @@ ohos_source_set("hitrace_file_utils") {
   } else {
     external_deps = [ "hilog:libhilog" ]
   }
-  external_deps += [ "bounds_checking_function:libsec_shared" ]
+  external_deps += [
+    "bounds_checking_function:libsec_shared",
+    "c_utils:utils",
+  ]
   part_name = "hitrace"
   subsystem_name = "hiviewdfx"
 }
@@ -63,7 +66,8 @@ ohos_source_set("hitrace_json_parser") {
 
   defines = []
   if (hitrace_snapshot_tracebuffer_size != 0) {
-    defines += [ "SNAPSHOT_TRACEBUFFER_SIZE=${hitrace_snapshot_tracebuffer_size}" ]
+    defines +=
+        [ "SNAPSHOT_TRACEBUFFER_SIZE=${hitrace_snapshot_tracebuffer_size}" ]
   }
   if (hitrace_snapshot_file_limit != 0) {
     defines += [ "SNAPSHOT_FILE_LIMIT=${hitrace_snapshot_file_limit}" ]
@@ -72,7 +76,10 @@ ohos_source_set("hitrace_json_parser") {
     defines += [ "RECORD_FILE_LIMIT=${hitrace_record_file_limit}" ]
   }
 
-  external_deps += [ "cJSON:cjson" ]
+  external_deps += [
+    "cJSON:cjson",
+    "c_utils:utils",
+  ]
   part_name = "hitrace"
   subsystem_name = "hiviewdfx"
 }

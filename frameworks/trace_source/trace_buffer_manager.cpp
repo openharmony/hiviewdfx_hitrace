@@ -15,6 +15,7 @@
 
 #include "trace_buffer_manager.h"
 
+#include <cinttypes>
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -45,9 +46,11 @@ size_t BufferBlock::FreeBytes() const
 bool BufferBlock::Append(const uint8_t* src, size_t size)
 {
     if (FreeBytes() < size) {
+        HILOG_ERROR(LOG_CORE, "Append : cannot append more data");
         return false;
     }
     if (memcpy_s(data.data() + usedBytes, size, src, size) != EOK) {
+        HILOG_ERROR(LOG_CORE, "Append : memcpy_s failed");
         return false;
     }
     usedBytes += size;
@@ -59,6 +62,7 @@ BufferBlockPtr TraceBufferManager::AllocateBlock(const uint64_t taskId, const in
     std::lock_guard<std::mutex> lck(mutex_);
 
     if (curTotalSz_ + blockSz_ > maxTotalSz_) {
+        HILOG_ERROR(LOG_CORE, "AllocateBlock : taskid(%{public}" PRIu64 ") cannot allocate more blocks", taskId);
         return nullptr;
     }
 
@@ -74,7 +78,6 @@ void TraceBufferManager::ReleaseTaskBlocks(const uint64_t taskId)
     if (auto it = taskBuffers_.find(taskId); it != taskBuffers_.end()) {
         size_t released = it->second.size() * blockSz_;
         curTotalSz_ -= released;
-
         taskBuffers_.erase(it);
     }
 }
@@ -85,6 +88,7 @@ BufferList TraceBufferManager::GetTaskBuffers(const uint64_t taskId)
     if (auto it = taskBuffers_.find(taskId); it != taskBuffers_.end()) {
         return it->second;
     }
+    HILOG_WARN(LOG_CORE, "GetTaskBuffers : taskid(%{public}" PRIu64 ") not found.", taskId);
     return {};
 }
 

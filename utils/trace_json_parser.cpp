@@ -235,12 +235,12 @@ void TraceJsonParser::ParseProductConfigJson(const std::string& productConfigJso
     cJSON_Delete(productConfigJsonRoot);
 }
 
-const AgeingParam& TraceJsonParser::GetAgeingParam(TRACE_TYPE type) const
+const AgeingParam& TraceJsonParser::GetAgeingParam(TraceDumpType type) const
 {
-    if (type == TRACE_TYPE::TRACE_RECORDING) {
+    if (type == TraceDumpType::TRACE_RECORDING) {
         return recordAgeingParam_;
     }
-    if (type == TRACE_TYPE::TRACE_SNAPSHOT) {
+    if (type == TraceDumpType::TRACE_SNAPSHOT) {
         return snapShotAgeingParam_;
     }
 

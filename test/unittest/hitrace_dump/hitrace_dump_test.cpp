@@ -67,10 +67,10 @@ struct FileWithTime {
     uint64_t fileSize;
 };
 
-std::map<TRACE_TYPE, std::string> tracePrefixMap = {
-    {TRACE_TYPE::TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
-    {TRACE_TYPE::TRACE_RECORDING, TRACE_RECORDING_PREFIX},
-    {TRACE_TYPE::TRACE_CACHE, TRACE_CACHE_PREFIX},
+std::map<TraceDumpType, std::string> tracePrefixMap = {
+    {TraceDumpType::TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
+    {TraceDumpType::TRACE_RECORDING, TRACE_RECORDING_PREFIX},
+    {TraceDumpType::TRACE_CACHE, TRACE_CACHE_PREFIX},
 };
 
 constexpr int ALIGNMENT_COEFFICIENT = 4;
@@ -126,7 +126,7 @@ struct stat GetFileStatInfo(const std::string& filePath)
     return fileStat;
 }
 
-std::vector<FileWithTime> GetTraceFilesInDir(const TRACE_TYPE& traceType)
+std::vector<FileWithTime> GetTraceFilesInDir(const TraceDumpType& traceType)
 {
     struct stat fileStat;
     std::vector<FileWithTime> fileList;
@@ -161,8 +161,8 @@ void DeleteTraceFileInDir(const std::vector<FileWithTime> fileLists)
 
 void InitFileFromDir()
 {
-    DeleteTraceFileInDir(GetTraceFilesInDir(TRACE_TYPE::TRACE_CACHE));
-    DeleteTraceFileInDir(GetTraceFilesInDir(TRACE_TYPE::TRACE_SNAPSHOT));
+    DeleteTraceFileInDir(GetTraceFilesInDir(TraceDumpType::TRACE_CACHE));
+    DeleteTraceFileInDir(GetTraceFilesInDir(TraceDumpType::TRACE_SNAPSHOT));
 }
 
 static std::vector<std::string> GetRecordTrace()
