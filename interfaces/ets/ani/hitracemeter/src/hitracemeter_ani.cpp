@@ -75,6 +75,7 @@ static void EtsStartTrace(ani_env* env, ani_string name, ani_double taskId)
 {
     std::string nameStr = "";
     if (!AniStringToStdString(env, name, nameStr)) {
+        HILOG_ERROR(LOG_CORE, "AniStringToStdString failed.");
         return;
     }
     StartAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_APP, nameStr.c_str(), static_cast<int32_t>(taskId), "", "");
@@ -84,6 +85,7 @@ static void EtsFinishTrace(ani_env* env, ani_string name, ani_double taskId)
 {
     std::string nameStr = "";
     if (!AniStringToStdString(env, name, nameStr)) {
+        HILOG_ERROR(LOG_CORE, "AniStringToStdString failed.");
         return;
     }
     FinishAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_APP, nameStr.c_str(), static_cast<int32_t>(taskId));
@@ -93,6 +95,7 @@ static void EtsCountTrace(ani_env* env, ani_string name, ani_double count)
 {
     std::string nameStr = "";
     if (!AniStringToStdString(env, name, nameStr)) {
+        HILOG_ERROR(LOG_CORE, "AniStringToStdString failed.");
         return;
     }
     CountTraceEx(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_APP, nameStr.c_str(), static_cast<int64_t>(count));
@@ -106,6 +109,7 @@ static void EtsTraceByValue(ani_env* env, ani_enum_item level, ani_string name, 
     }
     std::string nameStr = "";
     if (!AniStringToStdString(env, name, nameStr)) {
+        HILOG_ERROR(LOG_CORE, "AniStringToStdString failed.");
         return;
     }
     CountTraceEx(static_cast<HiTraceOutputLevel>(levelVal), HITRACE_TAG_APP, nameStr.c_str(),
@@ -120,11 +124,13 @@ static void EtsStartSyncTrace(ani_env* env, ani_enum_item level, ani_string name
     }
     std::string nameStr = "";
     if (!AniStringToStdString(env, name, nameStr)) {
+        HILOG_ERROR(LOG_CORE, "AniStringToStdString failed.");
         return;
     }
     std::string customArgsStr = "";
     if (!IsRefUndefined(env, static_cast<ani_ref>(customArgs))) {
         if (!AniStringToStdString(env, static_cast<ani_string>(customArgs), customArgsStr)) {
+            HILOG_ERROR(LOG_CORE, "AniStringToStdString failed.");
             return;
         }
     }
@@ -149,15 +155,18 @@ static void EtsStartAsyncTrace(ani_env* env, ani_enum_item level, ani_string nam
     }
     std::string nameStr = "";
     if (!AniStringToStdString(env, name, nameStr)) {
+        HILOG_ERROR(LOG_CORE, "AniStringToStdString failed.");
         return;
     }
     std::string customCategoryStr = "";
     if (!AniStringToStdString(env, customCategory, customCategoryStr)) {
+        HILOG_ERROR(LOG_CORE, "AniStringToStdString failed.");
         return;
     }
     std::string customArgsStr = "";
     if (!IsRefUndefined(env, static_cast<ani_ref>(customArgs))) {
         if (!AniStringToStdString(env, static_cast<ani_string>(customArgs), customArgsStr)) {
+            HILOG_ERROR(LOG_CORE, "AniStringToStdString failed.");
             return;
         }
     }
@@ -173,6 +182,7 @@ static void EtsFinishAsyncTrace(ani_env* env, ani_enum_item level, ani_string na
     }
     std::string nameStr = "";
     if (!AniStringToStdString(env, name, nameStr)) {
+        HILOG_ERROR(LOG_CORE, "AniStringToStdString failed.");
         return;
     }
     FinishAsyncTraceEx(static_cast<HiTraceOutputLevel>(levelVal), HITRACE_TAG_APP, nameStr.c_str(),

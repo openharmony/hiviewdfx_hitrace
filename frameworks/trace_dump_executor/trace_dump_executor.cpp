@@ -92,17 +92,31 @@ bool IsGenerateNewFile(std::shared_ptr<ITraceSource> traceSource, const TRACE_TY
 void PreTraceContentDump(const TraceContentPtr& traceContentPtr)
 {
     traceContentPtr.fileHdr->ResetCurrentFileSize();
-    traceContentPtr.fileHdr->WriteTraceContent();
-    traceContentPtr.baseInfo->WriteTraceContent();
-    traceContentPtr.eventFmt->WriteTraceContent();
+    if (!traceContentPtr.fileHdr->WriteTraceContent()) {
+        HILOG_INFO(LOG_CORE, "fileHdr WriteTraceContent failed.");
+    }
+    if (!traceContentPtr.baseInfo->WriteTraceContent()) {
+        HILOG_INFO(LOG_CORE, "baseInfo WriteTraceContent failed.");
+    }
+    if (!traceContentPtr.eventFmt->WriteTraceContent()) {
+        HILOG_INFO(LOG_CORE, "fileHdr WriteTraceContent failed.");
+    }
 }
 
 void AfterTraceContentDump(const TraceContentPtr& traceContentPtr)
 {
-    traceContentPtr.cmdLines->WriteTraceContent();
-    traceContentPtr.tgids->WriteTraceContent();
-    traceContentPtr.headerPage->WriteTraceContent();
-    traceContentPtr.printkFmt->WriteTraceContent();
+    if (!traceContentPtr.cmdLines->WriteTraceContent()) {
+        HILOG_INFO(LOG_CORE, "cmdLines WriteTraceContent failed.");
+    }
+    if (!traceContentPtr.tgids->WriteTraceContent()) {
+        HILOG_INFO(LOG_CORE, "tgids WriteTraceContent failed.");
+    }
+    if (!traceContentPtr.headerPage->WriteTraceContent()) {
+        HILOG_INFO(LOG_CORE, "headerPage WriteTraceContent failed.");
+    }
+    if (!traceContentPtr.printkFmt->WriteTraceContent()) {
+        HILOG_INFO(LOG_CORE, "printkFmt WriteTraceContent failed.");
+    }
 }
 }
 

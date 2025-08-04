@@ -244,14 +244,18 @@ void TraceInit(const std::map<std::string, TraceTag>& allTags)
             continue;
         }
         for (size_t i = 0; i < it->second.enablePath.size(); i++) {
-            SetTraceNodeStatus(it->second.enablePath[i], false);
+            if (!SetTraceNodeStatus(it->second.enablePath[i], false)) {
+                HILOG_ERROR(LOG_CORE, "TraceInit: SetTraceNodeStatus fail");
+            }
         }
     }
     // close all user tags
     SetProperty(TRACE_TAG_ENABLE_FLAGS, std::to_string(0));
 
     // set buffer_size_kb 1
-    WriteStrToFile("buffer_size_kb", "1");
+    if (!WriteStrToFile("buffer_size_kb", "1")) {
+        HILOG_ERROR(LOG_CORE, "TraceInit: WriteStrToFile fail");
+    }
 
     // close tracing_on
     SetTraceNodeStatus(TRACING_ON_NODE, false);
@@ -291,7 +295,9 @@ void SetAllTags(const TraceParams& traceParams, const std::map<std::string, Trac
 
         if (iter->second.type == 1) {
             for (const auto& path : iter->second.enablePath) {
-                SetTraceNodeStatus(path, true);
+                if (!SetTraceNodeStatus(path, true)) {
+                    HILOG_ERROR(LOG_CORE, "SetAllTags: SetTraceNodeStatus fail");
+                }
             }
             for (const auto& format : iter->second.formatPath) {
                 tagFmts.emplace_back(format);
@@ -305,13 +311,17 @@ void SetClock(const std::string& clockType)
 {
     const std::string traceClockPath = "trace_clock";
     if (clockType.size() == 0) {
-        WriteStrToFile(traceClockPath, "boot"); //set default: boot
+        if (!WriteStrToFile(traceClockPath, "boot")) { // set default: boot
+            HILOG_ERROR(LOG_CORE, "SetClock: WriteStrToFile fail.");
+        }
         return;
     }
     std::string allClocks = ReadFile(traceClockPath, g_traceRootPath);
     if (allClocks.find(clockType) == std::string::npos) {
         HILOG_ERROR(LOG_CORE, "SetClock: %{public}s is non-existent, set to boot", clockType.c_str());
-        WriteStrToFile(traceClockPath, "boot"); // set default: boot
+        if (!WriteStrToFile(traceClockPath, "boot")) { // set default: boot
+            HILOG_ERROR(LOG_CORE, "SetClock: WriteStrToFile fail.");
+        }
         return;
     }
 
@@ -331,7 +341,9 @@ void SetClock(const std::string& clockType)
     for (auto i : allClockTypes) {
         if (clockType.compare(i) == 0) {
             HILOG_INFO(LOG_CORE, "SetClock: set clock %{public}s success.", clockType.c_str());
-            WriteStrToFile(traceClockPath, clockType);
+            if (!WriteStrToFile(traceClockPath, clockType)) {
+                HILOG_ERROR(LOG_CORE, "SetClock: WriteStrToFile fail.");
+            }
             return;
         }
         if (i[0] == '[') {
@@ -346,7 +358,9 @@ void SetClock(const std::string& clockType)
     }
 
     HILOG_INFO(LOG_CORE, "SetClock: unknown %{public}s, change to default clock_type: boot.", clockType.c_str());
-    WriteStrToFile(traceClockPath, "boot"); // set default: boot
+    if (!WriteStrToFile(traceClockPath, "boot")) { // set default: boot
+        HILOG_ERROR(LOG_CORE, "SetClock: WriteStrToFile fail.");
+    }
     return;
 }
 
@@ -364,20 +378,34 @@ bool SetTraceSetting(const TraceParams& traceParams, const std::map<std::string,
 
     SetAllTags(traceParams, allTags, tagGroupTable, tagFmts);
 
-    WriteStrToFile("current_tracer", "nop");
-    WriteStrToFile("buffer_size_kb", traceParams.bufferSize);
+    if (!WriteStrToFile("current_tracer", "nop")) {
+        HILOG_ERROR(LOG_CORE, "SetTraceSetting: WriteStrToFile fail.");
+    }
+    if (!WriteStrToFile("buffer_size_kb", traceParams.bufferSize)) {
+        HILOG_ERROR(LOG_CORE, "SetTraceSetting: WriteStrToFile fail.");
+    }
 
     SetClock(traceParams.clockType);
 
     if (traceParams.isOverWrite == "1") {
-        WriteStrToFile("options/overwrite", "1");
+        if (!WriteStrToFile("options/overwrite", "1")) {
+            HILOG_ERROR(LOG_CORE, "SetTraceSetting: WriteStrToFile fail.");
+        }
     } else {
-        WriteStrToFile("options/overwrite", "0");
+        if (!WriteStrToFile("options/overwrite", "0")) {
+            HILOG_ERROR(LOG_CORE, "SetTraceSetting: WriteStrToFile fail.");
+        }
     }
 
-    WriteStrToFile("saved_cmdlines_size", std::to_string(SAVED_CMDLINES_SIZE));
-    WriteStrToFile("options/record-tgid", "1");
-    WriteStrToFile("options/record-cmd", "1");
+    if (!WriteStrToFile("saved_cmdlines_size", std::to_string(SAVED_CMDLINES_SIZE))) {
+        HILOG_ERROR(LOG_CORE, "SetTraceSetting: WriteStrToFile fail.");
+    }
+    if (!WriteStrToFile("options/record-tgid", "1")) {
+        HILOG_ERROR(LOG_CORE, "SetTraceSetting: WriteStrToFile fail.");
+    }
+    if (!WriteStrToFile("options/record-cmd", "1")) {
+        HILOG_ERROR(LOG_CORE, "SetTraceSetting: WriteStrToFile fail.");
+    }
     return true;
 }
 
@@ -924,7 +952,9 @@ void CpuBufferBalanceTask()
         for (size_t i = 0; i < result.size(); i++) {
             HILOG_DEBUG(LOG_CORE, "cpu%{public}zu set size %{public}d.", i, result[i]);
             std::string path = "per_cpu/cpu" + std::to_string(i) + "/buffer_size_kb";
-            WriteStrToFile(path, std::to_string(result[i]));
+            if (!WriteStrToFile(path, std::to_string(result[i]))) {
+                HILOG_ERROR(LOG_CORE, "CpuBufferBalanceTask: WriteStrToFile failed.");
+            }
         }
     }
     HILOG_INFO(LOG_CORE, "CpuBufferBalanceTask: monitor thread exit.");
