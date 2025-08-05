@@ -33,7 +33,10 @@ ohos_static_library("trace_dump_executor") {
     "$hitrace_utils_path:hitrace_json_parser",
   ]
 
-  external_deps = [ "bounds_checking_function:libsec_shared" ]
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "c_utils:utils",
+  ]
 
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]

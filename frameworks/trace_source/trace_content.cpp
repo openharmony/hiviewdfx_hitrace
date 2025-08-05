@@ -45,16 +45,19 @@ constexpr int JUDGE_FILE_EXIST = 10;  // Check whether the trace file exists eve
 constexpr int BUFFER_SIZE = 256 * PAGE_SIZE; // 1M
 constexpr uint8_t HM_FILE_RAW_TRACE = 1;
 
-static int g_writeFileLimit = 0;
-static int g_outputFileSize = 0;
-
-uint8_t g_buffer[BUFFER_SIZE] = { 0 };
+/**
+ * @note If the async trace dump mode is performed in parallel with other modes,
+ *       the following variables are required to be thread isolated.
+ */
+thread_local int g_writeFileLimit = 0;
+thread_local int g_outputFileSize = 0;
+thread_local uint8_t g_buffer[BUFFER_SIZE] = { 0 };
 
 static void PreWriteAllTraceEventsFormat(const int fd, const std::string& tracefsPath)
 {
-    const TraceJsonParser& TraceJsonParser = TraceJsonParser::Instance();
-    const std::map<std::string, TraceTag>& allTags = TraceJsonParser.GetAllTagInfos();
-    std::vector<std::string> traceFormats = TraceJsonParser.GetBaseFmtPath();
+    const TraceJsonParser& traceJsonParser = TraceJsonParser::Instance();
+    const std::map<std::string, TraceTag>& allTags = traceJsonParser.GetAllTagInfos();
+    std::vector<std::string> traceFormats = traceJsonParser.GetBaseFmtPath();
     for (auto& tag : allTags) {
         for (auto& fmt : tag.second.formatPath) {
             traceFormats.emplace_back(fmt);
@@ -543,7 +546,7 @@ bool ITraceCpuRawContent::IsWriteFileOverflow(const int outputFileSize, const ss
                                               const int fileSizeThreshold)
 {
     // attention: we only check file size threshold in CMD/CACHE mode if need.
-    if ((request_.type != TRACE_TYPE::TRACE_RECORDING && request_.type != TRACE_TYPE::TRACE_CACHE) ||
+    if ((request_.type != TraceDumpType::TRACE_RECORDING && request_.type != TraceDumpType::TRACE_CACHE) ||
         !request_.limitFileSz) {
         return false;
     }
@@ -668,8 +671,7 @@ bool ITraceCpuRawRead::CacheTracePipeRawData(const std::string& srcPath, const i
     } else if (dumpStatus_ == TraceErrorCode::UNSET) {
         dumpStatus_ = TraceErrorCode::OUT_OF_TIME;
     }
-    HILOG_INFO(LOG_CORE, "CacheTracePipeRawData end, path: %{public}s, byte: %{public}zd. g_writeFileLimit: %{public}d",
-        srcPath.c_str(), writeLen, g_writeFileLimit);
+    HILOG_INFO(LOG_CORE, "CacheTracePipeRawData end, path: %{public}s, byte: %{public}zd", srcPath.c_str(), writeLen);
     close(rawTraceFd);
     return true;
 }

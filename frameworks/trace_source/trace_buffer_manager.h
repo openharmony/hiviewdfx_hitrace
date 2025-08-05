@@ -22,9 +22,16 @@
 #include <map>
 #include <vector>
 
+#include "nocopyable.h"
+
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
+/**
+ * @brief BufferBlock is a block of memory that can be used to store trace data.
+ * @note The current trace collection service already ensures that memory reading and writing are serial,
+ *       so there is no need to add lock protection.
+ */
 struct BufferBlock {
     int cpu;
     std::vector<uint8_t> data;
@@ -55,15 +62,11 @@ public:
     size_t GetCurrentTotalSize();
     size_t GetBlockSize() const;
 
-    TraceBufferManager(const TraceBufferManager&) = delete;
-    TraceBufferManager(TraceBufferManager&&) = delete;
-    TraceBufferManager& operator=(const TraceBufferManager&) = delete;
-    TraceBufferManager& operator=(TraceBufferManager&&) = delete;
-
 private:
     TraceBufferManager();
     explicit TraceBufferManager(size_t maxTotalSz, size_t blockSz = DEFAULT_BLOCK_SZ)
         : maxTotalSz_(maxTotalSz), blockSz_(blockSz), curTotalSz_(0) {}
+    DISALLOW_COPY_AND_MOVE(TraceBufferManager);
 
 private:
     size_t maxTotalSz_;

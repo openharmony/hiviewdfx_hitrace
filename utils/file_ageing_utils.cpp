@@ -40,7 +40,7 @@ public:
     virtual bool ShouldAgeing(const TraceFileInfo& traceFileInfo) = 0;
     virtual ~FileAgeingChecker() = default;
 
-    static std::shared_ptr<FileAgeingChecker> CreateFileChecker(const TRACE_TYPE traceType);
+    static std::shared_ptr<FileAgeingChecker> CreateFileChecker(const TraceDumpType traceType);
 };
 
 class FileNumberChecker : public FileAgeingChecker {
@@ -87,9 +87,9 @@ private:
     const int64_t minFileNumber_ = 2;  // To prevent all files from being cleared, set a minimum file number limit
 };
 
-std::shared_ptr<FileAgeingChecker> FileAgeingChecker::CreateFileChecker(const TRACE_TYPE traceType)
+std::shared_ptr<FileAgeingChecker> FileAgeingChecker::CreateFileChecker(const TraceDumpType traceType)
 {
-    if (traceType != TRACE_TYPE::TRACE_RECORDING && traceType != TRACE_TYPE::TRACE_SNAPSHOT) {
+    if (traceType != TraceDumpType::TRACE_RECORDING && traceType != TraceDumpType::TRACE_SNAPSHOT) {
         return nullptr;
     }
 
@@ -109,7 +109,7 @@ std::shared_ptr<FileAgeingChecker> FileAgeingChecker::CreateFileChecker(const TR
     return nullptr;
 }
 
-void HandleAgeingImpl(std::vector<TraceFileInfo>& fileList, const TRACE_TYPE traceType, FileAgeingChecker& helper)
+void HandleAgeingImpl(std::vector<TraceFileInfo>& fileList, const TraceDumpType traceType, FileAgeingChecker& helper)
 {
     int32_t deleteCount = 0;
     // handle the files saved in vector
@@ -145,7 +145,7 @@ namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
 
-void FileAgeingUtils::HandleAgeing(std::vector<TraceFileInfo>& fileList, const TRACE_TYPE traceType)
+void FileAgeingUtils::HandleAgeing(std::vector<TraceFileInfo>& fileList, const TraceDumpType traceType)
 {
     std::shared_ptr<FileAgeingChecker> checker = FileAgeingChecker::CreateFileChecker(traceType);
     if (checker != nullptr) {

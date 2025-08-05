@@ -66,7 +66,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest001, TestSize.Level2)
     TraceDumpExecutor& traceDumpExecutor = TraceDumpExecutor::GetInstance();
     EXPECT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
     TraceDumpParam param = {
-        TRACE_TYPE::TRACE_RECORDING,
+        TraceDumpType::TRACE_RECORDING,
         "",
         0,
         0,
@@ -101,7 +101,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest002, TestSize.Level2)
     TraceDumpExecutor& traceDumpExecutor = TraceDumpExecutor::GetInstance();
     EXPECT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
     TraceDumpParam param = {
-        TRACE_TYPE::TRACE_RECORDING,
+        TraceDumpType::TRACE_RECORDING,
         TEST_TRACE_TEMP_FILE,
         0,
         0,
@@ -134,7 +134,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest003, TestSize.Level2)
     ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
     TraceDumpExecutor& traceDumpExecutor = TraceDumpExecutor::GetInstance();
     TraceDumpParam param = {
-        TRACE_TYPE::TRACE_SNAPSHOT,
+        TraceDumpType::TRACE_SNAPSHOT,
         "",
         0,
         0,
@@ -162,7 +162,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest004, TestSize.Level2)
     traceDumpExecutor.ClearCacheTraceFiles();
     EXPECT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
     TraceDumpParam param = {
-        TRACE_TYPE::TRACE_CACHE,
+        TraceDumpType::TRACE_CACHE,
         "",
         0, // file limit
         0, // file size
@@ -199,7 +199,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest005, TestSize.Level2)
     traceDumpExecutor.ClearCacheTraceFiles();
     EXPECT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
     TraceDumpParam param = {
-        TRACE_TYPE::TRACE_CACHE,
+        TraceDumpType::TRACE_CACHE,
         "",
         0, // file limit
         0, // file size

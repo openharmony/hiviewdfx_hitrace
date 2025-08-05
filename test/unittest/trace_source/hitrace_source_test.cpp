@@ -302,7 +302,7 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest013, TestSize.Level2)
     }
     ASSERT_TRUE(traceSource != nullptr);
     TraceDumpRequest request = {
-        TRACE_TYPE::TRACE_RECORDING,
+        TraceDumpType::TRACE_RECORDING,
         102400, // 102400 : set 100MB /sys/kernel/tracing/buffer_size_kb.
         false,
         0,
@@ -345,7 +345,7 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest014, TestSize.Level2)
     ASSERT_TRUE(traceEventFmts != nullptr);
     ASSERT_TRUE(traceEventFmts->WriteTraceContent());
     TraceDumpRequest request = {
-        TRACE_TYPE::TRACE_RECORDING,
+        TraceDumpType::TRACE_RECORDING,
         1024000,
         false,
         0,
@@ -448,7 +448,7 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest018, TestSize.Level2)
         traceSource = std::make_shared<TraceSourceLinux>(TRACEFS_DIR, "");
     }
     EXPECT_TRUE(traceSource != nullptr);
-    TraceDumpRequest request = { TRACE_TYPE::TRACE_SNAPSHOT, 0, false, 0, std::numeric_limits<uint64_t>::max(), 1 };
+    TraceDumpRequest request = { TraceDumpType::TRACE_SNAPSHOT, 0, false, 0, std::numeric_limits<uint64_t>::max(), 1 };
     auto traceCpuRawRead = traceSource->GetTraceCpuRawRead(request);
     EXPECT_TRUE(traceCpuRawRead != nullptr);
     EXPECT_TRUE(traceCpuRawRead->WriteTraceContent());
@@ -479,7 +479,7 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest019, TestSize.Level2)
     }
     EXPECT_TRUE(traceSourceRead != nullptr);
     EXPECT_TRUE(traceSourceWrite != nullptr);
-    TraceDumpRequest request = { TRACE_TYPE::TRACE_SNAPSHOT, 0, false, 0, std::numeric_limits<uint64_t>::max(), 1 };
+    TraceDumpRequest request = { TraceDumpType::TRACE_SNAPSHOT, 0, false, 0, std::numeric_limits<uint64_t>::max(), 1 };
     auto traceCpuRawRead = traceSourceRead->GetTraceCpuRawRead(request);
     EXPECT_TRUE(traceCpuRawRead != nullptr);
     EXPECT_TRUE(traceCpuRawRead->WriteTraceContent());

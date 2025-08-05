@@ -73,7 +73,7 @@ std::vector<std::string> FilterLoopTraceResult(const std::vector<TraceFileInfo>&
     return outputFiles;
 }
 
-bool IsGenerateNewFile(std::shared_ptr<ITraceSource> traceSource, const TRACE_TYPE traceType, int& count)
+bool IsGenerateNewFile(std::shared_ptr<ITraceSource> traceSource, const TraceDumpType traceType, int& count)
 {
     if (access(traceSource->GetTraceFilePath().c_str(), F_OK) == 0) {
         return false;
@@ -229,14 +229,14 @@ TraceDumpRet RecordTraceDumpStrategy::Execute(std::shared_ptr<ITraceSource> trac
         }
         PreTraceContentDump(traceContentPtr);
         if (!ProcessTraceContent(traceSource, request, traceContentPtr, result)) {
-            if (!IsGenerateNewFile(traceSource, TRACE_TYPE::TRACE_RECORDING, newFileCount)) {
+            if (!IsGenerateNewFile(traceSource, TraceDumpType::TRACE_RECORDING, newFileCount)) {
                 HILOG_ERROR(LOG_CORE, "RecordTraceDumpStrategy: write raw trace content failed.");
                 break;
             }
             continue;
         }
         AfterTraceContentDump(traceContentPtr);
-    } while (IsGenerateNewFile(traceSource, TRACE_TYPE::TRACE_RECORDING, newFileCount));
+    } while (IsGenerateNewFile(traceSource, TraceDumpType::TRACE_RECORDING, newFileCount));
 
     TraceDumpRet ret = {
         .code = result.code,
@@ -290,14 +290,14 @@ TraceDumpRet CacheTraceDumpStrategy::Execute(std::shared_ptr<ITraceSource> trace
         }
         PreTraceContentDump(traceContentPtr);
         if (!ProcessTraceContent(traceSource, request, traceContentPtr, result, sliceDuration)) {
-            if (!IsGenerateNewFile(traceSource, TRACE_TYPE::TRACE_CACHE, newFileCount)) {
+            if (!IsGenerateNewFile(traceSource, TraceDumpType::TRACE_CACHE, newFileCount)) {
                 HILOG_ERROR(LOG_CORE, "CacheTraceDumpStrategy: write raw trace content failed.");
                 break;
             }
             continue;
         }
         AfterTraceContentDump(traceContentPtr);
-    } while (IsGenerateNewFile(traceSource, TRACE_TYPE::TRACE_CACHE, newFileCount));
+    } while (IsGenerateNewFile(traceSource, TraceDumpType::TRACE_CACHE, newFileCount));
 
     TraceDumpRet ret = {
         .code = result.code,
@@ -374,8 +374,8 @@ bool TraceDumpExecutor::StartDumpTraceLoop(const TraceDumpParam& param)
     {
         std::lock_guard<std::mutex> lck(traceFileMutex_);
         loopTraceFiles_.clear();
-        GetTraceFilesInDir(loopTraceFiles_, TRACE_TYPE::TRACE_RECORDING);
-        FileAgeingUtils::HandleAgeing(loopTraceFiles_, TRACE_TYPE::TRACE_RECORDING);
+        GetTraceFilesInDir(loopTraceFiles_, TraceDumpType::TRACE_RECORDING);
+        FileAgeingUtils::HandleAgeing(loopTraceFiles_, TraceDumpType::TRACE_RECORDING);
     }
 
     if (param.fileSize == 0 && g_isRootVer) {
@@ -717,7 +717,7 @@ bool TraceDumpExecutor::DoDumpTraceLoop(const TraceDumpParam& param, std::string
         return false;
     }
     MarkClockSync(tracefsDir_);
-    int fileSizeThreshold = param.type == TRACE_TYPE::TRACE_CACHE ?
+    int fileSizeThreshold = param.type == TraceDumpType::TRACE_CACHE ?
         DEFAULT_CACHE_FILE_SIZE * BYTE_PER_KB : DEFAULT_FILE_SIZE * BYTE_PER_KB;
     if (param.fileSize != 0) {
         fileSizeThreshold = param.fileSize * BYTE_PER_KB;
@@ -728,7 +728,7 @@ bool TraceDumpExecutor::DoDumpTraceLoop(const TraceDumpParam& param, std::string
     } else {
         traceSource = std::make_shared<TraceSourceLinux>(tracefsDir_, traceFile);
     }
-    if (param.type == TRACE_TYPE::TRACE_RECORDING) {
+    if (param.type == TraceDumpType::TRACE_RECORDING) {
         SetTraceDumpStrategy(std::make_unique<RecordTraceDumpStrategy>());
     } else {
         SetTraceDumpStrategy(std::make_unique<CacheTraceDumpStrategy>());
@@ -745,7 +745,7 @@ bool TraceDumpExecutor::DoDumpTraceLoop(const TraceDumpParam& param, std::string
         return false;
     }
     traceFile = traceSource->GetTraceFilePath();
-    if (param.type == TRACE_TYPE::TRACE_CACHE) {
+    if (param.type == TraceDumpType::TRACE_CACHE) {
         TraceFileInfo traceFileInfo;
         if (!SetFileInfo(true, traceFile, dumpRet.traceStartTime, dumpRet.traceEndTime, traceFileInfo)) {
             RemoveFile(traceFile);
@@ -801,7 +801,7 @@ bool TraceDumpExecutor::DoReadRawTrace(TraceDumpTask& task)
     }
 
     TraceDumpRequest request = {
-        TRACE_TYPE::TRACE_SNAPSHOT,
+        TraceDumpType::TRACE_SNAPSHOT,
         0,
         false,
         task.traceStartTime,
@@ -841,7 +841,7 @@ bool TraceDumpExecutor::DoWriteRawTrace(TraceDumpTask& task)
     }
 
     TraceDumpRequest request = {
-        TRACE_TYPE::TRACE_SNAPSHOT,
+        TraceDumpType::TRACE_SNAPSHOT,
         0,
         false,
         task.traceStartTime,

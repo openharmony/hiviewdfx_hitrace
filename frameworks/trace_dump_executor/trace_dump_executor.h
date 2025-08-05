@@ -24,6 +24,7 @@
 #include <condition_variable>
 
 #include "hitrace_define.h"
+#include "nocopyable.h"
 #include "trace_dump_pipe.h"
 #include "trace_file_utils.h"
 #include "trace_source.h"
@@ -32,7 +33,7 @@ namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
 struct TraceDumpParam {
-    TRACE_TYPE type;
+    TraceDumpType type;
     std::string outputFile;
     int fileLimit;
     int fileSize;
@@ -138,13 +139,9 @@ public:
     void ClearCacheTraceFiles();
 #endif
 
-    TraceDumpExecutor(const TraceDumpExecutor&) = delete;
-    TraceDumpExecutor(TraceDumpExecutor&&) = delete;
-    TraceDumpExecutor& operator=(const TraceDumpExecutor&) = delete;
-    TraceDumpExecutor& operator=(TraceDumpExecutor&&) = delete;
-
 private:
     TraceDumpExecutor();
+    DISALLOW_COPY_AND_MOVE(TraceDumpExecutor);
     void SetTraceDumpStrategy(std::unique_ptr<ITraceDumpStrategy> strategy);
     TraceDumpRet ExecuteDumpTrace(std::shared_ptr<ITraceSource> traceSource, const TraceDumpRequest& request);
     bool DoDumpTraceLoop(const TraceDumpParam& param, std::string& traceFile, bool isLimited);

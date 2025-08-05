@@ -239,8 +239,8 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest007, TestSize.Level2)
 {
     std::shared_ptr<TraceJsonParser> jsonParser
         = std::make_shared<TraceJsonParser>(TEST_TAG_UTILS_JSON, TEST_PRODUCT_CONFIG_JSON);
-    ASSERT_TRUE(jsonParser->GetAgeingParam(TRACE_TYPE::TRACE_SNAPSHOT).rootEnable);
-    ASSERT_TRUE(jsonParser->GetAgeingParam(TRACE_TYPE::TRACE_RECORDING).rootEnable);
+    ASSERT_TRUE(jsonParser->GetAgeingParam(TraceDumpType::TRACE_SNAPSHOT).rootEnable);
+    ASSERT_TRUE(jsonParser->GetAgeingParam(TraceDumpType::TRACE_RECORDING).rootEnable);
 }
 
 HWTEST_F(HitraceUtilsTest, JsonParserTest008, TestSize.Level2)
@@ -248,17 +248,17 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest008, TestSize.Level2)
     std::shared_ptr<TraceJsonParser> jsonParser
         = std::make_shared<TraceJsonParser>(TEST_TAG_UTILS_JSON, TEST_PRODUCT_CONFIG_JSON);
 
-    AgeingParam param = jsonParser->GetAgeingParam(TRACE_TYPE::TRACE_SNAPSHOT);
+    AgeingParam param = jsonParser->GetAgeingParam(TraceDumpType::TRACE_SNAPSHOT);
     EXPECT_EQ(param.rootEnable, true);
     EXPECT_EQ(param.fileNumberLimit, 20);
     EXPECT_EQ(param.fileSizeKbLimit, 1024);
 
-    param = jsonParser->GetAgeingParam(TRACE_TYPE::TRACE_RECORDING);
+    param = jsonParser->GetAgeingParam(TraceDumpType::TRACE_RECORDING);
     EXPECT_EQ(param.rootEnable, true);
     EXPECT_EQ(param.fileNumberLimit, 15);
     EXPECT_EQ(param.fileSizeKbLimit, 2048);
 
-    param = jsonParser->GetAgeingParam(TRACE_TYPE::TRACE_CACHE);
+    param = jsonParser->GetAgeingParam(TraceDumpType::TRACE_CACHE);
     EXPECT_EQ(param.rootEnable, true);
     EXPECT_EQ(param.fileNumberLimit, 0);
     EXPECT_EQ(param.fileSizeKbLimit, 0);
@@ -457,7 +457,7 @@ HWTEST_F(HitraceUtilsTest, GetTraceFileNamesInDir_001, TestSize.Level2)
 {
     std::filesystem::remove_all(TRACE_FILE_DEFAULT_DIR);
     std::set<std::string> fileSet = {};
-    GetTraceFileNamesInDir(fileSet, TRACE_TYPE::TRACE_SNAPSHOT);
+    GetTraceFileNamesInDir(fileSet, TraceDumpType::TRACE_SNAPSHOT);
 
     EXPECT_TRUE(fileSet.empty());
     system("service_control stop hiview");

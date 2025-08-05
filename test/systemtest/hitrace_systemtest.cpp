@@ -46,10 +46,10 @@ struct FileWithInfo {
     uint64_t duration;
 };
 
-std::map<TRACE_TYPE, std::string> tracePrefixMap = {
-    {TRACE_TYPE::TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
-    {TRACE_TYPE::TRACE_RECORDING, TRACE_RECORDING_PREFIX},
-    {TRACE_TYPE::TRACE_CACHE, TRACE_CACHE_PREFIX},
+std::map<TraceDumpType, std::string> tracePrefixMap = {
+    {TraceDumpType::TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
+    {TraceDumpType::TRACE_RECORDING, TRACE_RECORDING_PREFIX},
+    {TraceDumpType::TRACE_CACHE, TRACE_CACHE_PREFIX},
 };
 }
 class HitraceSystemTest : public testing::Test {
@@ -214,7 +214,7 @@ bool GetDurationFromFileName(const std::string& fileName, uint64_t& duration)
     return true;
 }
 
-bool GetFileInfo(const TRACE_TYPE& traceType, const std::vector<std::string>& outputFiles,
+bool GetFileInfo(const TraceDumpType& traceType, const std::vector<std::string>& outputFiles,
     std::vector<FileWithInfo>& fileList)
 {
     struct stat fileStat;
@@ -243,7 +243,7 @@ bool GetFileInfo(const TRACE_TYPE& traceType, const std::vector<std::string>& ou
     return true;
 }
 
-std::vector<std::string> GetTraceFilesInDir(const TRACE_TYPE& traceType)
+std::vector<std::string> GetTraceFilesInDir(const TraceDumpType& traceType)
 {
     std::vector<std::string> fileVec;
     for (const auto &entry : std::filesystem::directory_iterator(TRACE_FILE_DEFAULT_DIR)) {
@@ -495,7 +495,7 @@ HWTEST_F(HitraceSystemTest, CacheModeTest001, TestSize.Level1)
     EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
     EXPECT_EQ(ret.mode, TraceMode::OPEN | TraceMode::CACHE);
     std::vector<FileWithInfo> fileList;
-    EXPECT_TRUE(GetFileInfo(TRACE_TYPE::TRACE_SNAPSHOT, ret.outputFiles, fileList));
+    EXPECT_TRUE(GetFileInfo(TraceDumpType::TRACE_SNAPSHOT, ret.outputFiles, fileList));
     EXPECT_GE(fileList.size(), 2); // cache_trace_ file count > 2
     uint64_t totalDuartion = 0;
     for (auto i = 0; i < fileList.size(); i++) {
@@ -531,8 +531,8 @@ HWTEST_F(HitraceSystemTest, CacheModeTest002, TestSize.Level1)
     EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
     std::vector<FileWithInfo> cacheFileList;
     std::vector<FileWithInfo> traceFileList;
-    EXPECT_TRUE(GetFileInfo(TRACE_TYPE::TRACE_SNAPSHOT, ret.outputFiles, cacheFileList));
-    EXPECT_TRUE(GetFileInfo(TRACE_TYPE::TRACE_SNAPSHOT, ret.outputFiles, traceFileList));
+    EXPECT_TRUE(GetFileInfo(TraceDumpType::TRACE_SNAPSHOT, ret.outputFiles, cacheFileList));
+    EXPECT_TRUE(GetFileInfo(TraceDumpType::TRACE_SNAPSHOT, ret.outputFiles, traceFileList));
     uint64_t totalDuartion = 0;
     EXPECT_GE(cacheFileList.size(), 2); // cache_trace_ file count > 2
     for (auto i = 0; i < cacheFileList.size(); i++) {
@@ -573,7 +573,7 @@ HWTEST_F(HitraceSystemTest, CacheModeTest003, TestSize.Level0)
     sleep(30); // wait 30s: start aging file
     retCode = OpenTrace(tagGroups);
     EXPECT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
-    EXPECT_EQ(GetTraceFilesInDir(TRACE_TYPE::TRACE_CACHE).size(), 0); // no cache trace file
+    EXPECT_EQ(GetTraceFilesInDir(TraceDumpType::TRACE_CACHE).size(), 0); // no cache trace file
     retCode = CloseTrace();
     EXPECT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
 }
@@ -594,9 +594,9 @@ HWTEST_F(HitraceSystemTest, CacheModeTest004, TestSize.Level0)
     sleep(10); // wait 10s
     retCode = CacheTraceOff();
     EXPECT_EQ(retCode, TraceErrorCode::SUCCESS) << "errorCode: " << static_cast<int>(retCode);
-    std::vector<std::string> fileVec = GetTraceFilesInDir(TRACE_TYPE::TRACE_CACHE);
+    std::vector<std::string> fileVec = GetTraceFilesInDir(TraceDumpType::TRACE_CACHE);
     std::vector<FileWithInfo> cacheFileList;
-    EXPECT_TRUE(GetFileInfo(TRACE_TYPE::TRACE_CACHE, fileVec, cacheFileList));
+    EXPECT_TRUE(GetFileInfo(TraceDumpType::TRACE_CACHE, fileVec, cacheFileList));
     uint64_t totalFileSize = 0;
     for (auto i = 0; i < cacheFileList.size(); i++) {
         GTEST_LOG_(INFO) << "file: " << cacheFileList[i].filename.c_str() << ", size: " << cacheFileList[i].fileSize;

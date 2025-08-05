@@ -32,7 +32,7 @@ enum TraceMode : uint8_t {
     CACHE = 1 << 2,
 };
 
-enum TRACE_TYPE : uint8_t {
+enum TraceDumpType : uint8_t {
     TRACE_SNAPSHOT = 0,
     TRACE_RECORDING = 1,
     TRACE_CACHE = 2,
@@ -58,7 +58,7 @@ enum TraceErrorCode : uint8_t {
 };
 
 struct TraceDumpRequest {
-    TRACE_TYPE type;
+    TraceDumpType type;
     int fileSize; // bytes
     bool limitFileSz;
     uint64_t traceStartTime;

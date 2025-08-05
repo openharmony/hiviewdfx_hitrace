@@ -50,10 +50,10 @@ const int TIME_INIT = 1900;
 static const char* TRACE_SNAPSHOT_PREFIX = "trace_";
 static const char* TRACE_RECORDING_PREFIX = "record_trace_";
 static const char* TRACE_CACHE_PREFIX = "cache_trace_";
-std::map<TRACE_TYPE, std::string> tracePrefixMap = {
-    {TRACE_TYPE::TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
-    {TRACE_TYPE::TRACE_RECORDING, TRACE_RECORDING_PREFIX},
-    {TRACE_TYPE::TRACE_CACHE, TRACE_CACHE_PREFIX},
+std::map<TraceDumpType, std::string> tracePrefixMap = {
+    {TraceDumpType::TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
+    {TraceDumpType::TRACE_RECORDING, TRACE_RECORDING_PREFIX},
+    {TraceDumpType::TRACE_CACHE, TRACE_CACHE_PREFIX},
 };
 
 uint64_t ConvertPageTraceTimeToUtTimeMs(const uint64_t& pageTraceTime)
@@ -158,7 +158,7 @@ TraceFileInfo::TraceFileInfo(const std::string& name, time_t time, int64_t sizek
     isNewFile = newFile;
 }
 
-void GetTraceFilesInDir(std::vector<TraceFileInfo>& fileList, TRACE_TYPE traceType)
+void GetTraceFilesInDir(std::vector<TraceFileInfo>& fileList, TraceDumpType traceType)
 {
     if (!std::filesystem::exists(TRACE_FILE_DEFAULT_DIR) || !std::filesystem::is_directory(TRACE_FILE_DEFAULT_DIR)) {
         HILOG_INFO(LOG_CORE, "GetTraceFilesInDir fail, directory not exist");
@@ -183,7 +183,7 @@ void GetTraceFilesInDir(std::vector<TraceFileInfo>& fileList, TRACE_TYPE traceTy
     });
 }
 
-void GetTraceFileNamesInDir(std::set<std::string>& fileSet, TRACE_TYPE traceType)
+void GetTraceFileNamesInDir(std::set<std::string>& fileSet, TraceDumpType traceType)
 {
     if (!std::filesystem::exists(TRACE_FILE_DEFAULT_DIR) || !std::filesystem::is_directory(TRACE_FILE_DEFAULT_DIR)) {
         HILOG_INFO(LOG_CORE, "GetTraceFileNamesInDir fail, directory not exist");
@@ -226,7 +226,7 @@ bool RemoveFile(const std::string& fileName)
     return result;
 }
 
-std::string GenerateTraceFileName(TRACE_TYPE traceType)
+std::string GenerateTraceFileName(TraceDumpType traceType)
 {
     // eg: /data/log/hitrace/trace_localtime@boottime.sys
     std::string name = TRACE_FILE_DEFAULT_DIR;
@@ -253,7 +253,7 @@ std::string GenerateTraceFileName(TRACE_TYPE traceType)
     return name;
 }
 
-std::string GenerateTraceFileNameByTraceTime(TRACE_TYPE traceType,
+std::string GenerateTraceFileNameByTraceTime(TraceDumpType traceType,
     const uint64_t& firstPageTraceTime, const uint64_t& lastPageTraceTime)
 {
     if (firstPageTraceTime >= lastPageTraceTime) {
@@ -377,7 +377,7 @@ uint64_t GetCurUnixTimeMs()
     return std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 }
 
-void RefreshTraceVec(std::vector<TraceFileInfo>& traceVec, const TRACE_TYPE traceType)
+void RefreshTraceVec(std::vector<TraceFileInfo>& traceVec, const TraceDumpType traceType)
 {
     traceVec.clear();
     std::vector<TraceFileInfo> traceFileList;

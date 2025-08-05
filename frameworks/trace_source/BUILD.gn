@@ -36,7 +36,10 @@ ohos_static_library("trace_source") {
   } else {
     external_deps = [ "hilog:libhilog" ]
   }
-  external_deps += [ "bounds_checking_function:libsec_shared" ]
+  external_deps += [
+    "bounds_checking_function:libsec_shared",
+    "c_utils:utils",
+  ]
   part_name = "hitrace"
   subsystem_name = "hiviewdfx"
 }

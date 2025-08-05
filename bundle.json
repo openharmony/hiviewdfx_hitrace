@@ -33,6 +33,7 @@
       "components": [
         "bounds_checking_function",
         "cJSON",
+        "c_utils",
         "hilog",
         "hilog_lite",
         "hisysevent",
