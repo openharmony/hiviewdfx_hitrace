@@ -14,6 +14,8 @@
  */
 #include "hitrace_dump.h"
 
+#include <dlfcn.h>
+#include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
 #include <iostream>
@@ -256,6 +258,31 @@ std::vector<std::string> GetTraceFilesInDir(const TraceDumpType& traceType)
         }
     }
     return fileVec;
+}
+
+int32_t GetTraceMarkerFdNum()
+{
+    std::filesystem::path debugPath = std::filesystem::canonical("/sys/kernel/debug/tracing/trace_marker");
+    std::filesystem::path tracePath = std::filesystem::canonical("/sys/kernel/tracing/trace_marker");
+
+    int32_t fds = 0;
+    for (const auto& entry : std::filesystem::directory_iterator("/proc/self/fd")) {
+        if (!std::filesystem::is_symlink(entry.path())) {
+            continue;
+        }
+
+        auto symlink_path = std::filesystem::read_symlink(entry.path());
+        if (!symlink_path.is_absolute()) {
+            continue;
+        }
+
+        auto resolved_path = std::filesystem::canonical(symlink_path);
+        if (resolved_path == debugPath || resolved_path == tracePath) {
+            fds++;
+        }
+    }
+
+    return fds;
 }
 
 /**
@@ -945,6 +972,62 @@ HWTEST_F(HitraceSystemTest, HitraceSystemGetLevelTest002, TestSize.Level2)
     EXPECT_TRUE(CheckTraceCommandOutput("hitrace --get_level",
                                         {"GET_TRACE_LEVEL", "error: get trace level threshold failed"}, traceLists));
     ASSERT_TRUE(SetPropertyInner(TRACE_LEVEL_THRESHOLD, std::to_string(hitraceOutputLevelInfo)));
+}
+
+HWTEST_F(HitraceSystemTest, HitraceDlcoseTest001, TestSize.Level2)
+{
+    const int cycles = 10;
+    const int fdNums = 2;
+    const char* libraryPath = "libhitrace_meter.so";
+    int count = 0;
+
+    for (int i = 0; i < cycles; ++i) {
+        void* handle = dlopen(libraryPath, RTLD_LAZY);
+        ASSERT_NE(handle, nullptr);
+
+        auto func = reinterpret_cast<void(*)(uint64_t, const char*)>(dlsym(handle, "StartTraceWrapper"));
+
+        if (dlerror() != nullptr) {
+            dlclose(handle);
+            continue;
+        }
+
+        func(1, libraryPath);
+        EXPECT_GT(GetTraceMarkerFdNum(), 0);
+        EXPECT_EQ(dlclose(handle), 0);
+        count++;
+    }
+
+    EXPECT_LE(GetTraceMarkerFdNum(), fdNums);
+    EXPECT_EQ(count, cycles);
+}
+
+HWTEST_F(HitraceSystemTest, HitraceDlcoseTest002, TestSize.Level2)
+{
+    const char* libraryPath = "libhitrace_meter.so";
+
+    void* handle = dlopen(libraryPath, RTLD_LAZY);
+    ASSERT_NE(handle, nullptr);
+
+    auto func = reinterpret_cast<void(*)(uint64_t, const char*)>(dlsym(handle, "StartTraceWrapper"));
+    if (dlerror() != nullptr) {
+        dlclose(handle);
+        ASSERT_TRUE(false);
+    }
+    func(1, libraryPath);
+
+    std::vector<const char*> libPaths = { "libhitracemeter_napi.z.so", "libhitracechain.so" };
+    for (const char* path : libPaths) {
+        void* sHandle = dlopen(path, RTLD_LAZY);
+        EXPECT_NE(sHandle, nullptr);
+
+        if (sHandle != nullptr) {
+            dlclose(sHandle);
+        }
+    }
+
+    EXPECT_NE(GetTraceMarkerFdNum(), 0);
+    EXPECT_EQ(dlclose(handle), 0);
 }
 } // namespace
 } // namespace Hitrace
