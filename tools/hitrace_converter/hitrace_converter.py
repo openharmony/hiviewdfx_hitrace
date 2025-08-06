@@ -20,9 +20,10 @@ from enum import IntEnum, unique
 from typing import List, Any
 import optparse
 import os
+import re
 import stat
 import struct
-import re
+import sys
 
 import parse_functions
 
@@ -277,7 +278,7 @@ class FileHeader(FieldOperator):
     功能描述: 声明HiTrace文件的头部格式
     """
     # 描述HiTrace文件头的pack格式
-    FORMAT = "HBHL"
+    FORMAT = "HBHI"
 
     # HiTrace文件头包含的字段
     ITEM_MAGIC_NUMBER = 0
@@ -346,7 +347,7 @@ class TraceEventHeader(FieldOperator):
     功能描述: 声明HiTrace文件的trace event头部格式
     """
     # 描述HiTrace文件trace event的pack格式
-    FORMAT = "LH"
+    FORMAT = "IH"
     RMQ_ENTRY_ALIGN_MASK = 3
 
     # HiTrace文件的trace event header包含的字段，事件的打点时间是基于page header的时间做偏移可计算出来
@@ -664,7 +665,9 @@ class TraceFile:
     """
     def __init__(self, name: str) -> None:
         self.name = name
-        flags = os.O_RDONLY | os.O_BINARY
+        flags = os.O_RDONLY
+        if sys.platform == 'win32':
+            flags = os.O_RDONLY | os.O_BINARY
         mode = stat.S_IRUSR
         self.file = os.fdopen(os.open(name, flags, mode), 'rb')
         self.size = os.path.getsize(name)
