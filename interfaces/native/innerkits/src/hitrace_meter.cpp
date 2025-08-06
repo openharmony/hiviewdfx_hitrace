@@ -286,6 +286,28 @@ void OpenTraceMarkerFile()
     g_isHitraceMeterInit = true;
 }
 
+__attribute__((destructor)) static void LibraryUnload()
+{
+    HILOG_INFO(LOG_CORE, "library unload");
+    if (g_markerFd != -1) {
+        close(g_markerFd);
+        g_markerFd = -1;
+    }
+    if (g_appFd != -1) {
+        close(g_appFd);
+        g_appFd = -1;
+    }
+
+    CachedParameterDestroy(g_cachedHandle);
+    g_cachedHandle = nullptr;
+
+    CachedParameterDestroy(g_appPidCachedHandle);
+    g_appPidCachedHandle = nullptr;
+
+    CachedParameterDestroy(g_levelThresholdCachedHandle);
+    g_levelThresholdCachedHandle = nullptr;
+}
+
 __attribute__((always_inline)) bool PrepareTraceMarker()
 {
     if (UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
