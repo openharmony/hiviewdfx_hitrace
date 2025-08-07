@@ -17,6 +17,10 @@
 
 #include "hitrace/hitracechainc.h"
 
+#ifndef TRACE_DOMAIN
+#define TRACE_DOMAIN 0xD002D33
+#endif
+
 typedef HiTraceIdValid HiTraceId_Valid;
 typedef HiTraceVersion HiTrace_Version;
 typedef HiTraceFlag HiTrace_Flag;
@@ -26,13 +30,13 @@ typedef HiTraceIdStruct HiTraceId;
 
 HiTraceId OH_HiTrace_BeginChain(const char* name, int flags)
 {
-    return HiTraceChainBegin(name, flags);
+    return HiTraceChainBeginWithDomain(name, flags, TRACE_DOMAIN);
 }
 
 void OH_HiTrace_EndChain(void)
 {
     HiTraceId id = HiTraceChainGetId();
-    HiTraceChainEnd(&id);
+    HiTraceChainEndWithDomain(&id, TRACE_DOMAIN);
 }
 
 HiTraceId OH_HiTrace_GetId(void)
@@ -60,7 +64,7 @@ void OH_HiTrace_Tracepoint(HiTrace_Communication_Mode mode, HiTrace_Tracepoint_T
 {
     va_list args;
     va_start(args, fmt);
-    HiTraceChainTracepointExWithArgs(mode, type, id, fmt, args);
+    HiTraceChainTracepointExWithArgsDomain(mode, type, id, TRACE_DOMAIN, fmt, args);
     va_end(args);
 }
 

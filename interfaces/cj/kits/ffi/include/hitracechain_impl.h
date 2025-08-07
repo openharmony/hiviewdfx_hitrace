@@ -29,7 +29,7 @@ public:
     static void SetId(const HiviewDFX::HiTraceId& id);
     static void ClearId();
     static HiviewDFX::HiTraceId CreateSpan();
-    static void Tracepoint(uint32_t mode, uint32_t type, HiviewDFX::HiTraceId id, const char* fmt);
+    static void Tracepoint(uint32_t mode, uint32_t type, HiviewDFX::HiTraceId id, const char* msg);
     static bool IsValid(const HiviewDFX::HiTraceId& id);
     static bool IsFlagEnabled(const HiviewDFX::HiTraceId& traceId, int32_t flag);
     static void EnableFlag(HiviewDFX::HiTraceId& traceId, int32_t flag);

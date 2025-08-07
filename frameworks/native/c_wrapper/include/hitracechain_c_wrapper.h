@@ -26,6 +26,10 @@ extern "C" {
 void HiTraceChainTracepointExWrapper(int mode, int type, const HiTraceIdStruct* pId, const char* fmt, ...)
     __attribute__((__format__(os_log, 4, 5)));
 
+// rust ffi border redefinition adapts for function HiTraceChainTracepointExWithDomain.
+void HiTraceChainTracepointExWithDomainWrapper(int mode, int type, const HiTraceIdStruct* pId,
+    unsigned int domain, const char* fmt, ...) __attribute__((__format__(os_log, 5, 6)));
+
 // rust ffi border redefinition adapts for function HiTraceChainIsFlagEnabled.
 int HiTraceChainIsFlagEnabledWrapper(const HiTraceIdStruct* pId, int flag);
 

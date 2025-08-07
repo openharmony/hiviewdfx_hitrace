@@ -97,7 +97,7 @@ static napi_value Begin(napi_env env, napi_callback_info info)
         HILOG_ERROR(LOG_CORE, "flag type must be number, null or undefined.");
         return val;
     }
-    traceId = HiTraceChain::Begin(name, flag);
+    traceId = HiTraceChain::Begin(name, flag, LOG_DOMAIN);
     NapiHitraceUtil::CreateHiTraceIdJsObject(env, traceId, val);
     return val;
 }
@@ -119,7 +119,7 @@ static napi_value End(napi_env env, napi_callback_info info)
         HILOG_ERROR(LOG_CORE, "hitarce id type must be object.");
         return nullptr;
     }
-    HiTraceChain::End(traceId);
+    HiTraceChain::End(traceId, LOG_DOMAIN);
     return nullptr;
 }
 
@@ -202,7 +202,7 @@ static napi_value Tracepoint(napi_env env, napi_callback_info info)
         HILOG_ERROR(LOG_CORE, "description type must be string, null or undefined.");
         return nullptr;
     }
-    HiTraceChain::Tracepoint(communicationMode, tracePointType, traceId, "%s", description.c_str());
+    HiTraceChain::Tracepoint(communicationMode, tracePointType, traceId, LOG_DOMAIN, "%s", description.c_str());
     return nullptr;
 }
 

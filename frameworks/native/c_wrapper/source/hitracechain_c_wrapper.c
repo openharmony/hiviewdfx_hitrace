@@ -21,7 +21,17 @@ void HiTraceChainTracepointExWrapper(int mode, int type, const HiTraceIdStruct* 
 {
     va_list args;
     va_start(args, fmt);
-    HiTraceChainTracepointInner(mode, type, pId, fmt, args);
+    HiTraceChainTracepointInner(mode, type, pId, 0, fmt, args);
+    va_end(args);
+    return;
+}
+
+void HiTraceChainTracepointExWithDomainWrapper(int mode, int type, const HiTraceIdStruct* pId,
+    unsigned int domain, const char* fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    HiTraceChainTracepointInner(mode, type, pId, domain, fmt, args);
     va_end(args);
     return;
 }
