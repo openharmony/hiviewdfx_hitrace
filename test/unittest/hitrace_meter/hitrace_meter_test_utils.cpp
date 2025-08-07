@@ -184,11 +184,12 @@ bool GetTraceResult(TraceInfo& traceInfo, const std::vector<std::string>& list,
         return false;
     }
 #ifdef HITRACE_METER_SDK_C
-    std::string bitsStr = "62";
+    std::string bitStr = "62";
 #else
-    constexpr uint32_t regularTagSizeLimit = 6;
-    std::string bitsStr(regularTagSizeLimit, '\0');
-    ParseTagBits(traceInfo.tag, bitsStr);
+    constexpr int bitStrSize = 7;
+    char bitStrC[bitStrSize] = {0};
+    ParseTagBits(traceInfo.tag, bitStrC, bitStrSize);
+    std::string bitStr = std::string(bitStrC);
 #endif
     std::string chainStr = "";
     if (traceInfo.hiTraceId != nullptr) {
@@ -200,23 +201,23 @@ bool GetTraceResult(TraceInfo& traceInfo, const std::vector<std::string>& list,
     std::string customArgs = std::string(traceInfo.customArgs);
     std::string recordStr = std::string(1, traceInfo.type) + SEPARATOR + g_pid + SEPARATOR;
     if (traceInfo.type == 'E') {
-        recordStr += g_traceLevel[traceInfo.level] + bitsStr;
+        recordStr += g_traceLevel[traceInfo.level] + bitStr;
     } else {
         recordStr += "H:" + chainStr + name + SEPARATOR;
         if (traceInfo.type == 'B') {
-            recordStr += g_traceLevel[traceInfo.level] + bitsStr;
+            recordStr += g_traceLevel[traceInfo.level] + bitStr;
             if (customArgs != "") {
                 recordStr += SEPARATOR + customArgs;
             }
         } else if (traceInfo.type == 'S') {
-            recordStr += std::to_string(traceInfo.value) + SEPARATOR + g_traceLevel[traceInfo.level] + bitsStr;
+            recordStr += std::to_string(traceInfo.value) + SEPARATOR + g_traceLevel[traceInfo.level] + bitStr;
             if (customArgs != "") {
                 recordStr += SEPARATOR + customCategory + SEPARATOR + customArgs;
             } else if (customCategory != "") {
                 recordStr += SEPARATOR + customCategory;
             }
         } else {
-            recordStr += std::to_string(traceInfo.value) + SEPARATOR + g_traceLevel[traceInfo.level] + bitsStr;
+            recordStr += std::to_string(traceInfo.value) + SEPARATOR + g_traceLevel[traceInfo.level] + bitStr;
         }
     }
     recordStr = recordStr.substr(0, sizeof(record) - 1);

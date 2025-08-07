@@ -537,10 +537,9 @@ int SetAppTraceBuffer(char* buf, const int len, const TraceMarker& traceMarker)
         WriteOnceLog(LOG_ERROR, "get cpu failed", isWriteLog);
         return -1;
     }
-
-    constexpr uint32_t regularTagSizeLimit = 6;
-    std::string bitsStr(regularTagSizeLimit, '\0');
-    ParseTagBits(traceMarker.tag, bitsStr);
+    constexpr int bitStrSize = 7;
+    char bitStr[bitStrSize] = {0};
+    ParseTagBits(traceMarker.tag, bitStr, bitStrSize);
     std::string additionalParams = "";
     int bytes = 0;
     if (traceMarker.type == MARKER_BEGIN) {
@@ -549,11 +548,11 @@ int SetAppTraceBuffer(char* buf, const int len, const TraceMarker& traceMarker)
         }
         bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: B|%s|H:%s|%c%s%s\n",
             g_appTracePrefix.c_str(), cpu, static_cast<long>(ts.tv_sec), static_cast<long>(ts.tv_nsec / NS_TO_MS),
-            g_pid, traceMarker.name, g_traceLevel[traceMarker.level], bitsStr.c_str(), additionalParams.c_str());
+            g_pid, traceMarker.name, g_traceLevel[traceMarker.level], bitStr, additionalParams.c_str());
     } else if (traceMarker.type == MARKER_END) {
         bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: E|%s|%c%s\n",
             g_appTracePrefix.c_str(), cpu, static_cast<long>(ts.tv_sec), static_cast<long>(ts.tv_nsec / NS_TO_MS),
-            g_pid, g_traceLevel[traceMarker.level], bitsStr.c_str());
+            g_pid, g_traceLevel[traceMarker.level], bitStr);
     } else if (traceMarker.type == MARKER_ASYNC_BEGIN) {
         if (*(traceMarker.customArgs) != '\0') {
             additionalParams = std::string("|") + std::string(traceMarker.customCategory) + std::string("|") +
@@ -564,14 +563,13 @@ int SetAppTraceBuffer(char* buf, const int len, const TraceMarker& traceMarker)
         bytes = snprintf_s(buf, len, len - 1,
             "  %s [%03d] .... %lu.%06lu: tracing_mark_write: S|%s|H:%s|%lld|%c%s%s\n", g_appTracePrefix.c_str(),
             cpu, static_cast<long>(ts.tv_sec), static_cast<long>(ts.tv_nsec / NS_TO_MS), g_pid, traceMarker.name,
-            traceMarker.value, g_traceLevel[traceMarker.level], bitsStr.c_str(), additionalParams.c_str());
+            traceMarker.value, g_traceLevel[traceMarker.level], bitStr, additionalParams.c_str());
     } else {
         bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: %c|%s|H:%s|%lld|%c%s\n",
             g_appTracePrefix.c_str(), cpu, static_cast<long>(ts.tv_sec), static_cast<long>(ts.tv_nsec / NS_TO_MS),
             g_markTypes[traceMarker.type], g_pid, traceMarker.name, traceMarker.value,
-            g_traceLevel[traceMarker.level], bitsStr.c_str());
+            g_traceLevel[traceMarker.level], bitStr);
     }
-
     return bytes;
 }
 
@@ -661,7 +659,7 @@ void WriteAppTrace(const TraceMarker& traceMarker)
     }
 }
 
-static int FmtSyncBeginRecord(TraceMarker& traceMarker, const char* bitsStr,
+static int FmtSyncBeginRecord(TraceMarker& traceMarker, const char* bitStr,
     char* record, int size)
 {
     int bytes = 0;
@@ -672,19 +670,19 @@ static int FmtSyncBeginRecord(TraceMarker& traceMarker, const char* bitsStr,
         if (*(traceMarker.customArgs) == '\0') {
             bytes = snprintf_s(record, size, size - 1, "B|%s|H:[%llx,%llx,%llx]#%s|%c%s", g_pid,
                 hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
-                traceMarker.name, g_traceLevel[traceMarker.level], bitsStr);
+                traceMarker.name, g_traceLevel[traceMarker.level], bitStr);
         } else {
             bytes = snprintf_s(record, size, size - 1, "B|%s|H:[%llx,%llx,%llx]#%s|%c%s|%s", g_pid,
                 hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
-                traceMarker.name, g_traceLevel[traceMarker.level], bitsStr, traceMarker.customArgs);
+                traceMarker.name, g_traceLevel[traceMarker.level], bitStr, traceMarker.customArgs);
         }
     } else {
         if (*(traceMarker.customArgs) == '\0') {
             bytes = snprintf_s(record, size, size - 1, "B|%s|H:%s|%c%s", g_pid,
-                traceMarker.name, g_traceLevel[traceMarker.level], bitsStr);
+                traceMarker.name, g_traceLevel[traceMarker.level], bitStr);
         } else {
             bytes = snprintf_s(record, size, size - 1, "B|%s|H:%s|%c%s|%s", g_pid,
-                traceMarker.name, g_traceLevel[traceMarker.level], bitsStr, traceMarker.customArgs);
+                traceMarker.name, g_traceLevel[traceMarker.level], bitStr, traceMarker.customArgs);
         }
     }
     if (UNEXPECTANTLY(bytes == -1)) {
@@ -694,7 +692,7 @@ static int FmtSyncBeginRecord(TraceMarker& traceMarker, const char* bitsStr,
     return bytes;
 }
 
-static int FmtAsyncBeginRecord(TraceMarker& traceMarker, const char* bitsStr,
+static int FmtAsyncBeginRecord(TraceMarker& traceMarker, const char* bitStr,
     char* record, int size)
 {
     int bytes = 0;
@@ -705,30 +703,30 @@ static int FmtAsyncBeginRecord(TraceMarker& traceMarker, const char* bitsStr,
         if (*(traceMarker.customCategory) == '\0' && *(traceMarker.customArgs) == '\0') {
             bytes = snprintf_s(record, size, size - 1, "S|%s|H:[%llx,%llx,%llx]#%s|%lld|%c%s", g_pid,
                 hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
-                traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitsStr);
+                traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitStr);
         } else if (*(traceMarker.customArgs) == '\0') {
             bytes = snprintf_s(record, size, size - 1, "S|%s|H:[%llx,%llx,%llx]#%s|%lld|%c%s|%s", g_pid,
                 hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
                 traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level],
-                bitsStr, traceMarker.customCategory);
+                bitStr, traceMarker.customCategory);
         } else {
             bytes = snprintf_s(record, size, size - 1, "S|%s|H:[%llx,%llx,%llx]#%s|%lld|%c%s|%s|%s", g_pid,
                 hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
                 traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level],
-                bitsStr, traceMarker.customCategory, traceMarker.customArgs);
+                bitStr, traceMarker.customCategory, traceMarker.customArgs);
         }
     } else {
         if (*(traceMarker.customCategory) == '\0' && *(traceMarker.customArgs) == '\0') {
             bytes = snprintf_s(record, size, size - 1, "S|%s|H:%s|%lld|%c%s", g_pid,
-                traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitsStr);
+                traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitStr);
         } else if (*(traceMarker.customArgs) == '\0') {
             bytes = snprintf_s(record, size, size - 1, "S|%s|H:%s|%lld|%c%s|%s", g_pid,
                 traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level],
-                bitsStr, traceMarker.customCategory);
+                bitStr, traceMarker.customCategory);
         } else {
             bytes = snprintf_s(record, size, size - 1, "S|%s|H:%s|%lld|%c%s|%s|%s", g_pid,
                 traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level],
-                bitsStr, traceMarker.customCategory, traceMarker.customArgs);
+                bitStr, traceMarker.customCategory, traceMarker.customArgs);
         }
     }
     if (bytes == -1) {
@@ -738,7 +736,7 @@ static int FmtAsyncBeginRecord(TraceMarker& traceMarker, const char* bitsStr,
     return bytes;
 }
 
-static int FmtOtherTypeRecord(TraceMarker& traceMarker, const char* bitsStr,
+static int FmtOtherTypeRecord(TraceMarker& traceMarker, const char* bitStr,
     char* record, int size)
 {
     int bytes = 0;
@@ -749,11 +747,11 @@ static int FmtOtherTypeRecord(TraceMarker& traceMarker, const char* bitsStr,
         bytes = snprintf_s(record, size, size - 1, "%c|%s|H:[%llx,%llx,%llx]#%s|%lld|%c%s",
             g_markTypes[traceMarker.type], g_pid, hiTraceId.GetChainId(), hiTraceId.GetSpanId(),
             hiTraceId.GetParentSpanId(), traceMarker.name, traceMarker.value,
-            g_traceLevel[traceMarker.level], bitsStr);
+            g_traceLevel[traceMarker.level], bitStr);
     } else {
         bytes = snprintf_s(record, size, size - 1, "%c|%s|H:%s|%lld|%c%s",
             g_markTypes[traceMarker.type], g_pid, traceMarker.name,
-            traceMarker.value, g_traceLevel[traceMarker.level], bitsStr);
+            traceMarker.value, g_traceLevel[traceMarker.level], bitStr);
     }
     if (bytes == -1) {
         bytes = RECORD_SIZE_MAX;
@@ -795,18 +793,18 @@ void AddHitraceMeterMarker(TraceMarker& traceMarker)
         }
         char record[RECORD_SIZE_MAX + 1] = {0};
         int bytes = 0;
-        constexpr uint32_t regularTagSizeLimit = 6;
-        std::string bitsStr(regularTagSizeLimit, '\0');
-        ParseTagBits(traceMarker.tag, bitsStr);
+        constexpr int bitStrSize = 7;
+        char bitStr[bitStrSize] = {0};
+        ParseTagBits(traceMarker.tag, bitStr, bitStrSize);
         if (traceMarker.type == MARKER_BEGIN) {
-            bytes = FmtSyncBeginRecord(traceMarker, bitsStr.c_str(), record, sizeof(record));
+            bytes = FmtSyncBeginRecord(traceMarker, bitStr, record, sizeof(record));
         } else if (traceMarker.type == MARKER_END) {
             bytes = snprintf_s(record, sizeof(record), sizeof(record) - 1, "E|%s|%c%s",
-                g_pid, g_traceLevel[traceMarker.level], bitsStr.c_str());
+                g_pid, g_traceLevel[traceMarker.level], bitStr);
         } else if (traceMarker.type == MARKER_ASYNC_BEGIN) {
-            bytes = FmtAsyncBeginRecord(traceMarker, bitsStr.c_str(), record, sizeof(record));
+            bytes = FmtAsyncBeginRecord(traceMarker, bitStr, record, sizeof(record));
         } else {
-            bytes = FmtOtherTypeRecord(traceMarker, bitsStr.c_str(), record, sizeof(record));
+            bytes = FmtOtherTypeRecord(traceMarker, bitStr, record, sizeof(record));
         }
         WriteToTraceMarker(record, bytes);
     }
@@ -864,40 +862,44 @@ struct CompareTag {
     }
 };
 
-void ParseTagBits(const uint64_t tag, std::string& bitsStr)
+void ParseTagBits(const uint64_t tag, char* bitStr, const int bitStrSize)
 {
-    constexpr uint32_t regularTagSizeLimit = 6;
-    bitsStr.reserve(regularTagSizeLimit);
     constexpr uint64_t tagOptionMask = HITRACE_TAG_ALWAYS | HITRACE_TAG_COMMERCIAL;
     uint64_t tagOption = tag & tagOptionMask;
     uint64_t tagWithoutOption = tag & ~tagOptionMask;
     int writeIndex = 0;
     switch (tagOption) {
         case HITRACE_TAG_ALWAYS:
-            bitsStr = "0000";
-            writeIndex = 2;
+            bitStr[0] = '0';
+            bitStr[1] = '1';
+            writeIndex = 2; // 2 : after two written digits
             break;
         case HITRACE_TAG_COMMERCIAL:
-            bitsStr = "0500";
-            writeIndex = 2;
+            bitStr[0] = '0';
+            bitStr[1] = '5';
+            writeIndex = 2; // 2 : after two written digits
             break;
         default:
             break;
     }
     if (EXPECTANTLY((tagWithoutOption & (tagWithoutOption - 1)) == 0 && tagWithoutOption != 0)) {
         int tagIndex = __builtin_ctzll(tagWithoutOption);
-        bitsStr[writeIndex] = '0' + tagIndex / 10; // 10 : decimal, first digit
-        bitsStr[writeIndex + 1] = '0' + tagIndex % 10; // 10 : decimal, second digit
-        bitsStr[writeIndex + 2] = '\0';
+        bitStr[writeIndex] = '0' + tagIndex / 10; // 10 : decimal, first digit
+        bitStr[writeIndex + 1] = '0' + tagIndex % 10; // 10 : decimal, second digit
+        bitStr[writeIndex + 2] = '\0'; // 2 : after two written digits
         return;
     }
 
-    bitsStr = "";
+    writeIndex = 0;
     for (const auto& pair : ORDERED_HITRACE_TAGS) {
-        if ((tag & pair.tag) != 0) {
-            bitsStr += pair.bitStr;
+        if ((tag & pair.tag) != 0 && writeIndex < (bitStrSize - 3)) { // 3 : two digits and '\0'
+            bitStr[writeIndex] = pair.bitStr[0];
+            bitStr[writeIndex + 1] = pair.bitStr[1];
+            writeIndex += 2; // 2 : after two written digits
         }
     }
+    bitStr[writeIndex] = '\0';
+    return;
 }
 
 void UpdateTraceLabel(void)

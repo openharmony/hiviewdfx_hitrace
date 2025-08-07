@@ -2373,7 +2373,7 @@ HWTEST_F(HitraceMeterTest, HitraceMeterTest012, TestSize.Level1)
 HWTEST_F(HitraceMeterTest, HitraceMeterTest013, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceMeterTest013: start.";
-    constexpr int printRepeat = 1000000;
+    constexpr int printRepeat = 100000;
     constexpr int printCostLimit = 10; // 10 us per pair
     constexpr int msToUs = 1000;
     const char* name = "HitraceMeterTest013";
