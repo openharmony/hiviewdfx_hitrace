@@ -2364,6 +2364,53 @@ HWTEST_F(HitraceMeterTest, HitraceMeterTest012, TestSize.Level1)
 
     GTEST_LOG_(INFO) << "HitraceMeterTest012: end.";
 }
+
+/**
+ * @tc.name: HitraceMeterTest013
+ * @tc.desc: Testing HitraceMeter Interface performance
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, HitraceMeterTest013, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HitraceMeterTest013: start.";
+    constexpr int printRepeat = 100000;
+    constexpr int printCostLimit = 10; // 10 us per pair
+    constexpr int msToUs = 1000;
+    const char* name = "HitraceMeterTest013";
+    auto startTime = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < printRepeat; ++i) {
+        StartTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, nullptr);
+        FinishTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG);
+    }
+    auto endTime = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+    GTEST_LOG_(INFO) << "HitraceMeterTest013: StartTraceEx and FinishTraceEx took " << duration << " ms for " <<
+        printRepeat << " times.";
+    ASSERT_LE(duration, 2 * printCostLimit * printRepeat / msToUs) <<
+        "HitraceMeterTest013: StartTraceEx and FinishTraceEx took too long.";
+    startTime = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < printRepeat; ++i) {
+        StartTrace(TAG | HITRACE_TAG_COMMERCIAL, name);
+        FinishTrace(TAG | HITRACE_TAG_COMMERCIAL);
+    }
+    endTime = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+    GTEST_LOG_(INFO) << "HitraceMeterTest013: StartTrace and FinishTrace with OHOS and COMMERCIAL took " <<
+        duration << " ms for "<< printRepeat << " times.";
+    ASSERT_LE(duration, 2 * printCostLimit * printRepeat / msToUs) <<
+        "HitraceMeterTest013: StartTrace and FinishTrace with Commercial Tag took too long.";
+    startTime = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < printRepeat; ++i) {
+        StartTrace(TAG, name);
+        FinishTrace(TAG);
+    }
+    endTime = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+    GTEST_LOG_(INFO) << "HitraceMeterTest013: StartTrace and FinishTrace with OHOS took " << duration <<
+        " ms for " << printRepeat << " times.";
+    ASSERT_LE(duration, 2 * printCostLimit * printRepeat / msToUs) <<
+        "HitraceMeterTest013: StartTrace and FinishTrace took too long.";
+}
 }
 }
 }
