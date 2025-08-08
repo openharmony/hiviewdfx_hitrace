@@ -35,11 +35,28 @@ public:
     static HiTraceId Begin(const std::string& name, int flags);
 
     /**
+     * @brief Start tracing a process impl.
+     * @param name      name or description for current trace.
+     * @param flags     trace flags to be set for current trace.
+     * @param domain    hilog domain.
+     * @return trace id.
+     */
+    static HiTraceId Begin(const std::string& name, int flags, unsigned int domain);
+
+    /**
      * @brief Stop process tracing and clear trace id of current thread
      *     if the given trace id is valid, otherwise do nothing.
-     * @param id      the trace id to end.
+     * @param id        the trace id to end.
      */
     static void End(const HiTraceId& id);
+
+    /**
+     * @brief Stop process tracing and clear trace id of current thread
+     *     if the given trace id is valid, otherwise do nothing.
+     * @param id        the trace id to end.
+     * @param domain    hilog domain.
+     */
+    static void End(const HiTraceId& id, unsigned int domain);
 
     // Get trace id of current thread, and return a invalid trace id if no
     // trace id belong to current thread.
@@ -78,6 +95,17 @@ public:
      */
     static void Tracepoint(HiTraceCommunicationMode mode, HiTraceTracepointType type, const HiTraceId& id,
         const char* fmt, ...) __attribute__((__format__(os_log, 4, 5)));
+
+    /**
+     * @brief tracepoint hitracechain information.
+     * @param mode      mode of communication.
+     * @param type      type of tracepoint.
+     * @param id        the trace id of current thread.
+     * @param domain    hilog domain.
+     * @param fmt       format of trace information.
+     */
+    static void Tracepoint(HiTraceCommunicationMode mode, HiTraceTracepointType type, const HiTraceId& id,
+        unsigned int domain, const char* fmt, ...) __attribute__((__format__(os_log, 5, 6)));
 
     /**
      * @brief set the target id and return the old id.

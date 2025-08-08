@@ -104,7 +104,9 @@ typedef struct HiTraceIdStruct {
 #define HITRACE_ID_LEN sizeof(HiTraceIdStruct)
 
 HiTraceIdStruct HiTraceChainBegin(const char* name, int flags);
+HiTraceIdStruct HiTraceChainBeginWithDomain(const char* name, int flags, unsigned int domain);
 void HiTraceChainEnd(const HiTraceIdStruct* pId);
+void HiTraceChainEndWithDomain(const HiTraceIdStruct* pId, unsigned int domain);
 HiTraceIdStruct HiTraceChainGetId(void);
 HiTraceIdStruct* HiTraceChainGetIdAddress(void);
 void HiTraceChainSetId(const HiTraceIdStruct* pId);
@@ -118,8 +120,12 @@ void HiTraceChainTracepointWithArgs(HiTraceTracepointType type, const HiTraceIdS
     va_list args);
 void HiTraceChainTracepointEx(HiTraceCommunicationMode mode, HiTraceTracepointType type, const HiTraceIdStruct* pId,
     const char* fmt, ...) __attribute__((__format__(os_log, 4, 5)));
+void HiTraceChainTracepointExWithDomain(HiTraceCommunicationMode mode, HiTraceTracepointType type,
+    const HiTraceIdStruct* pId, unsigned int domain, const char* fmt, ...) __attribute__((__format__(os_log, 5, 6)));
 void HiTraceChainTracepointExWithArgs(HiTraceCommunicationMode mode, HiTraceTracepointType type,
     const HiTraceIdStruct* pId, const char* fmt, va_list args);
+void HiTraceChainTracepointExWithArgsDomain(HiTraceCommunicationMode mode, HiTraceTracepointType type,
+    const HiTraceIdStruct* pId, unsigned int domain, const char* fmt, va_list args);
 
 static inline void HiTraceChainInitId(HiTraceIdStruct* pId)
 {

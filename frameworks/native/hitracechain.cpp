@@ -24,9 +24,20 @@ HiTraceId HiTraceChain::Begin(const std::string& name, int flags)
     return HiTraceId(::HiTraceChainBegin(name.c_str(), flags));
 }
 
+HiTraceId HiTraceChain::Begin(const std::string& name, int flags, unsigned int domain)
+{
+    return HiTraceId(::HiTraceChainBeginWithDomain(name.c_str(), flags, domain));
+}
+
 void HiTraceChain::End(const HiTraceId& id)
 {
     ::HiTraceChainEnd(&(id.id_));
+    return;
+}
+
+void HiTraceChain::End(const HiTraceId& id, unsigned int domain)
+{
+    ::HiTraceChainEndWithDomain(&(id.id_), domain);
     return;
 }
 
@@ -62,7 +73,7 @@ void HiTraceChain::Tracepoint(HiTraceTracepointType type, const HiTraceId& id, c
     va_list args;
 
     va_start(args, fmt);
-    ::HiTraceChainTracepointInner(HITRACE_CM_DEFAULT, type, &(id.id_), fmt, args);
+    ::HiTraceChainTracepointInner(HITRACE_CM_DEFAULT, type, &(id.id_), 0, fmt, args);
     va_end(args);
 
     return;
@@ -74,7 +85,19 @@ void HiTraceChain::Tracepoint(HiTraceCommunicationMode mode, HiTraceTracepointTy
     va_list args;
 
     va_start(args, fmt);
-    ::HiTraceChainTracepointInner(mode, type, &(id.id_), fmt, args);
+    ::HiTraceChainTracepointInner(mode, type, &(id.id_), 0, fmt, args);
+    va_end(args);
+
+    return;
+}
+
+void HiTraceChain::Tracepoint(HiTraceCommunicationMode mode, HiTraceTracepointType type, const HiTraceId& id,
+    unsigned int domain, const char* fmt, ...)
+{
+    va_list args;
+
+    va_start(args, fmt);
+    ::HiTraceChainTracepointInner(mode, type, &(id.id_), domain, fmt, args);
     va_end(args);
 
     return;

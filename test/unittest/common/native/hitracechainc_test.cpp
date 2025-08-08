@@ -58,6 +58,15 @@ static void HiTraceChainTracepointExWithArgsWrapper(HiTraceCommunicationMode mod
     va_end(vaList);
 }
 
+static void HiTraceChainTracepointExWithArgsDomainWrapper(HiTraceCommunicationMode mode, HiTraceTracepointType type,
+    const HiTraceIdStruct* pId, unsigned int domain, const char* fmt, ...)
+{
+    va_list vaList;
+    va_start(vaList, fmt);
+    HiTraceChainTracepointExWithArgsDomain(mode, type, pId, domain, fmt, vaList);
+    va_end(vaList);
+}
+
 static void HiTraceChainTracepointWithArgsWrapper(HiTraceTracepointType type, const HiTraceIdStruct* pId,
     const char* fmt, ...)
 {
@@ -1080,6 +1089,141 @@ HWTEST_F(HiTraceChainCTest, RestoreTest_005, TestSize.Level1)
 
     // end trace
     HiTraceChainEnd(&id);
+}
+
+/**
+ * @tc.name: Dfx_HiTraceChainCTest_DomainTest_001
+ * @tc.desc: Start normal trace with domain 0.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HiTraceChainCTest, DomainTest_001, TestSize.Level1)
+{
+    unsigned int domain = 0x0;
+    HiTraceIdStruct id = HiTraceChainBeginWithDomain("DomainTest_001", HITRACE_FLAG_TP_INFO, domain);
+    EXPECT_TRUE(HiTraceChainIsValid(&id));
+    HiTraceChainEndWithDomain(&id, domain);
+    id = HiTraceChainGetId();
+    EXPECT_FALSE(HiTraceChainIsValid(&id));
+}
+
+/**
+ * @tc.name: Dfx_HiTraceChainCTest_DomainTest_002
+ * @tc.desc: Start normal trace with domain 0x6666.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HiTraceChainCTest, DomainTest_002, TestSize.Level1)
+{
+    unsigned int domain = 0x6666;
+    HiTraceIdStruct id = HiTraceChainBeginWithDomain("DomainTest_002", HITRACE_FLAG_TP_INFO, domain);
+    EXPECT_TRUE(HiTraceChainIsValid(&id));
+    HiTraceChainEndWithDomain(&id, domain);
+    id = HiTraceChainGetId();
+    EXPECT_FALSE(HiTraceChainIsValid(&id));
+}
+
+/**
+ * @tc.name: Dfx_HiTraceChainCTest_DomainTest_003
+ * @tc.desc: Test TracepointEx with domain 0.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HiTraceChainCTest, DomainTest_003, TestSize.Level1)
+{
+    unsigned int domain = 0x0;
+    HiTraceIdStruct id = HiTraceChainBeginWithDomain("DomainTest_003", HITRACE_FLAG_TP_INFO, domain);
+    EXPECT_TRUE(HiTraceChainIsValid(&id));
+    HiTraceChainTracepointExWithArgsDomainWrapper(HITRACE_CM_DEFAULT, HITRACE_TP_CS, &id, domain, "client send %d", 3);
+    HiTraceChainTracepointExWithDomain(HITRACE_CM_DEFAULT, HITRACE_TP_CS, &id, domain, "client send %d", 3);
+    HiTraceChainEndWithDomain(&id, domain);
+    id = HiTraceChainGetId();
+    EXPECT_FALSE(HiTraceChainIsValid(&id));
+}
+
+/**
+ * @tc.name: Dfx_HiTraceChainCTest_DomainTest_004
+ * @tc.desc: Test TracepointEx with domain 0x6666.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HiTraceChainCTest, DomainTest_004, TestSize.Level1)
+{
+    unsigned int domain = 0x6666;
+    HiTraceIdStruct id = HiTraceChainBeginWithDomain("DomainTest_004", HITRACE_FLAG_TP_INFO, domain);
+    EXPECT_TRUE(HiTraceChainIsValid(&id));
+    HiTraceChainTracepointExWithArgsDomainWrapper(HITRACE_CM_DEFAULT, HITRACE_TP_CS, &id, domain, "client send %d", 4);
+    HiTraceChainTracepointExWithDomain(HITRACE_CM_DEFAULT, HITRACE_TP_CS, &id, domain, "client send %d", 4);
+    HiTraceChainEndWithDomain(&id, domain);
+    id = HiTraceChainGetId();
+    EXPECT_FALSE(HiTraceChainIsValid(&id));
+}
+
+/**
+ * @tc.name: Dfx_HiTraceChainCTest_TracepointParamsTest_001
+ * @tc.desc: Test Tracepoint invalid mode.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HiTraceChainCTest, TracepointParamsTest_001, TestSize.Level1)
+{
+    unsigned int domain = 0x6666;
+    HiTraceIdStruct id = HiTraceChainBeginWithDomain("TracepointParamsTest_001", HITRACE_FLAG_TP_INFO, domain);
+    EXPECT_TRUE(HiTraceChainIsValid(&id));
+
+    // HITRACE_CM_MIN = 0
+    HiTraceCommunicationMode mode = static_cast<HiTraceCommunicationMode>(-1);
+    HiTraceTracepointType type = HITRACE_TP_CS;
+    HiTraceChainTracepointExWithDomain(mode, type, &id, domain, "client send %d", 1);
+    // HITRACE_CM_MAX = 3
+    mode = static_cast<HiTraceCommunicationMode>(4);
+    HiTraceChainTracepointExWithDomain(mode, type, &id, domain, "client send %d", 1);
+
+    HiTraceChainEndWithDomain(&id, domain);
+    id = HiTraceChainGetId();
+    EXPECT_FALSE(HiTraceChainIsValid(&id));
+}
+
+/**
+ * @tc.name: Dfx_HiTraceChainCTest_TracepointParamsTest_002
+ * @tc.desc: Test Tracepoint invalid type.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HiTraceChainCTest, TracepointParamsTest_002, TestSize.Level1)
+{
+    unsigned int domain = 0x6666;
+    HiTraceIdStruct id = HiTraceChainBeginWithDomain("TracepointParamsTest_002", HITRACE_FLAG_TP_INFO, domain);
+    EXPECT_TRUE(HiTraceChainIsValid(&id));
+
+    HiTraceCommunicationMode mode = HITRACE_CM_DEFAULT;
+    // HITRACE_TP_MIN = 0
+    HiTraceTracepointType type = static_cast<HiTraceTracepointType>(-1);
+    HiTraceChainTracepointExWithDomain(mode, type, &id, domain, "DEFAULT send %d", 2);
+    // HITRACE_TP_MAX = 4
+    type = static_cast<HiTraceTracepointType>(5);
+    HiTraceChainTracepointExWithDomain(mode, type, &id, domain, "DEFAULT send %d", 2);
+
+    HiTraceChainEndWithDomain(&id, domain);
+    id = HiTraceChainGetId();
+    EXPECT_FALSE(HiTraceChainIsValid(&id));
+}
+
+/**
+ * @tc.name: Dfx_HiTraceChainCTest_TracepointParamsTest_003
+ * @tc.desc: Test Tracepoint invalid HiTraceIdStruct.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HiTraceChainCTest, TracepointParamsTest_003, TestSize.Level1)
+{
+    unsigned int domain = 0x6666;
+    HiTraceIdStruct id = HiTraceChainBeginWithDomain("TracepointParamsTest_003", HITRACE_FLAG_TP_INFO, domain);
+    EXPECT_TRUE(HiTraceChainIsValid(&id));
+
+    HiTraceIdStruct invalidId = HiTraceChainBeginWithDomain("TracepointParamsTest_003", HITRACE_FLAG_TP_INFO, domain);
+    EXPECT_FALSE(HiTraceChainIsValid(&invalidId));
+
+    HiTraceCommunicationMode mode = HITRACE_CM_DEFAULT;
+    HiTraceTracepointType type = HITRACE_TP_CS;
+    HiTraceChainTracepointExWithDomain(mode, type, &invalidId, domain, "client send %d", 3);
+
+    HiTraceChainEndWithDomain(&id, domain);
+    id = HiTraceChainGetId();
+    EXPECT_FALSE(HiTraceChainIsValid(&id));
 }
 }  // namespace HiviewDFX
 }  // namespace OHOS

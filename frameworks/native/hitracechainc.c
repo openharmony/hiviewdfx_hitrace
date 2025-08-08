@@ -38,6 +38,8 @@
 #define LOG_TAG "HiTraceC"
 #endif
 
+#define HITRACE_LOGI(type, domain, ...) ((void)HILOG_IMPL((type), LOG_INFO, (domain), LOG_TAG, __VA_ARGS__))
+
 static const int BUFF_ZERO_NUMBER = 0;
 static const int BUFF_ONE_NUMBER = 1;
 static const int BUFF_TWO_NUMBER = 2;
@@ -160,7 +162,7 @@ static inline uint64_t HiTraceChainCreateChainId(void)
     return chainId.chainId;
 }
 
-HiTraceIdStruct HiTraceChainBegin(const char* name, int flags)
+HiTraceIdStruct HiTraceChainBeginWithDomain(const char* name, int flags, unsigned int domain)
 {
     HiTraceIdStruct id;
     HiTraceChainInitId(&id);
@@ -184,12 +186,18 @@ HiTraceIdStruct HiTraceChainBegin(const char* name, int flags)
     pThreadId->id = id;
 
     if (!HiTraceChainIsFlagEnabled(&id, HITRACE_FLAG_NO_BE_INFO)) {
-        HILOG_INFO(LOG_CORE, "HiTraceBegin name:%{public}s flags:0x%{public}.2x.", name ? name : "", (int)id.flags);
+        if (domain == 0) {
+            HILOG_DEBUG(LOG_CORE, "HiTraceBegin name:%{public}s flags:0x%{public}.2x.",
+                name ? name : "", (int)id.flags);
+        } else {
+            HITRACE_LOGI(LOG_CORE, domain, "HiTraceBegin name:%{public}s flags:0x%{public}.2x.",
+                name ? name : "", (int)id.flags);
+        }
     }
     return id;
 }
 
-void HiTraceChainEnd(const HiTraceIdStruct* pId)
+void HiTraceChainEndWithDomain(const HiTraceIdStruct* pId, unsigned int domain)
 {
     if (!HiTraceChainIsValid(pId)) {
         HILOG_WARN(LOG_CORE, "HiTraceEnd failed: invalid end id.");
@@ -209,11 +217,25 @@ void HiTraceChainEnd(const HiTraceIdStruct* pId)
     }
 
     if (!HiTraceChainIsFlagEnabled(&(pThreadId->id), HITRACE_FLAG_NO_BE_INFO)) {
-        HILOG_INFO(LOG_CORE, "HiTraceEnd.");
+        if (domain == 0) {
+            HILOG_DEBUG(LOG_CORE, "HiTraceEnd.");
+        } else {
+            HITRACE_LOGI(LOG_CORE, domain, "HiTraceEnd.");
+        }
     }
 
     HiTraceChainInitId(&(pThreadId->id));
     return;
+}
+
+HiTraceIdStruct HiTraceChainBegin(const char* name, int flags)
+{
+    return HiTraceChainBeginWithDomain(name, flags, 0);
+}
+
+void HiTraceChainEnd(const HiTraceIdStruct* pId)
+{
+    HiTraceChainEndWithDomain(pId, 0);
 }
 
 // BKDRHash
@@ -267,22 +289,28 @@ HiTraceIdStruct HiTraceChainCreateSpan(void)
     return id;
 }
 
+static bool TracepointParamsCheck(HiTraceCommunicationMode mode, HiTraceTracepointType type,
+    const HiTraceIdStruct* pId)
+{
+    if ((mode < HITRACE_CM_MIN) ||
+        (mode > HITRACE_CM_MAX) ||
+        (type < HITRACE_TP_MIN) ||
+        (type > HITRACE_TP_MAX) ||
+        !HiTraceChainIsValid(pId)) {
+        return false;
+    }
+    return true;
+}
+
 void HiTraceChainTracepointInner(HiTraceCommunicationMode mode, HiTraceTracepointType type,
-    const HiTraceIdStruct* pId, const char* fmt, va_list args)
+    const HiTraceIdStruct* pId, unsigned int domain, const char* fmt, va_list args)
 {
     static const int tpBufferSize = 1024;
     static const char* hiTraceTypeStr[] = { "CS", "CR", "SS", "SR", "GENERAL", };
     static const char* hiTraceModeStr[] = { "DEFAULT", "THREAD", "PROCESS", "DEVICE", };
     static const int hitraceMask = 3;
 
-    if ((mode < HITRACE_CM_MIN) || (mode > HITRACE_CM_MAX)) {
-        return;
-    }
-    if ((type < HITRACE_TP_MIN) || (type > HITRACE_TP_MAX)) {
-        return;
-    }
-
-    if (!HiTraceChainIsValid(pId)) {
+    if (!TracepointParamsCheck(mode, type, pId)) {
         return;
     }
 
@@ -321,29 +349,41 @@ void HiTraceChainTracepointInner(HiTraceCommunicationMode mode, HiTraceTracepoin
         // Only d2d-tp flag is enabled. But the communication mode is not device-to-device.
         return;
     }
-    HILOG_INFO(LOG_CORE, "<%{public}s,%{public}s,[%{public}llx,%{public}llx,%{public}llx]> %{public}s",
-               hiTraceModeStr[mode], hiTraceTypeStr[type], (unsigned long long)pId->chainId,
-               (unsigned long long)pId->spanId, (unsigned long long)pId->parentSpanId, buff + hitraceMask);
-    return;
+
+    if (domain == 0) {
+        HILOG_DEBUG(LOG_CORE, "<%{public}s,%{public}s,[%{public}llx,%{public}llx,%{public}llx]> %{public}s",
+            hiTraceModeStr[mode], hiTraceTypeStr[type], (unsigned long long)pId->chainId,
+            (unsigned long long)pId->spanId, (unsigned long long)pId->parentSpanId, buff + hitraceMask);
+    } else {
+        HITRACE_LOGI(LOG_CORE, domain, "<%{public}s,%{public}s,[%{public}llx,%{public}llx,%{public}llx]> %{public}s",
+            hiTraceModeStr[mode], hiTraceTypeStr[type], (unsigned long long)pId->chainId,
+            (unsigned long long)pId->spanId, (unsigned long long)pId->parentSpanId, buff + hitraceMask);
+    }
 }
 
 void HiTraceChainTracepointWithArgs(HiTraceTracepointType type, const HiTraceIdStruct* pId, const char* fmt,
     va_list args)
 {
-    HiTraceChainTracepointInner(HITRACE_CM_DEFAULT, type, pId, fmt, args);
+    HiTraceChainTracepointInner(HITRACE_CM_DEFAULT, type, pId, 0, fmt, args);
 }
 
 void HiTraceChainTracepointExWithArgs(HiTraceCommunicationMode mode, HiTraceTracepointType type,
     const HiTraceIdStruct* pId, const char* fmt, va_list args)
 {
-    HiTraceChainTracepointInner(mode, type, pId, fmt, args);
+    HiTraceChainTracepointInner(mode, type, pId, 0, fmt, args);
+}
+
+void HiTraceChainTracepointExWithArgsDomain(HiTraceCommunicationMode mode, HiTraceTracepointType type,
+    const HiTraceIdStruct* pId, unsigned int domain, const char* fmt, va_list args)
+{
+    HiTraceChainTracepointInner(mode, type, pId, domain, fmt, args);
 }
 
 void HiTraceChainTracepoint(HiTraceTracepointType type, const HiTraceIdStruct* pId, const char* fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    HiTraceChainTracepointInner(HITRACE_CM_DEFAULT, type, pId, fmt, args);
+    HiTraceChainTracepointInner(HITRACE_CM_DEFAULT, type, pId, 0, fmt, args);
     va_end(args);
     return;
 }
@@ -353,9 +393,18 @@ void HiTraceChainTracepointEx(HiTraceCommunicationMode mode, HiTraceTracepointTy
 {
     va_list args;
     va_start(args, fmt);
-    HiTraceChainTracepointInner(mode, type, pId, fmt, args);
+    HiTraceChainTracepointInner(mode, type, pId, 0, fmt, args);
     va_end(args);
     return;
+}
+
+void HiTraceChainTracepointExWithDomain(HiTraceCommunicationMode mode, HiTraceTracepointType type,
+    const HiTraceIdStruct* pId, unsigned int domain, const char* fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    HiTraceChainTracepointInner(mode, type, pId, domain, fmt, args);
+    va_end(args);
 }
 
 int HiTraceChainGetInfo(uint64_t* chainId, uint32_t* flags, uint64_t* spanId, uint64_t* parentSpanId)

@@ -18,18 +18,22 @@
 
 using namespace OHOS::HiviewDFX;
 
+#ifndef TRACE_DOMAIN
+#define TRACE_DOMAIN 0xD002D33
+#endif
+
 namespace OHOS {
 namespace CJSystemapi {
 
 HiTraceId HiTraceChainImpl::Begin(const char* name, int flags)
 {
     std::string traceName = (name == nullptr) ? "" : name;
-    return HiTraceChain::Begin(traceName, flags);
+    return HiTraceChain::Begin(traceName, flags, TRACE_DOMAIN);
 }
 
 void HiTraceChainImpl::End(const HiTraceId& id)
 {
-    return HiTraceChain::End(id);
+    return HiTraceChain::End(id, TRACE_DOMAIN);
 }
 
 HiTraceId HiTraceChainImpl::GetId()
@@ -52,11 +56,11 @@ HiTraceId HiTraceChainImpl::CreateSpan()
     return HiTraceChain::CreateSpan();
 }
 
-void HiTraceChainImpl::Tracepoint(uint32_t mode, uint32_t type, HiTraceId id, const char* fmt)
+void HiTraceChainImpl::Tracepoint(uint32_t mode, uint32_t type, HiTraceId id, const char* msg)
 {
     HiTraceCommunicationMode communicationMode = HiTraceCommunicationMode(mode);
     HiTraceTracepointType tracePointType = HiTraceTracepointType(type);
-    return HiTraceChain::Tracepoint(communicationMode, tracePointType, id, "%s", fmt);
+    return HiTraceChain::Tracepoint(communicationMode, tracePointType, id, TRACE_DOMAIN, "%s", msg);
 }
 
 bool HiTraceChainImpl::IsValid(const HiTraceId& id)

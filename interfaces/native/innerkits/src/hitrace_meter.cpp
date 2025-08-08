@@ -240,7 +240,7 @@ void InitPid()
         g_needReloadPid = true;
     }
 
-    HILOG_INFO(LOG_CORE, "pid[%{public}s] first get g_tagsProperty: %{public}s", pidStr.c_str(),
+    HILOG_DEBUG(LOG_CORE, "pid[%{public}s] first get g_tagsProperty: %{public}s", pidStr.c_str(),
         std::to_string(g_tagsProperty.load()).c_str());
 }
 

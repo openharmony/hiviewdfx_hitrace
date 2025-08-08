@@ -27,7 +27,7 @@ extern "C" {
 #define HITRACE_INFO_ALL_VALID_EXCEPT_SPAN (1)
 
 void HiTraceChainTracepointInner(HiTraceCommunicationMode mode, HiTraceTracepointType type, const HiTraceIdStruct* pId,
-    const char* fmt, va_list args);
+    unsigned int domain, const char* fmt, va_list args);
 
 #ifdef __cplusplus
 }
