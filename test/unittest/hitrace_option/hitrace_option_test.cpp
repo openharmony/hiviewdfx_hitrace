@@ -39,6 +39,8 @@ const std::string TELEMETRY_APP_PARAM = "debug.hitrace.telemetry.app";
 const std::string SET_EVENT_PID = "/sys/kernel/tracing/set_event_pid";
 const std::string DEBUG_SET_EVENT_PID = "/sys/kernel/debug/tracing/set_event_pid";
 
+bool WriteStrToFile(const std::string& filename, const std::string& str);
+
 class HitraceOptionTest : public testing::Test {
 public:
     static void SetUpTestCase();
@@ -51,9 +53,17 @@ void HitraceOptionTest::SetUpTestCase() { }
 
 void HitraceOptionTest::TearDownTestCase() { }
 
-void HitraceOptionTest::SetUp() { }
+void HitraceOptionTest::SetUp()
+{
+    WriteStrToFile(SET_EVENT_PID, "");
+    WriteStrToFile(DEBUG_SET_EVENT_PID, "");
+}
 
-void HitraceOptionTest::TearDown() { }
+void HitraceOptionTest::TearDown()
+{
+    WriteStrToFile(SET_EVENT_PID, "");
+    WriteStrToFile(DEBUG_SET_EVENT_PID, "");
+}
 
 bool WriteStrToFile(const std::string& filename, const std::string& str)
 {

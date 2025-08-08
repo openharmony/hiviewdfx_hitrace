@@ -987,7 +987,7 @@ HWTEST_F(HitraceSystemTest, HitraceDlcoseTest001, TestSize.Level2)
 
         auto func = reinterpret_cast<void(*)(uint64_t, const char*)>(dlsym(handle, "StartTraceWrapper"));
 
-        if (dlerror() != nullptr) {
+        if (func == nullptr) {
             dlclose(handle);
             continue;
         }
@@ -1010,7 +1010,7 @@ HWTEST_F(HitraceSystemTest, HitraceDlcoseTest002, TestSize.Level2)
     ASSERT_NE(handle, nullptr);
 
     auto func = reinterpret_cast<void(*)(uint64_t, const char*)>(dlsym(handle, "StartTraceWrapper"));
-    if (dlerror() != nullptr) {
+    if (func == nullptr) {
         dlclose(handle);
         ASSERT_TRUE(false);
     }
