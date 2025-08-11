@@ -288,7 +288,6 @@ void OpenTraceMarkerFile()
 
 __attribute__((destructor)) static void LibraryUnload()
 {
-    HILOG_INFO(LOG_CORE, "library unload");
     if (g_markerFd != -1) {
         close(g_markerFd);
         g_markerFd = -1;
