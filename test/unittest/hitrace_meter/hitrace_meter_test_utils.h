@@ -50,6 +50,7 @@ bool Init(const char (&pid)[6]);
 bool CleanTrace();
 bool CleanFtrace();
 bool SetFtrace(const std::string& filename, bool enabled);
+bool SetFtrace(const std::string& filename, uint64_t value);
 std::vector<std::string> ReadTrace(std::string filename = "");
 bool FindResult(std::string record, const std::vector<std::string>& list);
 bool GetTraceResult(TraceInfo& traceInfo, const std::vector<std::string>& list,

@@ -45,6 +45,35 @@ const std::string LABEL_HEADER = "|H:";
 const std::string VERTICAL_LINE = "|";
 static char g_pid[6];
 
+struct HitraceTagPair {
+    uint64_t tag;
+    const char* bitStr;
+};
+
+static const HitraceTagPair ORDERED_HITRACE_TAGS[] = {
+    {HITRACE_TAG_ALWAYS, "00"}, {HITRACE_TAG_COMMERCIAL, "05"},
+    {HITRACE_TAG_DRM, "06"}, {HITRACE_TAG_SECURITY, "07"},
+    {HITRACE_TAG_ANIMATION, "09"}, {HITRACE_TAG_PUSH, "10"}, {HITRACE_TAG_VIRSE, "11"},
+    {HITRACE_TAG_MUSL, "12"}, {HITRACE_TAG_FFRT, "13"}, {HITRACE_TAG_CLOUD, "14"},
+    {HITRACE_TAG_DEV_AUTH, "15"}, {HITRACE_TAG_COMMONLIBRARY, "16"}, {HITRACE_TAG_HDCD, "17"},
+    {HITRACE_TAG_HDF, "18"}, {HITRACE_TAG_USB, "19"}, {HITRACE_TAG_INTERCONNECTION, "20"},
+    {HITRACE_TAG_DLP_CREDENTIAL, "21"}, {HITRACE_TAG_ACCESS_CONTROL, "22"}, {HITRACE_TAG_NET, "23"},
+    {HITRACE_TAG_NWEB, "24"}, {HITRACE_TAG_HUKS, "25"}, {HITRACE_TAG_USERIAM, "26"},
+    {HITRACE_TAG_DISTRIBUTED_AUDIO, "27"}, {HITRACE_TAG_DLSM, "28"}, {HITRACE_TAG_FILEMANAGEMENT, "29"},
+    {HITRACE_TAG_OHOS, "30"}, {HITRACE_TAG_ABILITY_MANAGER, "31"}, {HITRACE_TAG_ZCAMERA, "32"},
+    {HITRACE_TAG_ZMEDIA, "33"}, {HITRACE_TAG_ZIMAGE, "34"}, {HITRACE_TAG_ZAUDIO, "35"},
+    {HITRACE_TAG_DISTRIBUTEDDATA, "36"}, {HITRACE_TAG_MDFS, "37"}, {HITRACE_TAG_GRAPHIC_AGP, "38"},
+    {HITRACE_TAG_ACE, "39"}, {HITRACE_TAG_NOTIFICATION, "40"}, {HITRACE_TAG_MISC, "41"},
+    {HITRACE_TAG_MULTIMODALINPUT, "42"}, {HITRACE_TAG_SENSORS, "43"}, {HITRACE_TAG_MSDP, "44"},
+    {HITRACE_TAG_DSOFTBUS, "45"}, {HITRACE_TAG_RPC, "46"}, {HITRACE_TAG_ARK, "47"},
+    {HITRACE_TAG_WINDOW_MANAGER, "48"}, {HITRACE_TAG_ACCOUNT_MANAGER, "49"}, {HITRACE_TAG_DISTRIBUTED_SCREEN, "50"},
+    {HITRACE_TAG_DISTRIBUTED_CAMERA, "51"}, {HITRACE_TAG_DISTRIBUTED_HARDWARE_FWK, "52"},
+    {HITRACE_TAG_GLOBAL_RESMGR, "53"}, {HITRACE_TAG_DEVICE_MANAGER, "54"}, {HITRACE_TAG_SAMGR, "55"},
+    {HITRACE_TAG_POWER, "56"}, {HITRACE_TAG_DISTRIBUTED_SCHEDULE, "57"}, {HITRACE_TAG_DEVICE_PROFILE, "58"},
+    {HITRACE_TAG_DISTRIBUTED_INPUT, "59"}, {HITRACE_TAG_BLUETOOTH, "60"},
+    {HITRACE_TAG_ACCESSIBILITY_MANAGER, "61"}, {HITRACE_TAG_APP, "62"}
+};
+
 class HitraceMeterTest : public testing::Test {
 public:
     static void SetUpTestCase(void);
@@ -1500,6 +1529,305 @@ HWTEST_F(HitraceMeterTest, CountTraceInterfaceTest006, TestSize.Level1)
     ASSERT_TRUE(isSuccess) << "Hitrace can't find \"" << record << "\" from trace.";
 
     GTEST_LOG_(INFO) << "CountTraceInterfaceTest006: end.";
+}
+
+/**
+ * @tc.name: PrintFormatTest001
+ * @tc.desc: Test StartTrace Print Format, expected format: B|%pid%|H:%name%|%level%%tag%
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, PrintFormatTest001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "PrintFormatTest001: start.";
+    const std::string name = "PrintFormatTest001";
+    ASSERT_TRUE(SetPropertyInner(TRACE_TAG_ENABLE_FLAGS, std::to_string(UINT64_MAX))) <<
+        "SetUp: Setting enableflags failed.";
+    constexpr uint64_t traceBufferSize = 512;
+    ASSERT_TRUE(SetFtrace(TRACE_BUFFER_SIZE_NODE, traceBufferSize)) << "Failed to set trace buffer size.";
+    std::string pid = std::to_string(getpid());
+    StartTrace(HITRACE_TAG_ALWAYS, "Initializing");
+    // test single tag
+    for (auto tagPair : ORDERED_HITRACE_TAGS) {
+        constexpr int repeats = 10;
+        uint64_t tag = tagPair.tag;
+        std::string tagStr = tagPair.bitStr;
+        for (int i = 0; i < repeats; ++i) {
+            StartTrace(tag, name);
+        }
+        // count number of traces with the same tag and name, should be 10
+        std::vector<std::string> list = ReadTrace();
+        int count = 0;
+        std::string traceLevel = tag == HITRACE_TAG_COMMERCIAL ? "M" : "I";
+        std::string targetStr = "B|" + pid + "|H:" + name + "|" + traceLevel + tagStr;
+        for (const auto& record : list) {
+            if (record.find(targetStr) != std::string::npos) {
+                count++;
+            }
+        }
+        EXPECT_EQ(count, repeats) << "Expected 10 traces with tag: " << tagStr;
+    }
+    // test tags combined with HITRACE_TAG_COMMERCIAL tag
+    for (auto tagPair : ORDERED_HITRACE_TAGS) {
+        constexpr int repeats = 10;
+        uint64_t tag = tagPair.tag;
+        if ((tag & (HITRACE_TAG_ALWAYS | HITRACE_TAG_COMMERCIAL)) != 0) {
+            continue; // skip always and commercial tags
+        }
+        std::string tagStr = std::string("05") + tagPair.bitStr;
+        for (int i = 0; i < repeats; ++i) {
+            StartTrace(HITRACE_TAG_COMMERCIAL|tag, name);
+        }
+        // count number of traces with the same tag and name, should be 10
+        std::vector<std::string> list = ReadTrace();
+        int count = 0;
+        std::string targetStr = "B|" + pid + "|H:" + name + "|" + "M" + tagStr;
+        for (const auto& record : list) {
+            if (record.find(targetStr) != std::string::npos) {
+                count++;
+            }
+        }
+        EXPECT_EQ(count, repeats) << "Expected 10 traces with tag: " << tagStr;
+    }
+    GTEST_LOG_(INFO) << "PrintFormatTest001: end.";
+}
+
+/**
+ * @tc.name: PrintFormatTest002
+ * @tc.desc: Test FinishTrace Print Format, expected format: E|%pid%|%level%%tag%
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, PrintFormatTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "PrintFormatTest002: start.";
+    ASSERT_TRUE(SetPropertyInner(TRACE_TAG_ENABLE_FLAGS, std::to_string(UINT64_MAX))) <<
+        "SetUp: Setting enableflags failed.";
+    constexpr uint64_t traceBufferSize = 512;
+    ASSERT_TRUE(SetFtrace(TRACE_BUFFER_SIZE_NODE, traceBufferSize)) << "Failed to set trace buffer size.";
+    std::string pid = std::to_string(getpid());
+    std::string value = std::to_string(UINT64_MAX); // enable all tags
+    StartTrace(HITRACE_TAG_ALWAYS, "Initializing");
+    for (auto tagPair : ORDERED_HITRACE_TAGS) {
+        constexpr int repeats = 10;
+        uint64_t tag = tagPair.tag;
+        std::string tagStr = tagPair.bitStr;
+        for (int i = 0; i < repeats; ++i) {
+            FinishTrace(tag);
+        }
+        // count number of traces with the same tag and name, should be 10
+        std::vector<std::string> list = ReadTrace();
+        int count = 0;
+        std::string traceLevel = tag == HITRACE_TAG_COMMERCIAL ? "M" : "I";
+        std::string targetStr = "E|" + pid + "|" + traceLevel + tagStr;
+        for (const auto& record : list) {
+            if (record.find(targetStr) != std::string::npos) {
+                count++;
+            }
+        }
+        EXPECT_EQ(count, repeats) << "Expected 10 traces with tag: " << tagStr;
+    }
+    // test tags combined with HITRACE_TAG_COMMERCIAL tag
+    for (auto tagPair : ORDERED_HITRACE_TAGS) {
+        constexpr int repeats = 10;
+        uint64_t tag = tagPair.tag;
+        if ((tag & (HITRACE_TAG_ALWAYS | HITRACE_TAG_COMMERCIAL)) != 0) {
+            continue; // skip always and commercial tags
+        }
+        std::string tagStr = std::string("05") + tagPair.bitStr;
+        for (int i = 0; i < repeats; ++i) {
+            FinishTrace(HITRACE_TAG_COMMERCIAL|tag);
+        }
+        // count number of traces with the same tag and name, should be 10
+        std::vector<std::string> list = ReadTrace();
+        int count = 0;
+        std::string targetStr = "E|" + pid + "|" + "M" + tagStr;
+        for (const auto& record : list) {
+            if (record.find(targetStr) != std::string::npos) {
+                count++;
+            }
+        }
+        EXPECT_EQ(count, repeats) << "Expected 10 traces with tag: " << tagStr;
+    }
+    GTEST_LOG_(INFO) << "PrintFormatTest002: end.";
+}
+
+/**
+ * @tc.name: PrintFormatTest003
+ * @tc.desc: Test StartAsyncTrace Print Format, expected format: S|%pid%|H:%name%|%TaskId%|%level%%tag%
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, PrintFormatTest003, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "PrintFormatTest003: start.";
+    const std::string name = "PrintFormatTest003";
+    ASSERT_TRUE(SetPropertyInner(TRACE_TAG_ENABLE_FLAGS, std::to_string(UINT64_MAX))) <<
+        "SetUp: Setting enableflags failed.";
+    constexpr uint64_t traceBufferSize = 512;
+    ASSERT_TRUE(SetFtrace(TRACE_BUFFER_SIZE_NODE, traceBufferSize)) << "Failed to set trace buffer size.";
+    std::string pid = std::to_string(getpid());
+    std::string value = std::to_string(UINT64_MAX); // enable all tags
+    StartTrace(HITRACE_TAG_ALWAYS, "Initializing");
+    for (auto tagPair : ORDERED_HITRACE_TAGS) {
+        constexpr int repeats = 10;
+        uint64_t tag = tagPair.tag;
+        std::string tagStr = tagPair.bitStr;
+        for (int i = 0; i < repeats; ++i) {
+            StartAsyncTrace(tag, name, i);
+        }
+        // count number of traces with the same tag and name, should be 10
+        std::vector<std::string> list = ReadTrace();
+        int count = 0;
+        std::string traceLevel = tag == HITRACE_TAG_COMMERCIAL ? "M" : "I";
+        for (const auto& record : list) {
+            if (record.find("S|" + pid + "|H:" + name + "|" + std::to_string(count) + "|" + traceLevel + tagStr) !=
+                std::string::npos) {
+                count++;
+            }
+        }
+        EXPECT_EQ(count, repeats) << "Expected 10 traces with tag: " << tagStr;
+    }
+    // test tags combined with HITRACE_TAG_COMMERCIAL tag
+    for (auto tagPair : ORDERED_HITRACE_TAGS) {
+        constexpr int repeats = 10;
+        uint64_t tag = tagPair.tag;
+        if ((tag & (HITRACE_TAG_ALWAYS | HITRACE_TAG_COMMERCIAL)) != 0) {
+            continue; // skip always and commercial tags
+        }
+        std::string tagStr = std::string("05") + tagPair.bitStr;
+        for (int i = 0; i < repeats; ++i) {
+            StartAsyncTrace(HITRACE_TAG_COMMERCIAL|tag, name, i);
+        }
+        // count number of traces with the same tag and name, should be 10
+        std::vector<std::string> list = ReadTrace();
+        int count = 0;
+        for (const auto& record : list) {
+            if (record.find("S|" + pid + "|H:" + name + "|" + std::to_string(count) + "|" + "M" + tagStr) !=
+                std::string::npos) {
+                count++;
+            }
+        }
+        EXPECT_EQ(count, repeats) << "Expected 10 traces with tag: " << tagStr;
+    }
+    GTEST_LOG_(INFO) << "PrintFormatTest003: end.";
+}
+
+/**
+ * @tc.name: PrintFormatTest004
+ * @tc.desc: Test FinishAsyncTrace Print Format, expected format: F|%pid%|H:%name%|%TaskId%|%level%%tag%
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, PrintFormatTest004, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "PrintFormatTest004: start.";
+    const std::string name = "PrintFormatTest004";
+    ASSERT_TRUE(SetPropertyInner(TRACE_TAG_ENABLE_FLAGS, std::to_string(UINT64_MAX))) <<
+        "SetUp: Setting enableflags failed.";
+    constexpr uint64_t traceBufferSize = 512;
+    ASSERT_TRUE(SetFtrace(TRACE_BUFFER_SIZE_NODE, traceBufferSize)) << "Failed to set trace buffer size.";
+    std::string pid = std::to_string(getpid());
+    std::string value = std::to_string(UINT64_MAX); // enable all tags
+    StartTrace(HITRACE_TAG_ALWAYS, "Initializing");
+    for (auto tagPair : ORDERED_HITRACE_TAGS) {
+        constexpr int repeats = 10;
+        uint64_t tag = tagPair.tag;
+        std::string tagStr = tagPair.bitStr;
+        for (int i = 0; i < repeats; ++i) {
+            FinishAsyncTrace(tag, name, i);
+        }
+        // count number of traces with the same tag and name, should be 10
+        std::vector<std::string> list = ReadTrace();
+        int count = 0;
+        std::string traceLevel = tag == HITRACE_TAG_COMMERCIAL ? "M" : "I";
+        for (const auto& record : list) {
+            if (record.find("F|" + pid + "|H:" + name + "|" + std::to_string(count) + "|" + traceLevel + tagStr) !=
+                std::string::npos) {
+                count++;
+            }
+        }
+        EXPECT_EQ(count, repeats) << "Expected 10 traces with tag: " << tagStr;
+    }
+    // test tags combined with HITRACE_TAG_COMMERCIAL tag
+    for (auto tagPair : ORDERED_HITRACE_TAGS) {
+        constexpr int repeats = 10;
+        uint64_t tag = tagPair.tag;
+        if ((tag & (HITRACE_TAG_ALWAYS | HITRACE_TAG_COMMERCIAL)) != 0) {
+            continue; // skip always and commercial tags
+        }
+        std::string tagStr = std::string("05") + tagPair.bitStr;
+        for (int i = 0; i < repeats; ++i) {
+            FinishAsyncTrace(HITRACE_TAG_COMMERCIAL|tag, name, i);
+        }
+        // count number of traces with the same tag and name, should be 10
+        std::vector<std::string> list = ReadTrace();
+        int count = 0;
+        for (const auto& record : list) {
+            if (record.find("F|" + pid + "|H:" + name + "|" + std::to_string(count) + "|" + "M" + tagStr) !=
+                std::string::npos) {
+                count++;
+            }
+        }
+        EXPECT_EQ(count, repeats) << "Expected 10 traces with tag: " << tagStr;
+    }
+    GTEST_LOG_(INFO) << "PrintFormatTest004: end.";
+}
+
+/**
+ * @tc.name: PrintFormatTest005
+ * @tc.desc: Test CountTrace Print Format, expected format: C|%pid%|H:%name%|%CountValue%|%level%%tag%
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, PrintFormatTest005, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "PrintFormatTest005: start.";
+    const std::string name = "PrintFormatTest005";
+    ASSERT_TRUE(SetPropertyInner(TRACE_TAG_ENABLE_FLAGS, std::to_string(UINT64_MAX))) <<
+        "SetUp: Setting enableflags failed.";
+    constexpr uint64_t traceBufferSize = 512;
+    ASSERT_TRUE(SetFtrace(TRACE_BUFFER_SIZE_NODE, traceBufferSize)) << "Failed to set trace buffer size.";
+    std::string pid = std::to_string(getpid());
+    std::string value = std::to_string(UINT64_MAX); // enable all tags
+    StartTrace(HITRACE_TAG_ALWAYS, "Initializing");
+    for (auto tagPair : ORDERED_HITRACE_TAGS) {
+        constexpr int repeats = 10;
+        uint64_t tag = tagPair.tag;
+        std::string tagStr = tagPair.bitStr;
+        for (int i = 0; i < repeats; ++i) {
+            CountTrace(tag, name, i);
+        }
+        // count number of traces with the same tag and name, should be 10
+        std::vector<std::string> list = ReadTrace();
+        int count = 0;
+        std::string traceLevel = tag == HITRACE_TAG_COMMERCIAL ? "M" : "I";
+        for (const auto& record : list) {
+            if (record.find("C|" + pid + "|H:" + name + "|" + std::to_string(count) + "|" + traceLevel + tagStr) !=
+                std::string::npos) {
+                count++;
+            }
+        }
+        EXPECT_EQ(count, repeats) << "Expected 10 traces with tag: " << tagStr;
+    }
+    // test tags combined with HITRACE_TAG_COMMERCIAL tag
+    for (auto tagPair : ORDERED_HITRACE_TAGS) {
+        constexpr int repeats = 10;
+        uint64_t tag = tagPair.tag;
+        if ((tag & (HITRACE_TAG_ALWAYS | HITRACE_TAG_COMMERCIAL)) != 0) {
+            continue; // skip always and commercial tags
+        }
+        std::string tagStr = std::string("05") + tagPair.bitStr;
+        for (int i = 0; i < repeats; ++i) {
+            CountTrace(HITRACE_TAG_COMMERCIAL|tag, name, i);
+        }
+        // count number of traces with the same tag and name, should be 10
+        std::vector<std::string> list = ReadTrace();
+        int count = 0;
+        for (const auto& record : list) {
+            if (record.find("C|" + pid + "|H:" + name + "|" + std::to_string(count) + "|" + "M" + tagStr) !=
+                std::string::npos) {
+                count++;
+            }
+        }
+        EXPECT_EQ(count, repeats) << "Expected 10 traces with tag: " << tagStr;
+    }
+    GTEST_LOG_(INFO) << "PrintFormatTest005: end.";
 }
 
 /**

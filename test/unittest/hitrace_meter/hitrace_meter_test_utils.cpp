@@ -100,6 +100,11 @@ bool SetFtrace(const std::string& filename, bool enabled)
     return WriteStringToFile(filename, enabled ? "1" : "0");
 }
 
+bool SetFtrace(const std::string& filename, uint64_t value)
+{
+    return WriteStringToFile(filename, std::to_string(value));
+}
+
 static std::stringstream ReadFile(const std::string& filename)
 {
     std::stringstream ss;
