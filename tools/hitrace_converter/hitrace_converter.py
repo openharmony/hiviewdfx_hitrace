@@ -1001,7 +1001,17 @@ class TraceFileParser(TraceFileParserInterface):
 
     def parse_cmd_lines(self, data: List) -> dict:
         cmd_lines = {}
-        cmd_lines_list = data.decode('utf-8').split("\n")
+
+        if isinstance(data, bytes):
+            cmd_lines_list = data.decode('utf-8').split("\n")
+        elif isinstance(data, list):
+            if all(isinstance(item, bytes) for item in data):
+                cmd_lines_list = b''.join(data).decode('utf-8').split("\n")
+            else:
+                cmd_lines_list = ''.join(data).split("\n")
+        else:
+            raise ValueError("Unsupported data type: must be bytes or list of bytes/str")
+
         for cmd_line in cmd_lines_list:
             pos = cmd_line.find(" ")
             if pos == -1:
