@@ -40,6 +40,7 @@ static const std::string TRACEFS_DIR = "/sys/kernel/tracing/";
 static const char* TRACING_ON_NODE = "tracing_on";
 static const char* TRACE_MARKER_NODE = "trace_marker";
 static const char* TRACE_NODE = "trace";
+static const char* TRACE_BUFFER_SIZE_NODE = "buffer_size_kb";
 
 static const std::string TRACE_FILE_DEFAULT_DIR = "/data/log/hitrace/";
 static const char* TRACE_SAVED_EVENTS_FORMAT = "saved_events_format";
