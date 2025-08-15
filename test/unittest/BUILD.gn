@@ -231,46 +231,76 @@ ohos_unittest("HitraceDumpTest") {
   }
 }
 
-ohos_unittest("HitraceAsyncDumpTimeoutTest") {
+async_dump_test_sources = [
+  "$hitrace_frameworks_path/native/dynamic_buffer.cpp",
+  "$hitrace_frameworks_path/trace_dump_executor/trace_dump_executor.cpp",
+  "$hitrace_frameworks_path/trace_dump_executor/trace_dump_pipe.cpp",
+  "$hitrace_interfaces_path/native/innerkits/src/hitrace_dump.cpp",
+  "$hitrace_utils_path/file_ageing_utils.cpp",
+]
+
+async_dump_test_include_dirs = [
+  "$hitrace_common_path",
+  "$hitrace_cmd_path/include",
+  "$hitrace_frameworks_path/include",
+  "$hitrace_frameworks_path/trace_dump_executor",
+  "$hitrace_frameworks_path/trace_source",
+  "$hitrace_interfaces_path/native/innerkits/include",
+  "$hitrace_utils_path",
+]
+
+async_dump_test_deps = [
+  "$hitrace_frameworks_path/trace_source:trace_source",
+  "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
+  "$hitrace_interfaces_path/native/innerkits:libhitrace_option",
+  "$hitrace_utils_path:hitrace_common_utils",
+  "$hitrace_utils_path:hitrace_file_utils",
+  "$hitrace_utils_path:hitrace_json_parser",
+]
+
+async_dump_test_external_deps = [
+  "bounds_checking_function:libsec_shared",
+  "cJSON:cjson",
+  "c_utils:utils",
+  "googletest:gtest_main",
+  "init:libbegetutil",
+]
+
+ohos_unittest("HitraceAsyncReadTimeoutTest") {
   module_out_path = module_output_path
 
-  sources = [
-    "$hitrace_frameworks_path/native/dynamic_buffer.cpp",
-    "$hitrace_frameworks_path/trace_dump_executor/trace_dump_executor.cpp",
-    "$hitrace_frameworks_path/trace_dump_executor/trace_dump_pipe.cpp",
-    "$hitrace_interfaces_path/native/innerkits/src/hitrace_dump.cpp",
-    "$hitrace_utils_path/file_ageing_utils.cpp",
-    "hitrace_dump/hitrace_async_dump_timeout_test.cpp",
-  ]
+  sources = async_dump_test_sources
+  sources += [ "hitrace_dump/hitrace_async_read_timeout.cpp" ]
 
-  cflags = [ "-DHITRACE_UNITTEST" ]
+  cflags = [ "-DHITRACE_ASYNC_READ_TIMEOUT_TEST" ]
 
-  include_dirs = [
-    "$hitrace_common_path",
-    "$hitrace_cmd_path/include",
-    "$hitrace_frameworks_path/include",
-    "$hitrace_frameworks_path/trace_dump_executor",
-    "$hitrace_frameworks_path/trace_source",
-    "$hitrace_interfaces_path/native/innerkits/include",
-    "$hitrace_utils_path",
-  ]
+  include_dirs = async_dump_test_include_dirs
 
-  deps = [
-    "$hitrace_frameworks_path/trace_source:trace_source",
-    "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
-    "$hitrace_interfaces_path/native/innerkits:libhitrace_option",
-    "$hitrace_utils_path:hitrace_common_utils",
-    "$hitrace_utils_path:hitrace_file_utils",
-    "$hitrace_utils_path:hitrace_json_parser",
-  ]
+  deps = async_dump_test_deps
 
-  external_deps = [
-    "bounds_checking_function:libsec_shared",
-    "cJSON:cjson",
-    "c_utils:utils",
-    "googletest:gtest_main",
-    "init:libbegetutil",
-  ]
+  external_deps = async_dump_test_external_deps
+
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+}
+
+ohos_unittest("HitraceAsyncWriteTimeoutTest") {
+  module_out_path = module_output_path
+
+  sources = async_dump_test_sources
+  sources += [ "hitrace_dump/hitrace_async_write_timeout.cpp" ]
+
+  cflags = [ "-DHITRACE_ASYNC_WRITE_TIMEOUT_TEST" ]
+
+  include_dirs = async_dump_test_include_dirs
+
+  deps = async_dump_test_deps
+
+  external_deps = async_dump_test_external_deps
+
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]
   } else {

@@ -132,6 +132,7 @@ public:
     void RemoveTraceDumpTask(const uint64_t time);
     bool UpdateTraceDumpTask(const TraceDumpTask& task);
     void AddTraceDumpTask(const TraceDumpTask& task);
+    void ClearTraceDumpTask();
     bool IsTraceDumpTaskEmpty();
     size_t GetTraceDumpTaskCount();
 

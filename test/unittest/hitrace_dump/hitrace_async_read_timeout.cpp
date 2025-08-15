@@ -23,7 +23,7 @@ namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
 using namespace testing::ext;
-class HitraceAsyncDumpTimeoutTest : public testing::Test {
+class HitraceAsyncReadTimeoutTest : public testing::Test {
 public:
     static void SetUpTestCase(void)
     {
@@ -39,45 +39,46 @@ public:
     void TearDown() {}
 };
 
-void HitraceAsyncDumpTimeoutTest::SetUp()
+void HitraceAsyncReadTimeoutTest::SetUp()
 {
     CloseTrace();
 }
 
 namespace {
 /**
- * @tc.name: DumpTraceAsyncTimeoutTest001
- * @tc.desc: Test DumpTraceAsync func, execute without 5 seconds timeout
+ * @tc.name: AsyncReadTimeoutTest001
+ * @tc.desc: Test DumpTraceAsync func
  * @tc.type: FUNC
  */
-HWTEST_F(HitraceAsyncDumpTimeoutTest, DumpTraceAsyncTimeoutTest001, TestSize.Level2)
+HWTEST_F(HitraceAsyncReadTimeoutTest, AsyncReadTimeoutTest001, TestSize.Level2)
 {
     const std::vector<std::string> tagGroups = {"scene_performance"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-
     std::function<void(TraceRetInfo)> func = [](TraceRetInfo traceInfo) {
-        off_t totalFileSz = 0;
-        for (auto& files : traceInfo.outputFiles) {
-            totalFileSz += GetFileSize(files);
-            GTEST_LOG_(INFO) << "output: " << files << " file size : " << GetFileSize(files);
-        }
-        EXPECT_EQ(totalFileSz, traceInfo.fileSize);
+        EXPECT_EQ(traceInfo.errorCode, TraceErrorCode::TRACE_TASK_DUMP_TIMEOUT);
     };
     auto ret = DumpTraceAsync(0, 0, INT64_MAX, func);
-    EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
-    GTEST_LOG_(INFO) << "interface return file size : " << ret.fileSize;
-    for (auto file : ret.outputFiles) {
-        GTEST_LOG_(INFO) << "interface return file : " << file;
-    }
+    EXPECT_EQ(ret.errorCode, TraceErrorCode::TRACE_TASK_DUMP_TIMEOUT);
+    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: AsyncReadTimeoutTest002
+ * @tc.desc: Test DumpTraceAsync func, call twice.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceAsyncReadTimeoutTest, AsyncReadTimeoutTest002, TestSize.Level2)
+{
+    const std::vector<std::string> tagGroups = {"scene_performance"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    std::function<void(TraceRetInfo)> func = [](TraceRetInfo traceInfo) {
+        EXPECT_EQ(traceInfo.errorCode, TraceErrorCode::TRACE_TASK_DUMP_TIMEOUT);
+    };
+    auto ret = DumpTraceAsync(0, 0, INT64_MAX, func);
+    EXPECT_EQ(ret.errorCode, TraceErrorCode::TRACE_TASK_DUMP_TIMEOUT);
     ret = DumpTraceAsync(0, 0, INT64_MAX, func);
-    EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
-    GTEST_LOG_(INFO) << "interface return file size : " << ret.fileSize;
-    for (auto file : ret.outputFiles) {
-        GTEST_LOG_(INFO) << "interface return file : " << file;
-    }
-    sleep(15); // 15 : wait 15 seconds to avoid crash in SIGPIPE
-    // Close trace after async dump
-    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+    EXPECT_EQ(ret.errorCode, TraceErrorCode::TRACE_TASK_DUMP_TIMEOUT);
+    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
 }
 } // namespace
 } // namespace Hitrace

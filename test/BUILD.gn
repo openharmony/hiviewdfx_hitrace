@@ -24,7 +24,8 @@ group("hitrace_unittest") {
   testonly = true
   deps = [
     "unittest:HitraceAgeingTest",
-    "unittest:HitraceAsyncDumpTimeoutTest",
+    "unittest:HitraceAsyncReadTimeoutTest",
+    "unittest:HitraceAsyncWriteTimeoutTest",
     "unittest:HitraceCMDTest",
     "unittest:HitraceCTest",
     "unittest:HitraceChainNDKTest",

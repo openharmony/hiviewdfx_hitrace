@@ -314,6 +314,45 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpPipeTest003, TestSize.Level2)
 }
 
 /**
+ * @tc.name: TraceDumpPipeTest004
+ * @tc.desc: Test TraceDumpExecutor class trace task pipe
+ * @tc.type: FUNC
+ */
+HWTEST_F(TraceDumpExecutorTest, TraceDumpPipeTest004, TestSize.Level2)
+{
+    HitraceDumpPipe::ClearTraceDumpPipe();
+    ASSERT_TRUE(HitraceDumpPipe::InitTraceDumpPipe());
+    pid_t pid = fork();
+    if (pid < 0) {
+        FAIL() << "Failed to fork process.";
+    } else if (pid == 0) {
+        auto dumpPipe2 = std::make_shared<HitraceDumpPipe>(false);
+        TraceDumpTask task1;
+        EXPECT_TRUE(dumpPipe2->ReadTraceTask(1000, task1));
+        EXPECT_EQ(task1.status, TraceDumpStatus::READ_DONE);
+        TraceDumpTask task2;
+        EXPECT_TRUE(dumpPipe2->ReadTraceTask(1000, task2));
+        EXPECT_EQ(task2.status, TraceDumpStatus::READ_DONE);
+        _exit(0);
+    }
+
+    auto submitTask = []() {
+        auto dumpPipe = std::make_shared<HitraceDumpPipe>(true);
+        TraceDumpTask task = {
+            .status = TraceDumpStatus::READ_DONE,
+        };
+        EXPECT_TRUE(dumpPipe->SubmitTraceDumpTask(task));
+    };
+
+    std::thread submitTaskThread(submitTask);
+    std::thread submitTaskThread2(submitTask);
+    submitTaskThread.join();
+    submitTaskThread2.join();
+    waitpid(pid, nullptr, 0);
+    HitraceDumpPipe::ClearTraceDumpPipe();
+}
+
+/**
  * @tc.name: TraceDumpTaskTest001
  * @tc.desc: Test TraceDumpExecutor class task management functions
  * @tc.type: FUNC
