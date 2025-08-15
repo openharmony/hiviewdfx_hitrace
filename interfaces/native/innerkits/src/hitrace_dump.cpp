@@ -758,8 +758,9 @@ TraceDumpTask WaitSyncDumpRetLoop(const pid_t pid, const std::shared_ptr<Hitrace
         }
     } else {
         task.code = TraceErrorCode::TRACE_TASK_DUMP_TIMEOUT;
+        TraceDumpExecutor::GetInstance().ClearTraceDumpTask();
         kill(pid, SIGUSR1);
-        HILOG_WARN(LOG_CORE, "WaitSyncDumpRetLoop: HitraceDumpAsync process timeout, kill it.");
+        HILOG_WARN(LOG_CORE, "WaitSyncDumpRetLoop: wait timeout, clear task and kill dump process.");
     }
     HILOG_INFO(LOG_CORE, "WaitSyncDumpRetLoop: exit.");
     return task;
@@ -776,7 +777,6 @@ void WaitAsyncDumpRetLoop(const std::shared_ptr<HitraceDumpPipe> pipe)
             HitraceDumpPipe::ClearTraceDumpPipe();
             break;
         }
-
         TraceDumpTask task;
         if (!pipe->ReadAsyncDumpRet(1, task)) {
             usleep(HUNDRED_MILLISECONDS);
@@ -822,10 +822,10 @@ TraceErrorCode SubmitTaskAndWaitReturn(const TraceDumpTask& task, const bool clo
     auto taskRet = WaitSyncDumpRetLoop(g_traceDumpTaskPid.load(), dumpPipe);
     HandleAsyncDumpResult(taskRet, traceRetInfo);
     if (taskRet.status == TraceDumpStatus::FINISH) {
-        HILOG_INFO(LOG_CORE, "ProcessDumpAsync: task finished.");
+        HILOG_INFO(LOG_CORE, "SubmitTaskAndWaitReturn: task finished.");
         return traceRetInfo.errorCode;
     } else if (taskRet.code != TraceErrorCode::TRACE_TASK_DUMP_TIMEOUT) {
-        HILOG_ERROR(LOG_CORE, "ProcessDumpAsync: task status is not FINISH.");
+        HILOG_ERROR(LOG_CORE, "SubmitTaskAndWaitReturn: task status is not FINISH.");
         if (cloneAsyncThread) {
             std::thread asyncThread(WaitAsyncDumpRetLoop, std::move(dumpPipe));
             asyncThread.detach();

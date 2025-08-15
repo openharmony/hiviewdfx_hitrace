@@ -675,6 +675,12 @@ void TraceDumpExecutor::AddTraceDumpTask(const TraceDumpTask& task)
     HILOG_INFO(LOG_CORE, "AddTraceDumpTask: task added to the list.");
 }
 
+void TraceDumpExecutor::ClearTraceDumpTask()
+{
+    std::lock_guard<std::mutex> lck(taskQueueMutex_);
+    traceDumpTaskVec_.clear();
+}
+
 bool TraceDumpExecutor::IsTraceDumpTaskEmpty()
 {
     std::lock_guard<std::mutex> lck(taskQueueMutex_);
@@ -819,6 +825,9 @@ bool TraceDumpExecutor::DoReadRawTrace(TraceDumpTask& task)
     if (task.code == TraceErrorCode::SUCCESS && task.fileSize > task.fileSizeLimit) {
         task.isFileSizeOverLimit = true;
     }
+#ifdef HITRACE_ASYNC_READ_TIMEOUT_TEST
+    sleep(10); // 10 : sleep 10 seconds to construct a timeout task
+#endif
     if (!UpdateTraceDumpTask(task)) {
         HILOG_ERROR(LOG_CORE, "DoReadRawTrace: update trace dump task failed.");
         return false;
@@ -856,7 +865,7 @@ bool TraceDumpExecutor::DoWriteRawTrace(TraceDumpTask& task)
     if (task.code == TraceErrorCode::SUCCESS && task.fileSize > task.fileSizeLimit) {
         task.isFileSizeOverLimit = true;
     }
-#ifdef HITRACE_UNITTEST
+#ifdef HITRACE_ASYNC_WRITE_TIMEOUT_TEST
     sleep(10); // 10 : sleep 10 seconds to construct a timeout task
 #endif
     if (!UpdateTraceDumpTask(task)) {
