@@ -26,17 +26,16 @@ class HiTraceChainAni {
 public:
     static ani_object Begin(ani_env* env, ani_string nameAni, ani_object flagAni);
     static ani_object CreateHitraceIdAni(ani_env* env, HiTraceId& traceId);
-    static void End(ani_env* env, ani_object HiTraceId);
+    static void End(ani_env* env, ani_object traceIdAni);
     static ani_object GetId(ani_env* env);
-    static void SetId(ani_env* env, ani_object HiTraceId);
+    static void SetId(ani_env* env, ani_object traceIdAni);
     static void ClearId(ani_env* env);
     static ani_object CreateSpan(ani_env* env);
-    static void Tracepoint(ani_env* env, ani_enum_item modeAni,
-        ani_enum_item typeAni, ani_object HiTraceIdAni, ani_string msgAni);
-    static ani_boolean IsValid(ani_env* env, ani_object HiTraceIdAni);
-    static ani_boolean IsFlagEnabled(ani_env* env, ani_object HiTraceIdAni,
-        ani_enum_item flagAni);
-    static void EnableFlag(ani_env* env, ani_object HiTraceIdAni, ani_enum_item flagAni);
+    static void Tracepoint(ani_env* env, ani_enum_item modeAni, ani_enum_item typeAni,
+        ani_object traceIdAni, ani_object msgAni);
+    static ani_boolean IsValid(ani_env* env, ani_object traceIdAni);
+    static ani_boolean IsFlagEnabled(ani_env* env, ani_object traceIdAni, ani_enum_item flagAni);
+    static void EnableFlag(ani_env* env, ani_object traceIdAni, ani_enum_item flagAni);
 };
 } // namespace HiviewDFX
 } // namespace OHOS
