@@ -420,7 +420,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_002, TestSize.Level0)
     const std::vector<std::string> tagGroups = {"default"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     sleep(1); // wait 1s
-    int maxDuration = -1;
+    uint32_t maxDuration = UINT32_MAX;
     TraceRetInfo ret = DumpTrace(maxDuration);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_MAX_DURATION);
     ASSERT_TRUE(ret.outputFiles.empty());
@@ -477,7 +477,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     sleep(1); // wait 1s
     traceEndTime = 10; // 1970-01-01 08:00:10
-    int maxDuration = -1;
+    uint32_t maxDuration = UINT32_MAX;
     ret = DumpTrace(maxDuration, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_MAX_DURATION);
     ASSERT_TRUE(ret.outputFiles.empty());
@@ -486,7 +486,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_004, TestSize.Level0)
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     sleep(1); // wait 1s
     traceEndTime = static_cast<uint64_t>(std::time(nullptr)) + 10; // current time + 10 seconds
-    maxDuration = -1;
+    maxDuration = UINT32_MAX;
     ret = DumpTrace(maxDuration, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_MAX_DURATION);
     ASSERT_TRUE(ret.outputFiles.empty());
@@ -571,7 +571,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_007, TestSize.Level0)
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     sleep(TWO_SEC);
     uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr));
-    TraceRetInfo ret = DumpTrace(-1, traceEndTime);
+    TraceRetInfo ret = DumpTrace(UINT32_MAX, traceEndTime);
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_MAX_DURATION) << "errorCode: "
         << static_cast<int>(ret.errorCode);
     ASSERT_TRUE(ret.outputFiles.empty());
