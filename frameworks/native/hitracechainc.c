@@ -128,12 +128,20 @@ static inline int HiTraceChainGetDeviceId(void)
     // save device id and use it later
     static atomic_int deviceId = 0;
 
-    if (deviceId == 0) {
-        struct timeval tv;
-        gettimeofday(&tv, NULL);
-        srand(tv.tv_sec);
-        deviceId = random();
+    if (deviceId != 0) {
+        return deviceId;
     }
+
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    srand(tv.tv_sec);
+    int desired = 0;
+    do {
+        desired = random();
+    } while (desired == 0);
+    int expected = 0;
+
+    (void)atomic_compare_exchange_strong(&deviceId, &expected, desired);
     return deviceId;
 }
 
@@ -141,9 +149,8 @@ static inline unsigned int HiTraceChainGetCpuId(void)
 {
     // Using vdso call will make get_cpu_id faster: sched_getcpu()
     static atomic_uint cpuId = 0;
-    cpuId++;
-
-    return cpuId;
+    unsigned int ret = atomic_fetch_add(&cpuId, 1);
+    return ret + 1;
 }
 
 static inline uint64_t HiTraceChainCreateChainId(void)
