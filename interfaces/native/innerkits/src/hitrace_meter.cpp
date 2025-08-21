@@ -806,7 +806,7 @@ void AddHitraceMeterMarker(TraceMarker& traceMarker)
 #ifdef HITRACE_UNITTEST
     appTagload = HITRACE_TAG_APP;
 #endif
-    if (UNEXPECTANTLY(appTagload != HITRACE_TAG_NOT_READY) && g_appFd != -1) {
+    if (UNEXPECTANTLY(appTagload != HITRACE_TAG_NOT_READY) && g_appFd != -1 && (traceMarker.tag & g_appTag) != 0) {
         WriteAppTrace(traceMarker);
     }
 }
