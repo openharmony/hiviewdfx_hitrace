@@ -36,82 +36,85 @@ constexpr int DEFAULT_FLAGS = 0;
 
 ani_object HiTraceChainAni::Begin(ani_env* env, ani_string nameAni, ani_object flagAni)
 {
-    HiTraceId traceId;
     std::string name;
-    ani_object val = {};
-    if (HiTraceChainAniUtil::GetAniStringValue(env, nameAni, name) != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "get name failed.");
+    ani_object val {};
+    if (!HiTraceChainAniUtil::GetAniStringValue(env, nameAni, name)) {
+        HILOG_ERROR(LOG_CORE, "Begin name parsing failed");
         return val;
     }
     int flag = HiTraceFlag::HITRACE_FLAG_DEFAULT;
-    if (!HiTraceChainAniUtil::IsRefUndefined(env, static_cast<ani_ref>(flagAni))) {
-        flag = HiTraceChainAniUtil::GetAniIntValue(env, flagAni);
+    ani_boolean isUndefined = true;
+    if (env->Reference_IsUndefined(static_cast<ani_ref>(flagAni), &isUndefined) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "Begin get ref undefined failed");
+        return val;
     }
-    traceId = HiTraceChain::Begin(name, flag);
+    if (!isUndefined &&
+        env->Object_CallMethodByName_Int(flagAni, "unboxed", ":i", &flag) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "Begin flag parsing failed");
+        return val;
+    }
+    HiTraceId traceId = HiTraceChain::Begin(name, flag);
     val = HiTraceChainAni::CreateHitraceIdAni(env, traceId);
     return val;
 };
 
 
-static ani_status SetChainId(ani_env* env, HiTraceId& traceId, ani_object& hiTrace_object, ani_class cls)
+static ani_status SetChainId(ani_env* env, ani_class cls, HiTraceId& traceId, ani_object& traceIdAni)
 {
-    ani_method chainIdSetter;
-    if (env->Class_FindMethod(cls, "<set>chainId", nullptr, &chainIdSetter) != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "find method %{public}s failed", CLASS_NAME_HITRACEID_CHAINID);
-        return ANI_ERROR;
-    }
     uint64_t chainId = traceId.GetChainId();
-    ani_object bigint_ctor = HiTraceChainAniUtil::CreateAniBigInt(env, chainId);
-    if (env->Object_CallMethod_Void(hiTrace_object, chainIdSetter, bigint_ctor) != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "call method %{public}s failed", CLASS_NAME_HITRACEID_CHAINID);
+    ani_object chainIdObj {};
+    if (!HiTraceChainAniUtil::CreateAniBigInt(env, chainId, chainIdObj)) {
+        HILOG_ERROR(LOG_CORE, "SetChainId CreateAniBigInt failed");
+        return ANI_ERROR;
+    }
+    if (env->Object_SetPropertyByName_Ref(traceIdAni, "chainId", static_cast<ani_ref>(chainIdObj)) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "set chainId failed");
         return ANI_ERROR;
     }
     return ANI_OK;
 }
 
-static ani_status SetSpanId(ani_env* env, HiTraceId& traceId, ani_object& hiTrace_object, ani_class cls)
+static ani_status SetSpanId(ani_env* env, ani_class cls, HiTraceId& traceId, ani_object& traceIdAni)
 {
-    ani_method parentSpanIdSetter;
-    if (env->Class_FindMethod(cls, "<set>parentSpanId", nullptr, &parentSpanIdSetter) != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "find method %{public}s failed", CLASS_NAME_HITRACEID_PARENTSSPANID);
-        return ANI_ERROR;
-    }
-    uint64_t parentSpanId = traceId.GetParentSpanId();
-    ani_object parentSpanId_ctor = HiTraceChainAniUtil::CreateAniInt(env, parentSpanId);
-    if (env->Object_CallMethod_Void(hiTrace_object, parentSpanIdSetter, parentSpanId_ctor) != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "call method %{public}s failed", CLASS_NAME_HITRACEID_PARENTSSPANID);
-        return ANI_ERROR;
-    }
-    return ANI_OK;
-}
-
-static ani_status SetParentSpanId(ani_env* env, HiTraceId& traceId, ani_object& hiTrace_object, ani_class cls)
-{
-    ani_method spanIdSetter;
-    if (env->Class_FindMethod(cls, "<set>spanId", nullptr, &spanIdSetter) != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "find method %{public}s failed", CLASS_NAME_HITRACEID_SPANID);
-        return ANI_ERROR;
-    }
     uint64_t spanId = traceId.GetSpanId();
-    ani_object spanId_ctor = HiTraceChainAniUtil::CreateAniInt(env, spanId);
-    if (env->Object_CallMethod_Void(hiTrace_object, spanIdSetter, spanId_ctor) != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "call method %{public}s failed", CLASS_NAME_HITRACEID_SPANID);
+    ani_object spanIdObj {};
+    if (!HiTraceChainAniUtil::CreateAniInt(env, spanId, spanIdObj)) {
+        HILOG_ERROR(LOG_CORE, "SetSpanId CreateAniInt failed");
+        return ANI_ERROR;
+    }
+    if (env->Object_SetPropertyByName_Ref(traceIdAni, "spanId", static_cast<ani_ref>(spanIdObj)) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "set spanId failed");
         return ANI_ERROR;
     }
     return ANI_OK;
 }
 
-static ani_status SetFlags(ani_env* env, HiTraceId& traceId, ani_object& hiTrace_object, ani_class cls)
+static ani_status SetParentSpanId(ani_env* env, ani_class cls, HiTraceId& traceId, ani_object& traceIdAni)
 {
-    ani_method flagsSetter;
-    if (env->Class_FindMethod(cls, "<set>flags", nullptr, &flagsSetter) != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "find method %{public}s failed", CLASS_NAME_HITRACEID_FLAGS);
+    uint64_t parentSpanId = traceId.GetParentSpanId();
+    ani_object parentSpanIdObj {};
+    if (!HiTraceChainAniUtil::CreateAniInt(env, parentSpanId, parentSpanIdObj)) {
+        HILOG_ERROR(LOG_CORE, "SetParentSpanId CreateAniInt failed");
         return ANI_ERROR;
     }
+    if (env->Object_SetPropertyByName_Ref(traceIdAni, "parentSpanId",
+        static_cast<ani_ref>(parentSpanIdObj)) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "set parentSpanId failed");
+        return ANI_ERROR;
+    }
+    return ANI_OK;
+}
+
+static ani_status SetFlags(ani_env* env, ani_class cls, HiTraceId& traceId, ani_object& traceIdAni)
+{
     int flags = traceId.GetFlags();
-    ani_object flags_ctor = HiTraceChainAniUtil::CreateAniInt(env, static_cast<uint64_t>(flags));
-    if (env->Object_CallMethod_Void(hiTrace_object, flagsSetter, flags_ctor) != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "call method %{public}s failed", CLASS_NAME_HITRACEID_FLAGS);
+    ani_object flagsObj {};
+    if (!HiTraceChainAniUtil::CreateAniInt(env, static_cast<uint64_t>(flags), flagsObj)) {
+        HILOG_ERROR(LOG_CORE, "SetFlags CreateAniInt failed");
+        return ANI_ERROR;
+    }
+    if (env->Object_SetPropertyByName_Ref(traceIdAni, "flags", static_cast<ani_ref>(flagsObj)) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "set flags failed");
         return ANI_ERROR;
     }
     return ANI_OK;
@@ -119,83 +122,101 @@ static ani_status SetFlags(ani_env* env, HiTraceId& traceId, ani_object& hiTrace
 
 ani_object HiTraceChainAni::CreateHitraceIdAni(ani_env* env, HiTraceId& traceId)
 {
-    ani_object hiTrace_object = nullptr;
-    ani_class cls;
+    ani_object traceIdAni {};
+    ani_class cls {};
     if (env->FindClass(CLASS_NAME_HITRACEID, &cls) != ANI_OK) {
         HILOG_ERROR(LOG_CORE, "find class %{public}s failed", CLASS_NAME_HITRACEID);
-        return hiTrace_object;
+        return traceIdAni;
     }
-    ani_method ctor;
-    if (env->Class_FindMethod(cls, "<ctor>", nullptr, &ctor) != ANI_OK) {
+    ani_method ctor {};
+    if (env->Class_FindMethod(cls, FUNC_NAME_CTOR, nullptr, &ctor) != ANI_OK) {
         HILOG_ERROR(LOG_CORE, "find method %{public}s failed", CLASS_NAME_HITRACEID);
-        return hiTrace_object;
+        return traceIdAni;
     }
-    if (env->Object_New(cls, ctor, &hiTrace_object) != ANI_OK ||
-        SetChainId(env, traceId, hiTrace_object, cls) != ANI_OK ||
-        SetSpanId(env, traceId, hiTrace_object, cls) != ANI_OK ||
-        SetParentSpanId(env, traceId, hiTrace_object, cls) != ANI_OK ||
-        SetFlags(env, traceId, hiTrace_object, cls) != ANI_OK) {
+    if (env->Object_New(cls, ctor, &traceIdAni) != ANI_OK ||
+        SetChainId(env, cls, traceId, traceIdAni) != ANI_OK ||
+        SetSpanId(env, cls, traceId, traceIdAni) != ANI_OK ||
+        SetParentSpanId(env, cls, traceId, traceIdAni) != ANI_OK ||
+        SetFlags(env, cls, traceId, traceIdAni) != ANI_OK) {
         HILOG_ERROR(LOG_CORE, "create object %{public}s failed", CLASS_NAME_HITRACEID);
     }
-    return hiTrace_object;
+    return traceIdAni;
 }
 
-static void ParseHiTraceId(ani_env* env, ani_object HiTraceIdAni, HiTraceId& traceId)
+static bool GetIntProp(ani_env* env, ani_object traceIdAni, const char* prop, ani_int& value)
+{
+    ani_ref propRef {};
+    if (env->Object_GetPropertyByName_Ref(traceIdAni, prop, &propRef) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "get %{public}s ref failed", prop);
+        return false;
+    }
+    ani_boolean isUndefined = true;
+    if (env->Reference_IsUndefined(propRef, &isUndefined) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "%{public}s get ref undefined failed", prop);
+        return false;
+    }
+    if (!isUndefined &&
+        env->Object_CallMethodByName_Int(static_cast<ani_object>(propRef), "unboxed", ":i", &value) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "%{public}s parsing failed", prop);
+        return false;
+    }
+    return true;
+}
+
+static bool ParseHiTraceId(ani_env* env, ani_object traceIdAni, HiTraceId& traceId)
 {
     ani_ref chainIdRef {};
-    if (env->Object_GetPropertyByName_Ref(HiTraceIdAni, "chainId", &chainIdRef) != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "get chainId %{public}s failed", CLASS_NAME_HITRACEID);
-        return;
+    if (env->Object_GetPropertyByName_Ref(traceIdAni, "chainId", &chainIdRef) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "get chainId ref failed");
+        return false;
     }
-    uint64_t chainId = DEFAULT_CHAIN_ID;
-    chainId = static_cast<uint64_t>(HiTraceChainAniUtil::GetAniBigIntValue(env, chainIdRef));
-    traceId.SetChainId(chainId);
+    ani_long chainId = DEFAULT_CHAIN_ID;
+    if (!HiTraceChainAniUtil::GetAniBigIntValue(env, static_cast<ani_object>(chainIdRef), chainId)) {
+        HILOG_ERROR(LOG_CORE, "chainId parsing failed");
+        return false;
+    }
+    traceId.SetChainId(static_cast<uint64_t>(chainId));
 
-    ani_ref spanIdRef {};
-    if (env->Object_GetPropertyByName_Ref(HiTraceIdAni, "spanId", &spanIdRef) != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "get spanId %{public}s failed", CLASS_NAME_HITRACEID);
-        return;
+    ani_int spanId = DEFAULT_SPAN_ID;
+    if (!GetIntProp(env, traceIdAni, "spanId", spanId)) {
+        HILOG_ERROR(LOG_CORE, "get spanId failed");
+        return false;
     }
-    uint64_t spanId = DEFAULT_SPAN_ID;
-    if (!HiTraceChainAniUtil::IsRefUndefined(env, spanIdRef)) {
-        spanId = static_cast<uint64_t>(HiTraceChainAniUtil::GetAniIntValue(env, spanIdRef));
-        traceId.SetSpanId(spanId);
-    }
+    traceId.SetSpanId(static_cast<uint64_t>(spanId));
 
-    ani_ref parentSpanIdRef {};
-    if (env->Object_GetPropertyByName_Ref(HiTraceIdAni, "parentSpanId", &parentSpanIdRef) != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "get parentSpanId %{public}s failed", CLASS_NAME_HITRACEID);
-        return;
+    ani_int parentSpanId = DEFAULT_PARENT_SPAN_ID;
+    if (!GetIntProp(env, traceIdAni, "parentSpanId", parentSpanId)) {
+        HILOG_ERROR(LOG_CORE, "get parentSpanId failed");
+        return false;
     }
-    uint64_t parentSpanId = DEFAULT_PARENT_SPAN_ID;
-    if (!HiTraceChainAniUtil::IsRefUndefined(env, parentSpanIdRef)) {
-        parentSpanId = static_cast<uint64_t>(HiTraceChainAniUtil::GetAniIntValue(env, parentSpanIdRef));
-        traceId.SetParentSpanId(parentSpanId);
-    }
+    traceId.SetParentSpanId(static_cast<uint64_t>(parentSpanId));
 
-    ani_ref flagsRef {};
-    if (env->Object_GetPropertyByName_Ref(HiTraceIdAni, "flags", &flagsRef) != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "get flags %{public}s failed", CLASS_NAME_HITRACEID);
-        return;
+    ani_int flags = DEFAULT_FLAGS;
+    if (!GetIntProp(env, traceIdAni, "flags", flags)) {
+        HILOG_ERROR(LOG_CORE, "get flags failed");
+        return false;
     }
-    int flags = DEFAULT_FLAGS;
-    if (!HiTraceChainAniUtil::IsRefUndefined(env, flagsRef)) {
-        flags = HiTraceChainAniUtil::GetAniIntValue(env, flagsRef);
-        traceId.SetFlags(flags);
-    }
+    traceId.SetFlags(static_cast<int>(flags));
+    return true;
 }
 
-void HiTraceChainAni::End(ani_env* env, ani_object HiTraceIdAni)
+void HiTraceChainAni::End(ani_env* env, ani_object traceIdAni)
 {
     HiTraceId traceId;
-    ParseHiTraceId(env, HiTraceIdAni, traceId);
+    if (!ParseHiTraceId(env, traceIdAni, traceId)) {
+        HILOG_ERROR(LOG_CORE, "End ParseHiTraceId failed");
+        return;
+    }
     HiTraceChain::End(traceId);
 }
 
-void HiTraceChainAni::SetId(ani_env* env, ani_object HiTraceIdAni)
+void HiTraceChainAni::SetId(ani_env* env, ani_object traceIdAni)
 {
     HiTraceId traceId;
-    ParseHiTraceId(env, HiTraceIdAni, traceId);
+    if (!ParseHiTraceId(env, traceIdAni, traceId)) {
+        HILOG_ERROR(LOG_CORE, "SetId ParseHiTraceId failed");
+        return;
+    }
     HiTraceChain::SetId(traceId);
 }
 
@@ -216,70 +237,88 @@ ani_object HiTraceChainAni::CreateSpan(ani_env* env)
     return HiTraceChainAni::CreateHitraceIdAni(env, traceId);
 }
 
-void HiTraceChainAni::Tracepoint(ani_env* env, ani_enum_item modeAni,
-    ani_enum_item typeAni, ani_object HiTraceIdAni, ani_string msgAni)
+void HiTraceChainAni::Tracepoint(ani_env* env, ani_enum_item modeAni, ani_enum_item typeAni,
+    ani_object traceIdAni, ani_object msgAni)
 {
-    int communicationModeInt = 0;
-    if (HiTraceChainAniUtil::AniEnumToInt(env, modeAni, communicationModeInt) != ANI_OK) {
+    ani_int mode = 0;
+    if (env->EnumItem_GetValue_Int(modeAni, &mode) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "Tracepoint mode parsing failed");
         return;
     }
-    HiTraceCommunicationMode communicationMode = HiTraceCommunicationMode(communicationModeInt);
-    int tracePointTypeInt = 0;
-    if (HiTraceChainAniUtil::AniEnumToInt(env, typeAni, tracePointTypeInt) != ANI_OK) {
+    ani_int type = 0;
+    if (env->EnumItem_GetValue_Int(typeAni, &type) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "Tracepoint type parsing failed");
         return;
     }
-    HiTraceTracepointType tracePointType = HiTraceTracepointType(tracePointTypeInt);
     HiTraceId traceId;
-    ParseHiTraceId(env, HiTraceIdAni, traceId);
-    std::string description = "";
-    if (!HiTraceChainAniUtil::IsRefUndefined(env, static_cast<ani_ref>(msgAni))) {
-        if (HiTraceChainAniUtil::GetAniStringValue(env, msgAni, description) != ANI_OK) {
-            HILOG_ERROR(LOG_CORE, "get description failed.");
-            return;
-        }
+    if (!ParseHiTraceId(env, traceIdAni, traceId)) {
+        HILOG_ERROR(LOG_CORE, "Tracepoint ParseHiTraceId failed");
+        return;
     }
-    HiTraceChain::Tracepoint(communicationMode, tracePointType, traceId, "%s", description.c_str());
+    std::string msg = "";
+    ani_boolean isUndefined = true;
+    if (env->Reference_IsUndefined(static_cast<ani_ref>(msgAni), &isUndefined) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "Tracepoint get ref undefined failed");
+        return;
+    }
+    if (!isUndefined && !HiTraceChainAniUtil::GetAniStringValue(env, static_cast<ani_string>(msgAni), msg)) {
+        HILOG_ERROR(LOG_CORE, "Tracepoint msg parsing failed");
+        return;
+    }
+    HiTraceChain::Tracepoint(static_cast<HiTraceCommunicationMode>(mode), static_cast<HiTraceTracepointType>(type),
+        traceId, "%s", msg.c_str());
 }
 
-ani_boolean HiTraceChainAni::IsValid(ani_env* env, ani_object HiTraceIdAni)
+ani_boolean HiTraceChainAni::IsValid(ani_env* env, ani_object traceIdAni)
 {
     bool isValid = false;
     HiTraceId traceId;
-    ParseHiTraceId(env, HiTraceIdAni, traceId);
+    if (!ParseHiTraceId(env, traceIdAni, traceId)) {
+        HILOG_ERROR(LOG_CORE, "IsValid ParseHiTraceId failed");
+        return static_cast<ani_boolean>(isValid);
+    }
     isValid = traceId.IsValid();
     return static_cast<ani_boolean>(isValid);
 }
 
-ani_boolean HiTraceChainAni::IsFlagEnabled(ani_env* env, ani_object HiTraceIdAni,
-    ani_enum_item flagAni)
+ani_boolean HiTraceChainAni::IsFlagEnabled(ani_env* env, ani_object traceIdAni, ani_enum_item flagAni)
 {
-    bool isFalgEnabled = false;
+    bool isFlagEnabled = false;
     HiTraceId traceId;
-    ParseHiTraceId(env, HiTraceIdAni, traceId);
-    int traceFlagInt = 0;
-    if (HiTraceChainAniUtil::AniEnumToInt(env, flagAni, traceFlagInt) != ANI_OK) {
-        return isFalgEnabled;
+    if (!ParseHiTraceId(env, traceIdAni, traceId)) {
+        HILOG_ERROR(LOG_CORE, "IsFlagEnabled ParseHiTraceId failed");
+        return static_cast<ani_boolean>(isFlagEnabled);
     }
-    HiTraceFlag traceFlag = HiTraceFlag(traceFlagInt);
-    isFalgEnabled = traceId.IsFlagEnabled(traceFlag);
-    return static_cast<ani_boolean>(isFalgEnabled);
+    ani_int flag = 0;
+    if (env->EnumItem_GetValue_Int(flagAni, &flag) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "IsFlagEnabled flag pasing failed");
+        return static_cast<ani_boolean>(isFlagEnabled);
+    }
+    isFlagEnabled = traceId.IsFlagEnabled(static_cast<HiTraceFlag>(flag));
+    return static_cast<ani_boolean>(isFlagEnabled);
 }
 
-void HiTraceChainAni::EnableFlag(ani_env* env, ani_object HiTraceIdAni,
-    ani_enum_item flagAni)
+void HiTraceChainAni::EnableFlag(ani_env* env, ani_object traceIdAni, ani_enum_item flagAni)
 {
     HiTraceId traceId;
-    ParseHiTraceId(env, HiTraceIdAni, traceId);
-    int traceFlagInt = 0;
-    if (HiTraceChainAniUtil::AniEnumToInt(env, flagAni, traceFlagInt) != ANI_OK) {
+    if (!ParseHiTraceId(env, traceIdAni, traceId)) {
+        HILOG_ERROR(LOG_CORE, "EnableFlag ParseHiTraceId failed");
         return;
     }
-    HiTraceFlag traceFlag = HiTraceFlag(traceFlagInt);
-    traceId.EnableFlag(traceFlag);
-    ani_object flagsObj = HiTraceChainAniUtil::CreateAniInt(env, traceId.GetFlags());
-    ani_status status = env->Object_SetPropertyByName_Ref(HiTraceIdAni, "flags", static_cast<ani_ref>(flagsObj));
+    ani_int flag = 0;
+    if (env->EnumItem_GetValue_Int(flagAni, &flag) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "EnableFlag flag pasing failed");
+        return;
+    }
+    traceId.EnableFlag(static_cast<HiTraceFlag>(flag));
+    ani_object flagsObj {};
+    if (!HiTraceChainAniUtil::CreateAniInt(env, traceId.GetFlags(), flagsObj)) {
+        HILOG_ERROR(LOG_CORE, "EnableFlag CreateAniInt failed");
+        return;
+    }
+    ani_status status = env->Object_SetPropertyByName_Ref(traceIdAni, "flags", static_cast<ani_ref>(flagsObj));
     if (status != ANI_OK) {
-        HILOG_ERROR(LOG_CORE, "create object failed");
+        HILOG_ERROR(LOG_CORE, "set flags failed");
     }
 }
 
@@ -287,10 +326,12 @@ ANI_EXPORT ani_status ANI_Constructor(ani_vm* vm, uint32_t* result)
 {
     ani_env* env;
     if (vm->GetEnv(ANI_VERSION_1, &env) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "GetEnv failed");
         return ANI_ERROR;
     }
     ani_namespace ns {};
-    if (env->FindNamespace(CLASS_NAME_HITRACECHAIN, &ns) != ANI_OK) {
+    if (env->FindNamespace(NAMESPACE_HITRACECHAIN, &ns) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "FindNamespace %{public}s failed", NAMESPACE_HITRACECHAIN);
         return ANI_ERROR;
     }
     std::array methods = {
@@ -306,6 +347,7 @@ ANI_EXPORT ani_status ANI_Constructor(ani_vm* vm, uint32_t* result)
         ani_native_function {"enableFlag", nullptr, reinterpret_cast<void *>(HiTraceChainAni::EnableFlag)},
     };
     if (env->Namespace_BindNativeFunctions(ns, methods.data(), methods.size()) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "%{public}s bind native function failed", NAMESPACE_HITRACECHAIN);
         return ANI_ERROR;
     };
     *result = ANI_VERSION_1;
