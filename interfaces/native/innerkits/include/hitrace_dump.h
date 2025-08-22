@@ -59,7 +59,7 @@ TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups);
  * return TraceErrorCode::SUCCESS if any trace is captured between the designated interval
  * return TraceErrorCode::OUT_OF_TIME otherwise.
 */
-TraceRetInfo DumpTrace(uint32_t maxDuration = 0, uint64_t utTraceEndTime = 0);
+TraceRetInfo DumpTrace(int maxDuration = 0, uint64_t utTraceEndTime = 0);
 
 /**
  * Reading trace data once from ftrace ringbuffer in the kernel.
@@ -76,7 +76,7 @@ TraceRetInfo DumpTrace(uint32_t maxDuration = 0, uint64_t utTraceEndTime = 0);
  * return TraceErrorCode::SUCCESS if any trace is captured between the designated interval
  * return TraceErrorCode::OUT_OF_TIME otherwise.
  */
-TraceRetInfo DumpTraceAsync(uint32_t maxDuration = 0, uint64_t utTraceEndTime = 0, int64_t fileSizeLimit = 0,
+TraceRetInfo DumpTraceAsync(int maxDuration = 0, uint64_t utTraceEndTime = 0, int64_t fileSizeLimit = 0,
     std::function<void(TraceRetInfo)> asyncCallback = nullptr);
 
 /**

@@ -145,6 +145,9 @@ bool ITraceContent::WriteTraceData(const uint8_t contentType)
             break;
         }
     }
+    if (contentType == CONTENT_TYPE_CMDLINES) {
+        WriteProcessLists(writeLen);
+    }
     UpdateTraceContentHeader(contentHeader, static_cast<uint32_t>(writeLen));
     HILOG_INFO(LOG_CORE, "WriteTraceData end, type: %{public}d, byte: %{public}zd. g_writeFileLimit: %{public}d",
         contentType, writeLen, g_writeFileLimit);

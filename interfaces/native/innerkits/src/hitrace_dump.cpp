@@ -78,7 +78,7 @@ const int SAVED_CMDLINES_SIZE = 3072; // 3M
 const int BYTE_PER_MB = 1024 * 1024;
 constexpr int32_t MAX_RATIO_UNIT = 1000;
 constexpr uint32_t DURATION_TOLERANCE = 100;
-constexpr uint64_t DEFAULT_FULL_TRACE_LENGTH = 30;
+constexpr int DEFAULT_FULL_TRACE_LENGTH = 30;
 constexpr uint64_t SNAPSHOT_MIN_REMAINING_SPACE = 300 * 1024 * 1024;     // 300M
 constexpr uint64_t DEFAULT_ASYNC_TRACE_SIZE = 50 * 1024 * 1024;          // 50M
 constexpr int HUNDRED_MILLISECONDS = 100 * 1000; // 100ms
@@ -409,7 +409,7 @@ bool SetTraceSetting(const TraceParams& traceParams, const std::map<std::string,
     return true;
 }
 
-TraceErrorCode SetTimeIntervalBoundary(uint64_t inputMaxDuration, uint64_t utTraceEndTime)
+TraceErrorCode SetTimeIntervalBoundary(int inputMaxDuration, uint64_t utTraceEndTime)
 {
     uint64_t utNow = static_cast<uint64_t>(std::time(nullptr));
     if (utTraceEndTime >= utNow) {
@@ -432,7 +432,7 @@ TraceErrorCode SetTimeIntervalBoundary(uint64_t inputMaxDuration, uint64_t utTra
         return OUT_OF_TIME;
     }
 
-    uint64_t maxDuration = inputMaxDuration > 0 ? inputMaxDuration + 1 : 0;
+    uint64_t maxDuration = inputMaxDuration > 0 ? static_cast<uint64_t>(inputMaxDuration) + 1 : 0;
     if (maxDuration > g_traceEndTime / S_TO_NS) {
         HILOG_WARN(LOG_CORE, "maxDuration is larger than TraceEndTime boot clock.");
         maxDuration = 0;
@@ -723,7 +723,7 @@ TraceErrorCode ProcessDumpSync(TraceRetInfo& traceRetInfo)
     return HandleDumpResult(reOutPath, traceRetInfo);
 }
 
-void LoadDumpRet(TraceRetInfo& ret, uint32_t committedDuration)
+void LoadDumpRet(TraceRetInfo& ret, int32_t committedDuration)
 {
     ret.mode = g_traceMode;
     committedDuration = committedDuration <= 0 ? DEFAULT_FULL_TRACE_LENGTH : committedDuration;
@@ -1057,7 +1057,7 @@ void SetCmdTraceIntParams(const std::string& traceParamsStr, int& traceParams)
     }
 }
 
-void SetDestTraceTimeAndDuration(uint32_t maxDuration, const uint64_t& utTraceEndTime)
+void SetDestTraceTimeAndDuration(int maxDuration, const uint64_t& utTraceEndTime)
 {
     if (utTraceEndTime == 0) {
         time_t currentTime;
@@ -1066,7 +1066,7 @@ void SetDestTraceTimeAndDuration(uint32_t maxDuration, const uint64_t& utTraceEn
     } else {
         g_utDestTraceEndTime = utTraceEndTime;
     }
-    if (maxDuration == 0 || maxDuration == UINT32_MAX) {
+    if (maxDuration <= 0) {
         maxDuration = DEFAULT_FULL_TRACE_LENGTH;
     }
     if (g_utDestTraceEndTime <= static_cast<uint64_t>(maxDuration)) {
@@ -1170,7 +1170,7 @@ void GetFileInCache(TraceRetInfo& traceRetInfo)
     }
 }
 
-bool CheckTraceDumpStatus(const uint32_t maxDuration, const uint64_t utTraceEndTime, TraceRetInfo& ret)
+bool CheckTraceDumpStatus(const int maxDuration, const uint64_t utTraceEndTime, TraceRetInfo& ret)
 {
     if (!IsTraceOpen() || IsRecordOn()) {
         HILOG_ERROR(LOG_CORE, "CheckTraceDumpStatus: WRONG_TRACE_MODE, current trace mode: %{public}u.",
@@ -1178,9 +1178,8 @@ bool CheckTraceDumpStatus(const uint32_t maxDuration, const uint64_t utTraceEndT
         ret.errorCode = WRONG_TRACE_MODE;
         return false;
     }
-    if (maxDuration  == UINT32_MAX) {
-        HILOG_ERROR(LOG_CORE, "CheckTraceDumpStatus: Illegal input: maxDuration = %{public}d is invalid.",
-                    maxDuration);
+    if (maxDuration < 0) {
+        HILOG_ERROR(LOG_CORE, "CheckTraceDumpStatus: Illegal input: maxDuration = %{public}d < 0.", maxDuration);
         ret.errorCode = INVALID_MAX_DURATION;
         return false;
     }
@@ -1322,7 +1321,7 @@ TraceErrorCode CacheTraceOff()
     return SUCCESS;
 }
 
-TraceRetInfo DumpTrace(uint32_t maxDuration, uint64_t utTraceEndTime)
+TraceRetInfo DumpTrace(int maxDuration, uint64_t utTraceEndTime)
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
     TraceRetInfo ret;
@@ -1334,8 +1333,8 @@ TraceRetInfo DumpTrace(uint32_t maxDuration, uint64_t utTraceEndTime)
     HILOG_INFO(LOG_CORE, "DumpTrace start, target duration is %{public}d, target endtime is (%{public}" PRIu64 ").",
         maxDuration, utTraceEndTime);
     SetDestTraceTimeAndDuration(maxDuration, utTraceEndTime);
-    uint32_t committedDuration =
-        std::min(DEFAULT_FULL_TRACE_LENGTH, g_utDestTraceEndTime - g_utDestTraceStartTime);
+    int32_t committedDuration =
+        std::min(DEFAULT_FULL_TRACE_LENGTH, static_cast<int32_t>(g_utDestTraceEndTime - g_utDestTraceStartTime));
     if (UNEXPECTANTLY(IsCacheOn())) {
         GetFileInCache(ret);
         LoadDumpRet(ret, committedDuration);
@@ -1358,7 +1357,7 @@ TraceRetInfo DumpTrace(uint32_t maxDuration, uint64_t utTraceEndTime)
     return ret;
 }
 
-TraceRetInfo DumpTraceAsync(uint32_t maxDuration, uint64_t utTraceEndTime, int64_t fileSizeLimit,
+TraceRetInfo DumpTraceAsync(int maxDuration, uint64_t utTraceEndTime, int64_t fileSizeLimit,
     std::function<void(TraceRetInfo)> asyncCallback)
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
@@ -1372,8 +1371,8 @@ TraceRetInfo DumpTraceAsync(uint32_t maxDuration, uint64_t utTraceEndTime, int64
     HILOG_INFO(LOG_CORE, "DumpTraceAsync start, target duration is %{public}d, target endtime is %{public}" PRIu64 ".",
         maxDuration, utTraceEndTime);
     SetDestTraceTimeAndDuration(maxDuration, utTraceEndTime);
-    uint32_t committedDuration =
-        std::min(DEFAULT_FULL_TRACE_LENGTH, g_utDestTraceEndTime - g_utDestTraceStartTime);
+    int32_t committedDuration =
+        std::min(DEFAULT_FULL_TRACE_LENGTH, static_cast<int32_t>(g_utDestTraceEndTime - g_utDestTraceStartTime));
     if (UNEXPECTANTLY(IsCacheOn())) {
         GetFileInCache(ret);
         LoadDumpRet(ret, committedDuration);
