@@ -2161,6 +2161,116 @@ HWTEST_F(HitraceMeterTest, CaptureAppTraceTest008, TestSize.Level1)
 }
 
 /**
+ * @tc.name: CaptureAppTraceTest009
+ * @tc.desc: Testing normal StartCaptureAppTrace with trace tag disable
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, CaptureAppTraceTest009, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CaptureAppTraceTest009: start.";
+
+    int fileSize = 600 * 1024 * 1024; // 600MB
+    std::string filePath = "/data/test09.ftrace";
+    ASSERT_TRUE(SetPropertyInner(TRACE_TAG_ENABLE_FLAGS, "0"));
+
+    int ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, TAG, fileSize, filePath);
+    ASSERT_EQ(ret, RetType::RET_SUCC);
+
+    const char* name = "CaptureAppTraceTest009-%s";
+    const char* customArgs = "key=value";
+    const char* customCategory = "test";
+    int taskId = 9;
+    StartTraceArgs(TAG, name, "StartTraceArgs");
+    FinishTrace(TAG);
+    StartTraceArgsEx(HITRACE_LEVEL_INFO, TAG, customArgs, name, "StartTraceArgsEx");
+    FinishTraceEx(HITRACE_LEVEL_INFO, TAG);
+    StartTraceArgsDebug(true, TAG, name, "StartTraceArgsDebug");
+    FinishTraceDebug(true, TAG);
+    StartAsyncTraceArgs(TAG, taskId, name, "AsyncArgs");
+    FinishAsyncTraceArgs(TAG, taskId, name, "AsyncArgs");
+    StartAsyncTraceArgsEx(HITRACE_LEVEL_INFO, TAG, taskId, customCategory, customArgs, name, "AsyncArgsEx");
+    FinishAsyncTraceArgsEx(HITRACE_LEVEL_INFO, TAG, taskId, name, "AsyncArgsEx");
+    StartAsyncTraceArgsDebug(true, TAG, taskId, name, "AsyncArgsDebug");
+    FinishAsyncTraceArgsDebug(true, TAG, taskId, name, "AsyncArgsDebug");
+    {
+        HITRACE_METER_FMT(TAG, name, "HitraceMeterFmtScoped");
+        HITRACE_METER_FMT_EX(HITRACE_LEVEL_INFO, TAG, customArgs, name, "HitraceMeterFmtScopedEx");
+    }
+
+    ret = StopCaptureAppTrace();
+    ASSERT_EQ(ret, RetType::RET_SUCC);
+    int count = 0;
+    std::ifstream file(filePath);
+    if (file.is_open()) {
+        std::string line;
+        while (std::getline(file, line)) {
+            if (line.find("|I30") != std::string::npos) {
+                count++;
+            }
+        }
+        file.close();
+    }
+    ASSERT_EQ(count, 16);
+
+    GTEST_LOG_(INFO) << "CaptureAppTraceTest009: end.";
+}
+
+/**
+ * @tc.name: CaptureAppTraceTest010
+ * @tc.desc: Testing normal StartCaptureAppTrace with trace tag disable
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, CaptureAppTraceTest010, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CaptureAppTraceTest010: start.";
+
+    int fileSize = 600 * 1024 * 1024; // 600MB
+    std::string filePath = "/data/test10.ftrace";
+    ASSERT_TRUE(SetPropertyInner(TRACE_TAG_ENABLE_FLAGS, "0"));
+
+    int ret = StartCaptureAppTrace(FLAG_MAIN_THREAD, TAG, fileSize, filePath);
+    ASSERT_EQ(ret, RetType::RET_SUCC);
+
+    const char* name = "CaptureAppTraceTest010-%s";
+    const char* customArgs = "key=value";
+    const char* customCategory = "test";
+    int taskId = 10;
+    StartTraceArgs(INVALID_TAG, name, "StartTraceArgs");
+    FinishTrace(INVALID_TAG);
+    StartTraceArgsEx(HITRACE_LEVEL_INFO, INVALID_TAG, customArgs, name, "StartTraceArgsEx");
+    FinishTraceEx(HITRACE_LEVEL_INFO, INVALID_TAG);
+    StartTraceArgsDebug(true, INVALID_TAG, name, "StartTraceArgsDebug");
+    FinishTraceDebug(true, INVALID_TAG);
+    StartAsyncTraceArgs(INVALID_TAG, taskId, name, "AsyncArgs");
+    FinishAsyncTraceArgs(INVALID_TAG, taskId, name, "AsyncArgs");
+    StartAsyncTraceArgsEx(HITRACE_LEVEL_INFO, INVALID_TAG, taskId, customCategory, customArgs, name, "AsyncArgsEx");
+    FinishAsyncTraceArgsEx(HITRACE_LEVEL_INFO, INVALID_TAG, taskId, name, "AsyncArgsEx");
+    StartAsyncTraceArgsDebug(true, INVALID_TAG, taskId, name, "AsyncArgsDebug");
+    FinishAsyncTraceArgsDebug(true, INVALID_TAG, taskId, name, "AsyncArgsDebug");
+    {
+        HITRACE_METER_FMT(INVALID_TAG, name, "HitraceMeterFmtScoped");
+        HITRACE_METER_FMT_EX(HITRACE_LEVEL_INFO, INVALID_TAG, customArgs, name, "HitraceMeterFmtScopedEx");
+    }
+
+    ret = StopCaptureAppTrace();
+    ASSERT_EQ(ret, RetType::RET_SUCC);
+    int count = 0;
+    std::ifstream file(filePath);
+    if (file.is_open()) {
+        std::string line;
+        while (std::getline(file, line)) {
+            if (line.find("|I60") != std::string::npos) {
+                count++;
+            }
+        }
+        file.close();
+    }
+    ASSERT_EQ(count, 0);
+
+    GTEST_LOG_(INFO) << "CaptureAppTraceTest010: end.";
+}
+
+/**
  * @tc.name: ROMBaselineTest001
  * @tc.desc: test the ROM baseline of the hitrace component
  * @tc.type: FUNC
