@@ -366,6 +366,29 @@ uint64_t GetRemainingSpace(const std::string& path)
     HILOG_INFO(LOG_CORE, "GetRemainingSpace: %{public}s current remaining space %{public}" PRIu64, path.c_str(), ret);
     return ret;
 }
+
+int GetMemInfoByName(const char* name, const char* path)
+{
+    int memKB = 0;
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        return memKB;
+    }
+    std::string line;
+    while (std::getline(file, line)) {
+        if (line.find(name) != std::string::npos) {
+            auto firstDigitIt = std::find_if(line.begin(), line.end(), ::isdigit);
+            auto lastDigitIt = std::find_if_not(firstDigitIt, line.end(), ::isdigit);
+            std::string memTotalStr(firstDigitIt, lastDigitIt);
+            if (!StringToInt(memTotalStr, memKB)) {
+                HILOG_WARN(LOG_CORE, "get %{public}s failed", name);
+            }
+            break;
+        }
+    }
+    file.close();
+    return memKB;
+}
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS

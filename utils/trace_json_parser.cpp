@@ -41,9 +41,12 @@ namespace Hitrace {
 namespace {
 static const char* HTIRACE_UTILS_JSON = "/system/etc/hiview/hitrace_utils.json";
 static const char* PRODUCT_CONFIG_JSON = "/sys_prod/etc/hiview/hitrace/hitrace_param.json";
+const char* const MEM_TOTAL = "MemTotal";
 
 constexpr int DEFAULT_SNAPSHOT_BUFFER_SIZE_KB = 12 * 1024;
 constexpr int HM_DEFAULT_SNAPSHOT_BUFFER_SIZE_KB = 144 * 1024;
+constexpr int EXTRA_BUFFER_SIZE_KB_GE_16G_DEVICE = 48 * 1024;
+constexpr int MEM_GB = 1024 * 1024;
 
 constexpr uint32_t DEFAULT_RECORD_FILE_NUMBER_LIMIT = 15;
 
@@ -254,6 +257,13 @@ void TraceJsonParser::InitSnapshotDefaultBufferSize()
 
     if (IsHmKernel()) {
         snapshotBufSzKb_ = HM_DEFAULT_SNAPSHOT_BUFFER_SIZE_KB;
+        int memTotal = GetMemInfoByName(MEM_TOTAL);
+        constexpr int base = 4;
+        // Round up the obtained RAM size by multiples of four.
+        // Add extra buffer size for devices with RAM greater than or equal to 16GB.
+        if ((((memTotal / MEM_GB) + base - 1) / base * base) >= 16) {
+            snapshotBufSzKb_ += EXTRA_BUFFER_SIZE_KB_GE_16G_DEVICE;
+        }
     }
 
 #if defined(SNAPSHOT_TRACEBUFFER_SIZE) && (SNAPSHOT_TRACEBUFFER_SIZE != 0)
