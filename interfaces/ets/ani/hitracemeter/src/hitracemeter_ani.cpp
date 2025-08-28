@@ -31,23 +31,21 @@
 
 using namespace OHOS::HiviewDFX;
 static const char NAMESPACE_HITRACEMETER[] = "L@ohos/hiTraceMeter/hiTraceMeter;";
-constexpr size_t MIN_SIZE = 1;
-constexpr size_t MAX_SIZE = 1024;
 
-static bool AniStringToStdString(ani_env* env, ani_string aniStr, std::string& content)
+static bool AniStringToStdString(ani_env* env, ani_string strAni, std::string& content)
 {
     ani_size strSize = 0;
-    env->String_GetUTF8Size(aniStr, &strSize);
-
-    if (strSize < MIN_SIZE || strSize > MAX_SIZE) {
+    if (env->String_GetUTF8Size(strAni, &strSize) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "String_GetUTF8Size failed");
         return false;
     }
     std::vector<char> buffer(strSize + 1);
     char* charBuffer = buffer.data();
-
     ani_size bytesWritten = 0;
-    env->String_GetUTF8(aniStr, charBuffer, strSize + 1, &bytesWritten);
-
+    if (env->String_GetUTF8(strAni, charBuffer, strSize + 1, &bytesWritten) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "String_GetUTF8 failed");
+        return false;
+    }
     charBuffer[bytesWritten] = '\0';
     content = std::string(charBuffer);
     return true;
