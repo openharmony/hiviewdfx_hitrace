@@ -49,7 +49,7 @@ bool BufferBlock::Append(const uint8_t* src, size_t size)
         HILOG_ERROR(LOG_CORE, "Append : cannot append more data");
         return false;
     }
-    if (memcpy_s(data.data() + usedBytes, size, src, size) != EOK) {
+    if (memcpy_s(data.data() + usedBytes, FreeBytes(), src, size) != EOK) {
         HILOG_ERROR(LOG_CORE, "Append : memcpy_s failed");
         return false;
     }

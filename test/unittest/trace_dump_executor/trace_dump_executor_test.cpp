@@ -36,8 +36,16 @@ constexpr int BYTE_PER_MB = 1024 * 1024;
 
 class TraceDumpExecutorTest : public testing::Test {
 public:
-    static void SetUpTestCase(void) {}
-    static void TearDownTestCase(void) {}
+    static void SetUpTestCase(void)
+    {
+        system("service_control stop hiview");
+    }
+
+    static void TearDownTestCase(void)
+    {
+        system("service_control start hiview");
+    }
+
     void SetUp() {}
     void TearDown() {}
 };
