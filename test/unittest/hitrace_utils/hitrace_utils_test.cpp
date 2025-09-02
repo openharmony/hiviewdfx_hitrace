@@ -15,6 +15,7 @@
 
 #include <fcntl.h>
 #include <filesystem>
+#include <fstream>
 #include <gtest/gtest.h>
 #include <string>
 #include <sys/stat.h>
@@ -462,6 +463,81 @@ HWTEST_F(HitraceUtilsTest, GetTraceFileNamesInDir_001, TestSize.Level2)
     EXPECT_TRUE(fileSet.empty());
     system("service_control stop hiview");
     system("service_control start hiview");
+}
+
+/**
+ * @tc.name: GetMemInfoByNameTest001
+ * @tc.desc: Test get total memory size.
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceUtilsTest, GetMemInfoByNameTest001, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "GetMemInfoByNameTest001: start.";
+    const char* const testFile = "/data/test_meminfo_normal";
+    std::ofstream ofs(testFile);
+    ofs << "MemTotal:       16384000 kB\n";
+    ofs.close();
+
+    int result = GetMemInfoByName("MemTotal", testFile);
+    GTEST_LOG_(INFO) << result;
+    EXPECT_EQ(result, 16384000);
+
+    std::remove(testFile);
+    GTEST_LOG_(INFO) << "GetMemInfoByNameTest001: end.";
+}
+
+/**
+ * @tc.name: GetMemInfoByNameTest002
+ * @tc.desc: Test GetMemInfoByName open file failed.
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceUtilsTest, GetMemInfoByNameTest002, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "GetMemInfoByNameTest002: start.";
+    const char* const testFile = "/data/non_existent_meminfo";
+    int result = GetMemInfoByName("MemTotal", testFile);
+    EXPECT_EQ(result, 0);
+    GTEST_LOG_(INFO) << "GetMemInfoByNameTest002: end.";
+}
+
+/**
+ * @tc.name: GetMemInfoByNameTest003
+ * @tc.desc: Test GetMemInfoByName can not find MemTotal.
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceUtilsTest, GetMemInfoByNameTest003, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "GetMemInfoByNameTest003: start.";
+    const char* const testFile = "/data/test_meminfo_no_total";
+    std::ofstream ofs(testFile);
+    ofs << "MemFree:        8192000 kB\n";
+    ofs.close();
+
+    int result = GetMemInfoByName("MemTotal", testFile);
+    EXPECT_EQ(result, 0);
+
+    std::remove(testFile);
+    GTEST_LOG_(INFO) << "GetMemInfoByNameTest003: start.";
+}
+
+/**
+ * @tc.name: GetMemInfoByNameTest004
+ * @tc.desc: Test GetMemInfoByName get memory size info failed.
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceUtilsTest, GetMemInfoByNameTest004, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "GetMemInfoByNameTest004: start.";
+    const char* const testFile = "/data/test_meminfo_invalid1";
+    std::ofstream ofs(testFile);
+    ofs << "MemTotal:       invalid kB\n";
+    ofs.close();
+
+    int result = GetMemInfoByName("MemTotal", testFile);
+    EXPECT_EQ(result, 0);
+
+    std::remove(testFile);
+    GTEST_LOG_(INFO) << "GetMemInfoByNameTest004: start.";
 }
 } // namespace
 } // namespace Hitrace
