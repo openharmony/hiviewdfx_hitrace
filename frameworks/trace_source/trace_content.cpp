@@ -410,9 +410,11 @@ TraceEventFmtContent::TraceEventFmtContent(const int fd,
     if (traceSourceFd_ < 0) {
         HILOG_ERROR(LOG_CORE, "TraceEventFmtContent: open %{public}s failed.", savedEventsFormatPath.c_str());
     }
-    if (!hasPreWrotten && traceFileFd_ >= 0) {
+    if (!hasPreWrotten && traceSourceFd_ >= 0) {
         PreWriteAllTraceEventsFormat(traceSourceFd_, tracefsPath_);
-        (void)lseek(traceFileFd_, 0, SEEK_SET);
+        if (lseek(traceSourceFd_, 0, SEEK_SET) == -1) {
+            HILOG_ERROR(LOG_CORE, "TraceEventFmtContent: lseek to start pos failed, errno(%{public}d)", errno);
+        }
     }
 }
 
