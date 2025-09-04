@@ -344,8 +344,8 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpPipeTest004, TestSize.Level2)
         _exit(0);
     }
 
-    auto submitTask = []() {
-        auto dumpPipe = std::make_shared<HitraceDumpPipe>(true);
+    auto dumpPipe = std::make_shared<HitraceDumpPipe>(true);
+    auto submitTask = [&dumpPipe]() {
         TraceDumpTask task = {
             .status = TraceDumpStatus::READ_DONE,
         };
