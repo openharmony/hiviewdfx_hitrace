@@ -54,6 +54,7 @@ enum TraceErrorCode : uint8_t {
     ASYNC_DUMP = 12,
     TRACE_TASK_SUBMIT_ERROR = 13,
     TRACE_TASK_DUMP_TIMEOUT = 14,
+    UNKNOWN_TRACE_DUMP_TYPE = 15,
     UNSET = 255,
 };
 
