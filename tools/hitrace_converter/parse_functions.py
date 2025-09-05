@@ -1002,6 +1002,7 @@ PRINT_FMT_CLOCK_SET_RATE_POWER_HM = '"%s state=%lu cpu_id=%lu", ((char *)((void 
 PRINT_FMT_CLOCK_SET_RATE_POWERKERNEL_HM = '"%s state=%u cpu_id=%u", ((char *)((void *)((char *)REC + (REC->__data_loc_name & 0xffff)))), REC->state, REC->cpu_id'
 PRINT_FMT_CLOCK_SET_RATE = '"%s state=%lu cpu_id=%lu", __get_str(name), (unsigned long)REC->state, (unsigned long)REC->cpu_id'
 PRINT_FMT_CPU_FREQUENCY_LIMITS_HM = '"min=%lu max=%lu cpu_id=%lu", (unsigned long)REC->min, (unsigned long)REC->max, (unsigned long)REC->cpu_id'
+PRINT_FMT_CPU_FREQUENCY_LIMITS_HM_2 = '"min=%u max=%u cpu_id=%u", REC->min, REC->max, REC->cpu_id'
 PRINT_FMT_CPU_FREQUENCY_LIMITS = '"min=%lu max=%lu cpu_id=%lu", (unsigned long)REC->min_freq, (unsigned long)REC->max_freq, (unsigned long)REC->cpu_id'
 PRINT_FMT_CPU_IDLE_HM = '"state=%u cpu_id=%u", REC->state, REC->cpu_id'
 PRINT_FMT_CPU_IDLE = '"state=%lu cpu_id=%lu", (unsigned long)REC->state, (unsigned long)REC->cpu_id'
@@ -1089,6 +1090,7 @@ PRINT_FMT_CLOCK_SET_RATE_POWER_HM: parse_clock_set_rate,
 PRINT_FMT_CLOCK_SET_RATE_POWERKERNEL_HM: parse_clock_set_rate_powerkernel_hm,
 PRINT_FMT_CLOCK_SET_RATE: parse_clock_set_rate,
 PRINT_FMT_CPU_FREQUENCY_LIMITS_HM: parse_cpu_frequency_limits_hm,
+PRINT_FMT_CPU_FREQUENCY_LIMITS_HM_2: parse_cpu_frequency_limits_hm,
 PRINT_FMT_CPU_FREQUENCY_LIMITS: parse_cpu_frequency_limits,
 PRINT_FMT_CPU_IDLE_HM: parse_cpu_idle,
 PRINT_FMT_CPU_IDLE: parse_cpu_idle,
