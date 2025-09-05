@@ -39,6 +39,11 @@ namespace Hitrace {
 #endif
 namespace {
 constexpr int BYTE_PER_KB = 1024;
+#ifdef HITRACE_UNITTEST
+constexpr int DEFAULT_CACHE_FILE_SIZE = 15 * 1024;
+#else
+constexpr int DEFAULT_CACHE_FILE_SIZE = 150 * 1024;
+#endif
 
 static bool g_isRootVer = IsRootVersion();
 
@@ -112,12 +117,57 @@ std::vector<std::string> TraceDumpExecutor::StopDumpTraceLoop()
     return FilterLoopTraceResult(loopTraceFiles_);
 }
 
+bool TraceDumpExecutor::StartCacheTraceLoop(const TraceDumpParam& param)
+{
+    while (TraceDumpState::GetInstance().IsLoopDumpRunning()) {
+        auto traceFile = GenerateTraceFileName(param.type);
+        if (DoDumpTraceLoop(param, traceFile, true)) {
+            std::lock_guard<std::mutex> cacheLock(traceFileMutex_);
+            ClearCacheTraceFileBySize(cacheTraceFiles_, param.cacheTotalFileSizeLmt);
+            HILOG_INFO(LOG_CORE, "ProcessCacheTask: save cache file.");
+        } else {
+            break;
+        }
+    }
+    TraceDumpState::GetInstance().EndLoopDumpSelf();
+    return true;
+}
+
+void TraceDumpExecutor::StopCacheTraceLoop()
+{
+    TraceDumpState::GetInstance().EndLoopDump();
+}
+
 TraceDumpRet TraceDumpExecutor::DumpTrace(const TraceDumpParam& param)
 {
     MarkClockSync(tracefsDir_);
     const std::string traceFile = GenerateTraceFileName(param.type);
     return DumpTraceInner(param, traceFile);
 }
+
+std::vector<TraceFileInfo> TraceDumpExecutor::GetCacheTraceFiles()
+{
+    if (!TraceDumpState::GetInstance().InterruptCache()) {
+        HILOG_WARN(LOG_CORE, "GetCacheTraceFiles: Cache trace loop is not running.");
+    }
+    std::vector<TraceFileInfo> cacheFiles;
+    {
+        std::lock_guard<std::mutex> lock(traceFileMutex_);
+        cacheFiles = cacheTraceFiles_;
+    }
+    if (!TraceDumpState::GetInstance().ContinueCache()) {
+        HILOG_WARN(LOG_CORE, "GetCacheTraceFiles: failed to continue cache trace loop.");
+    }
+    return cacheFiles;
+}
+
+#ifdef HITRACE_UNITTEST
+void TraceDumpExecutor::ClearCacheTraceFiles()
+{
+    std::lock_guard<std::mutex> lck(traceFileMutex_);
+    cacheTraceFiles_.clear();
+}
+#endif
 
 TraceDumpRet TraceDumpExecutor::ExecuteDumpTrace(std::shared_ptr<ITraceSourceFactory> traceSourceFactory,
     const TraceDumpRequest& request)
@@ -137,7 +187,8 @@ bool TraceDumpExecutor::DoDumpTraceLoop(const TraceDumpParam& param, std::string
         return false;
     }
     MarkClockSync(tracefsDir_);
-    int fileSizeThreshold = DEFAULT_FILE_SIZE * BYTE_PER_KB;
+    int fileSizeThreshold = param.type == TraceDumpType::TRACE_CACHE ?
+        DEFAULT_CACHE_FILE_SIZE * BYTE_PER_KB : DEFAULT_FILE_SIZE * BYTE_PER_KB;
     if (param.fileSize != 0) {
         fileSizeThreshold = param.fileSize * BYTE_PER_KB;
     }
@@ -154,7 +205,8 @@ bool TraceDumpExecutor::DoDumpTraceLoop(const TraceDumpParam& param, std::string
         .fileSize = fileSizeThreshold,
         .limitFileSz = isLimited,
         .traceStartTime = param.traceStartTime,
-        .traceEndTime = param.traceEndTime
+        .traceEndTime = param.traceEndTime,
+        .cacheSliceDuration = param.cacheSliceDuration
     };
     auto dumpRet = ExecuteDumpTrace(traceSourceFactory, request);
     HILOG_INFO(LOG_CORE, "DoDumpTraceLoop: ExecuteDumpTrace done, errorcode: %{public}d, tracefile: %{public}s",
@@ -164,6 +216,15 @@ bool TraceDumpExecutor::DoDumpTraceLoop(const TraceDumpParam& param, std::string
         return false;
     }
     traceFile = traceSourceFactory->GetTraceFilePath();
+    if (param.type == TraceDumpType::TRACE_CACHE) {
+        TraceFileInfo traceFileInfo;
+        if (!SetFileInfo(true, traceFile, dumpRet.traceStartTime, dumpRet.traceEndTime, traceFileInfo)) {
+            RemoveFile(traceFile);
+            return false;
+        }
+        traceFile = traceFileInfo.filename;
+        cacheTraceFiles_.emplace_back(traceFileInfo);
+    }
     if (access(traceFile.c_str(), F_OK) == -1) {
         HILOG_ERROR(LOG_CORE, "DoDumpTraceLoop : Trace file (%{public}s) not found.", traceFile.c_str());
         return false;

@@ -371,6 +371,61 @@ bool TraceFileHdrHM::WriteTraceContent()
     return true;
 }
 
+bool TraceBaseInfoContent::WriteTraceContent()
+{
+    struct TraceFileContentHeader contentHeader;
+    contentHeader.type = CONTENT_TYPE_BASE_INFO;
+    ssize_t writeRet = TEMP_FAILURE_RETRY(write(traceFileFd_,
+        reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader)));
+    if (writeRet != static_cast<ssize_t>(sizeof(contentHeader))) {
+        HILOG_WARN(LOG_CORE, "Write BaseInfo contentHeader failed, errno: %{public}d.", errno);
+        return false;
+    }
+    auto writeLen = WriteKernelVersion();
+    writeLen += WriteUnixTimeMs();
+    writeLen += WriteBootTimeMs();
+    UpdateTraceContentHeader(contentHeader, writeLen);
+    return true;
+}
+
+ssize_t TraceBaseInfoContent::WriteKeyValue(const std::string& key, const std::string& value)
+{
+    if (key.empty() || value.empty()) {
+        HILOG_ERROR(LOG_CORE, "WriteKeyValue: key or value is empty.");
+        return 0;
+    }
+    std::string keyValue = key + ": " + value + "\n";
+    ssize_t writeRet = TEMP_FAILURE_RETRY(write(traceFileFd_, keyValue.data(), keyValue.size()));
+    if (writeRet != static_cast<ssize_t>(keyValue.size())) {
+        HILOG_WARN(LOG_CORE, "Write Key %{public}s Value %{public}s failed, errno: %{public}d.",
+            key.c_str(), value.c_str(), errno);
+    }
+    return writeRet;
+}
+
+ssize_t TraceBaseInfoContent::WriteKernelVersion()
+{
+    std::string kernelVersion = GetKernelVersion();
+    HILOG_INFO(LOG_CORE, "WriteKernelVersion : current version %{public}s", kernelVersion.c_str());
+    return WriteKeyValue("KERNEL_VERSION", kernelVersion);
+}
+
+ssize_t TraceBaseInfoContent::WriteUnixTimeMs()
+{
+    uint64_t unixTimeMs = GetCurUnixTimeMs();
+    HILOG_INFO(LOG_CORE, "WriteUnixTimeMs : current time %{public}" PRIu64, unixTimeMs);
+    std::string timeStr = std::to_string(unixTimeMs);
+    return WriteKeyValue("UNIX_TIME_MS", timeStr);
+}
+
+ssize_t TraceBaseInfoContent::WriteBootTimeMs()
+{
+    uint64_t bootTimeMs = GetCurBootTime() / MS_TO_NS;
+    HILOG_INFO(LOG_CORE, "WriteBootTimeMs : current time %{public}" PRIu64, bootTimeMs);
+    std::string timeStr = std::to_string(bootTimeMs);
+    return WriteKeyValue("BOOT_TIME_MS", timeStr);
+}
+
 TraceEventFmtContent::TraceEventFmtContent(const int fd,
                                            const std::string& tracefsPath,
                                            const std::string& traceFilePath,

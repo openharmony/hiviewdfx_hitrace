@@ -67,6 +67,11 @@ std::unique_ptr<ITraceFileHdrContent> TraceSourceLinuxFactory::GetTraceFileHeade
     return std::make_unique<TraceFileHdrLinux>(traceFileFd_, tracefsPath_, traceFilePath_);
 }
 
+std::unique_ptr<TraceBaseInfoContent> TraceSourceLinuxFactory::GetTraceBaseInfo()
+{
+    return std::make_unique<TraceBaseInfoContent>(traceFileFd_, tracefsPath_, traceFilePath_, false);
+}
+
 std::unique_ptr<ITraceCpuRawContent> TraceSourceLinuxFactory::GetTraceCpuRaw(const TraceDumpRequest& request)
 {
     return std::make_unique<TraceCpuRawLinux>(traceFileFd_, tracefsPath_, traceFilePath_, request);
@@ -127,6 +132,11 @@ TraceSourceHMFactory::TraceSourceHMFactory(const std::string& tracefsPath, const
 std::unique_ptr<ITraceFileHdrContent> TraceSourceHMFactory::GetTraceFileHeader()
 {
     return std::make_unique<TraceFileHdrHM>(traceFileFd_, tracefsPath_, traceFilePath_);
+}
+
+std::unique_ptr<TraceBaseInfoContent> TraceSourceHMFactory::GetTraceBaseInfo()
+{
+    return std::make_unique<TraceBaseInfoContent>(traceFileFd_, tracefsPath_, traceFilePath_, true);
 }
 
 std::unique_ptr<ITraceCpuRawContent> TraceSourceHMFactory::GetTraceCpuRaw(const TraceDumpRequest& request)

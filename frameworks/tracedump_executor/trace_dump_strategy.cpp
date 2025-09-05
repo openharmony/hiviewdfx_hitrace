@@ -164,6 +164,7 @@ void ITraceDumpStrategy::OnPre(const TraceContentPtr& traceContentPtr)
 {
     traceContentPtr.fileHdr->ResetCurrentFileSize();
     SafeWriteTraceContent(traceContentPtr.fileHdr, "fileHdr");
+    SafeWriteTraceContent(traceContentPtr.baseInfo, "baseInfo");
     SafeWriteTraceContent(traceContentPtr.eventFmt, "eventFmt");
 }
 
@@ -180,6 +181,10 @@ bool ITraceDumpStrategy::CreateTraceContentPtr(std::shared_ptr<ITraceSourceFacto
 {
     if (!SafeGetTraceContent(contentPtr.fileHdr,
         [&]() { return traceSourceFactory->GetTraceFileHeader(); }, "GetTraceFileHeader")) {
+        return false;
+    }
+    if (!SafeGetTraceContent(contentPtr.baseInfo,
+        [&]() { return traceSourceFactory->GetTraceBaseInfo(); }, "GetTraceBaseInfo")) {
         return false;
     }
     if (!SafeGetTraceContent(contentPtr.eventFmt,
@@ -253,9 +258,42 @@ bool RecordTraceDumpStrategy::DoCore(std::shared_ptr<ITraceSourceFactory> traceS
     return true;
 }
 
+bool CacheTraceDumpStrategy::DoCore(std::shared_ptr<ITraceSourceFactory> traceSourceFactory,
+    const TraceDumpRequest& request, const TraceContentPtr& traceContentPtr, TraceDumpRet& ret)
+{
+    uint64_t sliceDuration = 0;
+    while (TraceDumpState::GetInstance().IsLoopDumpRunning()) {
+        struct timespec bts = {0, 0};
+        clock_gettime(CLOCK_BOOTTIME, &bts);
+        uint64_t startTime = static_cast<uint64_t>(bts.tv_sec * S_TO_NS + bts.tv_nsec);
+        sleep(1); // sleep 1s to wait for trace data.
+        if (!traceContentPtr.cpuRaw->WriteTraceContent()) {
+            return false;
+        }
+        clock_gettime(CLOCK_BOOTTIME, &bts);
+        uint64_t endTime = static_cast<uint64_t>(bts.tv_sec * S_TO_NS + bts.tv_nsec);
+        uint64_t timeDiff = (endTime - startTime) / S_TO_NS;
+        auto traceFile = traceContentPtr.cpuRaw->GetTraceFilePath();
+        ret.code = traceContentPtr.cpuRaw->GetDumpStatus();
+        ret.traceStartTime = traceContentPtr.cpuRaw->GetFirstPageTimeStamp();
+        ret.traceEndTime = traceContentPtr.cpuRaw->GetLastPageTimeStamp();
+        if (strncpy_s(ret.outputFile, TRACE_FILE_LEN, traceFile.c_str(), TRACE_FILE_LEN - 1) != 0) {
+            HILOG_ERROR(LOG_CORE, "CacheTraceDumpStrategy: strncpy_s failed.");
+            return false;
+        }
+        sliceDuration += timeDiff;
+        if (sliceDuration >= request.cacheSliceDuration || TraceDumpState::GetInstance().IsInterruptCache()) {
+            sliceDuration = 0;
+            break;
+        }
+    }
+    return true;
+}
+
 // Register strategies
 REGISTER_TRACE_STRATEGY(TRACE_SNAPSHOT, SnapshotTraceDumpStrategy);
 REGISTER_TRACE_STRATEGY(TRACE_RECORDING, RecordTraceDumpStrategy);
+REGISTER_TRACE_STRATEGY(TRACE_CACHE, CacheTraceDumpStrategy);
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS
