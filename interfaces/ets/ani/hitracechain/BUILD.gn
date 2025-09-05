@@ -21,8 +21,8 @@ ohos_shared_library("hitrace_chain_ani") {
     "$hitrace_interfaces_path/native/innerkits/include/hitace/",
   ]
   sources = [
-    "$hitrace_interfaces_path/ets/ani/hitracechain//src/hitrace_chain_ani_util.cpp",
     "$hitrace_interfaces_path/ets/ani/hitracechain/src/hitrace_chain_ani.cpp",
+    "$hitrace_interfaces_path/ets/ani/hitracechain//src/hitrace_chain_ani_util.cpp",
   ]
 
   deps = [ "$hitrace_interfaces_path/native/innerkits:libhitracechain" ]

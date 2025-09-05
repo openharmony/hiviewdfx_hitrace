@@ -173,7 +173,7 @@ bool WriteStrToFileInner(const std::string& filename, const std::string& str)
         return false;
     }
     out << str;
-    if (out.bad()) {
+    if (!out.good()) {
         HILOG_ERROR(LOG_CORE, "WriteStrToFile: %{public}s write failed.", filename.c_str());
         out.close();
         return false;
@@ -596,7 +596,9 @@ bool EpollWaitforChildProcess(pid_t& pid, int& pipefd, std::string& reOutPath)
         }
         if (waitpid(pid, nullptr, WNOHANG) <= 0) {
             HILOG_ERROR(LOG_CORE, "kill timeout child process.");
-            kill(pid, SIGUSR1);
+            if (kill(pid, SIGUSR1) != 0) {
+                HILOG_ERROR(LOG_CORE, "kill child process failed.");
+            }
         }
         close(epollfd);
         return false;
@@ -759,7 +761,9 @@ TraceDumpTask WaitSyncDumpRetLoop(const pid_t pid, const std::shared_ptr<Hitrace
     } else {
         task.code = TraceErrorCode::TRACE_TASK_DUMP_TIMEOUT;
         TraceDumpExecutor::GetInstance().ClearTraceDumpTask();
-        kill(pid, SIGUSR1);
+        if (kill(pid, SIGUSR1) != 0) {
+            HILOG_ERROR(LOG_CORE, "WaitSyncDumpRetLoop: kill dump process failed.");
+        }
         HILOG_WARN(LOG_CORE, "WaitSyncDumpRetLoop: wait timeout, clear task and kill dump process.");
     }
     HILOG_INFO(LOG_CORE, "WaitSyncDumpRetLoop: exit.");

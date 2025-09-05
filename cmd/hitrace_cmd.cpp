@@ -311,10 +311,10 @@ static void ShowHelp(const std::string& cmd)
            "  --file_size            Sets the size of the raw trace (KB). The default file size is 102400 KB.\n"
            "                         Only effective in raw trace mode\n"
            "  --trace_level level    Set the system parameter \"persist.hitrace.level.threshold\", which can control\n"
-           "                         the level threshold of trace dotting. Valid values for \"level\" include\n"
+           "                         the level threshold of tracing. Valid values for \"level\" include\n"
            "                         D or Debug, I or Info, C or Critical, M or Commercial.\n"
            "  --get_level            Query the system parameter \"persist.hitrace.level.threshold\",\n"
-           "                         which can control the level threshold for trace dotting.\n"
+           "                         which can control the level threshold of tracing.\n"
     );
 }
 
