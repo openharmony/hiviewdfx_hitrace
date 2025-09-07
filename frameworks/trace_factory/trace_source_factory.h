@@ -35,6 +35,7 @@ public:
     virtual ~ITraceSourceFactory() {}
 
     virtual std::unique_ptr<ITraceFileHdrContent> GetTraceFileHeader() = 0;
+    virtual std::unique_ptr<TraceBaseInfoContent> GetTraceBaseInfo() = 0;
     virtual std::unique_ptr<ITraceCpuRawContent> GetTraceCpuRaw(const TraceDumpRequest& request) = 0;
     virtual std::unique_ptr<ITraceHeaderPageContent> GetTraceHeaderPage() = 0;
     virtual std::unique_ptr<ITracePrintkFmtContent> GetTracePrintkFmt() = 0;
@@ -52,6 +53,7 @@ public:
     ~TraceSourceLinuxFactory() override = default;
 
     std::unique_ptr<ITraceFileHdrContent> GetTraceFileHeader() override;
+    std::unique_ptr<TraceBaseInfoContent> GetTraceBaseInfo() override;
     std::unique_ptr<ITraceCpuRawContent> GetTraceCpuRaw(const TraceDumpRequest& request) override;
     std::unique_ptr<ITraceHeaderPageContent> GetTraceHeaderPage() override;
     std::unique_ptr<ITracePrintkFmtContent> GetTracePrintkFmt() override;
@@ -74,6 +76,7 @@ public:
     ~TraceSourceHMFactory() override = default;
 
     std::unique_ptr<ITraceFileHdrContent> GetTraceFileHeader() override;
+    std::unique_ptr<TraceBaseInfoContent> GetTraceBaseInfo() override;
     std::unique_ptr<ITraceCpuRawContent> GetTraceCpuRaw(const TraceDumpRequest& request) override;
     std::unique_ptr<ITraceHeaderPageContent> GetTraceHeaderPage() override;
     std::unique_ptr<ITracePrintkFmtContent> GetTracePrintkFmt() override;

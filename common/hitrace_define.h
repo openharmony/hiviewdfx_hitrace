@@ -59,12 +59,13 @@ enum TraceErrorCode : uint8_t {
 };
 
 struct TraceDumpRequest {
-    TraceDumpType type;
-    int fileSize; // bytes
-    bool limitFileSz;
-    uint64_t traceStartTime;
-    uint64_t traceEndTime;
-    uint64_t taskId;
+    TraceDumpType type = TraceDumpType::TRACE_SNAPSHOT;
+    int fileSize = 0; // bytes
+    bool limitFileSz = false;
+    uint64_t traceStartTime = 0;
+    uint64_t traceEndTime = std::numeric_limits<uint64_t>::max();
+    uint64_t taskId = 0;
+    uint64_t cacheSliceDuration = 0;
 };
 
 struct TraceRetInfo {

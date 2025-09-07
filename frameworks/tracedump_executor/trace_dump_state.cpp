@@ -31,40 +31,48 @@ TraceDumpState::~TraceDumpState() {}
 
 bool TraceDumpState::StartLoopDump()
 {
-    std::lock_guard<std::mutex> lock(stateMutex_);
-    if (state_.load() != DumpState::IDLE) {
-        return false;
-    }
-
-    state_.store(DumpState::RUNNING);
-    return true;
+    DumpState expected = DumpState::IDLE;
+    return state_.compare_exchange_strong(expected, DumpState::RUNNING,
+        std::memory_order_acq_rel, std::memory_order_acquire);
 }
 
 void TraceDumpState::EndLoopDumpSelf()
 {
-    {
-        std::lock_guard<std::mutex> lock(stateMutex_);
-        state_.store(DumpState::IDLE);
-    }
+    state_.store(DumpState::IDLE, std::memory_order_release);
     stateCondition_.notify_all();
 }
 
 void TraceDumpState::EndLoopDump()
 {
-    {
-        std::lock_guard<std::mutex> lock(stateMutex_);
-        if (state_.load() == DumpState::RUNNING) {
-            state_.store(DumpState::STOPPING);
-        }
-    }
-    std::unique_lock<std::mutex> lock(stateMutex_);
+    state_.store(DumpState::STOPPING, std::memory_order_release);
+    std::unique_lock<std::mutex> lock(conditionMutex_);
     stateCondition_.wait_for(lock, std::chrono::milliseconds(WAIT_TIMEOUT_MS),
-        [this] { return state_.load() == DumpState::IDLE; });
+        [this] { return state_.load(std::memory_order_acquire) == DumpState::IDLE; });
 }
 
 bool TraceDumpState::IsLoopDumpRunning() const
 {
-    return state_.load() == DumpState::RUNNING;
+    auto state = state_.load(std::memory_order_acquire);
+    return state == DumpState::RUNNING || state == DumpState::INTERRUPT;
+}
+
+bool TraceDumpState::InterruptCache()
+{
+    DumpState expected = DumpState::RUNNING;
+    return state_.compare_exchange_strong(expected, DumpState::INTERRUPT,
+        std::memory_order_acq_rel, std::memory_order_acquire);
+}
+
+bool TraceDumpState::ContinueCache()
+{
+    DumpState expected = DumpState::INTERRUPT;
+    return state_.compare_exchange_strong(expected, DumpState::RUNNING,
+        std::memory_order_acq_rel, std::memory_order_acquire);
+}
+
+bool TraceDumpState::IsInterruptCache() const
+{
+    return state_.load(std::memory_order_acquire) == DumpState::INTERRUPT;
 }
 } // namespace Hitrace
 } // namespace HiviewDFX

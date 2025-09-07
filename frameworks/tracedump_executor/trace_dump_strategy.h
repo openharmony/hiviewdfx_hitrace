@@ -34,6 +34,7 @@ struct TraceDumpRet {
 
 struct TraceContentPtr {
     std::unique_ptr<ITraceFileHdrContent> fileHdr;
+    std::unique_ptr<TraceBaseInfoContent> baseInfo;
     std::unique_ptr<TraceEventFmtContent> eventFmt;
     std::unique_ptr<ITraceCpuRawContent> cpuRaw;
     std::unique_ptr<TraceCmdLinesContent> cmdLines;
@@ -82,6 +83,13 @@ public:
 };
 
 class RecordTraceDumpStrategy : public ITraceDumpStrategy {
+public:
+    bool DoCore(std::shared_ptr<ITraceSourceFactory> traceSourceFactory, const TraceDumpRequest& request,
+        const TraceContentPtr& contentPtr, TraceDumpRet& ret) override;
+    bool NeedCheckFileExist() const override { return true; }
+};
+
+class CacheTraceDumpStrategy : public ITraceDumpStrategy {
 public:
     bool DoCore(std::shared_ptr<ITraceSourceFactory> traceSourceFactory, const TraceDumpRequest& request,
         const TraceContentPtr& contentPtr, TraceDumpRet& ret) override;

@@ -36,6 +36,8 @@ struct TraceDumpParam {
     int fileSize = 0;
     uint64_t traceStartTime = 0;
     uint64_t traceEndTime = std::numeric_limits<uint64_t>::max();
+    uint64_t cacheTotalFileSizeLmt = 0;
+    uint64_t cacheSliceDuration = 30; // 30 : 30 seconds as default cache trace slice duration
 };
 
 class TraceDumpExecutor : public DelayedRefSingleton<TraceDumpExecutor> {
@@ -45,7 +47,15 @@ public:
     bool PreCheckDumpTraceLoopStatus();
     bool StartDumpTraceLoop(const TraceDumpParam& param);
     std::vector<std::string> StopDumpTraceLoop();
+    bool StartCacheTraceLoop(const TraceDumpParam& param);
+    void StopCacheTraceLoop();
     TraceDumpRet DumpTrace(const TraceDumpParam& param);
+
+    std::vector<TraceFileInfo> GetCacheTraceFiles();
+
+#ifdef HITRACE_UNITTEST
+    void ClearCacheTraceFiles();
+#endif
 
 private:
     TraceDumpRet ExecuteDumpTrace(std::shared_ptr<ITraceSourceFactory> traceSourceFactory,
@@ -55,6 +65,7 @@ private:
 
     std::string tracefsDir_ = "";
     std::vector<TraceFileInfo> loopTraceFiles_ = {};
+    std::vector<TraceFileInfo> cacheTraceFiles_ = {};
     std::mutex traceFileMutex_;
 };
 } // namespace Hitrace

@@ -28,6 +28,7 @@ namespace Hitrace {
 enum class DumpState {
     IDLE,
     RUNNING,
+    INTERRUPT,
     STOPPING
 };
 
@@ -40,9 +41,13 @@ public:
     void EndLoopDump();
     bool IsLoopDumpRunning() const;
 
+    bool InterruptCache();
+    bool ContinueCache();
+    bool IsInterruptCache() const;
+
 private:
     std::atomic<DumpState> state_{DumpState::IDLE};
-    mutable std::mutex stateMutex_;
+    mutable std::mutex conditionMutex_;
     std::condition_variable stateCondition_;
 };
 } // namespace Hitrace
