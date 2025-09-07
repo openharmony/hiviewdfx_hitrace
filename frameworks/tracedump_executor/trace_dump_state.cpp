@@ -74,6 +74,22 @@ bool TraceDumpState::IsInterruptCache() const
 {
     return state_.load(std::memory_order_acquire) == DumpState::INTERRUPT;
 }
+
+void TraceDumpState::EndAsyncReadWrite()
+{
+    asyncReadFlag_.store(false);
+    asyncWriteFlag_.store(false);
+}
+
+bool TraceDumpState::IsAsyncReadContinue() const
+{
+    return asyncReadFlag_.load();
+}
+
+bool TraceDumpState::IsAsyncWriteContinue() const
+{
+    return asyncWriteFlag_.load();
+}
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS

@@ -22,6 +22,7 @@
 
 #include "hitrace_define.h"
 #include "singleton.h"
+#include "trace_dump_pipe.h"
 #include "trace_dump_strategy.h"
 #include "trace_file_utils.h"
 #include "trace_source_factory.h"
@@ -52,6 +53,16 @@ public:
     TraceDumpRet DumpTrace(const TraceDumpParam& param);
 
     std::vector<TraceFileInfo> GetCacheTraceFiles();
+    void ReadRawTraceLoop();
+    void WriteTraceLoop();
+    void TraceDumpTaskMonitor();
+
+    void RemoveTraceDumpTask(const uint64_t time);
+    bool UpdateTraceDumpTask(const TraceDumpTask& task);
+    void AddTraceDumpTask(const TraceDumpTask& task);
+    void ClearTraceDumpTask();
+    bool IsTraceDumpTaskEmpty();
+    size_t GetTraceDumpTaskCount();
 
 #ifdef HITRACE_UNITTEST
     void ClearCacheTraceFiles();
@@ -62,11 +73,20 @@ private:
         const TraceDumpRequest& request);
     bool DoDumpTraceLoop(const TraceDumpParam& param, std::string& traceFile, bool isLimited);
     TraceDumpRet DumpTraceInner(const TraceDumpParam& param, const std::string& traceFile);
+    bool DoReadRawTrace(TraceDumpTask& task);
+    bool DoWriteRawTrace(TraceDumpTask& task);
+    void DoProcessTraceDumpTask(std::shared_ptr<HitraceDumpPipe>& dumpPipe, TraceDumpTask& task,
+        std::vector<TraceDumpTask>& completedTasks);
+    void ProcessNewTask(std::shared_ptr<HitraceDumpPipe>& dumpPipe, int& sleepCnt);
 
     std::string tracefsDir_ = "";
     std::vector<TraceFileInfo> loopTraceFiles_ = {};
     std::vector<TraceFileInfo> cacheTraceFiles_ = {};
+    std::vector<TraceDumpTask> traceDumpTaskVec_ = {};
     std::mutex traceFileMutex_;
+    std::mutex taskQueueMutex_;
+    std::condition_variable readCondVar_;
+    std::condition_variable writeCondVar_;
 };
 } // namespace Hitrace
 } // namespace HiviewDFX

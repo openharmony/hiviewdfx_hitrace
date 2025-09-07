@@ -45,10 +45,17 @@ public:
     bool ContinueCache();
     bool IsInterruptCache() const;
 
+    void EndAsyncReadWrite();
+    bool IsAsyncReadContinue() const;
+    bool IsAsyncWriteContinue() const;
+
 private:
     std::atomic<DumpState> state_{DumpState::IDLE};
     mutable std::mutex conditionMutex_;
     std::condition_variable stateCondition_;
+
+    std::atomic<bool> asyncReadFlag_{true};
+    std::atomic<bool> asyncWriteFlag_{true};
 };
 } // namespace Hitrace
 } // namespace HiviewDFX

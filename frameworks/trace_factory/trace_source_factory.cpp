@@ -102,6 +102,16 @@ std::unique_ptr<TraceTgidsContent> TraceSourceLinuxFactory::GetTraceTgids()
     return std::make_unique<TraceTgidsContent>(traceFileFd_, tracefsPath_, traceFilePath_, false);
 }
 
+std::unique_ptr<ITraceCpuRawRead> TraceSourceLinuxFactory::GetTraceCpuRawRead(const TraceDumpRequest& request)
+{
+    return std::make_unique<TraceCpuRawReadLinux>(tracefsPath_, request);
+}
+
+std::unique_ptr<ITraceCpuRawWrite> TraceSourceLinuxFactory::GetTraceCpuRawWrite(const uint64_t taskId)
+{
+    return std::make_unique<TraceCpuRawWriteLinux>(traceFileFd_, traceFilePath_, taskId);
+}
+
 std::string TraceSourceLinuxFactory::GetTraceFilePath()
 {
     return traceFilePath_;
@@ -167,6 +177,16 @@ std::unique_ptr<TraceCmdLinesContent> TraceSourceHMFactory::GetTraceCmdLines()
 std::unique_ptr<TraceTgidsContent> TraceSourceHMFactory::GetTraceTgids()
 {
     return std::make_unique<TraceTgidsContent>(traceFileFd_, tracefsPath_, traceFilePath_, true);
+}
+
+std::unique_ptr<ITraceCpuRawRead> TraceSourceHMFactory::GetTraceCpuRawRead(const TraceDumpRequest& request)
+{
+    return std::make_unique<TraceCpuRawReadHM>(tracefsPath_, request);
+}
+
+std::unique_ptr<ITraceCpuRawWrite> TraceSourceHMFactory::GetTraceCpuRawWrite(const uint64_t taskId)
+{
+    return std::make_unique<TraceCpuRawWriteHM>(traceFileFd_, traceFilePath_, taskId);
 }
 
 std::string TraceSourceHMFactory::GetTraceFilePath()

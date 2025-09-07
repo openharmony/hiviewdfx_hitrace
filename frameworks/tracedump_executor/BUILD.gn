@@ -23,6 +23,7 @@ ohos_static_library("tracedump_executor") {
   ]
   sources = [
     "trace_dump_executor.cpp",
+    "trace_dump_pipe.cpp",
     "trace_dump_state.cpp",
     "trace_dump_strategy.cpp",
     "trace_strategy_factory.cpp",

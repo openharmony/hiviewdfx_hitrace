@@ -36,6 +36,8 @@ enum TraceDumpType : uint8_t {
     TRACE_SNAPSHOT = 0,
     TRACE_RECORDING = 1,
     TRACE_CACHE = 2,
+    TRACE_ASYNC_READ = 3,
+    TRACE_ASYNC_WRITE = 4,
 };
 
 enum TraceErrorCode : uint8_t {
