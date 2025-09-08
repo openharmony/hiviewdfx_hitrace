@@ -135,7 +135,6 @@ void HitraceDumpAsyncTest(const uint8_t* data, size_t size)
     (void)OpenTrace(hitraceTags);
     std::cout << "trace mode : " << GetTraceMode() << std::endl;
 
-    // 定义异步回调函数
     std::function<void(TraceRetInfo)> asyncCallback = [](TraceRetInfo traceInfo) {
         std::cout << "Async dump completed with error code: " << static_cast<int>(traceInfo.errorCode) << std::endl;
         for (const auto& file : traceInfo.outputFiles) {

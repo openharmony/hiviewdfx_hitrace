@@ -826,6 +826,7 @@ def parse_xacct_tracing_mark_write(data, one_event):
         name = ""
     return "%c|%d|%s" % (trace_type, pid, name)
 
+
 def parse_phase_task_delta(data, one_event):
     name = parse_bytes_to_str(one_event["fields"]["name[16]"])
     tid = parse_int_field(one_event, "tid", False)

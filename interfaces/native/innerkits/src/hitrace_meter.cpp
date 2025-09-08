@@ -196,7 +196,8 @@ bool IsAppspawnProcess()
         getline(cmdline, procName, '\0');
         cmdline.close();
     }
-    return procName == "appspawn" || procName == "nwebspawn" || procName == "cjappspawn" || procName == "nativespawn";
+    return (procName == "appspawn" || procName == "nwebspawn" || procName == "cjappspawn" ||
+        procName == "nativespawn" || procName == "hybridspawn");
 }
 
 void InitPid()
@@ -806,7 +807,7 @@ void AddHitraceMeterMarker(TraceMarker& traceMarker)
 #ifdef HITRACE_UNITTEST
     appTagload = HITRACE_TAG_APP;
 #endif
-    if (UNEXPECTANTLY(appTagload != HITRACE_TAG_NOT_READY) && g_appFd != -1) {
+    if (UNEXPECTANTLY(appTagload != HITRACE_TAG_NOT_READY) && g_appFd != -1 && (traceMarker.tag & g_appTag) != 0) {
         WriteAppTrace(traceMarker);
     }
 }
@@ -941,7 +942,9 @@ void StartTraceArgs(uint64_t tag, const char* fmt, ...)
 {
     UpdateSysParamTags();
     if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
-        return;
+        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+            return;
+        }
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
     va_list args;
@@ -960,7 +963,9 @@ void StartTraceArgsEx(HiTraceOutputLevel level, uint64_t tag, const char* custom
 {
     UpdateSysParamTags();
     if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
-        return;
+        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+            return;
+        }
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
     va_list args;
@@ -978,8 +983,13 @@ void StartTraceArgsEx(HiTraceOutputLevel level, uint64_t tag, const char* custom
 void StartTraceArgsDebug(bool isDebug, uint64_t tag, const char* fmt, ...)
 {
     UpdateSysParamTags();
-    if (!isDebug || !(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+    if (!isDebug) {
         return;
+    }
+    if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+            return;
+        }
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
     va_list args;
@@ -1055,7 +1065,9 @@ void StartAsyncTraceArgs(uint64_t tag, int32_t taskId, const char* fmt, ...)
 {
     UpdateSysParamTags();
     if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
-        return;
+        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+            return;
+        }
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
     va_list args;
@@ -1076,7 +1088,9 @@ void StartAsyncTraceArgsEx(HiTraceOutputLevel level, uint64_t tag, int32_t taskI
 {
     UpdateSysParamTags();
     if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
-        return;
+        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+            return;
+        }
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
     va_list args;
@@ -1095,8 +1109,13 @@ void StartAsyncTraceArgsEx(HiTraceOutputLevel level, uint64_t tag, int32_t taskI
 void StartAsyncTraceArgsDebug(bool isDebug, uint64_t tag, int32_t taskId, const char* fmt, ...)
 {
     UpdateSysParamTags();
-    if (!isDebug || !(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+    if (!isDebug) {
         return;
+    }
+    if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+            return;
+        }
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
     va_list args;
@@ -1143,7 +1162,9 @@ void FinishAsyncTraceArgs(uint64_t tag, int32_t taskId, const char* fmt, ...)
 {
     UpdateSysParamTags();
     if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
-        return;
+        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+            return;
+        }
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
     va_list args;
@@ -1163,7 +1184,9 @@ void FinishAsyncTraceArgsEx(HiTraceOutputLevel level, uint64_t tag, int32_t task
 {
     UpdateSysParamTags();
     if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
-        return;
+        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+            return;
+        }
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
     va_list args;
@@ -1182,8 +1205,13 @@ void FinishAsyncTraceArgsEx(HiTraceOutputLevel level, uint64_t tag, int32_t task
 void FinishAsyncTraceArgsDebug(bool isDebug, uint64_t tag, int32_t taskId, const char* fmt, ...)
 {
     UpdateSysParamTags();
-    if (!isDebug || !(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+    if (!isDebug) {
         return;
+    }
+    if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
+        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+            return;
+        }
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
     va_list args;
@@ -1250,7 +1278,9 @@ HitraceMeterFmtScoped::HitraceMeterFmtScoped(uint64_t tag, const char* fmt, ...)
 {
     UpdateSysParamTags();
     if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
-        return;
+        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+            return;
+        }
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
     va_list args;
@@ -1271,7 +1301,9 @@ HitraceMeterFmtScopedEx::HitraceMeterFmtScopedEx(HiTraceOutputLevel level, uint6
 {
     UpdateSysParamTags();
     if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
-        return;
+        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+            return;
+        }
     }
     char name[VAR_NAME_MAX_SIZE] = { 0 };
     va_list args;

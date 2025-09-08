@@ -342,6 +342,9 @@ TraceDumpRet AsyncTraceWriteStrategy::Execute(std::shared_ptr<ITraceSource> trac
     }
     PreTraceContentDump(traceContentPtr);
     auto cpuRawWrite = traceSource->GetTraceCpuRawWrite(request.taskId);
+    if (cpuRawWrite == nullptr) {
+        return {TraceErrorCode::WRITE_TRACE_INFO_ERROR, "", 0, 0};
+    }
     if (!cpuRawWrite->WriteTraceContent()) {
         return {TraceErrorCode::FILE_ERROR, "", 0, 0};
     }
