@@ -21,7 +21,7 @@ class HiTraceIdAni implements hiTraceChain.HiTraceId {
 }
 
 export default namespace hiTraceChain {
-    loadLibrary("hitrace_chain_ani");
+    loadLibraryWithPermissionCheck("hitrace_chain_ani", "@ohos.hiTraceChain");
     export enum HiTraceCommunicationMode {
         DEFAULT = 0,
         THREAD = 1,

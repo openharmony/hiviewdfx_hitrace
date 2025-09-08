@@ -14,7 +14,7 @@
  */
 
 export default namespace hiTraceMeter {
-    loadLibrary("hitrace_meter_ani");
+    loadLibraryWithPermissionCheck("hitrace_meter_ani", "@ohos.hiTraceMeter");
     export enum HiTraceOutputLevel {
         DEBUG = 0,
         INFO = 1,
