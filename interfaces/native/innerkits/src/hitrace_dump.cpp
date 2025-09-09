@@ -459,7 +459,7 @@ int32_t GetTraceFileFromVec(const uint64_t& inputTraceStartTime, const uint64_t&
     uint64_t utTargetEndTimeMs = inputTraceEndTime * S_TO_MS;
     for (auto it = fileVec.begin(); it != fileVec.end(); it++) {
         if (access(it->filename.c_str(), F_OK) != 0) {
-            HILOG_ERROR(LOG_CORE, "GetTraceFileFromVec: %{public}s is not exist.", it->filename.c_str());
+            HILOG_WARN(LOG_CORE, "GetTraceFileFromVec: %{public}s is not exist.", it->filename.c_str());
             continue;
         }
         HILOG_INFO(LOG_CORE, "GetTraceFileFromVec: %{public}s, [%{public}" PRIu64 ", %{public}" PRIu64 "].",
@@ -489,13 +489,7 @@ void SearchTraceFiles(const uint64_t& inputTraceStartTime, const uint64_t& input
     for (auto& file : targetFiles) {
         if (file.filename.find(CACHE_FILE_PREFIX) != std::string::npos) {
             file.filename = RenameCacheFile(file.filename);
-            auto it = std::find_if(inputCacheFiles.begin(), inputCacheFiles.end(),
-                [&file](const TraceFileInfo& cacheFile) {
-                    return cacheFile.filename == file.filename;
-                });
-            if (it != inputCacheFiles.end()) {
-                g_traceFileVec.push_back(file);
-            }
+            g_traceFileVec.push_back(file);
         }
         traceRetInfo.outputFiles.push_back(file.filename);
         traceRetInfo.fileSize += file.fileSize;
