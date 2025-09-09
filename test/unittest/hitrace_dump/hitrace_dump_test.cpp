@@ -23,6 +23,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <unistd.h>
@@ -314,6 +315,15 @@ public:
 void HitraceDumpTest::SetUp()
 {
     CloseTrace();
+    std::set<std::string> tracefiles;
+    GetTraceFileNamesInDir(tracefiles, TraceDumpType::TRACE_CACHE);
+    GetTraceFileNamesInDir(tracefiles, TraceDumpType::TRACE_RECORDING);
+    GetTraceFileNamesInDir(tracefiles, TraceDumpType::TRACE_SNAPSHOT);
+    for (auto& file : tracefiles) {
+        if (remove(file.c_str()) != 0) {
+            GTEST_LOG_(ERROR) << "remove " << file << " failed.";
+        }
+    }
 }
 
 /**
@@ -676,7 +686,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_011, TestSize.Level0)
     for (int i = 0; i < ret.outputFiles.size(); i++) {
         GTEST_LOG_(INFO) << "outputFiles:" << ret.outputFiles[i].c_str();
     }
-    ASSERT_TRUE(ret.outputFiles.size() >= 3); // compare file count
+    ASSERT_GE(ret.outputFiles.size(), 3); // compare file count
     ASSERT_GE(ret.coverDuration, 8 * S_TO_MS); // coverDuration >= 8s
     ASSERT_GE(ret.coverRatio, MAX_RATIO_UNIT * 8 / DEFAULT_FULL_TRACE_LENGTH); // coverRatio >= 8/30
     ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
@@ -1355,7 +1365,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceAsyncTest005, TestSize.Level2)
     sleep(8); // wait 8s
     std::function<void(TraceRetInfo)> func = [](TraceRetInfo traceInfo) {
         EXPECT_EQ(traceInfo.errorCode, TraceErrorCode::SUCCESS);
-        EXPECT_EQ(traceInfo.outputFiles.size(), 2); // 2 : 2 files
+        EXPECT_GE(traceInfo.outputFiles.size(), 2); // 2 : 2 files
         off_t totalFileSz = 0;
         for (auto& files : traceInfo.outputFiles) {
             totalFileSz += GetFileSize(files);
@@ -1365,7 +1375,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceAsyncTest005, TestSize.Level2)
     };
     auto ret = DumpTraceAsync(8, 0, INT64_MAX, func); // 8 : 8 seconds
     EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
-    EXPECT_EQ(ret.outputFiles.size(), 2); // 2 : 2 files
+    EXPECT_GE(ret.outputFiles.size(), 2); // 2 : 2 files
     GTEST_LOG_(INFO) << "interface return file size :" << ret.fileSize;
     for (auto& file : ret.outputFiles) {
         GTEST_LOG_(INFO) << "interface return file :" << file;

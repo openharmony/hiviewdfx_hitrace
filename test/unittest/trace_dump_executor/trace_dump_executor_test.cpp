@@ -14,6 +14,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <set>
 #include <string>
 #include <sys/stat.h>
 #include <thread>
@@ -46,7 +47,19 @@ public:
         system("service_control start hiview");
     }
 
-    void SetUp() {}
+    void SetUp()
+    {
+        std::set<std::string> tracefiles;
+        GetTraceFileNamesInDir(tracefiles, TraceDumpType::TRACE_CACHE);
+        GetTraceFileNamesInDir(tracefiles, TraceDumpType::TRACE_RECORDING);
+        GetTraceFileNamesInDir(tracefiles, TraceDumpType::TRACE_SNAPSHOT);
+        for (auto& file : tracefiles) {
+            if (remove(file.c_str()) != 0) {
+                GTEST_LOG_(ERROR) << "remove " << file << " failed.";
+            }
+        }
+    }
+
     void TearDown() {}
 };
 
