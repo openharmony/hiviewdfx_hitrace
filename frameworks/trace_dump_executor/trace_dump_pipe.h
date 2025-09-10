@@ -43,15 +43,19 @@ public:
     bool WriteAsyncReturn(const TraceDumpTask& task);
 
 private:
+    void InitPipeFd();
     bool CheckProcessRole(bool shouldBeParent, const char* operation) const;
     bool CheckFdValidity(const int fd, const char* operation, const char* pipeName) const;
     bool WriteToPipe(const int fd, const TraceDumpTask& task, const char* operation);
     bool ReadFromPipe(const int fd, TraceDumpTask& task, const int timeoutMs, const char* operation);
+    bool AddFdToEpoll(const int fd);
 
     bool isParent_ = false;
     UniqueFd taskSubmitFd_;
     UniqueFd syncRetFd_;
     UniqueFd asyncRetFd_;
+    int epollFd_ = -1;
+    bool epollInitialized_ = false;
 };
 } // namespace Hitrace
 } // namespace HiviewDFX
