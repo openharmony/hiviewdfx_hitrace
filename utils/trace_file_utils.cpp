@@ -54,6 +54,8 @@ std::map<TraceDumpType, std::string> tracePrefixMap = {
     {TraceDumpType::TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
     {TraceDumpType::TRACE_RECORDING, TRACE_RECORDING_PREFIX},
     {TraceDumpType::TRACE_CACHE, TRACE_CACHE_PREFIX},
+    {TraceDumpType::TRACE_ASYNC_READ, TRACE_SNAPSHOT_PREFIX},
+    {TraceDumpType::TRACE_ASYNC_WRITE, TRACE_SNAPSHOT_PREFIX},
 };
 
 uint64_t ConvertPageTraceTimeToUtTimeMs(const uint64_t& pageTraceTime)

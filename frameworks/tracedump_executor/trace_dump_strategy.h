@@ -95,6 +95,21 @@ public:
         const TraceContentPtr& contentPtr, TraceDumpRet& ret) override;
     bool NeedCheckFileExist() const override { return true; }
 };
+
+
+class AsyncTraceReadStrategy : public ITraceDumpStrategy {
+public:
+    bool DoCore(std::shared_ptr<ITraceSourceFactory> tracetraceSourceFactoryource, const TraceDumpRequest& request,
+        const TraceContentPtr& contentPtr, TraceDumpRet& ret) override;
+    bool NeedCreateTraceContentPtr() const override { return false; }
+    bool NeedDoPreAndPost() const override { return false; }
+};
+
+class AsyncTraceWriteStrategy : public ITraceDumpStrategy {
+public:
+    bool DoCore(std::shared_ptr<ITraceSourceFactory> traceSourceFactory, const TraceDumpRequest& request,
+        const TraceContentPtr& contentPtr, TraceDumpRet& ret) override;
+};
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS

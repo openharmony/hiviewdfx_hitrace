@@ -290,10 +290,46 @@ bool CacheTraceDumpStrategy::DoCore(std::shared_ptr<ITraceSourceFactory> traceSo
     return true;
 }
 
+bool AsyncTraceReadStrategy::DoCore(std::shared_ptr<ITraceSourceFactory> traceSourceFactory,
+    const TraceDumpRequest& request, const TraceContentPtr& traceContentPtr, TraceDumpRet& ret)
+{
+    auto cpuRawRead = traceSourceFactory->GetTraceCpuRawRead(request);
+    if (!cpuRawRead->WriteTraceContent()) {
+        ret.code = cpuRawRead->GetDumpStatus();
+        return false;
+    }
+    ret.code = cpuRawRead->GetDumpStatus();
+    ret.fileSize = static_cast<int64_t>(TraceBufferManager::GetInstance().GetTaskTotalUsedBytes(request.taskId));
+    ret.traceStartTime = cpuRawRead->GetFirstPageTimeStamp();
+    ret.traceEndTime = cpuRawRead->GetLastPageTimeStamp();
+    auto tracefile = GenerateTraceFileNameByTraceTime(request.type, ret.traceStartTime, ret.traceEndTime);
+    if (strncpy_s(ret.outputFile, TRACE_FILE_LEN, tracefile.c_str(), TRACE_FILE_LEN - 1) != 0) {
+        HILOG_ERROR(LOG_CORE, "AsyncTraceReadStrategy: strncpy_s failed.");
+        return false;
+    }
+    HILOG_INFO(LOG_CORE, "AsyncTraceReadStrategy: trace file : %{public}s, file size : %{public}" PRId64,
+        ret.outputFile, ret.fileSize);
+    return true;
+}
+
+bool AsyncTraceWriteStrategy::DoCore(std::shared_ptr<ITraceSourceFactory> traceSourceFactory,
+    const TraceDumpRequest& request, const TraceContentPtr& traceContentPtr, TraceDumpRet& ret)
+{
+    auto cpuRawWrite = traceSourceFactory->GetTraceCpuRawWrite(request.taskId);
+    if (!cpuRawWrite->WriteTraceContent()) {
+        ret.code = TraceErrorCode::WRITE_TRACE_INFO_ERROR;
+        return false;
+    }
+    ret.code = TraceErrorCode::SUCCESS;
+    return true;
+}
+
 // Register strategies
 REGISTER_TRACE_STRATEGY(TRACE_SNAPSHOT, SnapshotTraceDumpStrategy);
 REGISTER_TRACE_STRATEGY(TRACE_RECORDING, RecordTraceDumpStrategy);
 REGISTER_TRACE_STRATEGY(TRACE_CACHE, CacheTraceDumpStrategy);
+REGISTER_TRACE_STRATEGY(TRACE_ASYNC_READ, AsyncTraceReadStrategy);
+REGISTER_TRACE_STRATEGY(TRACE_ASYNC_WRITE, AsyncTraceWriteStrategy);
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS
