@@ -27,15 +27,14 @@ def get_shell_result(cmd, words=''):
 
 
 class TestHitraceCmd:
-    def prepare_steps(self):
+    def setup_method(self, method):
         word_cmds = {
-            "hdc shell hitrace --stop_bgsrv",
-            "hdc shell hitrace --trace_finish_nodump",
-            "hdc shell hitrace --trace_finish_nodump --record",
+            'hdc shell hitrace --stop_bgsrv':'CloseSnapshot done',
         }
-        
         for word_cmd in word_cmds:
-            get_shell_result(word_cmd)
+            get_shell_result(word_cmd,word_cmds.get(word_cmd))
+        for word_cmd in word_cmds:
+            get_shell_result(word_cmd,word_cmds.get(word_cmd))
 
     @pytest.mark.L0
     def test_help1(self):
@@ -91,12 +90,12 @@ class TestHitraceCmd:
     @pytest.mark.L0
     def test_capture_trace(self):
         word_cmds1 = {
-            'hdc shell hitrace -b 256 -t 5 sched --trace_begin':'hitrace enter, running_state is RECORDING_LONG_BEGIN',
+            'hdc shell hitrace -b 256 -t 5 sched --trace_begin':'OpenRecording done',
             'hdc shell cat /sys/kernel/debug/tracing/tracing_on':'1',
         }
         
         word_cmds2 = {
-            "hdc shell hitrace --trace_finish_nodump",
+            'hdc shell hitrace --trace_finish_nodump':'end capture trace',
         }
 
         for word_cmd in word_cmds1:
@@ -108,7 +107,7 @@ class TestHitraceCmd:
     @pytest.mark.L0
     def test_double_capture_trace(self):
         word_cmds1 = {
-            'hdc shell hitrace -b 256 -t 5 sched --trace_begin': 'hitrace enter, running_state is RECORDING_LONG_BEGIN',
+            'hdc shell hitrace -b 256 -t 5 sched --trace_begin': 'OpenRecording done',
         }
 
         word_cmds2 = {
@@ -116,7 +115,7 @@ class TestHitraceCmd:
         }
 
         word_cmds3 = {
-            'hdc shell hitrace --trace_finish_nodump',
+            'hdc shell hitrace --trace_finish_nodump':'end capture trace',
         }
 
         for word_cmd in word_cmds1:
@@ -131,7 +130,7 @@ class TestHitraceCmd:
     @pytest.mark.L0
     def test_capture_tags_trace(self):
         word_cmds1 = {
-            'hdc shell hitrace ability accesscontrol accessibility account ace animation sched --trace_begin':'hitrace enter, running_state is RECORDING_LONG_BEGIN',
+            'hdc shell hitrace ability accesscontrol accessibility account ace animation sched --trace_begin':'OpenRecording done',
         }
 
         word_cmds2 = {
@@ -142,9 +141,9 @@ class TestHitraceCmd:
             'hdc shell hitrace --trace_dump -o /data/local/tmp/trace.ftrace': 'trace read done',
         }
 
-        word_cmds4 = [
-            "hdc shell hitrace --trace_finish_nodump",
-        ]
+        word_cmds4 = {
+            "hdc shell hitrace --trace_finish_nodump":'end capture trace',
+        }
 
         for word_cmd in word_cmds1:
             get_shell_result(word_cmd, word_cmds1.get(word_cmd))
@@ -172,9 +171,9 @@ class TestHitraceCmd:
             'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '1',
         }
 
-        word_cmds4 = [
-            "hdc shell hitrace --trace_finish_nodump",
-        ]
+        word_cmds4 = {
+            "hdc shell hitrace --trace_finish_nodump":'end capture trace',
+        }
 
         for word_cmd in word_cmds1:
             get_shell_result(word_cmd, word_cmds1.get(word_cmd))
@@ -191,12 +190,11 @@ class TestHitraceCmd:
     @pytest.mark.L0
     def test_raw_parameter(self):
         word_cmds = {
-            'hdc shell hitrace --stop_bgsrv': '',
             'hdc shell hitrace sched --trace_begin --raw': 'RECORDING_LONG_BEGIN and RECORDING_SHORT_RAW cannot coexist',
             'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '0',
             'hdc shell hitrace sched --trace_begin --record --raw': 'RECORDING_LONG_BEGIN_RECORD and RECORDING_SHORT_RAW cannot coexist',
             'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '0',
-            'hdc shell hitrace sched -t 10 --raw': 'hitrace enter, running_state is RECORDING_SHORT_RAW',
+            'hdc shell hitrace sched -t 10 --raw': 'capture done',
         }
 
         for word_cmd in word_cmds:
@@ -205,7 +203,6 @@ class TestHitraceCmd:
     @pytest.mark.L0
     def test_text_parameter(self):
         word_cmds = {
-            'hdc shell hitrace --stop_bgsrv': '',
             'hdc shell hitrace sched --trace_begin --text': 'RECORDING_LONG_BEGIN and RECORDING_SHORT_TEXT cannot coexist',
             'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '0',
             'hdc shell hitrace sched --trace_begin --record --text': 'RECORDING_LONG_BEGIN_RECORD and RECORDING_SHORT_TEXT cannot coexist',
@@ -219,15 +216,14 @@ class TestHitraceCmd:
     @pytest.mark.L0
     def test_capture_trace_with_filesize_and_filename(self):
         word_cmds1 = {
-            'hdc shell hitrace --stop_bgsrv': '',
             'hdc shell hitrace sched --trace_begin --file_size 51200': 'The current state does not support specifying the file size',
             'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '1',
             'hdc shell hitrace sched --trace_dump -o /data/local/tmp/trace.ftrace': 'trace read done, output: /data/local/tmp/trace.ftrace',
         }
 
-        word_cmds2 = [
-            "hdc shell hitrace sched --trace_finish_nodump",
-        ]
+        word_cmds2 = {
+            "hdc shell hitrace sched --trace_finish_nodump":'end capture trace',
+        }
 
         for word_cmd in word_cmds1:
             get_shell_result(word_cmd, word_cmds1.get(word_cmd))
@@ -238,15 +234,14 @@ class TestHitraceCmd:
     @pytest.mark.L0
     def test_capture_trace_record_with_filesize_and_filename(self):
         word_cmds1 = {
-            'hdc shell hitrace --stop_bgsrv': '',
             'hdc shell hitrace sched --trace_begin --record --file_size 51200': 'tags:sched bufferSize:18432 overwrite:1 fileSize:51200',
             'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '1',
             'hdc shell hitrace --trace_dump --record -o /data/local/tmp/trace.ftrace': 'error: "--record" is set incorrectly. eg: "--trace_begin --record", "--trace_finish --record"',
         }
 
-        word_cmds2 = [
-            "hdc shell hitrace --trace_finish_nodump --record",
-        ]
+        word_cmds2 = {
+            "hdc shell hitrace --trace_finish_nodump --record": 'error: parsing args failed',
+        }
 
         for word_cmd in word_cmds1:
             get_shell_result(word_cmd, word_cmds1.get(word_cmd))
@@ -257,15 +252,14 @@ class TestHitraceCmd:
     @pytest.mark.L0
     def test_capture_trace_with_buffersize_time_trackclock_and_overwrite(self):
         word_cmds1 = {
-            'hdc shell hitrace --stop_bgsrv': '',
             'hdc shell hitrace sched --trace_begin -b 10240 -t 5 --trace_clock global --overwrite': 'tags:sched bufferSize:10240 clockType:global overwrite:0',
             'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '1',
             'hdc shell hitrace --trace_dump -o /data/local/tmp/trace.ftrace': 'trace read done, output: /data/local/tmp/trace.ftrace',
         }
 
-        word_cmds2 = [
-            "hdc shell hitrace --trace_finish_nodump",
-        ]
+        word_cmds2 = {
+            "hdc shell hitrace --trace_finish_nodump":'end capture trace',
+        }
 
         for word_cmd in word_cmds1:
             get_shell_result(word_cmd, word_cmds1.get(word_cmd))
@@ -276,7 +270,6 @@ class TestHitraceCmd:
     @pytest.mark.L0
     def test_capture_trace_with_wrong_time(self):
         word_cmds = {
-            'hdc shell hitrace --stop_bgsrv': '',
             'hdc shell hitrace sched --trace_begin -b 10240 -t -1 --trace_clock global --overwrite': 'error: "-t -1" to be greater than zero. eg: "--time 5"',
             'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '0',
         }
@@ -297,22 +290,22 @@ class TestHitraceCmd:
     @pytest.mark.L0
     def test_capture_trace_with_max_and_min_buffersize(self):
         word_cmds1 = {
-            'hdc shell hitrace sched --trace_begin -b 307200': 'hitrace enter, running_state is RECORDING_LONG_BEGIN',
+            'hdc shell hitrace sched --trace_begin -b 307200': 'OpenRecording done',
             'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '1',
         }
 
-        word_cmds2 = [
-            "hdc shell hitrace --trace_finish_nodump",
-        ]
+        word_cmds2 = {
+            "hdc shell hitrace --trace_finish_nodump":'end capture trace',
+        }
 
         word_cmds4 = {
-            'hdc shell hitrace sched --trace_begin -b 256': 'hitrace enter, running_state is RECORDING_LONG_BEGIN',
+            'hdc shell hitrace sched --trace_begin -b 256': 'OpenRecording done',
             'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '1',
         }
 
-        word_cmds5 = [
-            "hdc shell hitrace --trace_finish_nodump",
-        ]
+        word_cmds5 = {
+            "hdc shell hitrace --trace_finish_nodump":'end capture trace',
+        }
 
         for word_cmd in word_cmds1:
             get_shell_result(word_cmd, word_cmds1.get(word_cmd))
@@ -347,14 +340,13 @@ class TestHitraceCmd:
     @pytest.mark.L0
     def test_start_and_stop_bgsrv(self):
         word_cmds1 = {
-            'hdc shell hitrace --stop_bgsrv': '',
-            'hdc shell hitrace --trace_finish_nodump': '',
-            'hdc shell hitrace --start_bgsrv': 'hitrace enter, running_state is SNAPSHOT_START',
+            'hdc shell hitrace --trace_finish_nodump': 'end capture trace',
+            'hdc shell hitrace --start_bgsrv': 'OpenSnapshot done',
             'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '1',
         }
 
         word_cmds2 = {
-            'hdc shell hitrace --stop_bgsrv': 'hitrace enter, running_state is SNAPSHOT_STOP',
+            'hdc shell hitrace --stop_bgsrv': 'CloseSnapshot done',
             'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '0',
         }
 
@@ -367,8 +359,7 @@ class TestHitraceCmd:
     @pytest.mark.L0
     def test_snapshot_with_wrong_command(self):
         word_cmds1 = {
-            'hdc shell hitrace --stop_bgsrv': '',
-            'hdc shell hitrace --start_bgsrv': 'hitrace enter, running_state is SNAPSHOT_START',
+            'hdc shell hitrace --start_bgsrv': 'OpenSnapshot done',
             'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '1',
         }
 
@@ -378,7 +369,7 @@ class TestHitraceCmd:
         }
 
         word_cmds3 = {
-            'hdc shell hitrace --stop_bgsrv': 'hitrace enter, running_state is SNAPSHOT_STOP',
+            'hdc shell hitrace --stop_bgsrv': 'CloseSnapshot done',
             'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '0',
         }
 
@@ -393,7 +384,6 @@ class TestHitraceCmd:
 
     @pytest.mark.L0
     def test_capture_cpu_idle(self):
-        get_shell_result('hdc shell hitrace --stop_bgsrv', '')
         word_cmds1 = {
             'hdc shell hitrace -t 5 idle': 'cpu_idle',
         }
