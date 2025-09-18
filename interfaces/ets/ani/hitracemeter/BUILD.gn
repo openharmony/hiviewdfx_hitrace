@@ -16,6 +16,7 @@ import("//build/config/components/ets_frontend/ets2abc_config.gni")
 import("//build/ohos.gni")
 
 ohos_shared_library("hitrace_meter_ani") {
+  shlib_type = "ani"
   sources = [ "./src/hitracemeter_ani.cpp" ]
   deps = [ "$hitrace_interfaces_path/native/innerkits:hitrace_meter" ]
 

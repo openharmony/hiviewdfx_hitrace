@@ -15,9 +15,9 @@
 
 class HiTraceIdAni implements hiTraceChain.HiTraceId {
     chainId: bigint = 0n;
-    spanId?: number | undefined;
-    parentSpanId?: number | undefined;
-    flags?: number| undefined;
+    spanId?: int | undefined;
+    parentSpanId?: int | undefined;
+    flags?: int | undefined;
 }
 
 export default namespace hiTraceChain {
@@ -50,12 +50,12 @@ export default namespace hiTraceChain {
 
     export interface HiTraceId {
         chainId: bigint;
-        spanId?: number;
-        parentSpanId?: number;
-        flags?: number;
+        spanId?: int;
+        parentSpanId?: int;
+        flags?: int;
     }
 
-    export native function begin(name: string, flags?: number): HiTraceId;
+    export native function begin(name: string, flags?: int): HiTraceId;
     export native function end(id: HiTraceId): void;
     export native function getId(): HiTraceId;
     export native function setId(id: HiTraceId): void;
