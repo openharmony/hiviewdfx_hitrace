@@ -1058,7 +1058,8 @@ static void RecordSysEvent()
     }
 }
 
-static bool InitAndCheckArgs(int argc, char**argv) {
+static bool InitAndCheckArgs(int argc, char**argv)
+{
     if (!IsDeveloperMode()) {
         ConsoleLog("error: not in developermode, exit");
         return false;
