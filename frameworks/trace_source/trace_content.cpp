@@ -259,13 +259,9 @@ void ITraceContent::WriteProcessLists(ssize_t& writeLen)
         }
         std::string line;
         std::string processName;
-        std::string nameStr = "Name:";
         while (std::getline(statusFile, line)) {
-            if (line.find(nameStr) != std::string::npos) {
-                size_t start = line.find_first_not_of(" \t", nameStr.size());
-                if (start != std::string::npos) {
-                    processName = line.substr(start);
-                }
+            if (line.find("Name:\t") != std::string::npos) {
+                processName = line.substr(line.find("\t") + 1);
                 break;
             }
         }
