@@ -397,7 +397,12 @@ bool TraceDumpExecutor::StartDumpTraceLoop(const TraceDumpParam& param)
         std::string traceFile = GenerateTraceFileName(param.type);
         if (DoDumpTraceLoop(param, traceFile, true)) {
             std::lock_guard<std::mutex> lck(traceFileMutex_);
-            loopTraceFiles_.emplace_back(traceFile);
+            struct stat info;
+            if (stat(traceFile.c_str(), &info) == 0) {
+                loopTraceFiles_.emplace_back(traceFile, 0, info.st_size / BYTE_PER_KB, true);
+            } else {
+                loopTraceFiles_.emplace_back(traceFile);
+            }
         } else {
             break;
         }

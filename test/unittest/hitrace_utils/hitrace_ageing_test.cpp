@@ -61,35 +61,40 @@ public:
 
 HWTEST_F(HitraceAgeingTest, CreateFileChecker_001, TestSize.Level1)
 {
-    std::shared_ptr<FileAgeingChecker> checker = FileAgeingChecker::CreateFileChecker(TraceDumpType::TRACE_CACHE);
+    std::shared_ptr<FileAgeingChecker> checker = FileAgeingChecker::CreateFileChecker(TraceDumpType::TRACE_CACHE,
+        CheckType::FILENUMBER);
     EXPECT_EQ(checker, nullptr);
 }
 
 HWTEST_F(HitraceAgeingTest, CreateFileChecker_002, TestSize.Level1)
 {
     TraceJsonParser::Instance().snapShotAgeingParam_ = { false, 0, 0 };
-    std::shared_ptr<FileAgeingChecker> checker = FileAgeingChecker::CreateFileChecker(TraceDumpType::TRACE_SNAPSHOT);
+    std::shared_ptr<FileAgeingChecker> checker = FileAgeingChecker::CreateFileChecker(TraceDumpType::TRACE_SNAPSHOT,
+        CheckType::FILENUMBER);
     EXPECT_EQ(checker, nullptr);
 }
 
 HWTEST_F(HitraceAgeingTest, CreateFileChecker_003, TestSize.Level1)
 {
     TraceJsonParser::Instance().snapShotAgeingParam_ = { true, 1, 0 };
-    std::shared_ptr<FileAgeingChecker> checker = FileAgeingChecker::CreateFileChecker(TraceDumpType::TRACE_SNAPSHOT);
+    std::shared_ptr<FileAgeingChecker> checker = FileAgeingChecker::CreateFileChecker(TraceDumpType::TRACE_SNAPSHOT,
+        CheckType::FILENUMBER);
     EXPECT_NE(checker, nullptr);
 }
 
 HWTEST_F(HitraceAgeingTest, CreateFileChecker_004, TestSize.Level1)
 {
     TraceJsonParser::Instance().snapShotAgeingParam_ = { true, 0, 1 };
-    std::shared_ptr<FileAgeingChecker> checker = FileAgeingChecker::CreateFileChecker(TraceDumpType::TRACE_SNAPSHOT);
+    std::shared_ptr<FileAgeingChecker> checker = FileAgeingChecker::CreateFileChecker(TraceDumpType::TRACE_SNAPSHOT,
+        CheckType::FILESIZE);
     EXPECT_NE(checker, nullptr);
 }
 
 HWTEST_F(HitraceAgeingTest, CreateFileChecker_005, TestSize.Level1)
 {
     TraceJsonParser::Instance().snapShotAgeingParam_ = { true, 0, 0 };
-    std::shared_ptr<FileAgeingChecker> checker = FileAgeingChecker::CreateFileChecker(TraceDumpType::TRACE_SNAPSHOT);
+    std::shared_ptr<FileAgeingChecker> checker = FileAgeingChecker::CreateFileChecker(TraceDumpType::TRACE_SNAPSHOT,
+        CheckType::FILENUMBER);
     EXPECT_EQ(checker, nullptr);
 }
 

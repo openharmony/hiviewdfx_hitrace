@@ -40,7 +40,8 @@ public:
     virtual bool ShouldAgeing(const TraceFileInfo& traceFileInfo) = 0;
     virtual ~FileAgeingChecker() = default;
 
-    static std::shared_ptr<FileAgeingChecker> CreateFileChecker(const TraceDumpType traceType);
+    static std::shared_ptr<FileAgeingChecker> CreateFileChecker(const TraceDumpType traceType,
+        const CheckType checkType);
 };
 
 class FileNumberChecker : public FileAgeingChecker {
@@ -87,7 +88,8 @@ private:
     const int64_t minFileNumber_ = 2;  // To prevent all files from being cleared, set a minimum file number limit
 };
 
-std::shared_ptr<FileAgeingChecker> FileAgeingChecker::CreateFileChecker(const TraceDumpType traceType)
+std::shared_ptr<FileAgeingChecker> FileAgeingChecker::CreateFileChecker(const TraceDumpType traceType,
+    const CheckType checkType)
 {
     if (traceType != TraceDumpType::TRACE_RECORDING && traceType != TraceDumpType::TRACE_SNAPSHOT) {
         return nullptr;
@@ -98,11 +100,11 @@ std::shared_ptr<FileAgeingChecker> FileAgeingChecker::CreateFileChecker(const Tr
         return nullptr;
     }
 
-    if (param.fileSizeKbLimit > 0) {
+    if (param.fileSizeKbLimit > 0 && checkType == CheckType::FILESIZE) {
         return std::make_shared<FileSizeChecker>(param.fileSizeKbLimit);
     }
 
-    if (param.fileNumberLimit > 0) {
+    if (param.fileNumberLimit > 0 && checkType == CheckType::FILENUMBER) {
         return std::make_shared<FileNumberChecker>(param.fileNumberLimit);
     }
 
@@ -147,9 +149,15 @@ namespace Hitrace {
 
 void FileAgeingUtils::HandleAgeing(std::vector<TraceFileInfo>& fileList, const TraceDumpType traceType)
 {
-    std::shared_ptr<FileAgeingChecker> checker = FileAgeingChecker::CreateFileChecker(traceType);
-    if (checker != nullptr) {
-        HandleAgeingImpl(fileList, traceType, *checker);
+    std::shared_ptr<FileAgeingChecker> checkerFilenumber = FileAgeingChecker::CreateFileChecker(traceType,
+        CheckType::FILENUMBER);
+    if (checkerFilenumber != nullptr) {
+        HandleAgeingImpl(fileList, traceType, *checkerFilenumber);
+    }
+    std::shared_ptr<FileAgeingChecker> checkerFilesize = FileAgeingChecker::CreateFileChecker(traceType,
+        CheckType::FILESIZE);
+    if (checkerFilesize != nullptr) {
+        HandleAgeingImpl(fileList, traceType, *checkerFilesize);
     }
 }
 

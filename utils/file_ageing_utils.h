@@ -25,6 +25,10 @@
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
+enum CheckType {
+    FILENUMBER = 0;
+    FILESIZE
+};
 
 class FileAgeingUtils {
 public:
