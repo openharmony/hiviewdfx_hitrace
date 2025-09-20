@@ -47,6 +47,7 @@ namespace {
 const int TIME_BUFFER_SIZE = 16;
 const int DEFAULT_TRACE_DURATION = 30;
 const int TIME_INIT = 1900;
+constexpr int BYTE_PER_KB = 1024;
 static const char* TRACE_SNAPSHOT_PREFIX = "trace_";
 static const char* TRACE_RECORDING_PREFIX = "record_trace_";
 static const char* TRACE_CACHE_PREFIX = "cache_trace_";
@@ -175,7 +176,8 @@ void GetTraceFilesInDir(std::vector<TraceFileInfo>& fileList, TraceDumpType trac
         if (fileName.substr(0, tracePrefixMap[traceType].size()) == tracePrefixMap[traceType]) {
             fileName = TRACE_FILE_DEFAULT_DIR + fileName;
             if (stat(fileName.c_str(), &fileStat) == 0) {
-                fileList.emplace_back(fileName, fileStat.st_ctime, static_cast<uint64_t>(fileStat.st_size), false);
+                fileList.emplace_back(fileName, fileStat.st_ctime,
+                    static_cast<uint64_t>(fileStat.st_size / BYTE_PER_KB), false);
             }
         }
     }
