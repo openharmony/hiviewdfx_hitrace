@@ -152,7 +152,7 @@ TraceFileInfo::TraceFileInfo(const std::string& name)
 {
     filename = name;
     struct stat info;
-    if (stat(traceFile.c_str(), &info) == 0) {
+    if (stat(filename.c_str(), &info) == 0) {
         fileSize = static_cast<int64_t>(info.st_size / BYTE_PER_KB);
     } else {
         fileSize = 0;
