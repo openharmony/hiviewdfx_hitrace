@@ -33,6 +33,7 @@
 #endif
 
 namespace {
+constexpr int BYTE_PER_KB = 1024;
 using namespace OHOS::HiviewDFX::Hitrace;
 
 class FileAgeingChecker {
@@ -69,14 +70,14 @@ public:
     {
         if (currentFileNumber_ < minFileNumber_) {
             currentFileNumber_++;
-            currentSizeKb_ += traceFileInfo.fileSize;
+            currentSizeKb_ += traceFileInfo.fileSize / BYTE_PER_KB;
             return false;
         }
 
         if (currentSizeKb_ >= maxSizeKb_) {
             return true;
         }
-        currentSizeKb_ += traceFileInfo.fileSize;
+        currentSizeKb_ += traceFileInfo.fileSize / BYTE_PER_KB;
         return false;
     }
 
