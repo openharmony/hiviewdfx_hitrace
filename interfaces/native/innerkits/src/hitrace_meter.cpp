@@ -62,8 +62,6 @@ std::atomic<CachedHandle> g_levelThresholdCachedHandle;
 
 std::atomic<bool> g_isHitraceMeterDisabled(false);
 std::atomic<bool> g_isHitraceMeterInit(false);
-std::atomic<bool> g_needReloadPid(false);
-std::atomic<bool> g_pidHasReload(false);
 
 std::atomic<uint64_t> g_tagsProperty(HITRACE_TAG_NOT_READY);
 std::atomic<uint64_t> g_appTag(HITRACE_TAG_NOT_READY);
@@ -78,9 +76,6 @@ constexpr int VAR_NAME_MAX_SIZE = 400;
 constexpr int NAME_NORMAL_LEN = 512;
 constexpr int RECORD_SIZE_MAX = 1024;
 
-static const int PID_BUF_SIZE = 6;
-static char g_pidStr[PID_BUF_SIZE];
-int g_pid = -1;
 static char g_appName[NAME_NORMAL_LEN + 1] = {0};
 static std::string g_appTracePrefix = "";
 constexpr const int COMM_STR_MAX = 14;
@@ -137,6 +132,7 @@ struct TraceMarker {
     const char* customCategory;
     const char* customArgs;
     const HiTraceIdStruct* hiTraceIdStruct = nullptr;
+    int pid = -1;
 };
 
 inline void CreateCacheHandle()
@@ -190,52 +186,6 @@ static void UpdateSysParamTags()
     }
 }
 
-bool IsAppspawnProcess()
-{
-    std::string procName;
-    std::ifstream cmdline("/proc/self/cmdline");
-    if (cmdline.is_open()) {
-        getline(cmdline, procName, '\0');
-        cmdline.close();
-    }
-    return (procName == "appspawn" || procName == "nwebspawn" || procName == "cjappspawn" ||
-        procName == "nativespawn" || procName == "hybridspawn");
-}
-
-void InitPid()
-{
-    g_pid = getprocpid();
-    std::string pidStr = std::to_string(g_pid);
-    int ret = strcpy_s(g_pidStr, sizeof(g_pidStr), pidStr.c_str());
-    if (ret != 0) {
-        HILOG_ERROR(LOG_CORE, "pid[%{public}s] strcpy_s fail ret: %{public}d.", pidStr.c_str(), ret);
-        return;
-    }
-
-    if (!g_needReloadPid && IsAppspawnProcess()) {
-        // appspawn restarted, all app need init pid again.
-        g_needReloadPid = true;
-    }
-
-    HILOG_DEBUG(LOG_CORE, "pid[%{public}s] first get g_tagsProperty: %{public}s", pidStr.c_str(),
-        std::to_string(g_tagsProperty.load()).c_str());
-}
-
-void ReloadPid()
-{
-    g_pid = getprocpid();
-    std::string pidStr = std::to_string(g_pid);
-    int ret = strcpy_s(g_pidStr, sizeof(g_pidStr), pidStr.c_str());
-    if (ret != 0) {
-        HILOG_ERROR(LOG_CORE, "pid[%{public}s] strcpy_s fail ret: %{public}d.", pidStr.c_str(), ret);
-        return;
-    }
-    if (!IsAppspawnProcess()) {
-        // appspawn restarted, all app need reload pid again.
-        g_pidHasReload = true;
-    }
-}
-
 // open file "trace_marker".
 void OpenTraceMarkerFile()
 {
@@ -259,7 +209,6 @@ void OpenTraceMarkerFile()
     g_levelThreshold = static_cast<HiTraceOutputLevel>(OHOS::system::GetIntParameter<int>(TRACE_LEVEL_THRESHOLD,
         HITRACE_LEVEL_MAX, HITRACE_LEVEL_DEBUG, HITRACE_LEVEL_COMMERCIAL));
     CreateCacheHandle();
-    InitPid();
 
     g_isHitraceMeterInit = true;
 }
@@ -289,13 +238,6 @@ __attribute__((always_inline)) bool PrepareTraceMarker()
 {
     if (UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
         return false;
-    }
-    // attention: if appspawn encounters a crash exception, we should reload pid.
-    if (UNEXPECTANTLY(g_needReloadPid)) {
-        std::lock_guard<std::mutex> lock(g_pidMutex);
-        if (UNEXPECTANTLY(!g_pidHasReload)) {
-            ReloadPid();
-        }
     }
     if (UNEXPECTANTLY(!g_isHitraceMeterInit)) {
         struct timespec ts = { 0, 0 };
@@ -490,7 +432,7 @@ void SetCommStr()
     }
 }
 
-void SetMainThreadInfo()
+void SetMainThreadInfo(const int pid)
 {
     if (strlen(g_appName) == 0) {
         if (!GetProcData("/proc/self/cmdline", g_appName, NAME_NORMAL_LEN)) {
@@ -500,12 +442,12 @@ void SetMainThreadInfo()
 
     g_appTracePrefix = std::string(g_appName);
     SetCommStr();
-    std::string pidStr = std::string(g_pidStr);
+    std::string pidStr = std::to_string(pid);
     std::string pidFixStr = std::string(PID_STR_MAX - pidStr.length(), ' ');
     g_appTracePrefix +=  "-" + pidStr + pidFixStr + " (" + pidFixStr + pidStr + ")";
 }
 
-bool SetAllThreadInfo(const int& tid)
+bool SetAllThreadInfo(const int pid, const int tid)
 {
     std::string tidStr = std::to_string(tid);
     std::string file = "/proc/self/task/" + tidStr + "/comm";
@@ -521,7 +463,7 @@ bool SetAllThreadInfo(const int& tid)
     g_appTracePrefix = std::string(comm);
     SetCommStr();
 
-    std::string pidStr = std::string(g_pidStr);
+    std::string pidStr = std::to_string(pid);
     std::string tidFixStr = std::string(PID_STR_MAX - tidStr.length(), ' ');
     std::string pidFixStr = std::string(PID_STR_MAX - pidStr.length(), ' ');
     g_appTracePrefix += "-" + tidStr + tidFixStr + " (" + pidFixStr + pidStr + ")";
@@ -548,13 +490,13 @@ int SetAppTraceBuffer(char* buf, const int len, const TraceMarker& traceMarker)
         if (*(traceMarker.customArgs) != '\0') {
             additionalParams = std::string("|") + std::string(traceMarker.customArgs);
         }
-        bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: B|%s|H:%s|%c%s%s\n",
+        bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: B|%d|H:%s|%c%s%s\n",
             g_appTracePrefix.c_str(), cpu, static_cast<long>(ts.tv_sec), static_cast<long>(ts.tv_nsec / NS_TO_MS),
-            g_pidStr, traceMarker.name, g_traceLevel[traceMarker.level], bitStr, additionalParams.c_str());
+            traceMarker.pid, traceMarker.name, g_traceLevel[traceMarker.level], bitStr, additionalParams.c_str());
     } else if (traceMarker.type == MARKER_END) {
-        bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: E|%s|%c%s\n",
+        bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: E|%d|%c%s\n",
             g_appTracePrefix.c_str(), cpu, static_cast<long>(ts.tv_sec), static_cast<long>(ts.tv_nsec / NS_TO_MS),
-            g_pidStr, g_traceLevel[traceMarker.level], bitStr);
+            traceMarker.pid, g_traceLevel[traceMarker.level], bitStr);
     } else if (traceMarker.type == MARKER_ASYNC_BEGIN) {
         if (*(traceMarker.customArgs) != '\0') {
             additionalParams = std::string("|") + std::string(traceMarker.customCategory) + std::string("|") +
@@ -563,13 +505,13 @@ int SetAppTraceBuffer(char* buf, const int len, const TraceMarker& traceMarker)
             additionalParams = std::string("|") + std::string(traceMarker.customCategory);
         }
         bytes = snprintf_s(buf, len, len - 1,
-            "  %s [%03d] .... %lu.%06lu: tracing_mark_write: S|%s|H:%s|%lld|%c%s%s\n", g_appTracePrefix.c_str(),
-            cpu, static_cast<long>(ts.tv_sec), static_cast<long>(ts.tv_nsec / NS_TO_MS), g_pidStr, traceMarker.name,
-            traceMarker.value, g_traceLevel[traceMarker.level], bitStr, additionalParams.c_str());
+            "  %s [%03d] .... %lu.%06lu: tracing_mark_write: S|%d|H:%s|%lld|%c%s%s\n", g_appTracePrefix.c_str(),
+            cpu, static_cast<long>(ts.tv_sec), static_cast<long>(ts.tv_nsec / NS_TO_MS), traceMarker.pid,
+            traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitStr, additionalParams.c_str());
     } else {
-        bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: %c|%s|H:%s|%lld|%c%s\n",
+        bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: %c|%d|H:%s|%lld|%c%s\n",
             g_appTracePrefix.c_str(), cpu, static_cast<long>(ts.tv_sec), static_cast<long>(ts.tv_nsec / NS_TO_MS),
-            g_markTypes[traceMarker.type], g_pidStr, traceMarker.name, traceMarker.value,
+            g_markTypes[traceMarker.type], traceMarker.pid, traceMarker.name, traceMarker.value,
             g_traceLevel[traceMarker.level], bitStr);
     }
     return bytes;
@@ -637,7 +579,7 @@ void WriteAppTrace(const TraceMarker& traceMarker)
         }
 
         if (g_appTracePrefix.empty()) {
-            SetMainThreadInfo();
+            SetMainThreadInfo(traceMarker.pid);
         }
 
         if (len <= DEFAULT_CACHE_SIZE) {
@@ -651,7 +593,7 @@ void WriteAppTrace(const TraceMarker& traceMarker)
             return;
         }
 
-        SetAllThreadInfo(tid);
+        SetAllThreadInfo(traceMarker.pid, tid);
 
         if (len <= DEFAULT_CACHE_SIZE) {
             SetAppTrace(len, traceMarker);
@@ -670,20 +612,20 @@ static int FmtSyncBeginRecord(TraceMarker& traceMarker, const char* bitStr,
                           HiTraceId(*traceMarker.hiTraceIdStruct);
     if (hiTraceId.IsValid()) {
         if (*(traceMarker.customArgs) == '\0') {
-            bytes = snprintf_s(record, size, size - 1, "B|%s|H:[%llx,%llx,%llx]#%s|%c%s", g_pidStr,
+            bytes = snprintf_s(record, size, size - 1, "B|%d|H:[%llx,%llx,%llx]#%s|%c%s", traceMarker.pid,
                 hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
                 traceMarker.name, g_traceLevel[traceMarker.level], bitStr);
         } else {
-            bytes = snprintf_s(record, size, size - 1, "B|%s|H:[%llx,%llx,%llx]#%s|%c%s|%s", g_pidStr,
+            bytes = snprintf_s(record, size, size - 1, "B|%d|H:[%llx,%llx,%llx]#%s|%c%s|%s", traceMarker.pid,
                 hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
                 traceMarker.name, g_traceLevel[traceMarker.level], bitStr, traceMarker.customArgs);
         }
     } else {
         if (*(traceMarker.customArgs) == '\0') {
-            bytes = snprintf_s(record, size, size - 1, "B|%s|H:%s|%c%s", g_pidStr,
+            bytes = snprintf_s(record, size, size - 1, "B|%d|H:%s|%c%s", traceMarker.pid,
                 traceMarker.name, g_traceLevel[traceMarker.level], bitStr);
         } else {
-            bytes = snprintf_s(record, size, size - 1, "B|%s|H:%s|%c%s|%s", g_pidStr,
+            bytes = snprintf_s(record, size, size - 1, "B|%d|H:%s|%c%s|%s", traceMarker.pid,
                 traceMarker.name, g_traceLevel[traceMarker.level], bitStr, traceMarker.customArgs);
         }
     }
@@ -703,30 +645,30 @@ static int FmtAsyncBeginRecord(TraceMarker& traceMarker, const char* bitStr,
                           HiTraceId(*traceMarker.hiTraceIdStruct);
     if (hiTraceId.IsValid()) {
         if (*(traceMarker.customCategory) == '\0' && *(traceMarker.customArgs) == '\0') {
-            bytes = snprintf_s(record, size, size - 1, "S|%s|H:[%llx,%llx,%llx]#%s|%lld|%c%s", g_pidStr,
+            bytes = snprintf_s(record, size, size - 1, "S|%d|H:[%llx,%llx,%llx]#%s|%lld|%c%s", traceMarker.pid,
                 hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
                 traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitStr);
         } else if (*(traceMarker.customArgs) == '\0') {
-            bytes = snprintf_s(record, size, size - 1, "S|%s|H:[%llx,%llx,%llx]#%s|%lld|%c%s|%s", g_pidStr,
+            bytes = snprintf_s(record, size, size - 1, "S|%d|H:[%llx,%llx,%llx]#%s|%lld|%c%s|%s", traceMarker.pid,
                 hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
                 traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level],
                 bitStr, traceMarker.customCategory);
         } else {
-            bytes = snprintf_s(record, size, size - 1, "S|%s|H:[%llx,%llx,%llx]#%s|%lld|%c%s|%s|%s", g_pidStr,
+            bytes = snprintf_s(record, size, size - 1, "S|%d|H:[%llx,%llx,%llx]#%s|%lld|%c%s|%s|%s", traceMarker.pid,
                 hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
                 traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level],
                 bitStr, traceMarker.customCategory, traceMarker.customArgs);
         }
     } else {
         if (*(traceMarker.customCategory) == '\0' && *(traceMarker.customArgs) == '\0') {
-            bytes = snprintf_s(record, size, size - 1, "S|%s|H:%s|%lld|%c%s", g_pidStr,
+            bytes = snprintf_s(record, size, size - 1, "S|%d|H:%s|%lld|%c%s", traceMarker.pid,
                 traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitStr);
         } else if (*(traceMarker.customArgs) == '\0') {
-            bytes = snprintf_s(record, size, size - 1, "S|%s|H:%s|%lld|%c%s|%s", g_pidStr,
+            bytes = snprintf_s(record, size, size - 1, "S|%d|H:%s|%lld|%c%s|%s", traceMarker.pid,
                 traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level],
                 bitStr, traceMarker.customCategory);
         } else {
-            bytes = snprintf_s(record, size, size - 1, "S|%s|H:%s|%lld|%c%s|%s|%s", g_pidStr,
+            bytes = snprintf_s(record, size, size - 1, "S|%d|H:%s|%lld|%c%s|%s|%s", traceMarker.pid,
                 traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level],
                 bitStr, traceMarker.customCategory, traceMarker.customArgs);
         }
@@ -746,13 +688,13 @@ static int FmtOtherTypeRecord(TraceMarker& traceMarker, const char* bitStr,
                           HiTraceChain::GetId() :
                           HiTraceId(*traceMarker.hiTraceIdStruct);
     if (hiTraceId.IsValid()) {
-        bytes = snprintf_s(record, size, size - 1, "%c|%s|H:[%llx,%llx,%llx]#%s|%lld|%c%s",
-            g_markTypes[traceMarker.type], g_pidStr, hiTraceId.GetChainId(), hiTraceId.GetSpanId(),
+        bytes = snprintf_s(record, size, size - 1, "%c|%d|H:[%llx,%llx,%llx]#%s|%lld|%c%s",
+            g_markTypes[traceMarker.type], traceMarker.pid, hiTraceId.GetChainId(), hiTraceId.GetSpanId(),
             hiTraceId.GetParentSpanId(), traceMarker.name, traceMarker.value,
             g_traceLevel[traceMarker.level], bitStr);
     } else {
-        bytes = snprintf_s(record, size, size - 1, "%c|%s|H:%s|%lld|%c%s",
-            g_markTypes[traceMarker.type], g_pidStr, traceMarker.name,
+        bytes = snprintf_s(record, size, size - 1, "%c|%d|H:%s|%lld|%c%s",
+            g_markTypes[traceMarker.type], traceMarker.pid, traceMarker.name,
             traceMarker.value, g_traceLevel[traceMarker.level], bitStr);
     }
     if (bytes == -1) {
@@ -785,8 +727,9 @@ void AddHitraceMeterMarker(TraceMarker& traceMarker)
         if (traceMarker.tag & HITRACE_TAG_COMMERCIAL) {
             traceMarker.level = HITRACE_LEVEL_COMMERCIAL;
         }
+        traceMarker.pid = getprocpid();
         if ((traceMarker.level < g_levelThreshold) ||
-            (traceMarker.tag == HITRACE_TAG_APP && g_appTagMatchPid > 0 && g_appTagMatchPid != g_pid)) {
+            (traceMarker.tag == HITRACE_TAG_APP && g_appTagMatchPid > 0 && g_appTagMatchPid != traceMarker.pid)) {
             return;
         }
         char record[RECORD_SIZE_MAX + 1] = {0};
@@ -797,8 +740,8 @@ void AddHitraceMeterMarker(TraceMarker& traceMarker)
         if (traceMarker.type == MARKER_BEGIN) {
             bytes = FmtSyncBeginRecord(traceMarker, bitStr, record, sizeof(record));
         } else if (traceMarker.type == MARKER_END) {
-            bytes = snprintf_s(record, sizeof(record), sizeof(record) - 1, "E|%s|%c%s",
-                g_pidStr, g_traceLevel[traceMarker.level], bitStr);
+            bytes = snprintf_s(record, sizeof(record), sizeof(record) - 1, "E|%d|%c%s",
+                traceMarker.pid, g_traceLevel[traceMarker.level], bitStr);
         } else if (traceMarker.type == MARKER_ASYNC_BEGIN) {
             bytes = FmtAsyncBeginRecord(traceMarker, bitStr, record, sizeof(record));
         } else {
@@ -811,22 +754,15 @@ void AddHitraceMeterMarker(TraceMarker& traceMarker)
     appTagload = HITRACE_TAG_APP;
 #endif
     if (UNEXPECTANTLY(appTagload != HITRACE_TAG_NOT_READY) && g_appFd != -1 && (traceMarker.tag & g_appTag) != 0) {
+        if (traceMarker.pid == -1) {
+            traceMarker.pid = getprocpid();
+        }
         WriteAppTrace(traceMarker);
     }
 }
 }; // namespace
 
 #ifdef HITRACE_UNITTEST
-void SetReloadPid(bool isReloadPid)
-{
-    g_needReloadPid = isReloadPid;
-}
-
-void SetpidHasReload(bool ispidHasReload)
-{
-    g_pidHasReload = ispidHasReload;
-}
-
 void SetCachedHandle(const char* name, CachedHandle cachedHandle)
 {
     if (strcmp(name, "g_cachedHandle") == 0) {
