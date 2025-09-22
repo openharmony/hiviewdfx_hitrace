@@ -111,7 +111,7 @@ HWTEST_F(HitraceAgeingTest, FileNumberChecker_001, TestSize.Level1)
 HWTEST_F(HitraceAgeingTest, FileSizeChecker_001, TestSize.Level1)
 {
     static constexpr int64_t fileSizeMax = 300;
-    static constexpr int64_t fileSize = 100;
+    static constexpr int64_t fileSize = 100 * 1024;
     FileSizeChecker checker(fileSizeMax);
     TraceFileInfo info;
     info.fileSize = fileSize;
@@ -124,7 +124,7 @@ HWTEST_F(HitraceAgeingTest, FileSizeChecker_001, TestSize.Level1)
 HWTEST_F(HitraceAgeingTest, FileSizeChecker_002, TestSize.Level1)
 {
     static constexpr int64_t fileSizeMax = 300;
-    static constexpr int64_t fileSize = 10000;
+    static constexpr int64_t fileSize = 10000 * 1024;
     FileSizeChecker checker(fileSizeMax);
     TraceFileInfo info;
     info.fileSize = fileSize;
