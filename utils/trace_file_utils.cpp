@@ -181,8 +181,7 @@ void GetTraceFilesInDir(std::vector<TraceFileInfo>& fileList, TraceDumpType trac
         if (fileName.substr(0, tracePrefixMap[traceType].size()) == tracePrefixMap[traceType]) {
             fileName = TRACE_FILE_DEFAULT_DIR + fileName;
             if (stat(fileName.c_str(), &fileStat) == 0) {
-                fileList.emplace_back(fileName, fileStat.st_ctime,
-                    static_cast<int64_t>(fileStat.st_size), false);
+                fileList.emplace_back(fileName, fileStat.st_ctime, static_cast<int64_t>(fileStat.st_size), false);
             }
         }
     }
