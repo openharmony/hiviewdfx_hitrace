@@ -151,6 +151,12 @@ bool RenameTraceFile(const std::string& fileName, std::string& newFileName,
 TraceFileInfo::TraceFileInfo(const std::string& name)
 {
     filename = name;
+    struct stat info;
+    if (stat(traceFile.c_str(), &info) == 0) {
+        fileSize = static_cast<int64_t>(info.st_size / BYTE_PER_KB);
+    } else {
+        fileSize = 0;
+    }
 }
 
 TraceFileInfo::TraceFileInfo(const std::string& name, time_t time, int64_t sizekB, bool newFile)
@@ -177,7 +183,7 @@ void GetTraceFilesInDir(std::vector<TraceFileInfo>& fileList, TraceDumpType trac
             fileName = TRACE_FILE_DEFAULT_DIR + fileName;
             if (stat(fileName.c_str(), &fileStat) == 0) {
                 fileList.emplace_back(fileName, fileStat.st_ctime,
-                    static_cast<uint64_t>(fileStat.st_size / BYTE_PER_KB), false);
+                    static_cast<int64_t>(fileStat.st_size / BYTE_PER_KB), false);
             }
         }
     }
