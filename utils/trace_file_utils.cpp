@@ -155,6 +155,7 @@ TraceFileInfo::TraceFileInfo(const std::string& name)
         fileSize = static_cast<int64_t>(info.st_size);
     } else {
         fileSize = 0;
+        HILOG_WARN(LOG_CORE, "get file %{public}s info failed", filename.c_str());
     }
 }
 
