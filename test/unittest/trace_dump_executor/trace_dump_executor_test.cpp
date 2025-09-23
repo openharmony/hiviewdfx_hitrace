@@ -14,6 +14,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <set>
 #include <string>
 #include <sys/stat.h>
 #include <thread>
@@ -36,9 +37,29 @@ constexpr int BYTE_PER_MB = 1024 * 1024;
 
 class TraceDumpExecutorTest : public testing::Test {
 public:
-    static void SetUpTestCase(void) {}
-    static void TearDownTestCase(void) {}
-    void SetUp() {}
+    static void SetUpTestCase(void)
+    {
+        system("service_control stop hiview");
+    }
+
+    static void TearDownTestCase(void)
+    {
+        system("service_control start hiview");
+    }
+
+    void SetUp()
+    {
+        std::set<std::string> tracefiles;
+        GetTraceFileNamesInDir(tracefiles, TraceDumpType::TRACE_CACHE);
+        GetTraceFileNamesInDir(tracefiles, TraceDumpType::TRACE_RECORDING);
+        GetTraceFileNamesInDir(tracefiles, TraceDumpType::TRACE_SNAPSHOT);
+        for (auto& file : tracefiles) {
+            if (remove(file.c_str()) != 0) {
+                GTEST_LOG_(ERROR) << "remove " << file << " failed.";
+            }
+        }
+    }
+
     void TearDown() {}
 };
 
@@ -336,8 +357,8 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpPipeTest004, TestSize.Level2)
         _exit(0);
     }
 
-    auto submitTask = []() {
-        auto dumpPipe = std::make_shared<HitraceDumpPipe>(true);
+    auto dumpPipe = std::make_shared<HitraceDumpPipe>(true);
+    auto submitTask = [&dumpPipe]() {
         TraceDumpTask task = {
             .status = TraceDumpStatus::READ_DONE,
         };

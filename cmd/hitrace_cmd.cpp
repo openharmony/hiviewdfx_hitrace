@@ -835,12 +835,7 @@ static bool HandleRecordingShortText()
     auto openRet = g_traceCollector->OpenRecording(args);
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
-        if (openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_IS_OCCUPIED ||
-            openRet.retCode == OHOS::HiviewDFX::UCollect::UcError::TRACE_WRONG_MODE) {
-            return false;
-        } else {
-            return false;
-        }
+        return false;
     }
     ConsoleLog("start capture, please wait " + std::to_string(g_traceArgs.duration) + "s ...");
     sleep(g_traceArgs.duration);

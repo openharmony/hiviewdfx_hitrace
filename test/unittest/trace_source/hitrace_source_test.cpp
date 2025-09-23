@@ -105,7 +105,7 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest003, TestSize.Level2)
         ASSERT_FALSE(traceHdrPage->WriteTraceContent());
     } else {
         ASSERT_TRUE(traceHdrPage->WriteTraceContent());
-        ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
+        ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), sizeof(TraceFileContentHeader));
     }
     if (remove(TEST_TRACE_TEMP_FILE) != 0) {
         GTEST_LOG_(ERROR) << "Delete test trace file failed.";
@@ -144,7 +144,7 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest005, TestSize.Level2)
     auto tracePrintkFmt = traceSource->GetTracePrintkFmt();
     ASSERT_TRUE(tracePrintkFmt != nullptr);
     ASSERT_TRUE(tracePrintkFmt->WriteTraceContent());
-    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
+    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), sizeof(TraceFileContentHeader));
     if (remove(TEST_TRACE_TEMP_FILE) != 0) {
         GTEST_LOG_(ERROR) << "Delete test trace file failed.";
     }
@@ -181,11 +181,9 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest007, TestSize.Level2)
     ASSERT_TRUE(traceSource != nullptr);
     auto traceEventFmts = traceSource->GetTraceEventFmt();
     ASSERT_TRUE(traceEventFmts != nullptr);
-    if (access("/data/log/hitrace/saved_events_format", F_OK) == 0) {
-        ASSERT_EQ(remove("/data/log/hitrace/saved_events_format"), 0);
-    }
     ASSERT_TRUE(traceEventFmts->WriteTraceContent());
-    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
+    ASSERT_EQ(GetFileSize(TEST_TRACE_TEMP_FILE),
+        GetFileSize("/data/log/hitrace/saved_events_format") + sizeof(TraceFileContentHeader));
     if (remove(TEST_TRACE_TEMP_FILE) != 0) {
         GTEST_LOG_(ERROR) << "Delete test trace file failed.";
     }
@@ -202,11 +200,33 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest008, TestSize.Level2)
     ASSERT_TRUE(traceSource != nullptr);
     auto traceEventFmts = traceSource->GetTraceEventFmt();
     ASSERT_TRUE(traceEventFmts != nullptr);
+    ASSERT_TRUE(traceEventFmts->WriteTraceContent());
+    ASSERT_EQ(GetFileSize(TEST_TRACE_TEMP_FILE),
+        GetFileSize("/data/log/hitrace/saved_events_format") + sizeof(TraceFileContentHeader));
+    if (remove(TEST_TRACE_TEMP_FILE) != 0) {
+        GTEST_LOG_(ERROR) << "Delete test trace file failed.";
+    }
+}
+
+/**
+ * @tc.name: TraceSourceTest008_EX
+ * @tc.desc: Test TraceSourceHM class GetTraceEventFmt function.
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceSourceTest, TraceSourceTest008_EX, TestSize.Level2)
+{
     if (access("/data/log/hitrace/saved_events_format", F_OK) == 0) {
         ASSERT_EQ(remove("/data/log/hitrace/saved_events_format"), 0);
+        GTEST_LOG_(INFO) << "Delete saved_events_format file.";
     }
+    ASSERT_FALSE(access("/data/log/hitrace/saved_events_format", F_OK) == 0);
+    std::shared_ptr<ITraceSource> traceSource = std::make_shared<TraceSourceHM>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+    ASSERT_TRUE(traceSource != nullptr);
+    auto traceEventFmts = traceSource->GetTraceEventFmt();
+    ASSERT_TRUE(traceEventFmts != nullptr);
     ASSERT_TRUE(traceEventFmts->WriteTraceContent());
-    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
+    ASSERT_EQ(GetFileSize(TEST_TRACE_TEMP_FILE),
+        GetFileSize("/data/log/hitrace/saved_events_format") + sizeof(TraceFileContentHeader));
     if (remove(TEST_TRACE_TEMP_FILE) != 0) {
         GTEST_LOG_(ERROR) << "Delete test trace file failed.";
     }
@@ -224,7 +244,7 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest009, TestSize.Level2)
     auto traceCmdLines = traceSource->GetTraceCmdLines();
     ASSERT_TRUE(traceCmdLines != nullptr);
     ASSERT_TRUE(traceCmdLines->WriteTraceContent());
-    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
+    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), sizeof(TraceFileContentHeader));
     if (remove(TEST_TRACE_TEMP_FILE) != 0) {
         GTEST_LOG_(ERROR) << "Delete test trace file failed.";
     }
@@ -242,7 +262,7 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest010, TestSize.Level2)
     auto traceCmdLines = traceSource->GetTraceCmdLines();
     ASSERT_TRUE(traceCmdLines != nullptr);
     ASSERT_TRUE(traceCmdLines->WriteTraceContent());
-    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
+    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), sizeof(TraceFileContentHeader));
     if (remove(TEST_TRACE_TEMP_FILE) != 0) {
         GTEST_LOG_(ERROR) << "Delete test trace file failed.";
     }
@@ -260,7 +280,7 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest011, TestSize.Level2)
     auto traceTgids = traceSource->GetTraceTgids();
     ASSERT_TRUE(traceTgids != nullptr);
     ASSERT_TRUE(traceTgids->WriteTraceContent());
-    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
+    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), sizeof(TraceFileContentHeader));
     if (remove(TEST_TRACE_TEMP_FILE) != 0) {
         GTEST_LOG_(ERROR) << "Delete test trace file failed.";
     }
@@ -278,7 +298,7 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest012, TestSize.Level2)
     auto traceTgids = traceSource->GetTraceTgids();
     ASSERT_TRUE(traceTgids != nullptr);
     ASSERT_TRUE(traceTgids->WriteTraceContent());
-    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
+    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), sizeof(TraceFileContentHeader));
     if (remove(TEST_TRACE_TEMP_FILE) != 0) {
         GTEST_LOG_(ERROR) << "Delete test trace file failed.";
     }
@@ -314,7 +334,7 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest013, TestSize.Level2)
     ASSERT_EQ(traceCpuRaw->GetDumpStatus(), TraceErrorCode::SUCCESS);
     ASSERT_LT(traceCpuRaw->GetFirstPageTimeStamp(), std::numeric_limits<uint64_t>::max());
     ASSERT_GT(traceCpuRaw->GetLastPageTimeStamp(), 0);
-    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
+    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), sizeof(TraceFileContentHeader));
     ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
     if (remove(TEST_TRACE_TEMP_FILE) != 0) {
         GTEST_LOG_(ERROR) << "Delete test trace file failed.";
@@ -406,7 +426,7 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest016, TestSize.Level2)
     auto baseInfo = traceSource->GetTraceBaseInfo();
     ASSERT_TRUE(baseInfo != nullptr);
     ASSERT_TRUE(baseInfo->WriteTraceContent());
-    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
+    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), sizeof(TraceFileContentHeader));
     if (remove(TEST_TRACE_TEMP_FILE) != 0) {
         GTEST_LOG_(ERROR) << "Delete test trace file failed.";
     }
@@ -424,7 +444,7 @@ HWTEST_F(HitraceSourceTest, TraceSourceTest017, TestSize.Level2)
     auto baseInfo = traceSource->GetTraceBaseInfo();
     ASSERT_TRUE(baseInfo != nullptr);
     ASSERT_TRUE(baseInfo->WriteTraceContent());
-    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
+    ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), sizeof(TraceFileContentHeader));
     if (remove(TEST_TRACE_TEMP_FILE) != 0) {
         GTEST_LOG_(ERROR) << "Delete test trace file failed.";
     }

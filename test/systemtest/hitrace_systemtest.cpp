@@ -19,6 +19,7 @@
 #include <fstream>
 #include <gtest/gtest.h>
 #include <iostream>
+#include <set>
 #include <string>
 #include <unistd.h>
 #include <vector>
@@ -27,6 +28,7 @@
 #include "common_utils.h"
 #include "hitrace_define.h"
 #include "test_utils.h"
+#include "trace_file_utils.h"
 #include "securec.h"
 
 namespace OHOS {
@@ -69,6 +71,15 @@ public:
         ASSERT_TRUE(RunCmd("hitrace --trace_finish_nodump"));
         ASSERT_TRUE(RunCmd("hitrace --trace_finish --record"));
         ASSERT_TRUE(RunCmd("hitrace --stop_bgsrv"));
+        std::set<std::string> tracefiles;
+        GetTraceFileNamesInDir(tracefiles, TraceDumpType::TRACE_CACHE);
+        GetTraceFileNamesInDir(tracefiles, TraceDumpType::TRACE_RECORDING);
+        GetTraceFileNamesInDir(tracefiles, TraceDumpType::TRACE_SNAPSHOT);
+        for (auto& file : tracefiles) {
+            if (remove(file.c_str()) != 0) {
+                GTEST_LOG_(ERROR) << "remove " << file << " failed.";
+            }
+        }
     }
     void TearDown() {}
 

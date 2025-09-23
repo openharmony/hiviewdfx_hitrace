@@ -503,6 +503,7 @@ void TraceDumpExecutor::ReadRawTraceLoop()
             } else {
                 HILOG_INFO(LOG_CORE, "ReadRawTraceLoop : read raw trace done, taskid[%{public}" PRIu64 "]",
                     currentTask.time);
+                std::lock_guard<std::mutex> lck(taskQueueMutex_);
                 writeCondVar_.notify_one();
             }
         }
@@ -626,6 +627,7 @@ void TraceDumpExecutor::TraceDumpTaskMonitor()
             HILOG_INFO(LOG_CORE, "TraceDumpTaskMonitor : no task, dump process exit.");
             g_readFlag.store(false);
             g_writeFlag.store(false);
+            std::lock_guard<std::mutex> lck(taskQueueMutex_);
             readCondVar_.notify_all();
             writeCondVar_.notify_all();
             break;

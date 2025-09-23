@@ -14,6 +14,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <set>
 #include <string>
 
 #include "hitrace_dump.h"
@@ -42,6 +43,15 @@ public:
 void HitraceAsyncReadTimeoutTest::SetUp()
 {
     CloseTrace();
+    std::set<std::string> tracefiles;
+    GetTraceFileNamesInDir(tracefiles, TraceDumpType::TRACE_CACHE);
+    GetTraceFileNamesInDir(tracefiles, TraceDumpType::TRACE_RECORDING);
+    GetTraceFileNamesInDir(tracefiles, TraceDumpType::TRACE_SNAPSHOT);
+    for (auto& file : tracefiles) {
+        if (remove(file.c_str()) != 0) {
+            GTEST_LOG_(ERROR) << "remove " << file << " failed.";
+        }
+    }
 }
 
 namespace {
