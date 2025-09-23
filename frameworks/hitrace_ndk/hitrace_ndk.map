@@ -33,6 +33,8 @@
         "OH_HiTrace_FinishAsyncTraceEx";
         "OH_HiTrace_CountTraceEx";
         "OH_HiTrace_IsTraceEnabled";
+        "OH_HiTrace_RegisterTraceListener";
+        "OH_HiTrace_UnregisterTraceListener";
     };
   local:
     *;

@@ -52,6 +52,10 @@ void CountTraceExCwrapper(HiTraceOutputLevel level, uint64_t tag, const char* na
 
 bool IsTagEnabledCwrapper(uint64_t tag);
 
+int32_t RegisterTraceListenerCwrapper(TraceEventListener callback);
+
+int32_t UnregisterTraceListenerCwrapper(int32_t index);
+
 #ifdef __cplusplus
 }
 #endif

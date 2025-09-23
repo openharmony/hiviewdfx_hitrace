@@ -256,6 +256,26 @@ HWTEST_F(HitraceMeterNDKTest, HitraceMeterNDKInterfaceTest007, TestSize.Level1)
 
     GTEST_LOG_(INFO) << "HitraceMeterNDKInterfaceTest007: end.";
 }
+
+/**
+ * @tc.name: HitraceMeterNDKInterfaceTest008
+ * @tc.desc: Testing normal trace switch notification callback register and unregister
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterNDKTest, HitraceMeterNDKInterfaceTest008, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HitraceMeterNDKInterfaceTest008: start.";
+
+    int32_t ret = OH_HiTrace_RegisterTraceListener([](bool enable) {
+        GTEST_LOG_(INFO) << "HitraceMeterNDKInterfaceTest008 listener, enable: " << enable;
+    });
+    ASSERT_EQ(ret, 0);
+
+    ret = OH_HiTrace_UnregisterTraceListener(ret);
+    ASSERT_EQ(ret, 0);
+
+    GTEST_LOG_(INFO) << "HitraceMeterNDKInterfaceTest008: end.";
+}
 }
 }
 }

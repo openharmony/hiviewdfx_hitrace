@@ -81,6 +81,16 @@ bool IsTagEnabledCwrapper(uint64_t tag)
     return IsTagEnabled(tag);
 }
 
+int32_t RegisterTraceListenerCwrapper(TraceEventListener callback)
+{
+    return RegisterTraceListener(callback);
+}
+
+int32_t UnregisterTraceListenerCwrapper(int32_t index)
+{
+    return UnregisterTraceListener(index);
+}
+
 #ifdef __cplusplus
 }
 #endif

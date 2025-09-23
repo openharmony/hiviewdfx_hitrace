@@ -16,6 +16,7 @@
 #ifndef INTERFACES_INNERKITS_NATIVE_HITRACE_METER_H
 #define INTERFACES_INNERKITS_NATIVE_HITRACE_METER_H
 
+#include <mutex>
 #include <string>
 #include <unistd.h>
 
@@ -24,6 +25,11 @@
 #include <hilog/log.h>
 #include "param/sys_param.h"
 #endif
+
+using ExecuteCallbackNapi = void (*)(void*, bool);
+using DeleteCallbackNapi = void (*)(void*);
+using ExecuteCallbackAni = void (*)(void*, bool);
+using DeleteCallbackAni = void (*)(void*);
 
 #ifdef __cplusplus
 extern "C" {
@@ -114,6 +120,41 @@ constexpr uint64_t HITRACE_TAG_COMMERCIAL = (1ULL << 5); // Tag for commercial v
 #define HITRACE_METER_FMT_EX(level, TAG, customArgs, fmt, ...) \
     HitraceMeterFmtScopedEx TOKENPASTE2(tracer, __LINE__)(level, TAG, customArgs, fmt, ##__VA_ARGS__)
 
+enum class CallbackType {
+    Native,
+    Napi,
+    Ani
+};
+
+struct CallbackHandle {
+    void* callback = nullptr;
+    CallbackType type = CallbackType::Native;
+};
+
+class CallbackRegistry {
+public:
+    static CallbackRegistry& Instance()
+    {
+        static CallbackRegistry instance;
+        return instance;
+    }
+
+    int32_t Register(void* callback, CallbackType type = CallbackType::Native);
+    int32_t Unregister(int32_t index);
+    void ExecuteAll(bool appTagEnable);
+    void ExecuteOne(int32_t index, bool appTagEnable);
+
+    void SetCallbacksNapi(ExecuteCallbackNapi executeCallbackNapi, DeleteCallbackNapi deleteCallbackNapi);
+    void SetCallbacksAni(ExecuteCallbackAni executeCallbackAni, DeleteCallbackAni deleteCallbackAni);
+private:
+    mutable std::mutex mutex_;
+    std::unordered_map<int32_t, CallbackHandle> callbacks_;
+    ExecuteCallbackNapi executeCallbackNapi_;
+    DeleteCallbackNapi deleteCallbackNapi_;
+    ExecuteCallbackAni executeCallbackAni_;
+    DeleteCallbackAni deleteCallbackAni_;
+};
+
 /**
  * Update trace label when your process has started.
  */
@@ -189,6 +230,16 @@ void CountTraceWrapper(uint64_t tag, const char* name, int64_t count);
 
 bool IsTagEnabled(uint64_t tag);
 void ParseTagBits(const uint64_t tag, char* bitStr, const int bitStrSize);
+
+int32_t RegisterTraceListener(TraceEventListener callback);
+int32_t UnregisterTraceListener(int32_t index);
+int32_t RegisterTraceListenerNapi(void* callback);
+int32_t UnregisterTraceListenerNapi(int32_t index);
+int32_t RegisterTraceListenerAni(void* callback);
+int32_t UnregisterTraceListenerAni(int32_t index);
+
+void SetCallbacksNapi(ExecuteCallbackNapi executeCallbackNapi, DeleteCallbackNapi deleteCallbackNapi);
+void SetCallbacksAni(ExecuteCallbackAni executeCallbackAni, DeleteCallbackAni deleteCallbackAni);
 
 enum RetType {
     RET_SUCC = 0, // Successful

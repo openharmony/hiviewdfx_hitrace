@@ -53,6 +53,14 @@ const char* const HITRACE_OUTPUT_LEVEL = "HiTraceOutputLevel";
 #endif
 
 using STR_NUM_PARAM_FUNC = std::function<bool(std::string, napi_value&)>;
+constexpr int32_t INVALID_PARAMETER = -2;
+constexpr int32_t INVALID_INDEX = -2;
+struct CallbackContext {
+    napi_env env = nullptr;
+    napi_ref callbackRef = nullptr;
+    napi_threadsafe_function tsFunc = nullptr;
+    bool traceEnable;
+};
 
 bool TypeCheck(const napi_env& env, const napi_value& value, const napi_valuetype expectType)
 {
@@ -360,6 +368,98 @@ static napi_value JSIsTraceEnabled(napi_env env, napi_callback_info info)
     return val;
 }
 
+static void JsExcuteCallBack(void* ctx, bool enable)
+{
+    CallbackContext* context = reinterpret_cast<CallbackContext*>(ctx);
+    if (context != nullptr) {
+        context->traceEnable = enable;
+        napi_acquire_threadsafe_function(context->tsFunc);
+        napi_call_threadsafe_function(context->tsFunc, context, napi_tsfn_nonblocking);
+    }
+}
+
+static void JsDeleteCallback(void* ctx)
+{
+    CallbackContext* context = reinterpret_cast<CallbackContext*>(ctx);
+    if (context != nullptr) {
+        napi_release_threadsafe_function(context->tsFunc, napi_tsfn_release);
+        napi_delete_reference(context->env, context->callbackRef);
+        delete context;
+    }
+}
+
+static void JsThreadSafeCall(napi_env env, napi_value callback, void* context, void* data)
+{
+    CallbackContext *callbackContext = reinterpret_cast<CallbackContext *>(data);
+    if (callbackContext == nullptr) {
+        return;
+    }
+    napi_get_reference_value(env, callbackContext->callbackRef, &callback);
+
+    if (!TypeCheck(env, callback, napi_function)) {
+        return;
+    }
+
+    napi_value argv;
+    napi_get_boolean(env, callbackContext->traceEnable, &argv);
+    napi_value result = nullptr;
+    napi_call_function(env, nullptr, callback, 1, &argv, &result);
+}
+
+static napi_value JSRegisterTraceListener(napi_env env, napi_callback_info info)
+{
+    napi_value ret = nullptr;
+    napi_create_int32(env, INVALID_PARAMETER, &ret);
+    size_t argc = ARGC_ONE;
+    napi_value argv[ARGC_ONE];
+    napi_status status = napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    if (status != napi_ok) {
+        HILOG_ERROR(LOG_CORE, "JSRegisterTraceListener napi_get_cb_info failed.");
+        return ret;
+    }
+
+    napi_value callback = argv[ARG_FIRST];
+    if (!TypeCheck(env, callback, napi_function)) {
+        return ret;
+    }
+
+    napi_value workName;
+    napi_create_string_utf8(env, "TraceListenerCallback", NAPI_AUTO_LENGTH, &workName);
+    CallbackContext* asyncContext = new CallbackContext();
+    napi_create_threadsafe_function(env, nullptr, nullptr, workName, 0, 1, nullptr, nullptr, nullptr,
+        JsThreadSafeCall, &asyncContext->tsFunc);
+    asyncContext->env = env;
+    napi_create_reference(env, callback, 1, &asyncContext->callbackRef);
+
+    SetCallbacksNapi(JsExcuteCallBack, JsDeleteCallback);
+    int32_t registerRet = RegisterTraceListenerNapi(reinterpret_cast<void *>(asyncContext));
+    if (registerRet < 0) {
+        JsDeleteCallback(reinterpret_cast<void *>(asyncContext));
+    }
+    napi_create_int32(env, registerRet, &ret);
+    return ret;
+}
+
+static napi_value JSUnregisterTraceListener(napi_env env, napi_callback_info info)
+{
+    napi_value ret = nullptr;
+    napi_create_int32(env, INVALID_INDEX, &ret);
+    size_t argc = ARGC_ONE;
+    napi_value argv[ARGC_ONE];
+    napi_status status = napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    if (status != napi_ok) {
+        HILOG_ERROR(LOG_CORE, "JSUnregisterTraceListener napi_get_cb_info failed.");
+        return ret;
+    }
+    int32_t index;
+    if (!ParseInt32Param(env, argv[ARG_FIRST], index)) {
+        return ret;
+    }
+    int32_t unregisterRet = UnregisterTraceListenerNapi(index);
+    napi_create_int32(env, unregisterRet, &ret);
+    return ret;
+}
+
 static napi_value TraceLevelConstructor(napi_env env, napi_callback_info info)
 {
     napi_value thisArg = nullptr;
@@ -413,6 +513,8 @@ static napi_value HiTraceMeterInit(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("startAsyncTrace", JSStartAsyncTrace),
         DECLARE_NAPI_FUNCTION("finishAsyncTrace", JSFinishAsyncTrace),
         DECLARE_NAPI_FUNCTION("isTraceEnabled", JSIsTraceEnabled),
+        DECLARE_NAPI_FUNCTION("registerTraceListener", JSRegisterTraceListener),
+        DECLARE_NAPI_FUNCTION("unregisterTraceListener", JSUnregisterTraceListener),
     };
     NAPI_CALL(env, napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc));
     InitTraceLevelEnum(env, exports);

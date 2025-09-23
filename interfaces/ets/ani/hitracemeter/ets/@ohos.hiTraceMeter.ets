@@ -22,6 +22,7 @@ export default namespace hiTraceMeter {
         COMMERCIAL = 3,
         MAX = 3
     }
+    type TraceEventListener = (traceStatus: boolean) => void;
 
     export native function startTrace(name: string, taskId: int): void;
     export native function finishTrace(name: string, taskId: int): void;
@@ -33,4 +34,6 @@ export default namespace hiTraceMeter {
     export native function finishAsyncTrace(level: HiTraceOutputLevel, name: string, taskId: int): void;
     export native function traceByValue(level: HiTraceOutputLevel, name: string, count: long): void;
     export native function isTraceEnabled(): boolean;
+    export native function registerTraceListener(callback: TraceEventListener): int;
+    export native function unregisterTraceListener(index: int): int;
 }
