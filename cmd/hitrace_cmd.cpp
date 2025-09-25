@@ -58,6 +58,42 @@ using namespace OHOS::HiviewDFX::Hitrace;
 #endif
 
 namespace {
+struct TraceArgs {
+    std::string tags;
+    std::string tagGroups;
+    std::string clockType;
+    std::string level;
+    int bufferSize = 0;
+    int fileSize = 0;
+    bool overwrite = true;
+    std::string output;
+
+    int duration = 0;
+    bool isCompress = false;
+};
+
+struct TraceSysEventParams {
+    std::string opt;
+    std::string caller;
+    std::string tags;
+    int duration = 0;
+    int bufferSize = 0;
+    int fileSize = 0;
+    int fileLimit = 0;
+    std::string clockType;
+    bool isCompress = false;
+    bool isRaw = false;
+    bool isOverwrite = true;
+    int errorCode = 0;
+    std::string errorMessage;
+};
+
+enum CmdErrorCode {
+    OPEN_ROOT_PATH_FAILURE = 2001,
+    OPEN_FILE_PATH_FAILURE = 2002,
+    TRACING_ON_CLOSED = 2003,
+};
+
 const std::map<RunningState, std::string> STATE_INFO = {
     { STATE_NULL, "STATE_NULL" },
     { RECORDING_SHORT_TEXT, "RECORDING_SHORT_TEXT" },

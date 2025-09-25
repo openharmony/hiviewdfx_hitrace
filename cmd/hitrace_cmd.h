@@ -1,36 +1,6 @@
 #ifndef HITRACE_CMD_DEFINE_H
 #define HITRACE_CMD_DEFINE_H
 
-struct TraceArgs {
-    std::string tags;
-    std::string tagGroups;
-    std::string clockType;
-    std::string level;
-    int bufferSize = 0;
-    int fileSize = 0;
-    bool overwrite = true;
-    std::string output;
-
-    int duration = 0;
-    bool isCompress = false;
-};
-
-struct TraceSysEventParams {
-    std::string opt;
-    std::string caller;
-    std::string tags;
-    int duration = 0;
-    int bufferSize = 0;
-    int fileSize = 0;
-    int fileLimit = 0;
-    std::string clockType;
-    bool isCompress = false;
-    bool isRaw = false;
-    bool isOverwrite = true;
-    int errorCode = 0;
-    std::string errorMessage;
-};
-
 enum RunningState {
     /* Initial value */
     STATE_NULL = 0,
@@ -59,12 +29,6 @@ enum RunningState {
     /* Set system parameter */
     SET_TRACE_LEVEL = 33,    // --trace_level level
     GET_TRACE_LEVEL = 34,    // --trace_level
-};
-
-enum CmdErrorCode {
-    OPEN_ROOT_PATH_FAILURE = 2001,
-    OPEN_FILE_PATH_FAILURE = 2002,
-    TRACING_ON_CLOSED = 2003,
 };
 
 using CommandFunc = std::function<bool(const RunningState)>;
