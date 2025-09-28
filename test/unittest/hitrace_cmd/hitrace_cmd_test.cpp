@@ -373,6 +373,11 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest010, TestSize.Level1)
     GTEST_LOG_(INFO) << "HitraceCMDTest010: end.";
 }
 
+/**
+ * @tc.name: HitraceCMDTest011
+ * @tc.desc: test the abnormal input --help
+ * @tc.type: FUNC
+ */
 HWTEST_F(HitraceCMDTest, HitraceCMDTest011, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceCMDTest011: start.";
@@ -386,6 +391,11 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest011, TestSize.Level1)
     GTEST_LOG_(INFO) << "HitraceCMDTest011: end.";
 }
 
+/**
+ * @tc.name: HitraceCMDTest012
+ * @tc.desc: test the abnormal input --list_categories
+ * @tc.type: FUNC
+ */
 HWTEST_F(HitraceCMDTest, HitraceCMDTest012, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceCMDTest012: start.";
@@ -399,6 +409,11 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest012, TestSize.Level1)
     GTEST_LOG_(INFO) << "HitraceCMDTest012: end.";
 }
 
+/**
+ * @tc.name: HitraceCMDTest013
+ * @tc.desc: test the abnormal longopt input time,file_size,buffer_size,trace_clock,overwritr
+ * @tc.type: FUNC
+ */
 HWTEST_F(HitraceCMDTest, HitraceCMDTest013, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceCMDTest013: start.";
@@ -414,6 +429,11 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest013, TestSize.Level1)
     GTEST_LOG_(INFO) << "HitraceCMDTest013: end.";
 }
 
+/**
+ * @tc.name: HitraceCMDTest014
+ * @tc.desc: test the abnormal longopt input start_bgsrv,dump_bgsrv,stop_bgsrv
+ * @tc.type: FUNC
+ */
 HWTEST_F(HitraceCMDTest, HitraceCMDTest014, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceCMDTest014: start.";
@@ -442,6 +462,11 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest014, TestSize.Level1)
     GTEST_LOG_(INFO) << "HitraceCMDTest014: end.";
 }
 
+/**
+ * @tc.name: HitraceCMDTest015
+ * @tc.desc: test the abnormal longopt input trace_begin,trace_dump,trace_finish_nodump
+ * @tc.type: FUNC
+ */
 HWTEST_F(HitraceCMDTest, HitraceCMDTest015, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceCMDTest015: start.";
@@ -470,6 +495,11 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest015, TestSize.Level1)
     GTEST_LOG_(INFO) << "HitraceCMDTest015: end.";
 }
 
+/**
+ * @tc.name: HitraceCMDTest016
+ * @tc.desc: test the error longopt input
+ * @tc.type: FUNC
+ */
 HWTEST_F(HitraceCMDTest, HitraceCMDTest016, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceCMDTest016: start.";
@@ -483,6 +513,11 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest016, TestSize.Level1)
     GTEST_LOG_(INFO) << "HitraceCMDTest016: end.";
 }
 
+/**
+ * @tc.name: HitraceCMDTest017
+ * @tc.desc: test the error input
+ * @tc.type: FUNC
+ */
 HWTEST_F(HitraceCMDTest, HitraceCMDTest017, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceCMDTest017: start.";
@@ -496,6 +531,11 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest017, TestSize.Level1)
     GTEST_LOG_(INFO) << "HitraceCMDTest017: end.";
 }
 
+/**
+ * @tc.name: HitraceCMDTest017
+ * @tc.desc: test the buffer_size illegal input
+ * @tc.type: FUNC
+ */
 HWTEST_F(HitraceCMDTest, HitraceCMDTest018, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceCMDTest018: start.";
@@ -509,6 +549,11 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest018, TestSize.Level1)
     GTEST_LOG_(INFO) << "HitraceCMDTest018: end.";
 }
 
+/**
+ * @tc.name: HitraceCMDTest017
+ * @tc.desc: test the trace_clock illegal input
+ * @tc.type: FUNC
+ */
 HWTEST_F(HitraceCMDTest, HitraceCMDTest019, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceCMDTest019: start.";
