@@ -25,13 +25,13 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <thread>
 #include <unistd.h>
-#include <map>
 #include <vector>
 #include <zlib.h>
 
@@ -39,7 +39,6 @@
 #include "common_utils.h"
 #include "hilog/log.h"
 #include "hisysevent_c.h"
-#include "hitrace_cmd.h"
 #include "hitrace_meter.h"
 #include "parameters.h"
 #include "securec.h"
@@ -474,6 +473,7 @@ inline bool StrToNum(const std::string& sString, T &tX)
 {
     std::istringstream iStream(sString);
     return (iStream >> tX) && iStream.eof();
+}
 
 static bool SetRunningState(const RunningState& setValue)
 {

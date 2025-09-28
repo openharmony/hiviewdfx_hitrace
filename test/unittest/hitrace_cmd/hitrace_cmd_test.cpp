@@ -495,6 +495,32 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest017, TestSize.Level1)
 
     GTEST_LOG_(INFO) << "HitraceCMDTest017: end.";
 }
+
+HWTEST_F(HitraceCMDTest, HitraceCMDTest018, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HitraceCMDTest018: start.";
+
+    std::string cmd = "hitrace --trace_begin app ace -b 102400ss";
+    std::vector<std::string> keywords = {
+        "illegal input",
+    };
+    ASSERT_TRUE(CheckTraceCommandOutput(cmd, keywords));
+
+    GTEST_LOG_(INFO) << "HitraceCMDTest018: end.";
+}
+
+HWTEST_F(HitraceCMDTest, HitraceCMDTest019, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HitraceCMDTest019: start.";
+
+    std::string cmd = "hitrace --trace_begin app ace --trace_clock boott";
+    std::vector<std::string> keywords = {
+        "illegal input",
+    };
+    ASSERT_TRUE(CheckTraceCommandOutput(cmd, keywords));
+
+    GTEST_LOG_(INFO) << "HitraceCMDTest019: end.";
+}
 }
 }
 }
