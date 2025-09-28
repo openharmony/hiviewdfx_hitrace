@@ -506,7 +506,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest016, TestSize.Level1)
 
     std::string cmd = "hitrace --TEST";
     std::vector<std::string> keywords = {
-        "unrecognized option",
+        "parsing args failed",
     };
     ASSERT_TRUE(CheckTraceCommandOutput(cmd, keywords));
 
@@ -524,7 +524,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest017, TestSize.Level1)
 
     std::string cmd = "hitrace -m";
     std::vector<std::string> keywords = {
-        "unrecognized option",
+        "parsing args failed",
     };
     ASSERT_TRUE(CheckTraceCommandOutput(cmd, keywords));
 
