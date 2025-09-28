@@ -418,7 +418,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest013, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceCMDTest013: start.";
 
-    std::string cmd = 
+    std::string cmd =
         "hitrace --raw --time 5 --file_size 51200 --buffer_size 102400 --trace_clock boot --overwrite ace app ability";
     std::vector<std::string> keywords = {
         "RECORDING_SHORT_RAW",
