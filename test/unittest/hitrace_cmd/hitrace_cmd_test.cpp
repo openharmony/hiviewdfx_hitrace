@@ -375,7 +375,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest010, TestSize.Level1)
 
 /**
  * @tc.name: HitraceCMDTest011
- * @tc.desc: test the abnormal input --help
+ * @tc.desc: test the normal input --help
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceCMDTest, HitraceCMDTest011, TestSize.Level1)
@@ -393,7 +393,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest011, TestSize.Level1)
 
 /**
  * @tc.name: HitraceCMDTest012
- * @tc.desc: test the abnormal input --list_categories
+ * @tc.desc: test the normal input --list_categories
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceCMDTest, HitraceCMDTest012, TestSize.Level1)
@@ -411,7 +411,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest012, TestSize.Level1)
 
 /**
  * @tc.name: HitraceCMDTest013
- * @tc.desc: test the abnormal longopt input time,file_size,buffer_size,trace_clock,overwritr
+ * @tc.desc: test the normal longopt input time,file_size,buffer_size,trace_clock,overwritr
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceCMDTest, HitraceCMDTest013, TestSize.Level1)
@@ -419,7 +419,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest013, TestSize.Level1)
     GTEST_LOG_(INFO) << "HitraceCMDTest013: start.";
 
     std::string cmd =
-        "hitrace --raw --time 5 --file_size 51200 --buffer_size 102400 --trace_clock boot --overwrite ace app ability";
+        "hitrace --raw --time 1 --file_size 51200 --buffer_size 102400 --trace_clock boot --overwrite ace app ability";
     std::vector<std::string> keywords = {
         "RECORDING_SHORT_RAW",
         "start capture",
@@ -431,7 +431,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest013, TestSize.Level1)
 
 /**
  * @tc.name: HitraceCMDTest014
- * @tc.desc: test the abnormal longopt input start_bgsrv,dump_bgsrv,stop_bgsrv
+ * @tc.desc: test normal trace dump in snapshot mode
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceCMDTest, HitraceCMDTest014, TestSize.Level1)
@@ -464,7 +464,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest014, TestSize.Level1)
 
 /**
  * @tc.name: HitraceCMDTest015
- * @tc.desc: test the abnormal longopt input trace_begin,trace_dump,trace_finish_nodump
+ * @tc.desc: test normal text trace dump with longopt input parameters
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceCMDTest, HitraceCMDTest015, TestSize.Level1)
@@ -504,9 +504,9 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest016, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceCMDTest016: start.";
 
-    std::string cmd = "hitrace TEST";
+    std::string cmd = "hitrace --TEST";
     std::vector<std::string> keywords = {
-        "not support category",
+        "unrecognized option",
     };
     ASSERT_TRUE(CheckTraceCommandOutput(cmd, keywords));
 
@@ -522,9 +522,9 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest017, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceCMDTest017: start.";
 
-    std::string cmd = "hitrace m";
+    std::string cmd = "hitrace -m";
     std::vector<std::string> keywords = {
-        "not support category",
+        "unrecognized option",
     };
     ASSERT_TRUE(CheckTraceCommandOutput(cmd, keywords));
 
