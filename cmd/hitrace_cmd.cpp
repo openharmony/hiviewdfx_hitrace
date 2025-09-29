@@ -503,8 +503,8 @@ static bool CheckClock(const char* clock)
     if (clock == nullptr) {
         return false;
     }
-    std::string clockTyep(clock);
-    if (CLOCK_TYPE.count(clockTyep) == 0) {
+    std::string clockType(clock);
+    if (CLOCK_TYPE.count(clockType) == 0) {
         return false;
     }
     return true;
@@ -512,6 +512,9 @@ static bool CheckClock(const char* clock)
 
 static bool HandleOptBuffersize(const RunningState& setValue)
 {
+    if (optarg == nullptr) {
+        return false;
+    }
     int bufferSizeKB = 0;
     int maxBufferSizeKB = MAX_BUFFER_SIZE;
     if (IsHmKernel()) {
@@ -544,6 +547,9 @@ static bool HandleOptTraceclock(const RunningState& setValue)
 
 static bool HandleOptTime(const RunningState& setValue)
 {
+    if (optarg == nullptr) {
+        return false;
+    }
     bool isTrue = true;
     if (!StrToNum(optarg, g_traceArgs.duration)) {
         ConsoleLog("error: the time is illegal input. eg: \"--time 5\".");
@@ -578,6 +584,9 @@ static bool HandleOptRecord(const RunningState& setValue)
 
 static bool HandleOptFilesize(const RunningState& setValue)
 {
+    if (optarg == nullptr) {
+        return false;
+    }
     bool isTrue = true;
     int fileSizeKB = 0;
     if (!StrToNum(optarg, fileSizeKB)) {
@@ -620,6 +629,9 @@ static bool ParseLongOpt(const std::string& cmd, int optionIndex)
 
 static bool SetBufferSize()
 {
+    if (optarg == nullptr) {
+        return false;
+    }
     bool isTrue = true;
     int bufferSizeKB = 0;
     int maxBufferSizeKB = MAX_BUFFER_SIZE;
@@ -653,6 +665,10 @@ static bool ParseOpt(int opt, char** argv, int optIndex)
             isTrue = SetRunningState(SHOW_LIST_CATEGORY);
             break;
         case 't': {
+            if (optarg == nullptr) {
+                isTrue = false;
+                break;
+            }
             if (!StrToNum(optarg, g_traceArgs.duration)) {
                 ConsoleLog("error: the time is illegal input. eg: \"--time 5\".");
                 isTrue = false;
