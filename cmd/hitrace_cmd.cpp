@@ -25,13 +25,13 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <thread>
 #include <unistd.h>
-#include <map>
 #include <vector>
 #include <zlib.h>
 
@@ -55,6 +55,65 @@ using namespace OHOS::HiviewDFX::Hitrace;
 #undef LOG_TAG
 #define LOG_TAG "Hitrace"
 #endif
+
+namespace {
+enum RunningState {
+    /* Initial value */
+    STATE_NULL = 0,
+
+    /* Record a short trace */
+    RECORDING_SHORT_TEXT = 1, // --text
+    RECORDING_SHORT_RAW = 2,  // --raw
+
+    /* Record a long trace */
+    RECORDING_LONG_BEGIN = 10,         // --trace_begin
+    RECORDING_LONG_DUMP = 11,          // --trace_dump
+    RECORDING_LONG_FINISH = 12,        // --trace_finish
+    RECORDING_LONG_FINISH_NODUMP = 13, // --trace_finish_nodump
+    RECORDING_LONG_BEGIN_RECORD = 14,  // --trace_begin --record
+    RECORDING_LONG_FINISH_RECORD = 15, // --trace_finish --record
+
+    /* Manipulating trace services in snapshot mode */
+    SNAPSHOT_START = 20, // --start_bgsrv
+    SNAPSHOT_DUMP = 21,  // --dump_bgsrv
+    SNAPSHOT_STOP = 22,  // --stop_bgsrv
+
+    /* Help Info */
+    SHOW_HELP = 31,          // -h, --help
+    SHOW_LIST_CATEGORY = 32, // -l, --list_categories
+
+    /* Set system parameter */
+    SET_TRACE_LEVEL = 33,    // --trace_level level
+    GET_TRACE_LEVEL = 34,    // --trace_level
+};
+}
+
+using CommandFunc = std::function<bool(const RunningState)>;
+using TaskFunc = std::function<bool()>;
+
+static bool HandleRecordingShortRaw();
+static bool HandleRecordingShortText();
+static bool HandleRecordingLongBegin();
+static bool HandleRecordingLongDump();
+static bool HandleRecordingLongFinish();
+static bool HandleRecordingLongFinishNodump();
+static bool HandleRecordingLongBeginRecord();
+static bool HandleRecordingLongFinishRecord();
+static bool HandleOpenSnapshot();
+static bool HandleDumpSnapshot();
+static bool HandleCloseSnapshot();
+static bool SetTraceLevel();
+static bool GetTraceLevel();
+
+static bool HandleOptBuffersize(const RunningState& setValue);
+static bool HandleOptTraceclock(const RunningState& setValue);
+static bool HandleOptTime(const RunningState& setValue);
+static bool HandleOptOutput(const RunningState& setValue);
+static bool HandleOptOverwrite(const RunningState& setValue);
+static bool HandleOptRecord(const RunningState& setValue);
+static bool HandleOptFilesize(const RunningState& setValue);
+static bool HandleOptTracelevel(const RunningState& setValue);
+static bool SetRunningState(const RunningState& setValue);
 
 namespace {
 struct TraceArgs {
@@ -85,36 +144,6 @@ struct TraceSysEventParams {
     bool isOverwrite = true;
     int errorCode = 0;
     std::string errorMessage;
-};
-
-enum RunningState {
-    /* Initial value */
-    STATE_NULL = 0,
-
-    /* Record a short trace */
-    RECORDING_SHORT_TEXT = 1, // --text
-    RECORDING_SHORT_RAW = 2,  // --raw
-
-    /* Record a long trace */
-    RECORDING_LONG_BEGIN = 10,         // --trace_begin
-    RECORDING_LONG_DUMP = 11,          // --trace_dump
-    RECORDING_LONG_FINISH = 12,        // --trace_finish
-    RECORDING_LONG_FINISH_NODUMP = 13, // --trace_finish_nodump
-    RECORDING_LONG_BEGIN_RECORD = 14,  // --trace_begin --record
-    RECORDING_LONG_FINISH_RECORD = 15, // --trace_finish --record
-
-    /* Manipulating trace services in snapshot mode */
-    SNAPSHOT_START = 20, // --start_bgsrv
-    SNAPSHOT_DUMP = 21,  // --dump_bgsrv
-    SNAPSHOT_STOP = 22,  // --stop_bgsrv
-
-    /* Help Info */
-    SHOW_HELP = 31,          // -h, --help
-    SHOW_LIST_CATEGORY = 32, // -l, --list_categories
-
-    /* Set system parameter */
-    SET_TRACE_LEVEL = 33,    // --trace_level level
-    GET_TRACE_LEVEL = 34,    // --trace_level
 };
 
 enum CmdErrorCode {
@@ -164,6 +193,77 @@ constexpr struct option LONG_OPTIONS[] = {
     { "get_level",           no_argument,       nullptr, 0 },
     { nullptr,               0,                 nullptr, 0 },
 };
+
+const std::unordered_map<RunningState, TaskFunc> TASK_TABLE = {
+    {RECORDING_SHORT_RAW, HandleRecordingShortRaw},
+    {RECORDING_SHORT_TEXT, HandleRecordingShortText},
+    {RECORDING_LONG_BEGIN, HandleRecordingLongBegin},
+    {RECORDING_LONG_DUMP, HandleRecordingLongDump},
+    {RECORDING_LONG_FINISH, HandleRecordingLongFinish},
+    {RECORDING_LONG_FINISH_NODUMP, HandleRecordingLongFinishNodump},
+    {RECORDING_LONG_BEGIN_RECORD, HandleRecordingLongBeginRecord},
+    {RECORDING_LONG_FINISH_RECORD, HandleRecordingLongFinishRecord},
+    {SNAPSHOT_START, HandleOpenSnapshot},
+    {SNAPSHOT_DUMP, HandleDumpSnapshot},
+    {SNAPSHOT_STOP, HandleCloseSnapshot},
+    {SET_TRACE_LEVEL, SetTraceLevel},
+    {GET_TRACE_LEVEL, GetTraceLevel}
+};
+
+const std::unordered_map<std::string, CommandFunc> COMMAND_TABLE = {
+    {"buffer_size", HandleOptBuffersize},
+    {"trace_clock", HandleOptTraceclock},
+    {"help", SetRunningState},
+    {"time",  HandleOptTime},
+    {"list_categories", SetRunningState},
+    {"output", HandleOptOutput},
+    {"overwrite", HandleOptOverwrite},
+    {"trace_begin",  SetRunningState},
+    {"trace_finish", SetRunningState},
+    {"trace_finish_nodump", SetRunningState},
+    {"trace_dump", SetRunningState},
+    {"record",  HandleOptRecord},
+    {"start_bgsrv", SetRunningState},
+    {"dump_bgsrv", SetRunningState},
+    {"stop_bgsrv", SetRunningState},
+    {"text",  SetRunningState},
+    {"raw", SetRunningState},
+    {"file_size", HandleOptFilesize},
+    {"trace_level", HandleOptTracelevel},
+    {"get_level",  SetRunningState}
+};
+
+std::unordered_map<std::string, RunningState> OPT_MAP = {
+    {"buffer_size", STATE_NULL},
+    {"trace_clock", STATE_NULL},
+    {"help", SHOW_HELP},
+    {"time",  STATE_NULL},
+    {"list_categories", SHOW_LIST_CATEGORY},
+    {"output", STATE_NULL},
+    {"overwrite", STATE_NULL},
+    {"trace_begin",  RECORDING_LONG_BEGIN},
+    {"trace_finish", RECORDING_LONG_FINISH},
+    {"trace_finish_nodump", RECORDING_LONG_FINISH_NODUMP},
+    {"trace_dump", RECORDING_LONG_DUMP},
+    {"record",  STATE_NULL},
+    {"start_bgsrv", SNAPSHOT_START},
+    {"dump_bgsrv", SNAPSHOT_DUMP},
+    {"stop_bgsrv", SNAPSHOT_STOP},
+    {"text",  RECORDING_SHORT_TEXT},
+    {"raw", RECORDING_SHORT_RAW},
+    {"file_size", STATE_NULL},
+    {"trace_level", SET_TRACE_LEVEL},
+    {"get_level",  GET_TRACE_LEVEL}
+};
+
+const std::set<std::string> CLOCK_TYPE = {
+    "boot",
+    "mono",
+    "global",
+    "perf",
+    "uptime"
+};
+
 const unsigned int CHUNK_SIZE = 65536;
 
 // support customization of some parameters
@@ -372,8 +472,7 @@ template <typename T>
 inline bool StrToNum(const std::string& sString, T &tX)
 {
     std::istringstream iStream(sString);
-    iStream >> tX;
-    return !iStream.fail();
+    return (iStream >> tX) && iStream.eof();
 }
 
 static bool SetRunningState(const RunningState& setValue)
@@ -404,118 +503,135 @@ static bool CheckClock(const char* clock)
     if (clock == nullptr) {
         return false;
     }
-
-    static constexpr size_t maxLen = 6;
-    static constexpr size_t minLen = 4;
-    size_t len = strlen(clock);
-    if (len < minLen || len > maxLen) {
-        return false;
-    }
-
-    const char* c = clock;
-    while (*c != '\0') {
-        if ((*c >= 'a' && *c <= 'z') || (*c >= 'A' && *c <= 'Z')) {
-            ++c;
-            continue;
-        }
+    std::string clockType(clock);
+    if (CLOCK_TYPE.count(clockType) == 0) {
         return false;
     }
     return true;
 }
 
-static bool ParseLongOpt(const std::string& cmd, int optionIndex)
+static bool HandleOptBuffersize(const RunningState& setValue)
+{
+    if (optarg == nullptr) {
+        return false;
+    }
+    int bufferSizeKB = 0;
+    int maxBufferSizeKB = MAX_BUFFER_SIZE;
+    if (IsHmKernel()) {
+        maxBufferSizeKB = HM_MAX_BUFFER_SIZE;
+    }
+    bool isTrue = true;
+    if (!StrToNum(optarg, bufferSizeKB)) {
+        ConsoleLog("error: buffer size is illegal input. eg: \"--buffer_size 18432\".");
+        isTrue = false;
+    } else if (bufferSizeKB < MIN_BUFFER_SIZE || bufferSizeKB > maxBufferSizeKB) {
+        ConsoleLog("error: buffer size must be from 256 KB to " + std::to_string(maxBufferSizeKB / KB_PER_MB) +
+            " MB. eg: \"--buffer_size 18432\".");
+        isTrue = false;
+    }
+    g_traceArgs.bufferSize = bufferSizeKB / PAGE_SIZE_KB * PAGE_SIZE_KB;
+    return isTrue;
+}
+
+static bool HandleOptTraceclock(const RunningState& setValue)
 {
     bool isTrue = true;
-    if (!strcmp(LONG_OPTIONS[optionIndex].name, "buffer_size")) {
-        int bufferSizeKB = 0;
-        int maxBufferSizeKB = MAX_BUFFER_SIZE;
-        if (IsHmKernel()) {
-            maxBufferSizeKB = HM_MAX_BUFFER_SIZE;
-        }
-        if (!StrToNum(optarg, bufferSizeKB)) {
-            ConsoleLog("error: buffer size is illegal input. eg: \"--buffer_size 18432\".");
-            isTrue = false;
-        } else if (bufferSizeKB < MIN_BUFFER_SIZE || bufferSizeKB > maxBufferSizeKB) {
-            ConsoleLog("error: buffer size must be from 256 KB to " + std::to_string(maxBufferSizeKB / KB_PER_MB) +
-                " MB. eg: \"--buffer_size 18432\".");
-            isTrue = false;
-        }
-        g_traceArgs.bufferSize = bufferSizeKB / PAGE_SIZE_KB * PAGE_SIZE_KB;
-    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_clock")) {
-        if (CheckClock(optarg)) {
-            g_traceArgs.clockType = optarg;
-        } else {
-            ConsoleLog("error: \"--trace_clock\" is illegal input. eg: \"--trace_clock boot\".");
-            isTrue = false;
-        }
-    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "help")) {
-        isTrue = SetRunningState(SHOW_HELP);
-    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "time")) {
-        if (!StrToNum(optarg, g_traceArgs.duration)) {
-            ConsoleLog("error: the time is illegal input. eg: \"--time 5\".");
-            isTrue = false;
-        } else if (g_traceArgs.duration < 1) {
-            ConsoleLog("error: \"-t " + std::string(optarg) + "\" to be greater than zero. eg: \"--time 5\".");
-            isTrue = false;
-        }
-    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "list_categories")) {
-        isTrue = SetRunningState(SHOW_LIST_CATEGORY);
-    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "output")) {
-        isTrue = CheckOutputFile(optarg);
-    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "overwrite")) {
-        g_traceArgs.overwrite = false;
-    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_begin")) {
-        isTrue = SetRunningState(RECORDING_LONG_BEGIN);
-    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_finish")) {
-        isTrue = SetRunningState(RECORDING_LONG_FINISH);
-    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_finish_nodump")) {
-        isTrue = SetRunningState(RECORDING_LONG_FINISH_NODUMP);
-    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_dump")) {
-        isTrue = SetRunningState(RECORDING_LONG_DUMP);
-    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "record")) {
-        if (g_runningState == RECORDING_LONG_BEGIN) {
-            g_runningState = RECORDING_LONG_BEGIN_RECORD;
-        } else if (g_runningState == RECORDING_LONG_FINISH) {
-            g_runningState = RECORDING_LONG_FINISH_RECORD;
-        } else {
-            ConsoleLog("error: \"--record\" is set incorrectly. eg: \"--trace_begin --record\","
-                       " \"--trace_finish --record\".");
-            isTrue = false;
-        }
-    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "start_bgsrv")) {
-        isTrue = SetRunningState(SNAPSHOT_START);
-    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "dump_bgsrv")) {
-        isTrue = SetRunningState(SNAPSHOT_DUMP);
-    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "stop_bgsrv")) {
-        isTrue = SetRunningState(SNAPSHOT_STOP);
-    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "text")) {
-        isTrue = SetRunningState(RECORDING_SHORT_TEXT);
-    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "raw")) {
-        isTrue = SetRunningState(RECORDING_SHORT_RAW);
-    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "file_size")) {
-        int fileSizeKB = 0;
-        if (!StrToNum(optarg, fileSizeKB)) {
-            ConsoleLog("error: file size is illegal input. eg: \"--file_size 102400\".");
-            isTrue = false;
-        } else if (fileSizeKB < MIN_FILE_SIZE || fileSizeKB > MAX_FILE_SIZE) {
-            ConsoleLog("error: file size must be from 50 MB to 500 MB. eg: \"--file_size 102400\".");
-            isTrue = false;
-        }
-        g_traceArgs.fileSize = fileSizeKB;
-    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "trace_level")) {
-        isTrue = SetRunningState(SET_TRACE_LEVEL);
-        if (!CheckTraceLevel(optarg)) {
-            isTrue = false;
-        }
-    } else if (!strcmp(LONG_OPTIONS[optionIndex].name, "get_level")) {
-        isTrue = SetRunningState(GET_TRACE_LEVEL);
+    if (CheckClock(optarg)) {
+        g_traceArgs.clockType = optarg;
+    } else {
+        ConsoleLog("error: \"--trace_clock\" is illegal input. eg: \"--trace_clock boot\".");
+        isTrue = false;
     }
+    return isTrue;
+}
 
+static bool HandleOptTime(const RunningState& setValue)
+{
+    if (optarg == nullptr) {
+        return false;
+    }
+    bool isTrue = true;
+    if (!StrToNum(optarg, g_traceArgs.duration)) {
+        ConsoleLog("error: the time is illegal input. eg: \"--time 5\".");
+        isTrue = false;
+    } else if (g_traceArgs.duration < 1) {
+        ConsoleLog("error: \"-t " + std::string(optarg) + "\" to be greater than zero. eg: \"--time 5\".");
+        isTrue = false;
+    }
+    return isTrue;
+}
+
+static bool HandleOptOverwrite(const RunningState& setValue)
+{
+    g_traceArgs.overwrite = false;
+    return true;
+}
+
+static bool HandleOptRecord(const RunningState& setValue)
+{
+    bool isTrue = true;
+    if (g_runningState == RECORDING_LONG_BEGIN) {
+        g_runningState = RECORDING_LONG_BEGIN_RECORD;
+    } else if (g_runningState == RECORDING_LONG_FINISH) {
+        g_runningState = RECORDING_LONG_FINISH_RECORD;
+    } else {
+        ConsoleLog("error: \"--record\" is set incorrectly. eg: \"--trace_begin --record\","
+                   " \"--trace_finish --record\".");
+        isTrue = false;
+    }
+    return isTrue;
+}
+
+static bool HandleOptFilesize(const RunningState& setValue)
+{
+    if (optarg == nullptr) {
+        return false;
+    }
+    bool isTrue = true;
+    int fileSizeKB = 0;
+    if (!StrToNum(optarg, fileSizeKB)) {
+        ConsoleLog("error: file size is illegal input. eg: \"--file_size 102400\".");
+        isTrue = false;
+    } else if (fileSizeKB < MIN_FILE_SIZE || fileSizeKB > MAX_FILE_SIZE) {
+        ConsoleLog("error: file size must be from 50 MB to 500 MB. eg: \"--file_size 102400\".");
+        isTrue = false;
+    }
+    g_traceArgs.fileSize = fileSizeKB;
+    return isTrue;
+}
+
+static bool HandleOptTracelevel(const RunningState& setValue)
+{
+    bool isTrue = true;
+    isTrue = SetRunningState(setValue);
+    if (!CheckTraceLevel(optarg)) {
+        isTrue = false;
+    }
+    return isTrue;
+}
+
+static bool HandleOptOutput(const RunningState& setValue)
+{
+    bool isTrue = CheckOutputFile(optarg);
+    return isTrue;
+}
+
+static bool ParseLongOpt(const std::string& cmd, int optionIndex)
+{
+    std::string str(LONG_OPTIONS[optionIndex].name);
+    bool isTrue = true;
+    auto it = COMMAND_TABLE.find(str);
+    if (it != COMMAND_TABLE.end()) {
+        isTrue = it->second(OPT_MAP[str]);
+    }
     return isTrue;
 }
 
 static bool SetBufferSize()
 {
+    if (optarg == nullptr) {
+        return false;
+    }
     bool isTrue = true;
     int bufferSizeKB = 0;
     int maxBufferSizeKB = MAX_BUFFER_SIZE;
@@ -549,6 +665,10 @@ static bool ParseOpt(int opt, char** argv, int optIndex)
             isTrue = SetRunningState(SHOW_LIST_CATEGORY);
             break;
         case 't': {
+            if (optarg == nullptr) {
+                isTrue = false;
+                break;
+            }
             if (!StrToNum(optarg, g_traceArgs.duration)) {
                 ConsoleLog("error: the time is illegal input. eg: \"--time 5\".");
                 isTrue = false;
@@ -1043,101 +1163,76 @@ static void RecordSysEvent()
     }
 }
 
-#ifdef HITRACE_UNITTEST
-int HiTraceCMDTestMain(int argc, char **argv)
-#else
-int main(int argc, char **argv)
-#endif
+static bool InitAndCheckArgs(int argc, char**argv)
 {
     if (!IsDeveloperMode()) {
         ConsoleLog("error: not in developermode, exit");
-        return -1;
+        return false;
     }
 
     if (argc < 0 || argc > 256) { // 256 : max input argument counts
         ConsoleLog("error: the number of input arguments exceeds the upper limit.");
-        return -1;
+        return false;
     }
-    bool isSuccess = true;
+
     g_traceCollector = OHOS::HiviewDFX::UCollectClient::TraceCollector::Create();
     if (g_traceCollector == nullptr) {
         ConsoleLog("error: traceCollector create failed, exit.");
-        return -1;
+        return false;
     }
+
     (void)signal(SIGKILL, InterruptExit);
     (void)signal(SIGINT, InterruptExit);
 
     if (!IsTraceMounted(g_traceRootPath)) {
         ConsoleLog("error: trace isn't mounted, exit.");
-        return -1;
+        return false;
     }
 
     if (!HandleOpt(argc, argv)) {
         ConsoleLog("error: parsing args failed, exit.");
-        return -1;
+        return false;
     }
 
     if (g_runningState == STATE_NULL) {
         g_runningState = RECORDING_SHORT_TEXT;
     }
-
     if (g_runningState != RECORDING_SHORT_TEXT && g_runningState != RECORDING_LONG_DUMP &&
         g_runningState != RECORDING_LONG_FINISH) {
         ConsoleLog(std::string(argv[0]) + " enter, running_state is " + GetStateInfo(g_runningState));
     }
 
     SetTraceSysEventParams();
+    return true;
+}
 
-    switch (g_runningState) {
-        case RECORDING_SHORT_RAW:
-            isSuccess = HandleRecordingShortRaw();
-            break;
-        case RECORDING_SHORT_TEXT:
-            isSuccess = HandleRecordingShortText();
-            break;
-        case RECORDING_LONG_BEGIN:
-            isSuccess = HandleRecordingLongBegin();
-            break;
-        case RECORDING_LONG_DUMP:
-            isSuccess = HandleRecordingLongDump();
-            break;
-        case RECORDING_LONG_FINISH:
-            isSuccess = HandleRecordingLongFinish();
-            break;
-        case RECORDING_LONG_FINISH_NODUMP:
-            isSuccess = HandleRecordingLongFinishNodump();
-            break;
-        case RECORDING_LONG_BEGIN_RECORD:
-            isSuccess = HandleRecordingLongBeginRecord();
-            break;
-        case RECORDING_LONG_FINISH_RECORD:
-            isSuccess = HandleRecordingLongFinishRecord();
-            break;
-        case SNAPSHOT_START:
-            isSuccess = HandleOpenSnapshot();
-            break;
-        case SNAPSHOT_DUMP:
-            isSuccess = HandleDumpSnapshot();
-            break;
-        case SNAPSHOT_STOP:
-            isSuccess = HandleCloseSnapshot();
-            break;
-        case SHOW_HELP:
-            ShowHelp(argv[0]);
-            break;
-        case SHOW_LIST_CATEGORY:
-            ShowListCategory();
-            break;
-        case SET_TRACE_LEVEL:
-            isSuccess = SetTraceLevel();
-            break;
-        case GET_TRACE_LEVEL:
-            isSuccess = GetTraceLevel();
-            break;
-        default:
-            ShowHelp(argv[0]);
-            isSuccess = false;
-            break;
+#ifdef HITRACE_UNITTEST
+int HiTraceCMDTestMain(int argc, char **argv)
+#else
+int main(int argc, char **argv)
+#endif
+{
+    if (!InitAndCheckArgs(argc, argv)) {
+        return -1;
+    }
+
+    bool isSuccess = true;
+    auto it = TASK_TABLE.find(g_runningState);
+    if (it != TASK_TABLE.end()) {
+        isSuccess = it->second();
+    } else {
+        switch (g_runningState) {
+            case SHOW_HELP:
+                ShowHelp(argv[0]);
+                break;
+            case SHOW_LIST_CATEGORY:
+                ShowListCategory();
+                break;
+            default:
+                ShowHelp(argv[0]);
+                isSuccess = false;
+                break;
+        }
     }
     RecordSysEvent();
     return isSuccess ? 0 : -1;

@@ -372,6 +372,200 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest010, TestSize.Level1)
 
     GTEST_LOG_(INFO) << "HitraceCMDTest010: end.";
 }
+
+/**
+ * @tc.name: HitraceCMDTest011
+ * @tc.desc: test the normal input --help
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceCMDTest, HitraceCMDTest011, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HitraceCMDTest011: start.";
+
+    std::string cmd = "hitrace --help";
+    std::vector<std::string> keywords = {
+        "SHOW_HELP",
+    };
+    ASSERT_TRUE(CheckTraceCommandOutput(cmd, keywords));
+
+    GTEST_LOG_(INFO) << "HitraceCMDTest011: end.";
+}
+
+/**
+ * @tc.name: HitraceCMDTest012
+ * @tc.desc: test the normal input --list_categories
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceCMDTest, HitraceCMDTest012, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HitraceCMDTest012: start.";
+
+    std::string cmd = "hitrace --list_categories";
+    std::vector<std::string> keywords = {
+        "SHOW_LIST_CATEGORY",
+    };
+    ASSERT_TRUE(CheckTraceCommandOutput(cmd, keywords));
+
+    GTEST_LOG_(INFO) << "HitraceCMDTest012: end.";
+}
+
+/**
+ * @tc.name: HitraceCMDTest013
+ * @tc.desc: test the normal longopt input time,file_size,buffer_size,trace_clock,overwritr
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceCMDTest, HitraceCMDTest013, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HitraceCMDTest013: start.";
+
+    std::string cmd =
+        "hitrace --raw --time 1 --file_size 51200 --buffer_size 102400 --trace_clock boot --overwrite ace app ability";
+    std::vector<std::string> keywords = {
+        "RECORDING_SHORT_RAW",
+        "start capture",
+    };
+    ASSERT_TRUE(CheckTraceCommandOutput(cmd, keywords));
+
+    GTEST_LOG_(INFO) << "HitraceCMDTest013: end.";
+}
+
+/**
+ * @tc.name: HitraceCMDTest014
+ * @tc.desc: test normal trace dump in snapshot mode
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceCMDTest, HitraceCMDTest014, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HitraceCMDTest014: start.";
+
+    std::string cmdStart = "hitrace --start_bgsrv";
+    std::vector<std::string> keywordsStart = {
+        "SNAPSHOT_START",
+        "OpenSnapshot done",
+    };
+    ASSERT_TRUE(CheckTraceCommandOutput(cmdStart, keywordsStart));
+
+    std::string cmdDump = "hitrace --dump_bgsrv";
+    std::vector<std::string> keywordsDump = {
+        "SNAPSHOT_DUMP",
+        "DumpSnapshot done",
+    };
+    ASSERT_TRUE(CheckTraceCommandOutput(cmdDump, keywordsDump));
+
+    std::string cmdStop = "hitrace --stop_bgsrv";
+    std::vector<std::string> keywordsStop = {
+        "SNAPSHOT_STOP",
+        "CloseSnapshot done"
+    };
+    ASSERT_TRUE(CheckTraceCommandOutput(cmdStop, keywordsStop));
+
+    GTEST_LOG_(INFO) << "HitraceCMDTest014: end.";
+}
+
+/**
+ * @tc.name: HitraceCMDTest015
+ * @tc.desc: test normal text trace dump with longopt input parameters
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceCMDTest, HitraceCMDTest015, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HitraceCMDTest015: start.";
+
+    std::string cmdStart = "hitrace --trace_begin app ace -b 102400 --overwrite --trace_clock boot";
+    std::vector<std::string> keywordsStart = {
+        "RECORDING_LONG_BEGIN",
+        "OpenRecording done",
+    };
+    ASSERT_TRUE(CheckTraceCommandOutput(cmdStart, keywordsStart));
+
+    std::string cmdDump = "hitrace --trace_dump --output /data/local/tmp/testtrace.txt";
+    std::vector<std::string> keywordsDump = {
+        "start to read trace",
+        "trace read done",
+    };
+    ASSERT_TRUE(CheckTraceCommandOutput(cmdDump, keywordsDump));
+
+    std::string cmdStop = "hitrace --trace_finish_nodump";
+    std::vector<std::string> keywordsStop = {
+        "RECORDING_LONG_FINISH_NODUMP",
+        "end capture trace"
+    };
+    ASSERT_TRUE(CheckTraceCommandOutput(cmdStop, keywordsStop));
+
+    GTEST_LOG_(INFO) << "HitraceCMDTest015: end.";
+}
+
+/**
+ * @tc.name: HitraceCMDTest016
+ * @tc.desc: test the error longopt input
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceCMDTest, HitraceCMDTest016, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HitraceCMDTest016: start.";
+
+    std::string cmd = "hitrace --TEST";
+    std::vector<std::string> keywords = {
+        "parsing args failed",
+    };
+    ASSERT_TRUE(CheckTraceCommandOutput(cmd, keywords));
+
+    GTEST_LOG_(INFO) << "HitraceCMDTest016: end.";
+}
+
+/**
+ * @tc.name: HitraceCMDTest017
+ * @tc.desc: test the error input
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceCMDTest, HitraceCMDTest017, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HitraceCMDTest017: start.";
+
+    std::string cmd = "hitrace -m";
+    std::vector<std::string> keywords = {
+        "parsing args failed",
+    };
+    ASSERT_TRUE(CheckTraceCommandOutput(cmd, keywords));
+
+    GTEST_LOG_(INFO) << "HitraceCMDTest017: end.";
+}
+
+/**
+ * @tc.name: HitraceCMDTest017
+ * @tc.desc: test the buffer_size illegal input
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceCMDTest, HitraceCMDTest018, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HitraceCMDTest018: start.";
+
+    std::string cmd = "hitrace --trace_begin app ace -b 102400ss";
+    std::vector<std::string> keywords = {
+        "illegal input",
+    };
+    ASSERT_TRUE(CheckTraceCommandOutput(cmd, keywords));
+
+    GTEST_LOG_(INFO) << "HitraceCMDTest018: end.";
+}
+
+/**
+ * @tc.name: HitraceCMDTest017
+ * @tc.desc: test the trace_clock illegal input
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceCMDTest, HitraceCMDTest019, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HitraceCMDTest019: start.";
+
+    std::string cmd = "hitrace --trace_begin app ace --trace_clock boott";
+    std::vector<std::string> keywords = {
+        "illegal input",
+    };
+    ASSERT_TRUE(CheckTraceCommandOutput(cmd, keywords));
+
+    GTEST_LOG_(INFO) << "HitraceCMDTest019: end.";
+}
 }
 }
 }
