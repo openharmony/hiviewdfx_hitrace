@@ -20,7 +20,9 @@ namespace OHOS {
 namespace HiviewDFX {
 const char* const FUNC_NAME_CTOR = "<ctor>";
 const char* const FUNC_NAME_GETLONG = "getLong";
-const char* const FUNC_NAME_UNBOXED = "unboxed";
+const char* const FUNC_NAME_TOBOOLEAN = "toBoolean";
+const char* const FUNC_NAME_TOINT = "toInt";
+const char* const FUNC_NAME_TODOUBLE = "toDouble";
 const char* const CLASS_NAME_INT = "std.core.Int";
 const char* const CLASS_NAME_DOUBLE = "std.core.Double";
 const char* const CLASS_NAME_BIGINT = "escompat.BigInt";
