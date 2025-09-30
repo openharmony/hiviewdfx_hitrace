@@ -15,6 +15,7 @@ import("//base/hiviewdfx/hitrace/hitrace.gni")
 import("//build/ohos.gni")
 
 ohos_static_library("trace_source_factory") {
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
   include_dirs = [
     ".",
     "$hitrace_common_path",

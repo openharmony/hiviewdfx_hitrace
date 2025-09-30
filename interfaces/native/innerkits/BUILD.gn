@@ -28,6 +28,7 @@ ohos_shared_library("libhitracechain") {
   public_configs = [ ":libhitrace_pub_config" ]
 
   deps = [ "$hitrace_frameworks_path/native:hitracechain_source" ]
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
 
   cflags = [ "-fstack-protector-strong" ]
 
@@ -78,6 +79,7 @@ ohos_static_library("hitrace_inner") {
     "src/hitrace_meter_c.c",
     "src/hitrace_meter_wrapper.cpp",
   ]
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
 
   external_deps = [
     "bounds_checking_function:libsec_shared",
@@ -126,6 +128,7 @@ ohos_shared_library("hitrace_dump") {
     "$hitrace_utils_path",
   ]
   public_configs = [ ":hitrace_dump_config" ]
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
   sources = [
     "$hitrace_frameworks_path/native/dynamic_buffer.cpp",
     "$hitrace_utils_path/file_ageing_utils.cpp",
@@ -173,6 +176,7 @@ ohos_shared_library("hitrace_meter") {
     ":libhitracechain",
     "$hitrace_utils_path:hitrace_common_utils",
   ]
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
 
   external_deps = [ "bounds_checking_function:libsec_shared" ]
   if (defined(ohos_lite)) {
@@ -223,6 +227,7 @@ ohos_shared_library("libhitrace_option") {
   } else {
     external_deps += [ "hilog:libhilog" ]
   }
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
 
   output_extension = "so"
   install_enable = true
