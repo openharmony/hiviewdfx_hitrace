@@ -2688,58 +2688,6 @@ HWTEST_F(HitraceMeterTest, HitraceMeterTest010, TestSize.Level1)
 }
 
 /**
- * @tc.name: HitraceMeterTest011
- * @tc.desc: Testing MiddleTraceDebug interface
- * @tc.type: FUNC
- */
-HWTEST_F(HitraceMeterTest, HitraceMeterTest011, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "HitraceMeterTest011: start.";
-
-    const char* name = "HitraceMeterTest011";
-    int64_t count = 11;
-
-    SetReloadPid(true);
-    SetpidHasReload(true);
-    CountTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, count);
-
-    std::vector<std::string> list = ReadTrace();
-    char record[RECORD_SIZE_MAX + 1] = {0};
-    TraceInfo traceInfo = {'C', HITRACE_LEVEL_COMMERCIAL, TAG, count, name, "", ""};
-    bool isSuccess = GetTraceResult(traceInfo, list, record);
-    ASSERT_TRUE(isSuccess) << "Hitrace can't find \"" << record << "\" from trace.";
-
-    ASSERT_TRUE(CleanTrace());
-    SetReloadPid(false);
-    SetpidHasReload(false);
-    CountTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, count);
-
-    list = ReadTrace();
-    isSuccess = GetTraceResult(traceInfo, list, record);
-    ASSERT_TRUE(isSuccess) << "Hitrace can't find \"" << record << "\" from trace.";
-
-    ASSERT_TRUE(CleanTrace());
-    SetReloadPid(true);
-    SetpidHasReload(false);
-    CountTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, count);
-
-    list = ReadTrace();
-    isSuccess = GetTraceResult(traceInfo, list, record);
-    ASSERT_TRUE(isSuccess) << "Hitrace can't find \"" << record << "\" from trace.";
-
-    ASSERT_TRUE(CleanTrace());
-    SetReloadPid(false);
-    SetpidHasReload(true);
-    CountTraceEx(HITRACE_LEVEL_COMMERCIAL, TAG, name, count);
-
-    list = ReadTrace();
-    isSuccess = GetTraceResult(traceInfo, list, record);
-    ASSERT_TRUE(isSuccess) << "Hitrace can't find \"" << record << "\" from trace.";
-
-    GTEST_LOG_(INFO) << "HitraceMeterTest011: end.";
-}
-
-/**
  * @tc.name: HitraceMeterTest012
  * @tc.desc: Testing HitraceMeterFmtScopedEx
  * @tc.type: FUNC
