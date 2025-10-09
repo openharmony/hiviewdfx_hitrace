@@ -294,13 +294,15 @@
       "enable_path": [
         "events/sched/sched_switch/enable",
         "events/sched/sched_wakeup/enable",
-        "events/sched/sched_blocked_reason/enable"
+        "events/sched/sched_blocked_reason/enable",
+        "events/sched/sched_wakeup_new/enable"
       ],
       "type": 1,
       "format_path": [
         "events/sched/sched_wakeup/format",
         "events/sched/sched_switch/format",
-        "events/sched/sched_blocked_reason/format"
+        "events/sched/sched_blocked_reason/format",
+        "events/sched/sched_wakeup_new/format"
       ]
     },
     "preemptoff": {
