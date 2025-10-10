@@ -20,6 +20,7 @@ module_output_path = "hitrace/hitrace"
 ohos_fuzztest("HitraceCmdFuzzTest") {
   module_out_path = module_output_path
   fuzz_config_file = "hitracecmd_fuzzer"
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
   include_dirs = [
     "common",
     "hitracecmd_fuzzer",
@@ -37,6 +38,7 @@ ohos_fuzztest("HitraceCmdFuzzTest") {
 ohos_fuzztest("HitraceDumpFuzzTest") {
   module_out_path = module_output_path
   fuzz_config_file = "hitracedump_fuzzer"
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
   include_dirs = [
     "common",
     "hitracedump_fuzzer",
@@ -57,6 +59,7 @@ ohos_fuzztest("HitraceDumpFuzzTest") {
 ohos_fuzztest("HitraceMeterFuzzTest") {
   module_out_path = module_output_path
   fuzz_config_file = "hitracemeter_fuzzer"
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
   include_dirs = [
     "common",
     "hitracemeter_fuzzer",
@@ -76,6 +79,7 @@ ohos_fuzztest("HitraceMeterFuzzTest") {
 ohos_fuzztest("HitraceOptionFuzzTest") {
   module_out_path = module_output_path
   fuzz_config_file = "hitraceoption_fuzzer"
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
   include_dirs = [
     "common",
     "hitraceoption_fuzzer",

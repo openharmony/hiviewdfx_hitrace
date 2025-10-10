@@ -19,6 +19,7 @@ ohos_source_set("hitrace_common_utils") {
     ".",
     "$hitrace_common_path",
   ]
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
   sources = [ "common_utils.cpp" ]
   if (defined(ohos_lite)) {
     external_deps = [ "hilog_lite:hilog_lite" ]
@@ -57,6 +58,7 @@ ohos_source_set("hitrace_json_parser") {
     ".",
     "$hitrace_common_path",
   ]
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
   sources = [ "trace_json_parser.cpp" ]
   if (defined(ohos_lite)) {
     external_deps = [ "hilog_lite:hilog_lite" ]
