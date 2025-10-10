@@ -208,8 +208,6 @@ enum TraceFlag {
 };
 
 #ifdef HITRACE_UNITTEST
-void SetReloadPid(bool isReloadPid);
-void SetpidHasReload(bool ispidHasReload);
 void SetMarkerFd(int markerFd);
 void SetCachedHandle(const char* name, CachedHandle cachedHandle);
 void SetWriteOnceLog(LogLevel loglevel, const std::string& logStr, bool& isWrite);
