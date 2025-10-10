@@ -221,6 +221,7 @@ ohos_unittest("HitraceDumpTest") {
     "bounds_checking_function:libsec_shared",
     "cJSON:cjson",
     "c_utils:utils",
+    "faultloggerd:libdfx_dumpcatcher",
     "googletest:gtest_main",
     "init:libbegetutil",
   ]
@@ -262,6 +263,7 @@ async_dump_test_external_deps = [
   "bounds_checking_function:libsec_shared",
   "cJSON:cjson",
   "c_utils:utils",
+  "faultloggerd:libdfx_dumpcatcher",
   "googletest:gtest_main",
   "init:libbegetutil",
 ]

@@ -37,6 +37,7 @@
 
 #include "common_define.h"
 #include "common_utils.h"
+#include "dfx_dump_catcher.h"
 #include "dynamic_buffer.h"
 #include "file_ageing_utils.h"
 #include "hitrace_meter.h"
@@ -555,11 +556,20 @@ void TimeoutSignalHandler(int signum)
     if (signum == SIGUSR1) {
         _exit(EXIT_SUCCESS);
     } else if (signum == SIGCHLD) {
-        pid_t pid;
-        do {
-            pid = waitpid(-1, nullptr, WNOHANG);
-        } while (pid > 0);
+        // only work for async dump process.
+        (void)waitpid(g_traceDumpTaskPid.load(), nullptr, WNOHANG);
     }
+}
+
+void LogStackTrace(const pid_t pid)
+{
+    DfxDumpCatcher dumplog;
+    std::string stack;
+    bool ret = dumplog.DumpCatch(pid, 0, stack);
+    if (!ret) {
+        HILOG_ERROR(LOG_CORE, "LogStackTrace: dump stack trace failed, pid: %{public}d", pid);
+    }
+    HILOG_INFO(LOG_CORE, "LogStackTrace: %{public}s", stack.c_str());
 }
 
 bool EpollWaitforChildProcess(pid_t& pid, int& pipefd, std::string& reOutPath)
@@ -569,7 +579,6 @@ bool EpollWaitforChildProcess(pid_t& pid, int& pipefd, std::string& reOutPath)
         HILOG_ERROR(LOG_CORE, "epoll_create1 error.");
         return false;
     }
-
     struct epoll_event event;
     event.events = EPOLLIN;
     event.data.fd = pipefd;
@@ -578,21 +587,23 @@ bool EpollWaitforChildProcess(pid_t& pid, int& pipefd, std::string& reOutPath)
         close(epollfd);
         return false;
     }
-
     struct epoll_event events[1];
-    constexpr int waitTimeoutMs = 10000; // 10000ms = 10s
-    int numEvents = TEMP_FAILURE_RETRY(epoll_wait(epollfd, events, 1, waitTimeoutMs));
-    if (numEvents <= 0) {
+    int numEvents = 0;
+    for (int retry = 0; retry < 10 && numEvents <= 0; retry++) { // 10 : ten seconds timeout
+        numEvents = TEMP_FAILURE_RETRY(epoll_wait(epollfd, events, 1, 1000)); // 1000 : one second timeout
         if (numEvents == -1) {
             HILOG_ERROR(LOG_CORE, "epoll_wait error, error: (%{public}s).", strerror(errno));
-        } else {
-            HILOG_ERROR(LOG_CORE, "epoll_wait timeout.");
+            break;
         }
-        if (waitpid(pid, nullptr, WNOHANG) <= 0) {
-            HILOG_ERROR(LOG_CORE, "kill timeout child process.");
-            if (kill(pid, SIGUSR1) != 0) {
-                HILOG_ERROR(LOG_CORE, "kill child process failed.");
-            }
+    }
+    if (numEvents <= 0) {
+        LogStackTrace(pid);
+        HILOG_ERROR(LOG_CORE, "kill timeout child process.");
+        if (kill(pid, SIGUSR1) != 0) {
+            HILOG_ERROR(LOG_CORE, "kill child process failed.");
+        }
+        if (waitpid(pid, nullptr, 0) <= 0) {
+            HILOG_ERROR(LOG_CORE, "wait child process failed.");
         }
         close(epollfd);
         return false;
@@ -606,7 +617,6 @@ bool EpollWaitforChildProcess(pid_t& pid, int& pipefd, std::string& reOutPath)
     reOutPath = retVal.outputFile;
     g_firstPageTimestamp = retVal.traceStartTime;
     g_lastPageTimestamp = retVal.traceEndTime;
-
     close(epollfd);
     if (waitpid(pid, nullptr, 0) <= 0) {
         HILOG_ERROR(LOG_CORE, "wait HitraceDump(%{public}d) exit failed, errno: (%{public}d)", pid, errno);
@@ -755,10 +765,14 @@ TraceDumpTask WaitSyncDumpRetLoop(const pid_t pid, const std::shared_ptr<Hitrace
     } else {
         task.code = TraceErrorCode::TRACE_TASK_DUMP_TIMEOUT;
         TraceDumpExecutor::GetInstance().ClearTraceDumpTask();
+        LogStackTrace(pid);
         if (kill(pid, SIGUSR1) != 0) {
             HILOG_ERROR(LOG_CORE, "WaitSyncDumpRetLoop: kill dump process failed.");
         }
         HILOG_WARN(LOG_CORE, "WaitSyncDumpRetLoop: wait timeout, clear task and kill dump process.");
+        if (waitpid(pid, nullptr, 0) <= 0) {
+            HILOG_ERROR(LOG_CORE, "WaitSyncDumpRetLoop: wait child process failed.");
+        }
     }
     HILOG_INFO(LOG_CORE, "WaitSyncDumpRetLoop: exit.");
     return task;
