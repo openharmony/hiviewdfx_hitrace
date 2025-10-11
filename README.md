@@ -96,13 +96,13 @@ Major APIs of HiTrace
 
 ## Repositories Involved<a name="section1371113476317"></a>
 
-[DFX SubSystem](https://gitee.com/openharmony/docs/blob/master/en/readme/dfx.md)
+[DFX SubSystem](https://gitcode.com/openharmony/docs/blob/master/en/readme/dfx.md)
 
-[hiviewdfx\_hiview](https://gitee.com/openharmony/hiviewdfx_hiview/blob/master/README.md)
+[hiviewdfx\_hiview](https://gitcode.com/openharmony/hiviewdfx_hiview/blob/master/README.md)
 
-[hiviewdfx\_hilog](https://gitee.com/openharmony/hiviewdfx_hilog/blob/master/README.md)
+[hiviewdfx\_hilog](https://gitcode.com/openharmony/hiviewdfx_hilog/blob/master/README.md)
 
-[hiviewdfx\_hiappevent](https://gitee.com/openharmony/hiviewdfx_hiappevent/blob/master/README.md)
+[hiviewdfx\_hiappevent](https://gitcode.com/openharmony/hiviewdfx_hiappevent/blob/master/README.md)
 
-[hiviewdfx\_hisysevent](https://gitee.com/openharmony/hiviewdfx_hisysevent/blob/master/README.md)
+[hiviewdfx\_hisysevent](https://gitcode.com/openharmony/hiviewdfx_hisysevent/blob/master/README.md)
 
