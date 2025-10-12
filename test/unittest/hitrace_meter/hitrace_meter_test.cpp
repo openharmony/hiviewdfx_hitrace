@@ -2271,6 +2271,207 @@ HWTEST_F(HitraceMeterTest, CaptureAppTraceTest010, TestSize.Level1)
 }
 
 /**
+ * @tc.name: TraceSwitchNotificationTest001
+ * @tc.desc: Testing normal trace switch notification callback register and unregister
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, TraceSwitchNotificationTest001, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "TraceSwitchNotificationTest001: start.";
+
+    int32_t ret = RegisterTraceListener([](bool enable) {
+        GTEST_LOG_(INFO) << "TraceSwitchNotificationTest001 listener, enable: " << enable;
+    });
+    ASSERT_EQ(ret, 0);
+
+    ret = UnregisterTraceListener(ret);
+    ASSERT_EQ(ret, 0);
+
+    GTEST_LOG_(INFO) << "TraceSwitchNotificationTest001: end.";
+}
+
+/**
+ * @tc.name: TraceSwitchNotificationTest002
+ * @tc.desc: Testing napi trace switch notification callback register and unregister
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, TraceSwitchNotificationTest002, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "TraceSwitchNotificationTest002: start.";
+
+    auto traceListener = [](bool enable) {
+        GTEST_LOG_(INFO) << "TraceSwitchNotificationTest002 listener, enable: " << enable;
+    };
+
+    int32_t ret = RegisterTraceListenerNapi(reinterpret_cast<void *>(&traceListener));
+    ASSERT_EQ(ret, 0);
+
+    ret = UnregisterTraceListenerNapi(ret);
+    ASSERT_EQ(ret, 0);
+
+    GTEST_LOG_(INFO) << "TraceSwitchNotificationTest002: end.";
+}
+
+/**
+ * @tc.name: TraceSwitchNotificationTest003
+ * @tc.desc: Testing ani trace switch notification callback register and unregister
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, TraceSwitchNotificationTest003, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "TraceSwitchNotificationTest003: start.";
+
+    auto traceListener = [](bool enable) {
+        GTEST_LOG_(INFO) << "TraceSwitchNotificationTest003 listener, enable: " << enable;
+    };
+
+    int32_t ret = RegisterTraceListenerAni(reinterpret_cast<void *>(&traceListener));
+    ASSERT_EQ(ret, 0);
+
+    ret = UnregisterTraceListenerAni(ret);
+    ASSERT_EQ(ret, 0);
+
+    GTEST_LOG_(INFO) << "TraceSwitchNotificationTest003: end.";
+}
+
+/**
+ * @tc.name: TraceSwitchNotificationTest004
+ * @tc.desc: Testing RegisterTraceListener with invalid parameters
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, TraceSwitchNotificationTest004, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "TraceSwitchNotificationTest004: start.";
+
+    int32_t ret = RegisterTraceListener(nullptr);
+    ASSERT_EQ(ret, -2);
+
+    GTEST_LOG_(INFO) << "TraceSwitchNotificationTest004: end.";
+}
+
+/**
+ * @tc.name: TraceSwitchNotificationTest005
+ * @tc.desc: Testing UnregisterTraceListener with invalid parameters
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, TraceSwitchNotificationTest005, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "TraceSwitchNotificationTest005: start.";
+
+    int32_t ret = UnregisterTraceListener(10);
+    ASSERT_EQ(ret, -2);
+
+    GTEST_LOG_(INFO) << "TraceSwitchNotificationTest005: end.";
+}
+
+/**
+ * @tc.name: TraceSwitchNotificationTest006
+ * @tc.desc: Testing RegisterTraceListener reach max callback number 10
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, TraceSwitchNotificationTest006, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "TraceSwitchNotificationTest006: start.";
+
+    for (int i = 0; i < 10; i++) {
+        int32_t ret = RegisterTraceListener([](bool enable) {
+            GTEST_LOG_(INFO) << "TraceSwitchNotificationTest006 listener, enable: " << enable;
+        });
+        ASSERT_EQ(ret, i);
+    }
+
+    int32_t ret = RegisterTraceListener([](bool enable) {
+        GTEST_LOG_(INFO) << "TraceSwitchNotificationTest006 listener, enable: " << enable;
+    });
+    ASSERT_EQ(ret, -1);
+
+    for (int i = 0; i < 10; i++) {
+        ASSERT_EQ(UnregisterTraceListener(i), 0);
+    }
+
+    GTEST_LOG_(INFO) << "TraceSwitchNotificationTest006: end.";
+}
+
+/**
+ * @tc.name: TraceSwitchNotificationTest007
+ * @tc.desc: Testing UnregisterTraceListener with unregistered index
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, TraceSwitchNotificationTest007, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "TraceSwitchNotificationTest007: start.";
+
+    int32_t ret = UnregisterTraceListener(8);
+    ASSERT_EQ(ret, -1);
+
+    GTEST_LOG_(INFO) << "TraceSwitchNotificationTest007: end.";
+}
+
+/**
+ * @tc.name: TraceSwitchNotificationTest008
+ * @tc.desc: Testing innerkits c trace switch notification callback register and unregister
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, TraceSwitchNotificationTest008, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "TraceSwitchNotificationTest008: start.";
+
+    int32_t ret = HiTraceRegisterTraceListener([](bool enable) {
+        GTEST_LOG_(INFO) << "TraceSwitchNotificationTest008 listener, enable: " << enable;
+    });
+    ASSERT_EQ(ret, 0);
+
+    ret = HiTraceUnregisterTraceListener(ret);
+    ASSERT_EQ(ret, 0);
+
+    GTEST_LOG_(INFO) << "TraceSwitchNotificationTest008: end.";
+}
+
+/**
+ * @tc.name: TraceSwitchNotificationTest009
+ * @tc.desc: Testing call callbacks when trace switches
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceMeterTest, TraceSwitchNotificationTest009, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "TraceSwitchNotificationTest009: start.";
+
+    auto traceListener = [](bool enable) {
+        GTEST_LOG_(INFO) << "TraceSwitchNotificationTest009 listener, enable: " << enable;
+    };
+    int32_t ret1 = RegisterTraceListener(traceListener);
+    ASSERT_EQ(ret1, 0);
+
+    SetCallbacksAni(nullptr, nullptr);
+    int32_t ret2 = RegisterTraceListenerAni(reinterpret_cast<void *>(&traceListener));
+    ASSERT_EQ(ret2, 1);
+
+    SetCallbacksNapi(nullptr, nullptr);
+    int32_t ret3 = RegisterTraceListenerNapi(reinterpret_cast<void *>(&traceListener));
+    ASSERT_EQ(ret3, 2);
+
+    const uint64_t enableAppTag = HITRACE_TAG_APP;
+    std::string value = std::to_string(enableAppTag);
+    ASSERT_TRUE(SetPropertyInner(TRACE_TAG_ENABLE_FLAGS, value));
+    StartTrace(enableAppTag, "TraceSwitchNotificationTest009");
+    FinishTrace(enableAppTag);
+
+    value = std::to_string(TAG);
+    ASSERT_TRUE(SetPropertyInner(TRACE_TAG_ENABLE_FLAGS, value));
+    StartTrace(TAG, "TraceSwitchNotificationTest009");
+    FinishTrace(TAG);
+
+    int32_t ret = UnregisterTraceListener(ret1);
+    ASSERT_EQ(ret, 0);
+    ret = UnregisterTraceListener(ret2);
+    ASSERT_EQ(ret, 0);
+    ret = UnregisterTraceListener(ret3);
+    ASSERT_EQ(ret, 0);
+
+    GTEST_LOG_(INFO) << "TraceSwitchNotificationTest009: end.";
+}
+
+/**
  * @tc.name: ROMBaselineTest001
  * @tc.desc: test the ROM baseline of the hitrace component
  * @tc.type: FUNC
@@ -2306,7 +2507,7 @@ HWTEST_F(HitraceMeterTest, ROMBaselineTest001, TestSize.Level2)
         }
     }
     GTEST_LOG_(INFO) << "Total file size is " << totalSize << " KB";
-    constexpr int64_t baseline = 726;
+    constexpr int64_t baseline = 910;
     EXPECT_LE(totalSize, baseline);
     GTEST_LOG_(INFO) << "ROMBaselineTest001: end.";
 }

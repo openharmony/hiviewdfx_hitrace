@@ -13,11 +13,12 @@
  * limitations under the License.
  */
 
-#include <array>
-#include <iostream>
 #include <ani.h>
+#include <array>
 #include <hilog/log.h>
 #include <string>
+#include <vector>
+
 #include "hitrace_meter.h"
 
 #ifdef LOG_DOMAIN
@@ -31,6 +32,13 @@
 
 using namespace OHOS::HiviewDFX;
 const char* const NAMESPACE_HITRACEMETER = "@ohos.hiTraceMeter.hiTraceMeter";
+const char* const FUNC_NAME_CTOR = "<ctor>";
+const char* const CLASS_NAME_BOOLEAN = "std.core.Boolean";
+
+struct CallbackContext {
+    ani_ref callback {};
+    ani_vm* vm = nullptr;
+};
 
 static bool GetAniStringValue(ani_env* env, ani_string strAni, std::string& content)
 {
@@ -48,6 +56,26 @@ static bool GetAniStringValue(ani_env* env, ani_string strAni, std::string& cont
     }
     charBuffer[bytesWritten] = '\0';
     content = std::string(charBuffer);
+    return true;
+}
+
+static bool CreateAniBoolean(ani_env* env, bool value, ani_object& boolObj)
+{
+    ani_class boolCls {};
+    if (env->FindClass(CLASS_NAME_BOOLEAN, &boolCls) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "find class %{public}s failed", CLASS_NAME_BOOLEAN);
+        return false;
+    }
+    ani_method createBooleanMethod {};
+    if (env->Class_FindMethod(boolCls, FUNC_NAME_CTOR, "z:", &createBooleanMethod) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "find method %{public}s constructor failed", CLASS_NAME_BOOLEAN);
+        return false;
+    }
+    ani_boolean boolValue = static_cast<ani_boolean>(value);
+    if (env->Object_New(boolCls, createBooleanMethod, &boolObj, boolValue) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "create object %{public}s failed", CLASS_NAME_BOOLEAN);
+        return false;
+    }
     return true;
 }
 
@@ -185,6 +213,110 @@ static ani_boolean EtsIsTraceEnabled(ani_env* env)
     return static_cast<ani_boolean>(IsTagEnabled(HITRACE_TAG_APP));
 }
 
+static void EtsExcuteCallBack(void* ctx, bool enable)
+{
+    CallbackContext* context = reinterpret_cast<CallbackContext*>(ctx);
+    if (context != nullptr) {
+        ani_env *env;
+        ani_options aniArgs {0, nullptr};
+        auto status = context->vm->AttachCurrentThread(&aniArgs, ANI_VERSION_1, &env);
+        bool needDetach = true;
+        do {
+            if (status != ANI_OK) {
+                needDetach = false;
+                HILOG_WARN(LOG_CORE, "EtsExcuteCallBack AttachCurrentThread failed, %{public}d", status);
+                status = context->vm->GetEnv(ANI_VERSION_1, &env);
+            }
+            if (status != ANI_OK) {
+                HILOG_ERROR(LOG_CORE, "EtsExcuteCallBack GetEnv failed, %{public}d", status);
+                break;
+            }
+            ani_object enableObj {};
+            if (!CreateAniBoolean(env, enable, enableObj)) {
+                HILOG_ERROR(LOG_CORE, "EtsExcuteCallBack CreateAniBoolean failed");
+                break;
+            }
+            std::vector<ani_ref> vec;
+            vec.push_back(static_cast<ani_ref>(enableObj));
+            ani_ref result;
+            status = env->FunctionalObject_Call(reinterpret_cast<ani_fn_object>(context->callback),
+                vec.size(), vec.data(), &result);
+            if (status != ANI_OK) {
+                HILOG_ERROR(LOG_CORE, "Excute CallBack failed, %{public}d", status);
+                break;
+            }
+        } while (false);
+        if (needDetach) {
+            context->vm->DetachCurrentThread();
+        }
+    }
+}
+
+static void EtsDeleteCallback(void* ctx)
+{
+    CallbackContext* context = reinterpret_cast<CallbackContext *>(ctx);
+    if (context != nullptr) {
+        ani_env *env;
+        ani_options aniArgs {0, nullptr};
+        auto status = context->vm->AttachCurrentThread(&aniArgs, ANI_VERSION_1, &env);
+        bool needDetach = true;
+        do {
+            if (status != ANI_OK) {
+                needDetach = false;
+                HILOG_WARN(LOG_CORE, "EtsDeleteCallback AttachCurrentThread failed, %{public}d", status);
+                status = context->vm->GetEnv(ANI_VERSION_1, &env);
+            }
+            if (status != ANI_OK) {
+                HILOG_WARN(LOG_CORE, "EtsDeleteCallback GetEnv failed, %{public}d", status);
+                break;
+            }
+            status = env->GlobalReference_Delete(context->callback);
+            if (status != ANI_OK) {
+                HILOG_WARN(LOG_CORE, "EtsDeleteCallback GlobalReference_Delete failed, %{public}d", status);
+                break;
+            }
+        } while (false);
+        if (needDetach) {
+            context->vm->DetachCurrentThread();
+        }
+        delete context;
+    }
+}
+
+static ani_int EtsRegisterTraceListener(ani_env* env, ani_fn_object callback)
+{
+    CallbackContext* context = new CallbackContext();
+    bool needDelCtx = false;
+    if (env->GlobalReference_Create(callback, &(context->callback)) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "Failed to create global reference");
+        context->callback = nullptr;
+        needDelCtx = true;
+    }
+    if (env->GetVM(&(context->vm)) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "GetVM failed");
+        if (context->callback) {
+            env->GlobalReference_Delete(context->callback);
+        }
+        needDelCtx = true;
+    }
+    if (needDelCtx) {
+        delete context;
+        context = nullptr;
+    }
+
+    SetCallbacksAni(EtsExcuteCallBack, EtsDeleteCallback);
+    int32_t registerRet = RegisterTraceListenerAni(reinterpret_cast<void *>(context));
+    if (registerRet < 0) {
+        EtsDeleteCallback(reinterpret_cast<void *>(context));
+    }
+    return registerRet;
+}
+
+static ani_int EtsUnregisterTraceListener(ani_env* env, ani_int index)
+{
+    return UnregisterTraceListenerAni(index);
+}
+
 ANI_EXPORT ani_status ANI_Constructor(ani_vm* vm, uint32_t* result)
 {
     ani_env* env;
@@ -211,6 +343,8 @@ ANI_EXPORT ani_status ANI_Constructor(ani_vm* vm, uint32_t* result)
         ani_native_function {"startAsyncTrace", nullptr, reinterpret_cast<void *>(EtsStartAsyncTrace)},
         ani_native_function {"finishAsyncTrace", nullptr, reinterpret_cast<void *>(EtsFinishAsyncTrace)},
         ani_native_function {"isTraceEnabled", nullptr, reinterpret_cast<void *>(EtsIsTraceEnabled)},
+        ani_native_function {"registerTraceListener", nullptr, reinterpret_cast<void *>(EtsRegisterTraceListener)},
+        ani_native_function {"unregisterTraceListener", nullptr, reinterpret_cast<void *>(EtsUnregisterTraceListener)},
     };
 
     if (env->Namespace_BindNativeFunctions(ns, methods.data(), methods.size()) != ANI_OK) {

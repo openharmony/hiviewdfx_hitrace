@@ -22,6 +22,7 @@
 #endif
 
 typedef HiTraceOutputLevel HiTrace_Output_Level;
+typedef void (*OH_HiTrace_TraceEventListener)(bool traceStatus);
 
 void OH_HiTrace_StartTrace(const char *name)
 {
@@ -77,4 +78,14 @@ void OH_HiTrace_CountTraceEx(HiTrace_Output_Level level, const char *name, int64
 bool OH_HiTrace_IsTraceEnabled(void)
 {
     return IsTagEnabledCwrapper(HITRACE_TAG_APP);
+}
+
+int32_t OH_HiTrace_RegisterTraceListener(OH_HiTrace_TraceEventListener callback)
+{
+    return RegisterTraceListenerCwrapper(callback);
+}
+
+int32_t OH_HiTrace_UnregisterTraceListener(int32_t index)
+{
+    return UnregisterTraceListenerCwrapper(index);
 }

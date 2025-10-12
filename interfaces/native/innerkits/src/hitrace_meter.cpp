@@ -24,12 +24,15 @@
 #include <cerrno>
 #include <fcntl.h>
 #include <fstream>
+#include <functional>
 #include <linux/perf_event.h>
 #include <memory>
 #include <mutex>
+#include <queue>
 #include <sched.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <thread>
 #include <vector>
 
 #include "common_define.h"
@@ -94,7 +97,15 @@ TraceFlag g_appFlag(FLAG_MAIN_THREAD);
 std::atomic<uint64_t> g_fileLimitSize(0);
 std::unique_ptr<char[]> g_traceBuffer;
 std::recursive_mutex g_appTraceMutex;
-std::mutex g_pidMutex;
+std::mutex g_tagsChangeMutex;
+std::atomic<bool> g_isCallbacksEmpty = true;
+
+constexpr int32_t MAX_CALLBACKS = 10;
+constexpr int32_t INVALID_PARAMETER = -2;
+constexpr int32_t REACH_MAX_CALLBACKS = -1;
+constexpr int32_t INVALID_INDEX = -2;
+constexpr int32_t INDEX_NOT_REGISTERED = -1;
+constexpr int32_t SUCCESS_UNREGISTER = 0;
 
 static const char g_markTypes[5] = {'B', 'E', 'S', 'F', 'C'};
 enum MarkerType { MARKER_BEGIN, MARKER_END, MARKER_ASYNC_BEGIN, MARKER_ASYNC_END, MARKER_INT };
@@ -135,6 +146,87 @@ struct TraceMarker {
     int pid = -1;
 };
 
+class TaskQueue {
+public:
+    TaskQueue()
+    {
+        thread_ = std::thread(&TaskQueue::ProcessTasks, this);
+    }
+
+    ~TaskQueue()
+    {
+        stop_ = true;
+        condition_.notify_one();
+        thread_.join();
+    }
+
+    static TaskQueue& Instance()
+    {
+        static TaskQueue instance;
+        return instance;
+    }
+
+    void Enqueue(std::function<void()> task)
+    {
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            queue_.push(task);
+        }
+        condition_.notify_one();
+    }
+
+private:
+    void ProcessRemainingTasks()
+    {
+        std::unique_lock<std::mutex> lock(mutex_);
+        while (!queue_.empty()) {
+            auto task = queue_.front();
+            queue_.pop();
+            lock.unlock();
+            task();
+            lock.lock();
+        }
+    }
+
+    void ProcessTasks()
+    {
+        while (!stop_) {
+            std::function<void()> task;
+            {
+                std::unique_lock<std::mutex> lock(mutex_);
+                condition_.wait(lock, [this] { return !queue_.empty() || stop_; });
+                if (stop_) {
+                    HILOG_INFO(LOG_CORE, "ProcessTasks stop");
+                    break;
+                }
+                task = queue_.front();
+                queue_.pop();
+            }
+            task();
+        }
+        ProcessRemainingTasks();
+    }
+
+    std::queue<std::function<void()>> queue_;
+    std::mutex mutex_;
+    std::condition_variable condition_;
+    std::thread thread_;
+    bool stop_ = false;
+};
+
+static void HandleAppTagChange(uint64_t oldTags, uint64_t newTags)
+{
+    bool oldAppTag = ((oldTags & HITRACE_TAG_APP) != 0);
+    bool newAppTag = ((newTags & HITRACE_TAG_APP) != 0);
+
+    if (newAppTag != oldAppTag && !g_isCallbacksEmpty) {
+        HILOG_INFO(LOG_CORE, "HandleAppTagChange");
+        TaskQueue::Instance().Enqueue([newAppTag] {
+            CallbackRegistry::Instance().ExecuteAll(newAppTag);
+        });
+    }
+}
+
 inline void CreateCacheHandle()
 {
     const char* devValue = "true";
@@ -157,14 +249,22 @@ static void UpdateSysParamTags()
         CreateCacheHandle();
         return;
     }
-    int changed = 0;
-    const char* paramValue = CachedParameterGetChanged(g_cachedHandle, &changed);
-    if (UNEXPECTANTLY(changed == 1) && paramValue != nullptr) {
-        uint64_t tags = 0;
-        if (!OHOS::HiviewDFX::Hitrace::StringToUint64(paramValue, tags)) {
-            return;
+
+    {
+        std::unique_lock<std::mutex> lock(g_tagsChangeMutex);
+        int changed = 0;
+        const char* paramValue = CachedParameterGetChanged(g_cachedHandle, &changed);
+        if (UNEXPECTANTLY(changed == 1) && paramValue != nullptr) {
+            uint64_t tags = 0;
+            if (!OHOS::HiviewDFX::Hitrace::StringToUint64(paramValue, tags)) {
+                return;
+            }
+
+            uint64_t oldTags = g_tagsProperty.load() | g_appTag.load();
+            g_tagsProperty.store((tags | HITRACE_TAG_ALWAYS) & HITRACE_TAG_VALID_MASK);
+            uint64_t newTags = g_tagsProperty.load() | g_appTag.load();
+            HandleAppTagChange(oldTags, newTags);
         }
-        g_tagsProperty = (tags | HITRACE_TAG_ALWAYS) & HITRACE_TAG_VALID_MASK;
     }
     int appPidChanged = 0;
     const char* paramPid = CachedParameterGetChanged(g_appPidCachedHandle, &appPidChanged);
@@ -1264,12 +1364,39 @@ bool IsTagEnabled(uint64_t tag)
     return ((tag & g_tagsProperty) == tag);
 }
 
+static void ResetGlobalStatus()
+{
+    close(g_appFd);
+    g_appFd = -1;
+    g_fileSize = 0;
+    g_writeOffset = 0;
+    g_traceEventNum = 0;
+    g_appTracePrefix = "";
+    g_appTag = HITRACE_TAG_NOT_READY;
+    g_traceBuffer.reset();
+    g_traceBuffer = nullptr;
+}
+
+static int CheckFd(int fd)
+{
+    if (fd == -1) {
+        if (errno == ENOENT) {
+            return RET_FAIL_ENOENT;
+        } else if (errno == EACCES) {
+            return RET_FAIL_EACCES;
+        } else {
+            return RET_FAILD;
+        }
+    }
+    return RET_SUCC;
+}
+
 // For native process, the caller is responsible passing the full path of the fileName.
 // For hap application, StartCaputreAppTrace() fill fileName
 // as /data/app/el2/100/log/$(processname)/trace/$(processname)_$(date)_&(time).trace and return to caller.
 int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std::string& fileName)
 {
-    auto ret = CheckAppTraceArgs(flag, tags, limitSize);
+    int ret = CheckAppTraceArgs(flag, tags, limitSize);
     if (ret != RET_SUCC) {
         return ret;
     }
@@ -1297,24 +1424,31 @@ int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std:
         auto retval = SetAppFileName(destFileName, fileName);
         if (retval != RET_SUCC) {
             HILOG_ERROR(LOG_CORE, "set appFileName failed: %{public}d(%{public}s)", errno, strerror(errno));
+            ResetGlobalStatus();
             return retval;
         }
     }
 
     mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH; // 0644
     g_appFd = open(destFileName.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC, mode);
-    if (g_appFd == -1) {
+    ret = CheckFd(g_appFd);
+    if (ret != RET_SUCC) {
         HILOG_ERROR(LOG_CORE, "open destFileName failed: %{public}d(%{public}s)", errno, strerror(errno));
-        if (errno == ENOENT) {
-            return RET_FAIL_ENOENT;
-        } else if (errno == EACCES) {
-            return RET_FAIL_EACCES;
-        } else {
-            return RET_FAILD;
-        }
+        ResetGlobalStatus();
+        return ret;
     }
 
-    return InitTraceHead();
+    ret = InitTraceHead();
+    if (ret == RET_SUCC) {
+        std::unique_lock<std::mutex> lock(g_tagsChangeMutex);
+        uint64_t oldTags = g_tagsProperty.load();
+        uint64_t newTags = g_tagsProperty.load() | g_appTag.load();
+        HandleAppTagChange(oldTags, newTags);
+    } else {
+        ResetGlobalStatus();
+    }
+
+    return ret;
 }
 
 int StopCaptureAppTrace()
@@ -1343,16 +1477,13 @@ int StopCaptureAppTrace()
         return RET_FAILD;
     }
 
-    g_fileSize = 0;
-    g_writeOffset = 0;
-    g_traceEventNum = 0;
-    g_appTracePrefix = "";
-    g_appTag = HITRACE_TAG_NOT_READY;
-
-    close(g_appFd);
-    g_appFd = -1;
-    g_traceBuffer.reset();
-    g_traceBuffer = nullptr;
+    {
+        std::unique_lock<std::mutex> lock(g_tagsChangeMutex);
+        uint64_t oldTags = g_tagsProperty.load() | g_appTag.load();
+        uint64_t newTags = g_tagsProperty.load();
+        HandleAppTagChange(oldTags, newTags);
+    }
+    ResetGlobalStatus();
 
     return RET_SUCC;
 }
@@ -1414,4 +1545,175 @@ HitracePerfScoped::~HitracePerfScoped()
         close(fd2nd_);
         CountTrace(mTag_, mName_ + "-Cycle", countCycles_);
     }
+}
+
+int32_t CallbackRegistry::Register(void* callback, CallbackType type)
+{
+    if (!callback) {
+        return INVALID_PARAMETER;
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (int32_t index = 0; index < MAX_CALLBACKS; ++index) {
+        auto it = callbacks_.find(index);
+        if (it != callbacks_.end()) {
+            continue;
+        }
+        callbacks_[index] = {callback, type};
+        g_isCallbacksEmpty = false;
+        HILOG_INFO(LOG_CORE, "RegisterTraceListener success, index: %{public}d", index);
+        bool appTagEnable = (((g_tagsProperty.load() | g_appTag.load()) & HITRACE_TAG_APP) != 0);
+        TaskQueue::Instance().Enqueue([index, appTagEnable] {
+            CallbackRegistry::Instance().ExecuteOne(index, appTagEnable);
+        });
+        return index;
+    }
+
+    return REACH_MAX_CALLBACKS;
+}
+
+int32_t CallbackRegistry::Unregister(int32_t index)
+{
+    if (index < 0 || index >= MAX_CALLBACKS) {
+        return INVALID_INDEX;
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = callbacks_.find(index);
+    if (it == callbacks_.end()) {
+        return INDEX_NOT_REGISTERED;
+    }
+
+    switch (it->second.type) {
+        case CallbackType::Napi:
+            if (deleteCallbackNapi_) {
+                deleteCallbackNapi_(it->second.callback);
+            }
+            break;
+        case CallbackType::Ani:
+            if (deleteCallbackAni_) {
+                deleteCallbackAni_(it->second.callback);
+            }
+            break;
+        case CallbackType::Native:
+            break;
+    }
+
+    callbacks_.erase(it);
+    if (callbacks_.empty()) {
+        g_isCallbacksEmpty = true;
+    }
+    HILOG_INFO(LOG_CORE, "UnregisterTraceListener success, index: %{public}d", index);
+    return SUCCESS_UNREGISTER;
+}
+
+void CallbackRegistry::ExecuteAll(bool appTagEnable)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (auto& [id, handle] : callbacks_) {
+        switch (handle.type) {
+            case CallbackType::Native: {
+                HILOG_INFO(LOG_CORE, "Execute Native");
+                auto cb = reinterpret_cast<void(*)(bool)>(handle.callback);
+                cb(appTagEnable);
+                break;
+            }
+            case CallbackType::Napi: {
+                HILOG_INFO(LOG_CORE, "Execute Napi");
+                if (executeCallbackNapi_) {
+                    executeCallbackNapi_(handle.callback, appTagEnable);
+                }
+                break;
+            }
+            case CallbackType::Ani: {
+                HILOG_INFO(LOG_CORE, "Execute Ani");
+                if (executeCallbackAni_) {
+                    executeCallbackAni_(handle.callback, appTagEnable);
+                }
+                break;
+            }
+        }
+    }
+}
+
+void CallbackRegistry::ExecuteOne(int32_t index, bool appTagEnable)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = callbacks_.find(index);
+    if (it == callbacks_.end()) {
+        HILOG_WARN(LOG_CORE, "callback not exist, index: %{public}d", index);
+        return;
+    }
+    switch (it->second.type) {
+        case CallbackType::Native: {
+            HILOG_INFO(LOG_CORE, "Execute Native");
+            auto cb = reinterpret_cast<void(*)(bool)>(it->second.callback);
+            cb(appTagEnable);
+            break;
+        }
+        case CallbackType::Napi: {
+            HILOG_INFO(LOG_CORE, "Execute Napi");
+            if (executeCallbackNapi_) {
+                executeCallbackNapi_(it->second.callback, appTagEnable);
+            }
+            break;
+        }
+        case CallbackType::Ani: {
+            HILOG_INFO(LOG_CORE, "Execute Ani");
+            if (executeCallbackAni_) {
+                executeCallbackAni_(it->second.callback, appTagEnable);
+            }
+            break;
+        }
+    }
+}
+
+void CallbackRegistry::SetCallbacksNapi(ExecuteCallbackNapi executeCallbackNapi, DeleteCallbackNapi deleteCallbackNapi)
+{
+    executeCallbackNapi_ = executeCallbackNapi;
+    deleteCallbackNapi_ = deleteCallbackNapi;
+}
+
+void CallbackRegistry::SetCallbacksAni(ExecuteCallbackAni executeCallbackAni, DeleteCallbackAni deleteCallbackAni)
+{
+    executeCallbackAni_ = executeCallbackAni;
+    deleteCallbackAni_ = deleteCallbackAni;
+}
+
+void SetCallbacksNapi(ExecuteCallbackNapi executeCallbackNapi, DeleteCallbackNapi deleteCallbackNapi)
+{
+    CallbackRegistry::Instance().SetCallbacksNapi(executeCallbackNapi, deleteCallbackNapi);
+}
+
+void SetCallbacksAni(ExecuteCallbackAni executeCallbackAni, DeleteCallbackAni deleteCallbackAni)
+{
+    CallbackRegistry::Instance().SetCallbacksAni(executeCallbackAni, deleteCallbackAni);
+}
+
+int32_t RegisterTraceListener(TraceEventListener callback)
+{
+    return CallbackRegistry::Instance().Register(reinterpret_cast<void *>(callback));
+}
+
+int32_t RegisterTraceListenerNapi(void* callback)
+{
+    return CallbackRegistry::Instance().Register(callback, CallbackType::Napi);
+}
+
+int32_t RegisterTraceListenerAni(void* callback)
+{
+    return CallbackRegistry::Instance().Register(callback, CallbackType::Ani);
+}
+
+int32_t UnregisterTraceListener(int32_t index)
+{
+    return CallbackRegistry::Instance().Unregister(index);
+}
+
+int32_t UnregisterTraceListenerNapi(int32_t index)
+{
+    return CallbackRegistry::Instance().Unregister(index);
+}
+
+int32_t UnregisterTraceListenerAni(int32_t index)
+{
+    return CallbackRegistry::Instance().Unregister(index);
 }

@@ -121,5 +121,13 @@
     {
         "first_introduced": "19",
         "name": "OH_HiTrace_IsTraceEnabled"
+    },
+    {
+        "first_introduced": "22",
+        "name": "OH_HiTrace_RegisterTraceListener"
+    },
+    {
+        "first_introduced": "22",
+        "name": "OH_HiTrace_UnregisterTraceListener"
     }
 ]

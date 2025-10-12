@@ -31,6 +31,8 @@ typedef enum HiTraceOutputLevel {
     HITRACE_LEVEL_MAX = HITRACE_LEVEL_COMMERCIAL,
 } HiTraceOutputLevel;
 
+typedef void (*TraceEventListener)(bool traceStatus);
+
 void HiTraceStartTrace(uint64_t tag, const char* name);
 void HiTraceFinishTrace(uint64_t tag);
 void HiTraceStartAsyncTrace(uint64_t tag, const char* name, int32_t taskId);
@@ -44,6 +46,9 @@ void HiTraceStartAsyncTraceEx(HiTraceOutputLevel level, uint64_t tag, const char
 void HiTraceFinishAsyncTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, int32_t taskId);
 void HiTraceCountTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, int64_t count);
 bool HiTraceIsTagEnabled(uint64_t tag);
+
+int32_t HiTraceRegisterTraceListener(TraceEventListener callback);
+int32_t HiTraceUnregisterTraceListener(int32_t index);
 
 #ifdef __cplusplus
 }

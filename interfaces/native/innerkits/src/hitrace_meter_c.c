@@ -50,20 +50,34 @@ void HiTraceFinishTraceEx(HiTraceOutputLevel level, uint64_t tag)
 {
     FinishTraceExCwrapper(level, tag);
 }
+
 void HiTraceStartAsyncTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, int32_t taskId,
     const char* customCategory, const char* customArgs)
 {
     StartAsyncTraceExCwrapper(level, tag, name, taskId, customCategory, customArgs);
 }
+
 void HiTraceFinishAsyncTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, int32_t taskId)
 {
     FinishAsyncTraceExCwrapper(level, tag, name, taskId);
 }
+
 void HiTraceCountTraceEx(HiTraceOutputLevel level, uint64_t tag, const char* name, int64_t count)
 {
     CountTraceExCwrapper(level, tag, name, count);
 }
+
 bool HiTraceIsTagEnabled(uint64_t tag)
 {
     return IsTagEnabledCwrapper(tag);
+}
+
+int32_t HiTraceRegisterTraceListener(TraceEventListener callback)
+{
+    return RegisterTraceListenerCwrapper(callback);
+}
+
+int32_t HiTraceUnregisterTraceListener(int32_t index)
+{
+    return UnregisterTraceListenerCwrapper(index);
 }
