@@ -97,6 +97,7 @@ struct TraceDumpTask {
     int64_t fileSize = 0;
     int64_t fileSizeLimit = 0;
     bool hasSyncReturn = false;
+    uint8_t writeRetry = 0;
     TraceErrorCode code = TraceErrorCode::UNSET;
     bool isFileSizeOverLimit = false;
     TraceDumpStatus status = TraceDumpStatus::START;

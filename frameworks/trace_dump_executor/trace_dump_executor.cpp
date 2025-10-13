@@ -50,6 +50,7 @@ constexpr int DEFAULT_CACHE_FILE_SIZE = 150 * 1024;
 #endif
 constexpr uint64_t SYNC_RETURN_TIMEOUT_NS = 5000000000; // 5s
 constexpr int64_t ASYNC_DUMP_FILE_SIZE_ADDITION = 1024 * 1024; // 1MB
+constexpr int MAX_WRITE_RETRY = 10;
 
 static bool g_isRootVer = IsRootVersion();
 
@@ -595,6 +596,11 @@ void TraceDumpExecutor::DoProcessTraceDumpTask(std::shared_ptr<HitraceDumpPipe>&
                 writeCondVar_.notify_one();
             }
         }
+    }
+    if (task.writeRetry >= MAX_WRITE_RETRY) {
+        HILOG_WARN(LOG_CORE, "DoProcessTraceDumpTask: write retry exceed max retry, taskid[%{public}" PRIu64 "]",
+            task.time);
+        completedTasks.push_back(task);
     }
 }
 
