@@ -19,6 +19,7 @@
 #include <mutex>
 #include <string>
 #include <unistd.h>
+#include <unordered_map>
 
 #include "hitrace_meter_c.h"
 #ifdef HITRACE_UNITTEST
