@@ -120,26 +120,26 @@ constexpr uint64_t HITRACE_TAG_COMMERCIAL = (1ULL << 5); // Tag for commercial v
 #define HITRACE_METER_FMT_EX(level, TAG, customArgs, fmt, ...) \
     HitraceMeterFmtScopedEx TOKENPASTE2(tracer, __LINE__)(level, TAG, customArgs, fmt, ##__VA_ARGS__)
 
-enum class CallbackType {
+enum class HiTraceCallbackType {
     Native,
     Napi,
     Ani
 };
 
-struct CallbackHandle {
+struct HiTraceCallbackHandle {
     void* callback = nullptr;
-    CallbackType type = CallbackType::Native;
+    HiTraceCallbackType type = HiTraceCallbackType::Native;
 };
 
-class CallbackRegistry {
+class HiTraceCallbackRegistry {
 public:
-    static CallbackRegistry& Instance()
+    static HiTraceCallbackRegistry& Instance()
     {
-        static CallbackRegistry instance;
+        static HiTraceCallbackRegistry instance;
         return instance;
     }
 
-    int32_t Register(void* callback, CallbackType type = CallbackType::Native);
+    int32_t Register(void* callback, HiTraceCallbackType type = HiTraceCallbackType::Native);
     int32_t Unregister(int32_t index);
     void ExecuteAll(bool appTagEnable);
     void ExecuteOne(int32_t index, bool appTagEnable);
@@ -148,7 +148,7 @@ public:
     void SetCallbacksAni(ExecuteCallbackAni executeCallbackAni, DeleteCallbackAni deleteCallbackAni);
 private:
     mutable std::mutex mutex_;
-    std::unordered_map<int32_t, CallbackHandle> callbacks_;
+    std::unordered_map<int32_t, HiTraceCallbackHandle> callbacks_;
     ExecuteCallbackNapi executeCallbackNapi_;
     DeleteCallbackNapi deleteCallbackNapi_;
     ExecuteCallbackAni executeCallbackAni_;
