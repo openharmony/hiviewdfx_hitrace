@@ -222,7 +222,7 @@ static void HandleAppTagChange(uint64_t oldTags, uint64_t newTags)
     if (newAppTag != oldAppTag && !g_isCallbacksEmpty) {
         HILOG_INFO(LOG_CORE, "HandleAppTagChange");
         TaskQueue::Instance().Enqueue([newAppTag] {
-            CallbackRegistry::Instance().ExecuteAll(newAppTag);
+            HiTraceCallbackRegistry::Instance().ExecuteAll(newAppTag);
         });
     }
 }
@@ -1547,7 +1547,7 @@ HitracePerfScoped::~HitracePerfScoped()
     }
 }
 
-int32_t CallbackRegistry::Register(void* callback, CallbackType type)
+int32_t HiTraceCallbackRegistry::Register(void* callback, HiTraceCallbackType type)
 {
     if (!callback) {
         return INVALID_PARAMETER;
@@ -1563,7 +1563,7 @@ int32_t CallbackRegistry::Register(void* callback, CallbackType type)
         HILOG_INFO(LOG_CORE, "RegisterTraceListener success, index: %{public}d", index);
         bool appTagEnable = (((g_tagsProperty.load() | g_appTag.load()) & HITRACE_TAG_APP) != 0);
         TaskQueue::Instance().Enqueue([index, appTagEnable] {
-            CallbackRegistry::Instance().ExecuteOne(index, appTagEnable);
+            HiTraceCallbackRegistry::Instance().ExecuteOne(index, appTagEnable);
         });
         return index;
     }
@@ -1571,7 +1571,7 @@ int32_t CallbackRegistry::Register(void* callback, CallbackType type)
     return REACH_MAX_CALLBACKS;
 }
 
-int32_t CallbackRegistry::Unregister(int32_t index)
+int32_t HiTraceCallbackRegistry::Unregister(int32_t index)
 {
     if (index < 0 || index >= MAX_CALLBACKS) {
         return INVALID_INDEX;
@@ -1583,17 +1583,17 @@ int32_t CallbackRegistry::Unregister(int32_t index)
     }
 
     switch (it->second.type) {
-        case CallbackType::Napi:
+        case HiTraceCallbackType::Napi:
             if (deleteCallbackNapi_) {
                 deleteCallbackNapi_(it->second.callback);
             }
             break;
-        case CallbackType::Ani:
+        case HiTraceCallbackType::Ani:
             if (deleteCallbackAni_) {
                 deleteCallbackAni_(it->second.callback);
             }
             break;
-        case CallbackType::Native:
+        case HiTraceCallbackType::Native:
             break;
     }
 
@@ -1605,25 +1605,25 @@ int32_t CallbackRegistry::Unregister(int32_t index)
     return SUCCESS_UNREGISTER;
 }
 
-void CallbackRegistry::ExecuteAll(bool appTagEnable)
+void HiTraceCallbackRegistry::ExecuteAll(bool appTagEnable)
 {
     std::lock_guard<std::mutex> lock(mutex_);
     for (auto& [id, handle] : callbacks_) {
         switch (handle.type) {
-            case CallbackType::Native: {
+            case HiTraceCallbackType::Native: {
                 HILOG_INFO(LOG_CORE, "Execute Native");
                 auto cb = reinterpret_cast<void(*)(bool)>(handle.callback);
                 cb(appTagEnable);
                 break;
             }
-            case CallbackType::Napi: {
+            case HiTraceCallbackType::Napi: {
                 HILOG_INFO(LOG_CORE, "Execute Napi");
                 if (executeCallbackNapi_) {
                     executeCallbackNapi_(handle.callback, appTagEnable);
                 }
                 break;
             }
-            case CallbackType::Ani: {
+            case HiTraceCallbackType::Ani: {
                 HILOG_INFO(LOG_CORE, "Execute Ani");
                 if (executeCallbackAni_) {
                     executeCallbackAni_(handle.callback, appTagEnable);
@@ -1634,7 +1634,7 @@ void CallbackRegistry::ExecuteAll(bool appTagEnable)
     }
 }
 
-void CallbackRegistry::ExecuteOne(int32_t index, bool appTagEnable)
+void HiTraceCallbackRegistry::ExecuteOne(int32_t index, bool appTagEnable)
 {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = callbacks_.find(index);
@@ -1643,20 +1643,20 @@ void CallbackRegistry::ExecuteOne(int32_t index, bool appTagEnable)
         return;
     }
     switch (it->second.type) {
-        case CallbackType::Native: {
+        case HiTraceCallbackType::Native: {
             HILOG_INFO(LOG_CORE, "Execute Native");
             auto cb = reinterpret_cast<void(*)(bool)>(it->second.callback);
             cb(appTagEnable);
             break;
         }
-        case CallbackType::Napi: {
+        case HiTraceCallbackType::Napi: {
             HILOG_INFO(LOG_CORE, "Execute Napi");
             if (executeCallbackNapi_) {
                 executeCallbackNapi_(it->second.callback, appTagEnable);
             }
             break;
         }
-        case CallbackType::Ani: {
+        case HiTraceCallbackType::Ani: {
             HILOG_INFO(LOG_CORE, "Execute Ani");
             if (executeCallbackAni_) {
                 executeCallbackAni_(it->second.callback, appTagEnable);
@@ -1666,13 +1666,15 @@ void CallbackRegistry::ExecuteOne(int32_t index, bool appTagEnable)
     }
 }
 
-void CallbackRegistry::SetCallbacksNapi(ExecuteCallbackNapi executeCallbackNapi, DeleteCallbackNapi deleteCallbackNapi)
+void HiTraceCallbackRegistry::SetCallbacksNapi(ExecuteCallbackNapi executeCallbackNapi,
+    DeleteCallbackNapi deleteCallbackNapi)
 {
     executeCallbackNapi_ = executeCallbackNapi;
     deleteCallbackNapi_ = deleteCallbackNapi;
 }
 
-void CallbackRegistry::SetCallbacksAni(ExecuteCallbackAni executeCallbackAni, DeleteCallbackAni deleteCallbackAni)
+void HiTraceCallbackRegistry::SetCallbacksAni(ExecuteCallbackAni executeCallbackAni,
+    DeleteCallbackAni deleteCallbackAni)
 {
     executeCallbackAni_ = executeCallbackAni;
     deleteCallbackAni_ = deleteCallbackAni;
@@ -1680,40 +1682,40 @@ void CallbackRegistry::SetCallbacksAni(ExecuteCallbackAni executeCallbackAni, De
 
 void SetCallbacksNapi(ExecuteCallbackNapi executeCallbackNapi, DeleteCallbackNapi deleteCallbackNapi)
 {
-    CallbackRegistry::Instance().SetCallbacksNapi(executeCallbackNapi, deleteCallbackNapi);
+    HiTraceCallbackRegistry::Instance().SetCallbacksNapi(executeCallbackNapi, deleteCallbackNapi);
 }
 
 void SetCallbacksAni(ExecuteCallbackAni executeCallbackAni, DeleteCallbackAni deleteCallbackAni)
 {
-    CallbackRegistry::Instance().SetCallbacksAni(executeCallbackAni, deleteCallbackAni);
+    HiTraceCallbackRegistry::Instance().SetCallbacksAni(executeCallbackAni, deleteCallbackAni);
 }
 
 int32_t RegisterTraceListener(TraceEventListener callback)
 {
-    return CallbackRegistry::Instance().Register(reinterpret_cast<void *>(callback));
+    return HiTraceCallbackRegistry::Instance().Register(reinterpret_cast<void *>(callback));
 }
 
 int32_t RegisterTraceListenerNapi(void* callback)
 {
-    return CallbackRegistry::Instance().Register(callback, CallbackType::Napi);
+    return HiTraceCallbackRegistry::Instance().Register(callback, HiTraceCallbackType::Napi);
 }
 
 int32_t RegisterTraceListenerAni(void* callback)
 {
-    return CallbackRegistry::Instance().Register(callback, CallbackType::Ani);
+    return HiTraceCallbackRegistry::Instance().Register(callback, HiTraceCallbackType::Ani);
 }
 
 int32_t UnregisterTraceListener(int32_t index)
 {
-    return CallbackRegistry::Instance().Unregister(index);
+    return HiTraceCallbackRegistry::Instance().Unregister(index);
 }
 
 int32_t UnregisterTraceListenerNapi(int32_t index)
 {
-    return CallbackRegistry::Instance().Unregister(index);
+    return HiTraceCallbackRegistry::Instance().Unregister(index);
 }
 
 int32_t UnregisterTraceListenerAni(int32_t index)
 {
-    return CallbackRegistry::Instance().Unregister(index);
+    return HiTraceCallbackRegistry::Instance().Unregister(index);
 }
