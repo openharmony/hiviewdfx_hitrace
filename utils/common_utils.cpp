@@ -17,6 +17,7 @@
 
 #include <cinttypes>
 #include <unistd.h>
+#include <csignal>
 #include <cstdio>
 #include <fstream>
 #include <fcntl.h>
@@ -388,6 +389,16 @@ int GetMemInfoByName(const char* name, const char* path)
     }
     file.close();
     return memKB;
+}
+
+bool IsProcessExist(const pid_t pid)
+{
+    if (kill(pid, 0) == 0) {
+        HILOG_DEBUG(LOG_CORE, "IsProcessExist: %{public}d process exist", pid);
+        return true;
+    }
+    HILOG_WARN(LOG_CORE, "IsProcessExist: %{public}d process not exist", pid);
+    return false;
 }
 } // namespace Hitrace
 } // namespace HiviewDFX

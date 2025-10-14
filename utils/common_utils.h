@@ -69,6 +69,8 @@ std::string GetKernelVersion();
 uint64_t GetRemainingSpace(const std::string& path);
 
 int GetMemInfoByName(const char* name, const char* path = "/proc/meminfo");
+
+bool IsProcessExist(const pid_t pid);
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS

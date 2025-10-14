@@ -149,10 +149,11 @@ bool HitraceDumpPipe::CheckFdValidity(const int fd, const char* operation, const
     return true;
 }
 
-bool HitraceDumpPipe::WriteToPipe(const int fd, const TraceDumpTask& task, const char* operation)
+bool HitraceDumpPipe::WriteToPipe(const int fd, TraceDumpTask& task, const char* operation)
 {
     ssize_t ret = TEMP_FAILURE_RETRY(write(fd, &task, sizeof(task)));
     if (ret < 0) {
+        task.writeRetry++;
         HILOG_ERROR(LOG_CORE, "%{public}s: write pipe failed.", operation);
         return false;
     }
@@ -213,7 +214,7 @@ bool HitraceDumpPipe::AddFdToEpoll(const int fd)
     return true;
 }
 
-bool HitraceDumpPipe::SubmitTraceDumpTask(const TraceDumpTask& task)
+bool HitraceDumpPipe::SubmitTraceDumpTask(TraceDumpTask& task)
 {
     const char* operation = "SubmitTraceDumpTask";
     if (!CheckProcessRole(true, operation) || !CheckFdValidity(taskSubmitFd_, operation, "submit pipe")) {
@@ -249,7 +250,7 @@ bool HitraceDumpPipe::ReadTraceTask(const int timeoutMs, TraceDumpTask& task)
     return ReadFromPipe(taskSubmitFd_, task, timeoutMs, operation);
 }
 
-bool HitraceDumpPipe::WriteSyncReturn(const TraceDumpTask& task)
+bool HitraceDumpPipe::WriteSyncReturn(TraceDumpTask& task)
 {
     const char* operation = "WriteSyncReturn";
     if (!CheckProcessRole(false, operation) || !CheckFdValidity(syncRetFd_, operation, "sync return pipe")) {
@@ -258,7 +259,7 @@ bool HitraceDumpPipe::WriteSyncReturn(const TraceDumpTask& task)
     return WriteToPipe(syncRetFd_, task, operation);
 }
 
-bool HitraceDumpPipe::WriteAsyncReturn(const TraceDumpTask& task)
+bool HitraceDumpPipe::WriteAsyncReturn(TraceDumpTask& task)
 {
     const char* operation = "WriteAsyncReturn";
     if (!CheckProcessRole(false, operation) || !CheckFdValidity(asyncRetFd_, operation, "async return pipe")) {

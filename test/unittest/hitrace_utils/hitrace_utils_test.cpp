@@ -539,6 +539,19 @@ HWTEST_F(HitraceUtilsTest, GetMemInfoByNameTest004, TestSize.Level2)
     std::remove(testFile);
     GTEST_LOG_(INFO) << "GetMemInfoByNameTest004: start.";
 }
+
+/**
+ * @tc.name: ProcessExistTest001
+ * @tc.desc: test IsProcessExist func
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceUtilsTest, ProcessExistTest001, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "ProcessExistTest001: start.";
+    EXPECT_TRUE(IsProcessExist(1));
+    EXPECT_FALSE(IsProcessExist(65536)); // 65536 : max pid
+    GTEST_LOG_(INFO) << "ProcessExistTest001: end.";
+}
 } // namespace
 } // namespace Hitrace
 } // namespace HiviewDFX
