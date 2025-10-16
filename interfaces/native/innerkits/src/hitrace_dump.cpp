@@ -1245,6 +1245,23 @@ TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups)
         return TRACE_NOT_SUPPORTED;
     }
 
+    if (IsHmKernel()) {
+        TraceJsonParser& traceJsonParser = TraceJsonParser::Instance();
+        const std::map<std::string, TraceTag>& allTags = traceJsonParser.GetAllTagInfos();
+        if (allTags.size() == 0) {
+            HILOG_ERROR(LOG_CORE, "OpenTrace: ParseTagInfo TAG_ERROR.");
+            return TAG_ERROR;
+        }
+        auto iter = allTags.find("binder");
+        if (iter != allTags.end()) {
+            const std::vector<std::string> enablePath = iter->second.enablePath;
+            auto noFilterEvents = GetNoFilterEvents(enablePath);
+            if (noFilterEvents.size() > 0) {
+                AddNoFilterEvents(noFilterEvents);
+            }
+        }
+    }
+
     TraceErrorCode ret = HandleDefaultTraceOpen(tagGroups);
     if (ret != SUCCESS) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: failed.");
@@ -1289,6 +1306,16 @@ TraceErrorCode OpenTrace(const std::string& args)
     if (!ParseArgs(args, traceParams, allTags, tagGroupTable)) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: TAG_ERROR.");
         return TAG_ERROR;
+    }
+    if (IsHmKernel()) {
+        auto iter = allTags.find("binder");
+        if (iter != allTags.end()) {
+            const std::vector<std::string> enablePath = iter->second.enablePath;
+            auto noFilterEvents = GetNoFilterEvents(enablePath);
+            if (noFilterEvents.size() > 0) {
+                AddNoFilterEvents(noFilterEvents);
+            }
+        }
     }
 
     TraceErrorCode ret = HandleTraceOpen(traceParams, allTags, tagGroupTable, traceFormats);
@@ -1495,6 +1522,9 @@ TraceErrorCode CloseTrace()
 
     TraceInit(allTags);
     TruncateFile(TRACE_NODE);
+    if (IsHmKernel()) {
+        ClearNoFilterEvents();
+    }
     HILOG_INFO(LOG_CORE, "CloseTrace done.");
     return SUCCESS;
 }

@@ -40,6 +40,10 @@ int32_t AddFilterPids(const std::vector<std::string>& pids);
 
 int32_t ClearFilterPid();
 
+int32_t AddNoFilterEvents(const std::vector<std::string>& events);
+
+int32_t ClearNoFilterEvents();
+
 extern "C" {
 void FilterAppTrace(const char* app, pid_t pid);
 }
