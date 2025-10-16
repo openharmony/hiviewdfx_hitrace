@@ -21,6 +21,7 @@
 #include <unistd.h>
 
 #include "hitrace_meter_c.h"
+#include <unordered_map>
 #ifdef HITRACE_UNITTEST
 #include <hilog/log.h>
 #include "param/sys_param.h"
