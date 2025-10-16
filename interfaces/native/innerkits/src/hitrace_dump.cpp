@@ -85,7 +85,7 @@ constexpr uint64_t DEFAULT_ASYNC_TRACE_SIZE = 50 * 1024 * 1024;          // 50M
 constexpr int HUNDRED_MILLISECONDS = 100 * 1000; // 100ms
 constexpr int ASYNC_WAIT_EMPTY_LOOP_MS = 15 * 1000; // 15 seconds
 
-std::atomic<pid_t> g_traceDumpTaskPid(-1);
+static volatile sig_atomic_t g_traceDumpTaskPid = -1;
 std::atomic<pid_t> g_asyncWaitTid(-1);
 
 std::mutex g_traceMutex;
@@ -558,8 +558,8 @@ void TimeoutSignalHandler(int signum)
         _exit(EXIT_SUCCESS);
     } else if (signum == SIGCHLD) {
         // only work for async dump process.
-        if (g_traceDumpTaskPid.load() > 0 && waitpid(g_traceDumpTaskPid.load(), nullptr, WNOHANG) > 0) {
-            g_traceDumpTaskPid.store(-1);
+        if (g_traceDumpTaskPid > 0 && waitpid(g_traceDumpTaskPid, nullptr, WNOHANG) > 0) {
+            g_traceDumpTaskPid = -1;
         }
     }
 }
@@ -789,7 +789,7 @@ void WaitAsyncDumpRetLoop(const std::shared_ptr<HitraceDumpPipe> pipe)
     do {
         HILOG_INFO(LOG_CORE, "WaitAsyncDumpRetLoop: loop start.");
         if ((TraceDumpExecutor::GetInstance().IsTraceDumpTaskEmpty() && emptyLoopMs >= ASYNC_WAIT_EMPTY_LOOP_MS) ||
-            !IsProcessExist(g_traceDumpTaskPid.load())) {
+            !IsProcessExist(g_traceDumpTaskPid)) {
             HILOG_INFO(LOG_CORE, "WaitAsyncDumpRetLoop: task queue is empty or dump process has gone.");
             TraceDumpExecutor::GetInstance().ClearTraceDumpTask();
             HitraceDumpPipe::ClearTraceDumpPipe();
@@ -837,7 +837,7 @@ TraceErrorCode SubmitTaskAndWaitReturn(TraceDumpTask& task, TraceRetInfo& traceR
     if (!dumpPipe->SubmitTraceDumpTask(task)) {
         return TraceErrorCode::TRACE_TASK_SUBMIT_ERROR;
     }
-    auto taskRet = WaitSyncDumpRetLoop(g_traceDumpTaskPid.load(), dumpPipe);
+    auto taskRet = WaitSyncDumpRetLoop(g_traceDumpTaskPid, dumpPipe);
     HandleAsyncDumpResult(taskRet, traceRetInfo);
     if (taskRet.status == TraceDumpStatus::FINISH) {
         HILOG_INFO(LOG_CORE, "SubmitTaskAndWaitReturn: task finished.");
@@ -884,7 +884,7 @@ TraceErrorCode ProcessDumpAsync(const uint64_t taskid, const int64_t fileSizeLim
         .fileSizeLimit = fileSizeLimit
     };
     HILOG_INFO(LOG_CORE, "ProcessDumpAsync: new task id[%{public}" PRIu64 "]", task.time);
-    if (taskCnt > 0 && IsProcessExist(g_traceDumpTaskPid.load())) {
+    if (taskCnt > 0 && IsProcessExist(g_traceDumpTaskPid)) {
         // must have a trace dump process running, just submit trace dump task
         HILOG_INFO(LOG_CORE, "ProcessDumpAsync: task queue is not empty, do not fork new process.");
         return SubmitTaskAndWaitReturn(task, traceRetInfo);
@@ -912,7 +912,7 @@ TraceErrorCode ProcessDumpAsync(const uint64_t taskid, const int64_t fileSizeLim
         loopWriteThread.join();
         _exit(EXIT_SUCCESS);
     }
-    g_traceDumpTaskPid.store(pid);
+    g_traceDumpTaskPid = static_cast<sig_atomic_t>(pid);
     return SubmitTaskAndWaitReturn(task, traceRetInfo);
 }
 
