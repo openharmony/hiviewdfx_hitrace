@@ -187,7 +187,6 @@ int32_t AddNoFilterEvents(const std::vector<std::string>& events)
     for (size_t i = 0; i < events.size(); i++) {
         ss << events[i] << " ";
     }
-    ss << events[events.size() - 1];
     std::string eventStr = ss.str();
     if (AppendToFile(DEBUG_SET_NO_FILTER_EVENT, eventStr) || AppendToFile(SET_NO_FILTER_EVENT, eventStr)) {
         HILOG_INFO(LOG_CORE, "AddNoFilterEvents %{public}s success", eventStr.c_str());
