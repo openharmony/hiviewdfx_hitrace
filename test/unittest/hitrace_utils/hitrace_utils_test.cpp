@@ -517,7 +517,7 @@ HWTEST_F(HitraceUtilsTest, GetMemInfoByNameTest003, TestSize.Level2)
     EXPECT_EQ(result, 0);
 
     std::remove(testFile);
-    GTEST_LOG_(INFO) << "GetMemInfoByNameTest003: start.";
+    GTEST_LOG_(INFO) << "GetMemInfoByNameTest003: end.";
 }
 
 /**
@@ -537,7 +537,76 @@ HWTEST_F(HitraceUtilsTest, GetMemInfoByNameTest004, TestSize.Level2)
     EXPECT_EQ(result, 0);
 
     std::remove(testFile);
-    GTEST_LOG_(INFO) << "GetMemInfoByNameTest004: start.";
+    GTEST_LOG_(INFO) << "GetMemInfoByNameTest004: end.";
+}
+
+/**
+ * @tc.name: GetNoFilterEvents001
+ * @tc.desc: Test fun GetNoFilterEvents single normal input.
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceUtilsTest, GetNoFilterEvents001, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "GetNoFilterEvents001: start.";
+    std::vector<std::string> enablePath = {"events/binder/binder_transaction/enable"};
+    std::vector<std::string> expected = {"binder:binder_transaction"};
+    auto result = GetNoFilterEvents(enablePath);
+    EXPECT_EQ(result[0], expected[0]);
+    GTEST_LOG_(INFO) << "GetNoFilterEvents001: end.";
+}
+
+/**
+ * @tc.name: GetNoFilterEvents002
+ * @tc.desc: Test fun GetNoFilterEvents multiple normal input.
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceUtilsTest, GetNoFilterEvents002, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "GetNoFilterEvents002: start.";
+    std::vector<std::string> enablePath = {
+        "events/sched/sched_switch/enable",
+        "events/irq/irq_handler_entry/enable",
+        "events/power/cpu_idle/enable"
+    };
+    std::vector<std::string> expected = {
+        "sched:sched_switch",
+        "irq:irq_handler_entry",
+        "power:cpu_idle"
+    };
+    auto result = GetNoFilterEvents(enablePath);
+    EXPECT_EQ(result[0], expected[0]);
+    EXPECT_EQ(result[1], expected[1]);
+    EXPECT_EQ(result[2], expected[2]);
+    GTEST_LOG_(INFO) << "GetNoFilterEvents002: end.";
+}
+
+/**
+ * @tc.name: GetNoFilterEvents003
+ * @tc.desc: Test fun GetNoFilterEvents input null string.
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceUtilsTest, GetNoFilterEvents003, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "GetNoFilterEvents003: start.";
+    std::vector<std::string> enablePath = {""};
+    auto result = GetNoFilterEvents(enablePath);
+    EXPECT_EQ(result.size(), 0);
+    GTEST_LOG_(INFO) << "GetNoFilterEvents003: end.";
+}
+
+/**
+ * @tc.name: GetNoFilterEvents004
+ * @tc.desc: Test fun GetNoFilterEvents input error string.
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceUtilsTest, GetNoFilterEvents004, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "GetNoFilterEvents004: start.";
+    std::vector<std::string> enablePath = {"events/binder"};
+    std::vector<std::string> expected;
+    auto result = GetNoFilterEvents(enablePath);
+    EXPECT_EQ(result, expected);
+    GTEST_LOG_(INFO) << "GetNoFilterEvents004: end.";
 }
 
 /**

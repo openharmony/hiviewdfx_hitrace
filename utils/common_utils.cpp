@@ -45,6 +45,8 @@ namespace {
 static const char* CPUFREQ_PREFIX = "/sys/devices/system/cpu/cpu";
 static const char* CPUFREQ_AFTERFIX = "/cpufreq/scaling_cur_freq";
 constexpr int DECIMAL_SCALE = 10;
+constexpr int BUFFER_LEN = 32;
+constexpr int EXPECT_NUM = 2;
 }
 
 std::string CanonicalizeSpecPath(const char* src)
@@ -399,6 +401,23 @@ bool IsProcessExist(const pid_t pid)
     }
     HILOG_WARN(LOG_CORE, "IsProcessExist: %{public}d process not exist", pid);
     return false;
+}
+
+std::vector<std::string> GetNoFilterEvents(const std::vector<std::string>& enablePath)
+{
+    std::vector<std::string> noFilterEvents;
+    for (auto str : enablePath) {
+        char tag[BUFFER_LEN] = {0};
+        char event[BUFFER_LEN] = {0};
+        int ret = sscanf_s(str.c_str(), "%*[^/]/%[^/]/%[^/]/%*s", tag, sizeof(tag), event, sizeof(event));
+        if (ret == EXPECT_NUM) {
+            std::string res = std::string(tag) + ":" + std::string(event);
+            noFilterEvents.push_back(res);
+        } else {
+            HILOG_WARN(LOG_CORE, "enablePath maybe illegal");
+        }
+    }
+    return noFilterEvents;
 }
 } // namespace Hitrace
 } // namespace HiviewDFX

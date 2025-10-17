@@ -39,6 +39,8 @@ namespace Hitrace {
 static const char* TELEMETRY_APP_PARAM = "debug.hitrace.telemetry.app";
 static const char* SET_EVENT_PID = "/sys/kernel/tracing/set_event_pid";
 static const char* DEBUG_SET_EVENT_PID = "/sys/kernel/debug/tracing/set_event_pid";
+static const char* SET_NO_FILTER_EVENT = "/sys/kernel/tracing/no_filter_events";
+static const char* DEBUG_SET_NO_FILTER_EVENT = "/sys/kernel/debug/tracing/no_filter_events";
 
 class FileLock {
 private:
@@ -177,6 +179,41 @@ void FilterAppTrace(const char* app, pid_t pid)
     if (paramApp == app) {
         AddFilterPid(pid);
     }
+}
+
+int32_t AddNoFilterEvents(const std::vector<std::string>& events)
+{
+    std::stringstream ss(" ");
+    for (size_t i = 0; i < events.size(); i++) {
+        ss << events[i] << " ";
+    }
+    std::string eventStr = ss.str();
+    if (AppendToFile(DEBUG_SET_NO_FILTER_EVENT, eventStr) || AppendToFile(SET_NO_FILTER_EVENT, eventStr)) {
+        HILOG_INFO(LOG_CORE, "AddNoFilterEvents %{public}s success", eventStr.c_str());
+        return HITRACE_NO_ERROR;
+    }
+    HILOG_INFO(LOG_CORE, "AddNoFilterEvents %{public}s fail", eventStr.c_str());
+    return HITRACE_WRITE_FILE_ERROR;
+}
+
+int32_t ClearNoFilterEvents()
+{
+    int fd = creat(DEBUG_SET_NO_FILTER_EVENT, 0);
+    if (fd != -1) {
+        close(fd);
+        HILOG_INFO(LOG_CORE, "ClearNoFilterEvents success");
+        return HITRACE_NO_ERROR;
+    }
+
+    fd = creat(SET_NO_FILTER_EVENT, 0);
+    if (fd != -1) {
+        close(fd);
+        HILOG_INFO(LOG_CORE, "ClearNoFilterEvents success");
+        return HITRACE_NO_ERROR;
+    }
+
+    HILOG_INFO(LOG_CORE, "ClearNoFilterEvents fail");
+    return HITRACE_WRITE_FILE_ERROR;
 }
 
 } // namespace Hitrace
