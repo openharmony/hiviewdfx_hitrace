@@ -1013,6 +1013,7 @@ class TraceFileParser(TraceFileParserInterface):
             raise ValueError("Unsupported data type: must be bytes or list of bytes/str")
 
         for cmd_line in cmd_lines_list:
+            cmd_line = cmd_line.replace("\t", "")
             pos = cmd_line.find(" ")
             if pos == -1:
                 continue
