@@ -85,7 +85,7 @@ constexpr uint64_t DEFAULT_ASYNC_TRACE_SIZE = 50 * 1024 * 1024;          // 50M
 constexpr int HUNDRED_MILLISECONDS = 100 * 1000; // 100ms
 constexpr int ASYNC_WAIT_EMPTY_LOOP_MS = 15 * 1000; // 15 seconds
 
-std::atomic<pid_t> g_traceDumpTaskPid(-1);
+static volatile sig_atomic_t g_traceDumpTaskPid = -1;
 
 std::mutex g_traceMutex;
 bool g_serviceThreadIsStart = false;
@@ -557,7 +557,9 @@ void TimeoutSignalHandler(int signum)
         _exit(EXIT_SUCCESS);
     } else if (signum == SIGCHLD) {
         // only work for async dump process.
-        (void)waitpid(g_traceDumpTaskPid.load(), nullptr, WNOHANG);
+        if (g_traceDumpTaskPid > 0 && waitpid(g_traceDumpTaskPid, nullptr, WNOHANG) > 0) {
+            g_traceDumpTaskPid = -1;
+        }
     }
 }
 
@@ -570,6 +572,29 @@ void LogStackTrace(const pid_t pid)
         HILOG_ERROR(LOG_CORE, "LogStackTrace: dump stack trace failed, pid: %{public}d", pid);
     }
     HILOG_INFO(LOG_CORE, "LogStackTrace: %{public}s", stack.c_str());
+}
+
+void WaitForChildProcess(const pid_t pid)
+{
+    const int maxWaitTime = 5000;
+    const int checkInterval = 100;
+    int waitedTime = 0;
+    while (waitedTime < maxWaitTime) {
+        pid_t result = TEMP_FAILURE_RETRY(waitpid(pid, nullptr, WNOHANG));
+        if (result > 0) {
+            HILOG_INFO(LOG_CORE, "Child process %{public}d exited successfully.", pid);
+            break;
+        } else if (result == 0) {
+            usleep(checkInterval * 1000); // 1000 : 1ms
+            waitedTime += checkInterval;
+        } else {
+            HILOG_ERROR(LOG_CORE, "waitpid failed: %{public}s", strerror(errno));
+            break;
+        }
+    }
+    if (waitedTime >= maxWaitTime) {
+        HILOG_ERROR(LOG_CORE, "Child process %{public}d did not exit within timeout.", pid);
+    }
 }
 
 bool EpollWaitforChildProcess(pid_t& pid, int& pipefd, std::string& reOutPath)
@@ -602,9 +627,7 @@ bool EpollWaitforChildProcess(pid_t& pid, int& pipefd, std::string& reOutPath)
         if (kill(pid, SIGUSR1) != 0) {
             HILOG_ERROR(LOG_CORE, "kill child process failed.");
         }
-        if (waitpid(pid, nullptr, 0) <= 0) {
-            HILOG_ERROR(LOG_CORE, "wait child process failed.");
-        }
+        WaitForChildProcess(pid);
         close(epollfd);
         return false;
     }
@@ -618,9 +641,7 @@ bool EpollWaitforChildProcess(pid_t& pid, int& pipefd, std::string& reOutPath)
     g_firstPageTimestamp = retVal.traceStartTime;
     g_lastPageTimestamp = retVal.traceEndTime;
     close(epollfd);
-    if (waitpid(pid, nullptr, 0) <= 0) {
-        HILOG_ERROR(LOG_CORE, "wait HitraceDump(%{public}d) exit failed, errno: (%{public}d)", pid, errno);
-    }
+    WaitForChildProcess(pid);
     return true;
 }
 
@@ -770,9 +791,7 @@ TraceDumpTask WaitSyncDumpRetLoop(const pid_t pid, const std::shared_ptr<Hitrace
             HILOG_ERROR(LOG_CORE, "WaitSyncDumpRetLoop: kill dump process failed.");
         }
         HILOG_WARN(LOG_CORE, "WaitSyncDumpRetLoop: wait timeout, clear task and kill dump process.");
-        if (waitpid(pid, nullptr, 0) <= 0) {
-            HILOG_ERROR(LOG_CORE, "WaitSyncDumpRetLoop: wait child process failed.");
-        }
+        WaitForChildProcess(pid);
     }
     HILOG_INFO(LOG_CORE, "WaitSyncDumpRetLoop: exit.");
     return task;
@@ -831,7 +850,7 @@ TraceErrorCode SubmitTaskAndWaitReturn(const TraceDumpTask& task, const bool clo
     if (!dumpPipe->SubmitTraceDumpTask(task)) {
         return TraceErrorCode::TRACE_TASK_SUBMIT_ERROR;
     }
-    auto taskRet = WaitSyncDumpRetLoop(g_traceDumpTaskPid.load(), dumpPipe);
+    auto taskRet = WaitSyncDumpRetLoop(g_traceDumpTaskPid, dumpPipe);
     HandleAsyncDumpResult(taskRet, traceRetInfo);
     if (taskRet.status == TraceDumpStatus::FINISH) {
         HILOG_INFO(LOG_CORE, "SubmitTaskAndWaitReturn: task finished.");
@@ -906,7 +925,7 @@ TraceErrorCode ProcessDumpAsync(const uint64_t taskid, const int64_t fileSizeLim
         loopWriteThread.join();
         _exit(EXIT_SUCCESS);
     }
-    g_traceDumpTaskPid.store(pid);
+    g_traceDumpTaskPid = static_cast<sig_atomic_t>(pid);
     return SubmitTaskAndWaitReturn(task, true, traceRetInfo);
 }
 
