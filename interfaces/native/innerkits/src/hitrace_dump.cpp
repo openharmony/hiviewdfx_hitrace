@@ -575,6 +575,29 @@ void LogStackTrace(const pid_t pid)
     HILOG_INFO(LOG_CORE, "LogStackTrace: %{public}s", stack.c_str());
 }
 
+void WaitForChildProcess(const pid_t pid)
+{
+    const int maxWaitTime = 5000;
+    const int checkInterval = 100;
+    int waitedTime = 0;
+    while (waitedTime < maxWaitTime) {
+        pid_t result = TEMP_FAILURE_RETRY(waitpid(pid, nullptr, WNOHANG));
+        if (result > 0) {
+            HILOG_INFO(LOG_CORE, "Child process %d exited successfully.", pid);
+            break;
+        } else if (result == 0) {
+            usleep(checkInterval * 1000); // 1000 : 1ms
+            waitedTime += checkInterval;
+        } else {
+            HILOG_ERROR(LOG_CORE, "waitpid failed: %s", strerror(errno));
+            break;
+        }
+    }
+    if (waitedTime >= maxWaitTime) {
+        HILOG_ERROR(LOG_CORE, "Child process %d did not exit within timeout.", pid);
+    }
+}
+
 bool EpollWaitforChildProcess(pid_t& pid, int& pipefd, std::string& reOutPath)
 {
     int epollfd = epoll_create1(0);
@@ -605,9 +628,7 @@ bool EpollWaitforChildProcess(pid_t& pid, int& pipefd, std::string& reOutPath)
         if (kill(pid, SIGUSR1) != 0) {
             HILOG_ERROR(LOG_CORE, "kill child process failed.");
         }
-        if (waitpid(pid, nullptr, 0) <= 0) {
-            HILOG_ERROR(LOG_CORE, "wait child process failed.");
-        }
+        WaitForChildProcess(pid);
         close(epollfd);
         return false;
     }
@@ -621,9 +642,7 @@ bool EpollWaitforChildProcess(pid_t& pid, int& pipefd, std::string& reOutPath)
     g_firstPageTimestamp = retVal.traceStartTime;
     g_lastPageTimestamp = retVal.traceEndTime;
     close(epollfd);
-    if (waitpid(pid, nullptr, 0) <= 0) {
-        HILOG_ERROR(LOG_CORE, "wait HitraceDump(%{public}d) exit failed, errno: (%{public}d)", pid, errno);
-    }
+    WaitForChildProcess(pid);
     return true;
 }
 
@@ -773,9 +792,7 @@ TraceDumpTask WaitSyncDumpRetLoop(const pid_t pid, const std::shared_ptr<Hitrace
             HILOG_ERROR(LOG_CORE, "WaitSyncDumpRetLoop: kill dump process failed.");
         }
         HILOG_WARN(LOG_CORE, "WaitSyncDumpRetLoop: wait timeout, clear task and kill dump process.");
-        if (waitpid(pid, nullptr, 0) <= 0) {
-            HILOG_ERROR(LOG_CORE, "WaitSyncDumpRetLoop: wait child process failed.");
-        }
+        WaitForChildProcess(pid);
     }
     HILOG_INFO(LOG_CORE, "WaitSyncDumpRetLoop: exit.");
     return task;
