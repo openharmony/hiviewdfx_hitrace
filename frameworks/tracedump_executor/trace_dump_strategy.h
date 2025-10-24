@@ -56,8 +56,8 @@ protected:
     virtual bool DoCore(std::shared_ptr<ITraceSourceFactory> traceSourceFactory, const TraceDumpRequest& request,
         const TraceContentPtr& contentPtr, TraceDumpRet& ret) = 0;
     // Hooks: default to common pre/post dump steps. Subclasses may override if needed.
-    virtual void OnPre(const TraceContentPtr& contentPtr);
-    virtual void OnPost(const TraceContentPtr& contentPtr);
+    virtual void OnPre(const TraceContentPtr& traceContentPtr);
+    virtual void OnPost(const TraceContentPtr& traceContentPtr);
     // Some strategies (e.g., async read) do not need common content preparation.
     virtual bool NeedDoPreAndPost() const { return true; }
     virtual bool NeedCreateTraceContentPtr() const { return true; }
