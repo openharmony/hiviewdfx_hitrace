@@ -621,6 +621,18 @@ HWTEST_F(HitraceUtilsTest, ProcessExistTest001, TestSize.Level2)
     EXPECT_FALSE(IsProcessExist(65536)); // 65536 : max pid
     GTEST_LOG_(INFO) << "ProcessExistTest001: end.";
 }
+
+/**
+ * @tc.name: ProcessExistTest002
+ * @tc.desc: test IsProcessExist func with invalid pid
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceUtilsTest, ProcessExistTest002, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "ProcessExistTest002: start.";
+    EXPECT_FALSE(IsProcessExist(-1));
+    GTEST_LOG_(INFO) << "ProcessExistTest002: end.";
+}
 } // namespace
 } // namespace Hitrace
 } // namespace HiviewDFX

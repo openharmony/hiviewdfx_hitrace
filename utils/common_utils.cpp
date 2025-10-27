@@ -395,8 +395,12 @@ int GetMemInfoByName(const char* name, const char* path)
 
 bool IsProcessExist(const pid_t pid)
 {
+    if (pid <= 0) {
+        HILOG_WARN(LOG_CORE, "IsProcessExist: pid %{public}d is invalid", pid);
+        return false;
+    }
     if (kill(pid, 0) == 0) {
-        HILOG_DEBUG(LOG_CORE, "IsProcessExist: %{public}d process exist", pid);
+        HILOG_INFO(LOG_CORE, "IsProcessExist: %{public}d process exist", pid);
         return true;
     }
     HILOG_WARN(LOG_CORE, "IsProcessExist: %{public}d process not exist", pid);

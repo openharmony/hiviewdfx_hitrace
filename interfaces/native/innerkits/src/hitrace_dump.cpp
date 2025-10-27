@@ -83,7 +83,7 @@ constexpr int32_t DEFAULT_FULL_TRACE_LENGTH = 30;
 constexpr uint64_t SNAPSHOT_MIN_REMAINING_SPACE = 300 * 1024 * 1024;     // 300M
 constexpr uint64_t DEFAULT_ASYNC_TRACE_SIZE = 50 * 1024 * 1024;          // 50M
 constexpr int HUNDRED_MILLISECONDS = 100 * 1000; // 100ms
-constexpr int ASYNC_WAIT_EMPTY_LOOP_MS = 15 * 1000; // 15 seconds
+constexpr int ASYNC_WAIT_EMPTY_LOOP_MS = 300 * 1000; // 5 minutes
 
 static volatile sig_atomic_t g_traceDumpTaskPid = -1;
 std::atomic<pid_t> g_asyncWaitTid(-1);
@@ -805,8 +805,7 @@ void WaitAsyncDumpRetLoop(const std::shared_ptr<HitraceDumpPipe> pipe)
     int emptyLoopMs = 0;
     do {
         HILOG_INFO(LOG_CORE, "WaitAsyncDumpRetLoop: loop start.");
-        if ((TraceDumpExecutor::GetInstance().IsTraceDumpTaskEmpty() && emptyLoopMs >= ASYNC_WAIT_EMPTY_LOOP_MS) ||
-            !IsProcessExist(g_traceDumpTaskPid)) {
+        if (emptyLoopMs >= ASYNC_WAIT_EMPTY_LOOP_MS || !IsProcessExist(g_traceDumpTaskPid)) {
             HILOG_INFO(LOG_CORE, "WaitAsyncDumpRetLoop: task queue is empty or dump process has gone.");
             TraceDumpExecutor::GetInstance().ClearTraceDumpTask();
             HitraceDumpPipe::ClearTraceDumpPipe();
