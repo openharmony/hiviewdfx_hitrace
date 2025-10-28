@@ -26,7 +26,7 @@ namespace HiviewDFX {
 namespace Hitrace {
 constexpr uint64_t DEFAULT_TRACE_SLICE_DURATION = 10;
 constexpr uint64_t DEFAULT_TOTAL_CACHE_FILE_SIZE = 800;
-constexpr uint32_t DEFAULT_XAATR_VALUE_SIZE = 32;
+constexpr uint32_t DEFAULT_XATTR_VALUE_SIZE = 32;
 
 #ifdef HITRACE_UNITTEST
 void SetSysInitParamTags(uint64_t sysInitParamTags);

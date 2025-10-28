@@ -1570,7 +1570,7 @@ bool AddSymlinkXattr(const std::string& fileName)
     if (!HitraceFilePathCheck(fileName, realFilePath)) {
         return false;
     }
-    char valueStr[DEFAULT_XAATR_VALUE_SIZE];
+    char valueStr[DEFAULT_XATTR_VALUE_SIZE];
     ssize_t len = getxattr(realFilePath, ATTR_NAME_LINK, valueStr, sizeof(valueStr));
     if (len == -1) {
         std::string value = "1";
@@ -1579,7 +1579,7 @@ bool AddSymlinkXattr(const std::string& fileName)
             return false;
         }
     } else {
-        if (static_cast<uint32_t>(len) >= DEFAULT_XAATR_VALUE_SIZE) {
+        if (static_cast<uint32_t>(len) >= DEFAULT_XATTR_VALUE_SIZE) {
             HILOG_ERROR(LOG_CORE, "AddSymlinkXattr: value len not as expected");
             return false;
         }
@@ -1604,14 +1604,14 @@ bool RemoveSymlinkXattr(const std::string& fileName)
     if (!HitraceFilePathCheck(fileName, realFilePath)) {
         return false;
     }
-    char valueStr[DEFAULT_XAATR_VALUE_SIZE];
+    char valueStr[DEFAULT_XATTR_VALUE_SIZE];
     ssize_t len = getxattr(realFilePath, ATTR_NAME_LINK, valueStr, sizeof(valueStr));
     if (len == -1) {
         HILOG_ERROR(LOG_CORE, "RemoveSymlinkXattr getxattr failed errno %{public}d", errno);
         return false;
     } else {
-        if (static_cast<uint32_t>(len) >= DEFAULT_XAATR_VALUE_SIZE) {
-            HILOG_ERROR(LOG_CORE, "AddSymlinkXattr: value len not as expected");
+        if (static_cast<uint32_t>(len) >= DEFAULT_XATTR_VALUE_SIZE) {
+            HILOG_ERROR(LOG_CORE, "RemoveSymlinkXattr: value len not as expected");
             return false;
         }
         valueStr[len] = '\0';

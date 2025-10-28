@@ -1432,7 +1432,7 @@ HWTEST_F(HitraceDumpTest, AddSymlinkXattr002, TestSize.Level2)
 
     EXPECT_TRUE(AddSymlinkXattr(fileName));
     const char* attrname = "user.linknum";
-    char valueStr[DEFAULT_XAATR_VALUE_SIZE];
+    char valueStr[DEFAULT_XATTR_VALUE_SIZE];
     ssize_t len = getxattr(fileName.c_str(), attrname, valueStr, sizeof(valueStr));
     EXPECT_EQ(len, 1);
     valueStr[len] = '\0';
@@ -1493,7 +1493,7 @@ HWTEST_F(HitraceDumpTest, RemoveSymlinkXattr002, TestSize.Level2)
 
     EXPECT_TRUE(RemoveSymlinkXattr(fileName));
     const char* attrname = "user.linknum";
-    char valueStr[DEFAULT_XAATR_VALUE_SIZE];
+    char valueStr[DEFAULT_XATTR_VALUE_SIZE];
     ssize_t len = getxattr(fileName.c_str(), attrname, valueStr, sizeof(valueStr));
     EXPECT_EQ(len, 1);
     valueStr[len] = '\0';
