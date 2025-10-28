@@ -15,7 +15,6 @@
 
 #include <fstream>
 #include <ios>
-#include <sys/utsname.h>
 #include "parameters.h"
 #include "common_utils.h"
 #include "hitrace_option/hitrace_option.h"
