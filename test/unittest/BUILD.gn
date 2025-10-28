@@ -441,12 +441,16 @@ ohos_unittest("HitraceOptionTest") {
 
   include_dirs = [
     "$hitrace_interfaces_path/native/innerkits/include",
-    "$hitrace_interfaces_path/native/innerkits/src/hitrace_option/hitrace_option.cpp",
+    "$hitrace_utils_path",
   ]
 
   sources = [
     "$hitrace_interfaces_path/native/innerkits/src/hitrace_option/hitrace_option.cpp",
     "hitrace_option/hitrace_option_test.cpp",
+  ]
+
+  deps = [
+    "$hitrace_utils_path:hitrace_common_utils",
   ]
 
   external_deps = [

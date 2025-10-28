@@ -17,6 +17,7 @@
 #include <ios>
 #include <sys/utsname.h>
 #include "parameters.h"
+#include "common_utils.h"
 #include "hitrace_option/hitrace_option.h"
 #include <gtest/gtest.h>
 
@@ -137,17 +138,6 @@ bool ContainsEvents(const std::string& filename, const std::string& events)
     return find;
 }
 
-bool IsHm()
-{
-    bool isHM = false;
-    utsname unameBuf;
-    if ((uname(&unameBuf)) == 0) {
-        std::string osRelease = unameBuf.release;
-        isHM = osRelease.find("HongMeng") != std::string::npos;
-    }
-    return isHM;
-}
-
 HWTEST_F(HitraceOptionTest, SetTelemetryAppNameTest_001, TestSize.Level1)
 {
     ASSERT_TRUE(OHOS::system::SetParameter(TELEMETRY_APP_PARAM, "a"));
@@ -206,7 +196,7 @@ HWTEST_F(HitraceOptionTest, FilterAppTrace_001, TestSize.Level1)
 
 HWTEST_F(HitraceOptionTest, AddNoFilterEvents001, TestSize.Level1)
 {
-    if (IsHm()) {
+    if (IsHmKernel()) {
         std::vector<std::string> events = {"binder:binder_transaction"};
         int32_t ret = AddNoFilterEvents(events);
         EXPECT_EQ(ret, HITRACE_NO_ERROR);
@@ -219,7 +209,7 @@ HWTEST_F(HitraceOptionTest, AddNoFilterEvents001, TestSize.Level1)
 
 HWTEST_F(HitraceOptionTest, AddNoFilterEvents002, TestSize.Level1)
 {
-    if (IsHm()) {
+    if (IsHmKernel()) {
         std::vector<std::string> events = {"binder:binder_transaction", "binder:binder_transaction_received"};
         int32_t ret = AddNoFilterEvents(events);
         EXPECT_EQ(ret, HITRACE_NO_ERROR);
