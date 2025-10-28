@@ -16,6 +16,7 @@
 #include <fstream>
 #include <ios>
 #include "parameters.h"
+#include "common_utils.h"
 #include "hitrace_option/hitrace_option.h"
 #include <gtest/gtest.h>
 
@@ -38,6 +39,8 @@ namespace HitraceTest {
 const std::string TELEMETRY_APP_PARAM = "debug.hitrace.telemetry.app";
 const std::string SET_EVENT_PID = "/sys/kernel/tracing/set_event_pid";
 const std::string DEBUG_SET_EVENT_PID = "/sys/kernel/debug/tracing/set_event_pid";
+const std::string NO_FILTER_EVENT = "/sys/kernel/tracing/no_filter_events";
+const std::string DEBUG_NO_FILTER_EVENT = "/sys/kernel/debug/tracing/no_filter_events";
 
 bool WriteStrToFile(const std::string& filename, const std::string& str);
 
@@ -114,6 +117,26 @@ bool ContainsPid(const std::string& filename, pid_t pid)
     return find;
 }
 
+bool ContainsEvents(const std::string& filename, const std::string& events)
+{
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    std::string line;
+    bool find = false;
+    while (std::getline(file, line)) {
+        if (line.find(events) != std::string::npos) {
+            find = true;
+            break;
+        }
+    }
+
+    file.close();
+    return find;
+}
+
 HWTEST_F(HitraceOptionTest, SetTelemetryAppNameTest_001, TestSize.Level1)
 {
     ASSERT_TRUE(OHOS::system::SetParameter(TELEMETRY_APP_PARAM, "a"));
@@ -168,6 +191,36 @@ HWTEST_F(HitraceOptionTest, FilterAppTrace_001, TestSize.Level1)
     FilterAppTrace("com.test.app", 1);
     EXPECT_TRUE(ContainsPid(SET_EVENT_PID, 1));
     EXPECT_TRUE(ContainsPid(DEBUG_SET_EVENT_PID, 1));
+}
+
+HWTEST_F(HitraceOptionTest, AddNoFilterEvents001, TestSize.Level1)
+{
+    if (IsHmKernel()) {
+        std::vector<std::string> events = {"binder:binder_transaction"};
+        int32_t ret = AddNoFilterEvents(events);
+        EXPECT_EQ(ret, HITRACE_NO_ERROR);
+        EXPECT_TRUE(ContainsEvents(NO_FILTER_EVENT, "binder:binder_transaction"));
+        EXPECT_TRUE(ContainsEvents(DEBUG_NO_FILTER_EVENT, "binder:binder_transaction"));
+        ret = ClearNoFilterEvents();
+        EXPECT_EQ(ret, HITRACE_NO_ERROR);
+    }
+}
+
+HWTEST_F(HitraceOptionTest, AddNoFilterEvents002, TestSize.Level1)
+{
+    if (IsHmKernel()) {
+        std::vector<std::string> events = {"binder:binder_transaction", "binder:binder_transaction_received"};
+        int32_t ret = AddNoFilterEvents(events);
+        EXPECT_EQ(ret, HITRACE_NO_ERROR);
+        EXPECT_TRUE(ContainsEvents(NO_FILTER_EVENT, "binder:binder_transaction"));
+        EXPECT_TRUE(ContainsEvents(DEBUG_NO_FILTER_EVENT, "binder:binder_transaction"));
+        EXPECT_TRUE(ContainsEvents(NO_FILTER_EVENT, "binder:binder_transaction_received"));
+        EXPECT_TRUE(ContainsEvents(DEBUG_NO_FILTER_EVENT, "binder:binder_transaction_received"));
+        ret = ClearNoFilterEvents();
+        EXPECT_EQ(ret, HITRACE_NO_ERROR);
+        EXPECT_EQ(ReadFile(NO_FILTER_EVENT), "");
+        EXPECT_EQ(ReadFile(DEBUG_NO_FILTER_EVENT), "");
+    }
 }
 
 } // namespace HitraceTest
