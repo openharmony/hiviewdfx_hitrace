@@ -26,6 +26,7 @@ namespace HiviewDFX {
 namespace Hitrace {
 constexpr uint64_t DEFAULT_TRACE_SLICE_DURATION = 10;
 constexpr uint64_t DEFAULT_TOTAL_CACHE_FILE_SIZE = 800;
+constexpr uint32_t DEFAULT_XAATR_VALUE_SIZE = 32;
 
 #ifdef HITRACE_UNITTEST
 void SetSysInitParamTags(uint64_t sysInitParamTags);
@@ -112,6 +113,16 @@ TraceErrorCode CloseTrace();
  * Set Tracing On Node
  */
 TraceErrorCode SetTraceStatus(bool enable);
+
+/**
+ * add xattr flag for trace file
+ */
+bool AddSymlinkXattr(const std::string& fileName);
+
+/**
+ * remove trace file xattr flag
+ */
+bool RemoveSymlinkXattr(const std::string& fileName);
 } // Hitrace
 
 }

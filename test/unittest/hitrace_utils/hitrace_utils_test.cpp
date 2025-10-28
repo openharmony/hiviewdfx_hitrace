@@ -633,6 +633,30 @@ HWTEST_F(HitraceUtilsTest, ProcessExistTest002, TestSize.Level2)
     EXPECT_FALSE(IsProcessExist(-1));
     GTEST_LOG_(INFO) << "ProcessExistTest002: end.";
 }
+
+/**
+ * @tc.name: HitraceFilePathCheck001
+ * @tc.desc: test HitraceFilePathCheck func
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceUtilsTest, HitraceFilePathCheck001, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "HitraceFilePathCheck001: start.";
+    char realFilePath[PATH_MAX];
+    std::string fileName = "/data/log/hitrace/trace.txt";
+    std::ofstream file(fileName);
+    EXPECT_TRUE(HitraceFilePathCheck(fileName, realFilePath));
+    std::string nonexistFile = "/data/log/hitrace/nonexistfile.txt";
+    EXPECT_FALSE(HitraceFilePathCheck(nonexistFile, realFilePath));
+    std::string errpathFile = "/data/local/tmp/trace.txt";
+    std::ofstream file2(errpathFile);
+    EXPECT_FALSE(HitraceFilePathCheck(errpathFile, realFilePath));
+    GTEST_LOG_(INFO) << "HitraceFilePathCheck001: end.";
+    const std::filesystem::path filePath= "/data/log/hitrace/trace.txt";
+    std::filesystem::remove(filePath);
+    const std::filesystem::path filePath2 = "/data/local/tmp/trace.txt";
+    std::filesystem::remove(filePath2);
+}
 } // namespace
 } // namespace Hitrace
 } // namespace HiviewDFX

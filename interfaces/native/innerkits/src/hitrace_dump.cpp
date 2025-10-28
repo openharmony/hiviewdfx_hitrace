@@ -29,6 +29,7 @@
 #include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/xattr.h>
 #include <thread>
 #include <unistd.h>
 #include <unordered_map>
@@ -1561,6 +1562,81 @@ TraceErrorCode SetTraceStatus(bool enable)
     };
 
     return SUCCESS;
+}
+
+bool AddSymlinkXattr(const std::string& fileName)
+{
+    char realFilePath[PATH_MAX];
+    if (!HitraceFilePathCheck(fileName, realFilePath)) {
+        return false;
+    }
+    char valueStr[DEFAULT_XAATR_VALUE_SIZE];
+    ssize_t len = getxattr(realFilePath, ATTR_NAME_LINK, valueStr, sizeof(valueStr));
+    if (len == -1) {
+        std::string value = "1";
+        if (setxattr(realFilePath, ATTR_NAME_LINK, value.c_str(), value.size(), 0) == -1) {
+            HILOG_ERROR(LOG_CORE, "AddSymlinkXattr: setxattr failed errno %{public}d", errno);
+            return false;
+        }
+    } else {
+        if (static_cast<uint32_t>(len) >= DEFAULT_XAATR_VALUE_SIZE) {
+            HILOG_ERROR(LOG_CORE, "AddSymlinkXattr: value len not as expected");
+            return false;
+        }
+        valueStr[len] = '\0';
+        int val = 0;
+        if (!StringToInt(valueStr, val)) {
+            return false;
+        }
+        val++;
+        std::string str = std::to_string(val);
+        if (setxattr(realFilePath, ATTR_NAME_LINK, str.c_str(), str.size(), 0) == -1) {
+            HILOG_ERROR(LOG_CORE, "AddSymlinkXattr: modify xattr failed errno %{public}d", errno);
+            return false;
+        }
+    }
+    return true;
+}
+
+bool RemoveSymlinkXattr(const std::string& fileName)
+{
+    char realFilePath[PATH_MAX];
+    if (!HitraceFilePathCheck(fileName, realFilePath)) {
+        return false;
+    }
+    char valueStr[DEFAULT_XAATR_VALUE_SIZE];
+    ssize_t len = getxattr(realFilePath, ATTR_NAME_LINK, valueStr, sizeof(valueStr));
+    if (len == -1) {
+        HILOG_ERROR(LOG_CORE, "RemoveSymlinkXattr getxattr failed errno %{public}d", errno);
+        return false;
+    } else {
+        if (static_cast<uint32_t>(len) >= DEFAULT_XAATR_VALUE_SIZE) {
+            HILOG_ERROR(LOG_CORE, "AddSymlinkXattr: value len not as expected");
+            return false;
+        }
+        valueStr[len] = '\0';
+        int val = 0;
+        if (!StringToInt(valueStr, val)) {
+            return false;
+        }
+        if (val == 1) {
+            if (removexattr(realFilePath, ATTR_NAME_LINK) == -1) {
+                HILOG_ERROR(LOG_CORE, "RemoveSymlinkXattr removexattr failed errno %{public}d", errno);
+                return false;
+            }
+        } else if (val > 1) {
+            val--;
+            std::string str = std::to_string(val);
+            if (setxattr(realFilePath, ATTR_NAME_LINK, str.c_str(), str.size(), 0) == -1) {
+                HILOG_ERROR(LOG_CORE, "RemoveSymlinkXattr: modify xattr failed errno %{public}d", errno);
+                return false;
+            }
+        } else {
+            HILOG_ERROR(LOG_CORE, "illegal value");
+            return false;
+        }
+    }
+    return true;
 }
 } // namespace Hitrace
 } // namespace HiviewDFX

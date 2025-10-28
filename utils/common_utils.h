@@ -73,6 +73,8 @@ int GetMemInfoByName(const char* name, const char* path = "/proc/meminfo");
 bool IsProcessExist(const pid_t pid);
 
 std::vector<std::string> GetNoFilterEvents(const std::vector<std::string>& enablePath);
+
+bool HitraceFilePathCheck(const std::string& fileName, char *realFilePath);
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS

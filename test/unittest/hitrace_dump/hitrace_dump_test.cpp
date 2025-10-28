@@ -26,6 +26,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <sys/xattr.h>
 #include <unistd.h>
 #include <vector>
 
@@ -294,6 +295,21 @@ static bool CheckBaseInfo(const std::string filePath)
         }
     }
     return (count == checkList.size());
+}
+
+static void CreateFile(const std::string& filename)
+{
+    std::ofstream file(filename);
+}
+
+static void ClearFile()
+{
+    const std::filesystem::path dirPath = "/data/log/hitrace";
+    if (std::filesystem::exists(dirPath)) {
+        for (const auto& entry : std::filesystem::directory_iterator(dirPath)) {
+            std::filesystem::remove_all(entry.path());
+        }
+    }
 }
 
 class HitraceDumpTest : public testing::Test {
@@ -1383,5 +1399,122 @@ HWTEST_F(HitraceDumpTest, DumpTraceAsyncTest005, TestSize.Level2)
     ASSERT_TRUE(CacheTraceOff() == TraceErrorCode::SUCCESS);
     // Close trace after async dump
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+}
+
+/**
+ * @tc.name: AddSymlinkXattr001
+ * @tc.desc: Test AddSymlinkXattr fun that input file illegall
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, AddSymlinkXattr001, TestSize.Level2)
+{
+    ClearFile();
+    std::string fileName = "/data/log/hitrace/tracetest001.txt";
+    EXPECT_FALSE(AddSymlinkXattr(fileName));
+    CreateFile(fileName);
+    EXPECT_TRUE(AddSymlinkXattr(fileName));
+    fileName = "/data/local/tmp/tracetest001.txt";
+    CreateFile(fileName);
+    EXPECT_FALSE(AddSymlinkXattr(fileName));
+    ClearFile();
+}
+
+/**
+ * @tc.name: AddSymlinkXattr002
+ * @tc.desc: Test AddSymlinkXattr fun,file exist and add xattr 3 times;
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, AddSymlinkXattr002, TestSize.Level2)
+{
+    ClearFile();
+    std::string fileName = "/data/log/hitrace/tracetest002.txt";
+    CreateFile(fileName);
+
+    EXPECT_TRUE(AddSymlinkXattr(fileName));
+    const char* attrname = "user.linknum";
+    char valueStr[DEFAULT_XAATR_VALUE_SIZE];
+    ssize_t len = getxattr(fileName.c_str(), attrname, valueStr, sizeof(valueStr));
+    EXPECT_EQ(len, 1);
+    valueStr[len] = '\0';
+    int val = 0;
+    int ret = StringToInt(valueStr, val);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(val, 1);
+
+    EXPECT_TRUE(AddSymlinkXattr(fileName));
+    len = getxattr(fileName.c_str(), attrname, valueStr, sizeof(valueStr));
+    EXPECT_EQ(len, 1);
+    valueStr[len] = '\0';
+    ret = StringToInt(valueStr, val);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(val, 2);
+
+    EXPECT_TRUE(AddSymlinkXattr(fileName));
+    len = getxattr(fileName.c_str(), attrname, valueStr, sizeof(valueStr));
+    EXPECT_EQ(len, 1);
+    valueStr[len] = '\0';
+    ret = StringToInt(valueStr, val);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(val, 3);
+    ClearFile();
+}
+
+/**
+ * @tc.name: RemoveSymlinkXattr001
+ * @tc.desc: Test RemoveSymlinkXattr fun that input file illegall
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, RemoveSymlinkXattr001, TestSize.Level2)
+{
+    ClearFile();
+    std::string fileName = "/data/log/hitrace/tracetest003.txt";
+    EXPECT_FALSE(RemoveSymlinkXattr(fileName));
+    CreateFile(fileName);
+    EXPECT_FALSE(RemoveSymlinkXattr(fileName));
+    fileName = "/data/local/tmp/tracetest003.txt";
+    CreateFile(fileName);
+    EXPECT_FALSE(AddSymlinkXattr(fileName));
+    ClearFile();
+}
+
+/**
+ * @tc.name: RemoveSymlinkXattr002
+ * @tc.desc: Test RemoveSymlinkXattr fun and remove xattr 3 times
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, RemoveSymlinkXattr002, TestSize.Level2)
+{
+    ClearFile();
+    std::string fileName = "/data/log/hitrace/tracetest004.txt";
+    CreateFile(fileName);
+    EXPECT_TRUE(AddSymlinkXattr(fileName));
+    EXPECT_TRUE(AddSymlinkXattr(fileName));
+    EXPECT_TRUE(AddSymlinkXattr(fileName));
+
+    EXPECT_TRUE(RemoveSymlinkXattr(fileName));
+    const char* attrname = "user.linknum";
+    char valueStr[DEFAULT_XAATR_VALUE_SIZE];
+    ssize_t len = getxattr(fileName.c_str(), attrname, valueStr, sizeof(valueStr));
+    EXPECT_EQ(len, 1);
+    valueStr[len] = '\0';
+    int val = 0;
+    int ret = StringToInt(valueStr, val);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(val, 2);
+
+    EXPECT_TRUE(RemoveSymlinkXattr(fileName));
+    len = getxattr(fileName.c_str(), attrname, valueStr, sizeof(valueStr));
+    EXPECT_EQ(len, 1);
+    valueStr[len] = '\0';
+    ret = StringToInt(valueStr, val);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(val, 1);
+
+    EXPECT_TRUE(RemoveSymlinkXattr(fileName));
+    len = getxattr(fileName.c_str(), attrname, valueStr, sizeof(valueStr));
+    EXPECT_EQ(len, -1);
+
+    EXPECT_FALSE(RemoveSymlinkXattr(fileName));
+    ClearFile();
 }
 } // namespace
