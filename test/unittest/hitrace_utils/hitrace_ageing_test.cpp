@@ -202,7 +202,7 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_002, TestSize.Level1)
     EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/record_trace_0.a"));
     EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/record_trace_0.b"));
 
-    ASSERT_EQ(vec.size(), 3);
+    ASSERT_EQ(vec.size(), 6);
     for (const auto& info : vec) {
         EXPECT_TRUE(std::filesystem::exists(info.filename));
     }
@@ -391,7 +391,7 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_007, TestSize.Level1)
 
     std::vector<TraceFileInfo> vec;
     std::vector<std::string> otherFiles;
-    for (uint32_t i = 0; i < 7; i++) {
+    for (uint32_t i = 0; i < 8; i++) {
         TraceFileInfo info;
         info.filename = "/data/log/hitrace/trace_" + std::to_string(i) + ".a";
         CreateFile(info.filename);
@@ -416,7 +416,7 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_007, TestSize.Level1)
     EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_1.a"));
     EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_2.a"));
 
-    ASSERT_EQ(vec.size(), 5);
+    ASSERT_EQ(vec.size(), 6);
     for (const auto& info : vec) {
         EXPECT_TRUE(std::filesystem::exists(info.filename));
     }
@@ -429,7 +429,7 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_007, TestSize.Level1)
 */
 HWTEST_F(HitraceAgeingTest, HandleAgeing_008, TestSize.Level1)
 {
-    TraceJsonParser::Instance().snapShotAgeingParam_ = { true, 0, 2000 };
+    TraceJsonParser::Instance().snapShotAgeingParam_ = { true, 0, 400 };
     ClearFile();
 
     std::vector<TraceFileInfo> vec;
@@ -465,8 +465,9 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_008, TestSize.Level1)
     }
     EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_0.a"));
     EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_16.a"));
+    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_17.a"));
 
-    ASSERT_EQ(vec.size(), 20);
+    ASSERT_EQ(vec.size(), 19);
     for (const auto& info : vec) {
         EXPECT_TRUE(std::filesystem::exists(info.filename));
     }

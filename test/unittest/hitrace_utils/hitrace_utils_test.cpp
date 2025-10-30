@@ -251,7 +251,7 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest008, TestSize.Level2)
 
     AgeingParam param = jsonParser->GetAgeingParam(TraceDumpType::TRACE_SNAPSHOT);
     EXPECT_EQ(param.rootEnable, true);
-    EXPECT_EQ(param.fileNumberLimit, 20);
+    EXPECT_EQ(param.fileNumberLimit, 35);
     EXPECT_EQ(param.fileSizeKbLimit, 1024);
 
     param = jsonParser->GetAgeingParam(TraceDumpType::TRACE_RECORDING);
@@ -645,12 +645,12 @@ HWTEST_F(HitraceUtilsTest, HitraceFilePathCheck001, TestSize.Level2)
     char realFilePath[PATH_MAX];
     std::string fileName = "/data/log/hitrace/trace.txt";
     std::ofstream file(fileName);
-    EXPECT_TRUE(HitraceFilePathCheck(fileName, realFilePath));
+    EXPECT_TRUE(HitraceFilePathCheck(fileName, realFilePath, PATH_MAX));
     std::string nonexistFile = "/data/log/hitrace/nonexistfile.txt";
-    EXPECT_FALSE(HitraceFilePathCheck(nonexistFile, realFilePath));
+    EXPECT_FALSE(HitraceFilePathCheck(nonexistFile, realFilePath, PATH_MAX));
     std::string errpathFile = "/data/local/tmp/trace.txt";
     std::ofstream file2(errpathFile);
-    EXPECT_FALSE(HitraceFilePathCheck(errpathFile, realFilePath));
+    EXPECT_FALSE(HitraceFilePathCheck(errpathFile, realFilePath, PATH_MAX));
     GTEST_LOG_(INFO) << "HitraceFilePathCheck001: end.";
     const std::filesystem::path filePath= "/data/log/hitrace/trace.txt";
     std::filesystem::remove(filePath);

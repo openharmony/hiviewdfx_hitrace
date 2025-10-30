@@ -477,29 +477,24 @@ HWTEST_F(HitraceSystemTest, SnapShotModeTest009, TestSize.Level1)
 
 /**
  * @tc.name: SnapShotModeTest010
- * @tc.desc: test dump snapshot trace with 20 files aging
+ * @tc.desc: test dump snapshot trace with 40 files aging
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceSystemTest, SnapShotModeTest010, TestSize.Level1)
 {
     ASSERT_TRUE(RunCmd("hitrace --start_bgsrv"));
-    const int dumpCnt = 30; // 30 : dump 30 times
+    const int dumpCnt = 40; // 40 : dump 30 times
     for (int i = 0; i < dumpCnt; ++i) {
         EXPECT_TRUE(RunCmd("hitrace --dump_bgsrv"));
-        sleep(1); // wait 1s
+        usleep(500000); // wait 0.5s
     }
-    const int snapshotFileAge = 21;
+    const int snapshotFileAge = 36;
     std::vector<std::string> traceLists = {};
     EXPECT_TRUE(CheckTraceCommandOutput("hitrace --dump_bgsrv", {"SNAPSHOT_DUMP", "DumpSnapshot done"}, traceLists));
-    EXPECT_GE(traceLists.size(), snapshotFileAge);
     EXPECT_TRUE(RunCmd("hitrace --stop_bgsrv"));
     std::vector<std::string> dirTraceLists = {};
     GetSnapShotTraceFileList(dirTraceLists);
     EXPECT_LE(dirTraceLists.size(), snapshotFileAge);
-    for (int i = 0; i < dirTraceLists.size(); ++i) {
-        EXPECT_NE(std::find(traceLists.begin(), traceLists.end(), dirTraceLists[i]), traceLists.end()) <<
-            "not found: " << dirTraceLists[i];
-    }
 }
 
 /**

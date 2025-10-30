@@ -148,9 +148,11 @@ void HandleFileNeedAgeing(const int64_t& needDelete, const CheckType checkType, 
             if (linkFiles.size() <= DEFAULT_LINK_NUM) {
                 continue;
             }
-            needRemoveFiles.insert(linkFiles.front().filename);
+            auto linkfileInfo = linkFiles.front();
+            needRemoveFiles.insert(linkfileInfo.filename);
             linkFiles.pop();
             if (checkType == CheckType::FILESIZE) {
+                currCount += linkfileInfo.fileSize;
                 continue;
             }
         }
@@ -193,19 +195,26 @@ void HandleAgeingSnapShort(std::vector<TraceFileInfo>& fileList, const TraceDump
     std::queue<TraceFileInfo> linkFiles= {};
     if (checkType == CheckType::FILESIZE) {
         int64_t countSize = 0;
+        size_t currLinkNum = 0;
         for (const auto &fileInfo : fileList) {
             if (getxattr(fileInfo.filename.c_str(), ATTR_NAME_LINK, nullptr, 0) == -1) {
                 countSize += fileInfo.fileSize;
+            } else {
+                if((++currLinkNum) > DEFAULT_LINK_NUM) {
+                    countSize += fileInfo.fileSize;
+                }
             }
         }
         needDelete = countSize - param.fileSizeKbLimit * BYTE_PER_KB;
         if (needDelete <= 0 || needDelete == countSize) {
+            HandleFileNotInVec(fileList, traceType, deleteCount);
             return;
         }
         HandleFileNeedAgeing(needDelete, CheckType::FILESIZE, fileList, needRemoveFiles, linkFiles);
     } else if (checkType == CheckType::FILENUMBER) {
         needDelete = static_cast<int64_t>(fileList.size()) - param.fileNumberLimit;
         if (needDelete <= 0 || needDelete == static_cast<int64_t>(fileList.size())) {
+            HandleFileNotInVec(fileList, traceType, deleteCount);
             return;
         }
         HandleFileNeedAgeing(needDelete, CheckType::FILENUMBER, fileList, needRemoveFiles, linkFiles);
