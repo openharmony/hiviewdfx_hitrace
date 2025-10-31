@@ -1567,7 +1567,7 @@ TraceErrorCode SetTraceStatus(bool enable)
 bool AddSymlinkXattr(const std::string& fileName)
 {
     char realFilePath[PATH_MAX];
-    if (!HitraceFilePathCheck(fileName, realFilePath, PATH_MAX)) {
+    if (!HitraceFilePathCheck(fileName, realFilePath, sizeof(realFilePath))) {
         return false;
     }
     char valueStr[DEFAULT_XATTR_VALUE_SIZE];
@@ -1601,7 +1601,7 @@ bool AddSymlinkXattr(const std::string& fileName)
 bool RemoveSymlinkXattr(const std::string& fileName)
 {
     char realFilePath[PATH_MAX];
-    if (!HitraceFilePathCheck(fileName, realFilePath, PATH_MAX)) {
+    if (!HitraceFilePathCheck(fileName, realFilePath, sizeof(realFilePath))) {
         return false;
     }
     char valueStr[DEFAULT_XATTR_VALUE_SIZE];
