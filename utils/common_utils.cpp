@@ -424,7 +424,7 @@ std::vector<std::string> GetNoFilterEvents(const std::vector<std::string>& enabl
     return noFilterEvents;
 }
 
-bool HitraceFilePathCheck(const std::string& fileName, char *realFilePath, size_t bufLen)
+bool IsTraceFilePathLegal(const std::string& fileName, char *realFilePath, size_t bufLen)
 {
     if (fileName.size() >= bufLen || realpath(fileName.c_str(), realFilePath) == nullptr) {
         HILOG_ERROR(LOG_CORE, "illegal file path");

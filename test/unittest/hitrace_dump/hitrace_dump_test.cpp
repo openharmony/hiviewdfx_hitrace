@@ -1433,7 +1433,7 @@ HWTEST_F(HitraceDumpTest, AddSymlinkXattr002, TestSize.Level2)
     EXPECT_TRUE(AddSymlinkXattr(fileName));
     const char* attrname = "user.linknum";
     char valueStr[DEFAULT_XATTR_VALUE_SIZE];
-    ssize_t len = getxattr(fileName.c_str(), attrname, valueStr, sizeof(valueStr));
+    ssize_t len = TEMP_FAILURE_RETRY(getxattr(fileName.c_str(), attrname, valueStr, sizeof(valueStr)));
     EXPECT_EQ(len, 1);
     valueStr[len] = '\0';
     int val = 0;
@@ -1442,7 +1442,7 @@ HWTEST_F(HitraceDumpTest, AddSymlinkXattr002, TestSize.Level2)
     EXPECT_EQ(val, 1);
 
     EXPECT_TRUE(AddSymlinkXattr(fileName));
-    len = getxattr(fileName.c_str(), attrname, valueStr, sizeof(valueStr));
+    len = TEMP_FAILURE_RETRY(getxattr(fileName.c_str(), attrname, valueStr, sizeof(valueStr)));
     EXPECT_EQ(len, 1);
     valueStr[len] = '\0';
     ret = StringToInt(valueStr, val);
@@ -1450,7 +1450,7 @@ HWTEST_F(HitraceDumpTest, AddSymlinkXattr002, TestSize.Level2)
     EXPECT_EQ(val, 2);
 
     EXPECT_TRUE(AddSymlinkXattr(fileName));
-    len = getxattr(fileName.c_str(), attrname, valueStr, sizeof(valueStr));
+    len = TEMP_FAILURE_RETRY(getxattr(fileName.c_str(), attrname, valueStr, sizeof(valueStr)));
     EXPECT_EQ(len, 1);
     valueStr[len] = '\0';
     ret = StringToInt(valueStr, val);
@@ -1494,7 +1494,7 @@ HWTEST_F(HitraceDumpTest, RemoveSymlinkXattr002, TestSize.Level2)
     EXPECT_TRUE(RemoveSymlinkXattr(fileName));
     const char* attrname = "user.linknum";
     char valueStr[DEFAULT_XATTR_VALUE_SIZE];
-    ssize_t len = getxattr(fileName.c_str(), attrname, valueStr, sizeof(valueStr));
+    ssize_t len = TEMP_FAILURE_RETRY(getxattr(fileName.c_str(), attrname, valueStr, sizeof(valueStr)));
     EXPECT_EQ(len, 1);
     valueStr[len] = '\0';
     int val = 0;
@@ -1503,7 +1503,7 @@ HWTEST_F(HitraceDumpTest, RemoveSymlinkXattr002, TestSize.Level2)
     EXPECT_EQ(val, 2);
 
     EXPECT_TRUE(RemoveSymlinkXattr(fileName));
-    len = getxattr(fileName.c_str(), attrname, valueStr, sizeof(valueStr));
+    len = TEMP_FAILURE_RETRY(getxattr(fileName.c_str(), attrname, valueStr, sizeof(valueStr)));
     EXPECT_EQ(len, 1);
     valueStr[len] = '\0';
     ret = StringToInt(valueStr, val);
@@ -1511,7 +1511,7 @@ HWTEST_F(HitraceDumpTest, RemoveSymlinkXattr002, TestSize.Level2)
     EXPECT_EQ(val, 1);
 
     EXPECT_TRUE(RemoveSymlinkXattr(fileName));
-    len = getxattr(fileName.c_str(), attrname, valueStr, sizeof(valueStr));
+    len = TEMP_FAILURE_RETRY(getxattr(fileName.c_str(), attrname, valueStr, sizeof(valueStr)));
     EXPECT_EQ(len, -1);
 
     EXPECT_FALSE(RemoveSymlinkXattr(fileName));

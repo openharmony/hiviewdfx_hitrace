@@ -635,27 +635,27 @@ HWTEST_F(HitraceUtilsTest, ProcessExistTest002, TestSize.Level2)
 }
 
 /**
- * @tc.name: HitraceFilePathCheck001
- * @tc.desc: test HitraceFilePathCheck func
+ * @tc.name: IsTraceFilePathLegal001
+ * @tc.desc: test IsTraceFilePathLegal func
  * @tc.type: FUNC
 */
-HWTEST_F(HitraceUtilsTest, HitraceFilePathCheck001, TestSize.Level2)
+HWTEST_F(HitraceUtilsTest, IsTraceFilePathLegal001, TestSize.Level2)
 {
-    GTEST_LOG_(INFO) << "HitraceFilePathCheck001: start.";
+    GTEST_LOG_(INFO) << "IsTraceFilePathLegal001: start.";
     char realFilePath[PATH_MAX];
     std::string fileName = "/data/log/hitrace/trace.txt";
     std::ofstream file(fileName);
-    EXPECT_TRUE(HitraceFilePathCheck(fileName, realFilePath, PATH_MAX));
+    EXPECT_TRUE(IsTraceFilePathLegal(fileName, realFilePath, PATH_MAX));
     std::string nonexistFile = "/data/log/hitrace/nonexistfile.txt";
-    EXPECT_FALSE(HitraceFilePathCheck(nonexistFile, realFilePath, PATH_MAX));
+    EXPECT_FALSE(IsTraceFilePathLegal(nonexistFile, realFilePath, PATH_MAX));
     std::string errpathFile = "/data/local/tmp/trace.txt";
     std::ofstream file2(errpathFile);
-    EXPECT_FALSE(HitraceFilePathCheck(errpathFile, realFilePath, PATH_MAX));
-    GTEST_LOG_(INFO) << "HitraceFilePathCheck001: end.";
+    EXPECT_FALSE(IsTraceFilePathLegal(errpathFile, realFilePath, PATH_MAX));
     const std::filesystem::path filePath= "/data/log/hitrace/trace.txt";
     std::filesystem::remove(filePath);
     const std::filesystem::path filePath2 = "/data/local/tmp/trace.txt";
     std::filesystem::remove(filePath2);
+    GTEST_LOG_(INFO) << "IsTraceFilePathLegal001: end.";
 }
 } // namespace
 } // namespace Hitrace

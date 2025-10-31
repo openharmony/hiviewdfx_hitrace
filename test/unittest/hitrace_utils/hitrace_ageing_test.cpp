@@ -268,7 +268,8 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_004, TestSize.Level1)
         otherFiles.push_back(otherFile);
     }
     std::string value = "1";
-    int ret = setxattr("/data/log/hitrace/trace_0.a", ATTR_NAME_LINK, value.c_str(), value.size(), 0);
+    int ret = TEMP_FAILURE_RETRY(setxattr("/data/log/hitrace/trace_0.a", ATTR_NAME_LINK,
+        value.c_str(), value.size(), 0));
     EXPECT_TRUE(ret != -1);
 
     FileAgeingUtils::HandleAgeing(vec, TraceDumpType::TRACE_SNAPSHOT);
@@ -306,7 +307,7 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_005, TestSize.Level1)
         vec.push_back(info);
 
         std::string value = "1";
-        int ret = setxattr(info.filename.c_str(), ATTR_NAME_LINK, value.c_str(), value.size(), 0);
+        int ret = TEMP_FAILURE_RETRY(setxattr(info.filename.c_str(), ATTR_NAME_LINK, value.c_str(), value.size(), 0));
         EXPECT_TRUE(ret != -1);
 
         std::string otherFile = "/data/log/hitrace/trace_" + std::to_string(i) + ".b";
@@ -404,7 +405,8 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_007, TestSize.Level1)
     }
 
     std::string value = "1";
-    int ret = setxattr("/data/log/hitrace/trace_0.a", ATTR_NAME_LINK, value.c_str(), value.size(), 0);
+    int ret = TEMP_FAILURE_RETRY(setxattr("/data/log/hitrace/trace_0.a", ATTR_NAME_LINK,
+        value.c_str(), value.size(), 0));
     EXPECT_TRUE(ret != -1);
 
     FileAgeingUtils::HandleAgeing(vec, TraceDumpType::TRACE_SNAPSHOT);
@@ -442,7 +444,7 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_008, TestSize.Level1)
         vec.push_back(info);
 
         std::string value = "1";
-        int ret = setxattr(info.filename.c_str(), ATTR_NAME_LINK, value.c_str(), value.size(), 0);
+        int ret = TEMP_FAILURE_RETRY(setxattr(info.filename.c_str(), ATTR_NAME_LINK, value.c_str(), value.size(), 0));
         EXPECT_TRUE(ret != -1);
 
         std::string otherFile = "/data/log/hitrace/trace_" + std::to_string(i) + ".b";

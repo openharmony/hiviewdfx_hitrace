@@ -1567,14 +1567,14 @@ TraceErrorCode SetTraceStatus(bool enable)
 bool AddSymlinkXattr(const std::string& fileName)
 {
     char realFilePath[PATH_MAX];
-    if (!HitraceFilePathCheck(fileName, realFilePath, sizeof(realFilePath))) {
+    if (!IsTraceFilePathLegal(fileName, realFilePath, sizeof(realFilePath))) {
         return false;
     }
     char valueStr[DEFAULT_XATTR_VALUE_SIZE];
-    ssize_t len = getxattr(realFilePath, ATTR_NAME_LINK, valueStr, sizeof(valueStr));
+    ssize_t len = TEMP_FAILURE_RETRY(getxattr(realFilePath, ATTR_NAME_LINK, valueStr, sizeof(valueStr)));
     if (len == -1) {
         std::string value = "1";
-        if (setxattr(realFilePath, ATTR_NAME_LINK, value.c_str(), value.size(), 0) == -1) {
+        if (TEMP_FAILURE_RETRY(setxattr(realFilePath, ATTR_NAME_LINK, value.c_str(), value.size(), 0)) == -1) {
             HILOG_ERROR(LOG_CORE, "AddSymlinkXattr: setxattr failed errno %{public}d", errno);
             return false;
         }
@@ -1590,7 +1590,7 @@ bool AddSymlinkXattr(const std::string& fileName)
         }
         val++;
         std::string str = std::to_string(val);
-        if (setxattr(realFilePath, ATTR_NAME_LINK, str.c_str(), str.size(), 0) == -1) {
+        if (TEMP_FAILURE_RETRY(setxattr(realFilePath, ATTR_NAME_LINK, str.c_str(), str.size(), 0)) == -1) {
             HILOG_ERROR(LOG_CORE, "AddSymlinkXattr: modify xattr failed errno %{public}d", errno);
             return false;
         }
@@ -1601,11 +1601,11 @@ bool AddSymlinkXattr(const std::string& fileName)
 bool RemoveSymlinkXattr(const std::string& fileName)
 {
     char realFilePath[PATH_MAX];
-    if (!HitraceFilePathCheck(fileName, realFilePath, sizeof(realFilePath))) {
+    if (!IsTraceFilePathLegal(fileName, realFilePath, sizeof(realFilePath))) {
         return false;
     }
     char valueStr[DEFAULT_XATTR_VALUE_SIZE];
-    ssize_t len = getxattr(realFilePath, ATTR_NAME_LINK, valueStr, sizeof(valueStr));
+    ssize_t len = TEMP_FAILURE_RETRY(getxattr(realFilePath, ATTR_NAME_LINK, valueStr, sizeof(valueStr)));
     if (len == -1) {
         HILOG_ERROR(LOG_CORE, "RemoveSymlinkXattr getxattr failed errno %{public}d", errno);
         return false;
@@ -1620,14 +1620,14 @@ bool RemoveSymlinkXattr(const std::string& fileName)
             return false;
         }
         if (val == 1) {
-            if (removexattr(realFilePath, ATTR_NAME_LINK) == -1) {
+            if (TEMP_FAILURE_RETRY(removexattr(realFilePath, ATTR_NAME_LINK)) == -1) {
                 HILOG_ERROR(LOG_CORE, "RemoveSymlinkXattr removexattr failed errno %{public}d", errno);
                 return false;
             }
         } else if (val > 1) {
             val--;
             std::string str = std::to_string(val);
-            if (setxattr(realFilePath, ATTR_NAME_LINK, str.c_str(), str.size(), 0) == -1) {
+            if (TEMP_FAILURE_RETRY(setxattr(realFilePath, ATTR_NAME_LINK, str.c_str(), str.size(), 0)) == -1) {
                 HILOG_ERROR(LOG_CORE, "RemoveSymlinkXattr: modify xattr failed errno %{public}d", errno);
                 return false;
             }

@@ -74,7 +74,7 @@ bool IsProcessExist(const pid_t pid);
 
 std::vector<std::string> GetNoFilterEvents(const std::vector<std::string>& enablePath);
 
-bool HitraceFilePathCheck(const std::string& fileName, char *realFilePath, size_t bufLen);
+bool IsTraceFilePathLegal(const std::string& fileName, char *realFilePath, size_t bufLen);
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS

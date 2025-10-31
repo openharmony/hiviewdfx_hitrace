@@ -18,6 +18,7 @@
 #include <queue>
 #include <set>
 #include <sys/xattr.h>
+#include <unistd.h>
 
 #include "hilog/log.h"
 
@@ -140,7 +141,7 @@ void HandleFileNeedAgeing(const int64_t& needDelete, const CheckType checkType, 
         if (currCount >= needDelete) {
             break;
         }
-        ssize_t len = getxattr(fileInfo.filename.c_str(), ATTR_NAME_LINK, nullptr, 0);
+        ssize_t len = TEMP_FAILURE_RETRY(getxattr(fileInfo.filename.c_str(), ATTR_NAME_LINK, nullptr, 0));
         if (len == -1) {
             needRemoveFiles.insert(fileInfo.filename);
         } else {
@@ -185,11 +186,11 @@ void HandleAgeingImpl(std::vector<TraceFileInfo>& fileList, const TraceDumpType 
     HandleFileNotInVec(fileList, traceType, deleteCount);
 }
 
-static void calculateFilesize(const std::vector<TraceFileInfo>& fileList, int64_t& countSize)
+static void CalculateFilesize(const std::vector<TraceFileInfo>& fileList, int64_t& countSize)
 {
     size_t currLinkNum = 0;
     for (const auto &fileInfo : fileList) {
-        if (getxattr(fileInfo.filename.c_str(), ATTR_NAME_LINK, nullptr, 0) == -1) {
+        if (TEMP_FAILURE_RETRY(getxattr(fileInfo.filename.c_str(), ATTR_NAME_LINK, nullptr, 0)) == -1) {
             countSize += fileInfo.fileSize;
         } else {
             if ((++currLinkNum) > DEFAULT_LINK_NUM) {
@@ -209,7 +210,7 @@ void HandleAgeingSnapShort(std::vector<TraceFileInfo>& fileList, const TraceDump
     std::queue<TraceFileInfo> linkFiles= {};
     if (checkType == CheckType::FILESIZE) {
         int64_t countSize = 0;
-        calculateFilesize(fileList, countSize);
+        CalculateFilesize(fileList, countSize);
         needDelete = countSize - param.fileSizeKbLimit * BYTE_PER_KB;
         if (needDelete <= 0 || needDelete == countSize) {
             HandleFileNotInVec(fileList, traceType, deleteCount);
