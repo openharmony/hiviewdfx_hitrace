@@ -15,7 +15,10 @@
 
 #include "file_ageing_utils.h"
 
+#include <queue>
 #include <set>
+#include <sys/xattr.h>
+#include <unistd.h>
 
 #include "hilog/log.h"
 
@@ -34,6 +37,7 @@
 
 namespace {
 constexpr int BYTE_PER_KB = 1024;
+constexpr size_t DEFAULT_LINK_NUM = 15;
 using namespace OHOS::HiviewDFX::Hitrace;
 
 class FileAgeingChecker {
@@ -112,6 +116,58 @@ std::shared_ptr<FileAgeingChecker> FileAgeingChecker::CreateFileChecker(const Tr
     return nullptr;
 }
 
+void HandleFileNotInVec(std::vector<TraceFileInfo>& fileList, const TraceDumpType traceType, int32_t& deleteCount)
+{
+    // handle files that are not saved in vector
+    std::set<std::string> traceFiles = {};
+    GetTraceFileNamesInDir(traceFiles, traceType);
+    for (const auto& traceFileInfo : fileList) {
+        traceFiles.erase(traceFileInfo.filename);
+    }
+    for (const auto& filename : traceFiles) {
+        if (RemoveFile(filename)) {
+            deleteCount++;
+        }
+    }
+    HILOG_INFO(LOG_CORE, "HandleAgeing: deleteCount:%{public}d type:%{public}d",
+               deleteCount, static_cast<int32_t>(traceType));
+}
+
+void HandleFileNeedAgeing(const int64_t& needDelete, const CheckType checkType, std::vector<TraceFileInfo>& fileList,
+    std::set<std::string>& needRemoveFiles, std::queue<TraceFileInfo>& linkFiles)
+{
+    int64_t currCount = 0;
+    for (const auto& fileInfo : fileList) {
+        if (currCount >= needDelete) {
+            break;
+        }
+        ssize_t len = TEMP_FAILURE_RETRY(getxattr(fileInfo.filename.c_str(), ATTR_NAME_LINK, nullptr, 0));
+        if (len == -1) {
+            needRemoveFiles.insert(fileInfo.filename);
+        } else {
+            linkFiles.push(fileInfo);
+            if (linkFiles.size() <= DEFAULT_LINK_NUM) {
+                continue;
+            }
+            auto linkfileInfo = linkFiles.front();
+            needRemoveFiles.insert(linkfileInfo.filename);
+            linkFiles.pop();
+            if (checkType == CheckType::FILESIZE) {
+                currCount += linkfileInfo.fileSize;
+                continue;
+            }
+        }
+
+        if (checkType == CheckType::FILESIZE) {
+            currCount += fileInfo.fileSize;
+        } else if (checkType == CheckType::FILENUMBER) {
+            currCount++;
+        } else {
+            break;
+        }
+    }
+}
+
 void HandleAgeingImpl(std::vector<TraceFileInfo>& fileList, const TraceDumpType traceType, FileAgeingChecker& helper)
 {
     int32_t deleteCount = 0;
@@ -127,20 +183,62 @@ void HandleAgeingImpl(std::vector<TraceFileInfo>& fileList, const TraceDumpType 
         }
     }
     fileList.assign(result.rbegin(), result.rend());
+    HandleFileNotInVec(fileList, traceType, deleteCount);
+}
 
-    // handle files that are not saved in vector
-    std::set<std::string> traceFiles = {};
-    GetTraceFileNamesInDir(traceFiles, traceType);
-    for (const auto& traceFileInfo : fileList) {
-        traceFiles.erase(traceFileInfo.filename);
-    }
-    for (const auto& filename : traceFiles) {
-        if (RemoveFile(filename)) {
-            deleteCount++;
+static void CalculateFilesize(const std::vector<TraceFileInfo>& fileList, int64_t& countSize)
+{
+    size_t currLinkNum = 0;
+    for (const auto &fileInfo : fileList) {
+        if (TEMP_FAILURE_RETRY(getxattr(fileInfo.filename.c_str(), ATTR_NAME_LINK, nullptr, 0)) == -1) {
+            countSize += fileInfo.fileSize;
+        } else {
+            if ((++currLinkNum) > DEFAULT_LINK_NUM) {
+                countSize += fileInfo.fileSize;
+            }
         }
     }
-    HILOG_INFO(LOG_CORE, "HandleAgeing: deleteCount:%{public}d type:%{public}d",
-               deleteCount, static_cast<int32_t>(traceType));
+}
+
+void HandleAgeingSnapShort(std::vector<TraceFileInfo>& fileList, const TraceDumpType traceType,
+    const CheckType checkType)
+{
+    const AgeingParam& param = TraceJsonParser::Instance().GetAgeingParam(traceType);
+    int64_t needDelete = 0;
+    int32_t deleteCount = 0;
+    std::set<std::string> needRemoveFiles = {};
+    std::queue<TraceFileInfo> linkFiles= {};
+    if (checkType == CheckType::FILESIZE) {
+        int64_t countSize = 0;
+        CalculateFilesize(fileList, countSize);
+        needDelete = countSize - param.fileSizeKbLimit * BYTE_PER_KB;
+        if (needDelete <= 0 || needDelete == countSize) {
+            HandleFileNotInVec(fileList, traceType, deleteCount);
+            return;
+        }
+        HandleFileNeedAgeing(needDelete, CheckType::FILESIZE, fileList, needRemoveFiles, linkFiles);
+    } else if (checkType == CheckType::FILENUMBER) {
+        needDelete = static_cast<int64_t>(fileList.size()) - param.fileNumberLimit;
+        if (needDelete <= 0 || needDelete == static_cast<int64_t>(fileList.size())) {
+            HandleFileNotInVec(fileList, traceType, deleteCount);
+            return;
+        }
+        HandleFileNeedAgeing(needDelete, CheckType::FILENUMBER, fileList, needRemoveFiles, linkFiles);
+    }
+    
+    for (auto iter = needRemoveFiles.begin(); iter != needRemoveFiles.end();) {
+        if (RemoveFile(*iter)) {
+            deleteCount++;
+            ++iter;
+        } else {
+            iter = needRemoveFiles.erase(iter);
+        }
+    }
+    fileList.erase(std::remove_if(fileList.begin(), fileList.end(),
+        [&needRemoveFiles] (const TraceFileInfo& fileInfo) {
+            return needRemoveFiles.count(fileInfo.filename) != 0;
+        }), fileList.end());
+    HandleFileNotInVec(fileList, traceType, deleteCount);
 }
 }  // namespace
 
@@ -153,12 +251,20 @@ void FileAgeingUtils::HandleAgeing(std::vector<TraceFileInfo>& fileList, const T
     std::shared_ptr<FileAgeingChecker> checkerFilenumber = FileAgeingChecker::CreateFileChecker(traceType,
         CheckType::FILENUMBER);
     if (checkerFilenumber != nullptr) {
-        HandleAgeingImpl(fileList, traceType, *checkerFilenumber);
+        if (traceType == TraceDumpType::TRACE_RECORDING) {
+            HandleAgeingImpl(fileList, traceType, *checkerFilenumber);
+        } else if (traceType == TraceDumpType::TRACE_SNAPSHOT) {
+            HandleAgeingSnapShort(fileList, traceType, CheckType::FILENUMBER);
+        }
     }
     std::shared_ptr<FileAgeingChecker> checkerFilesize = FileAgeingChecker::CreateFileChecker(traceType,
         CheckType::FILESIZE);
     if (checkerFilesize != nullptr) {
-        HandleAgeingImpl(fileList, traceType, *checkerFilesize);
+        if (traceType == TraceDumpType::TRACE_RECORDING) {
+            HandleAgeingImpl(fileList, traceType, *checkerFilesize);
+        } else if (traceType == TraceDumpType::TRACE_SNAPSHOT) {
+            HandleAgeingSnapShort(fileList, traceType, CheckType::FILESIZE);
+        }
     }
 }
 

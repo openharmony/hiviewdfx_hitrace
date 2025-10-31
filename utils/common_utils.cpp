@@ -423,6 +423,21 @@ std::vector<std::string> GetNoFilterEvents(const std::vector<std::string>& enabl
     }
     return noFilterEvents;
 }
+
+bool IsTraceFilePathLegal(const std::string& fileName, char *realFilePath, size_t bufLen)
+{
+    if (fileName.size() >= bufLen || realpath(fileName.c_str(), realFilePath) == nullptr) {
+        HILOG_ERROR(LOG_CORE, "illegal file path");
+        return false;
+    }
+    realFilePath[bufLen - 1] = '\0';
+    std::string pathStr(realFilePath);
+    if (pathStr.substr(0, TRACE_FILE_DEFAULT_DIR.size()) != TRACE_FILE_DEFAULT_DIR) {
+        HILOG_ERROR(LOG_CORE, "file not at hitrace dir");
+        return false;
+    }
+    return true;
+}
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS

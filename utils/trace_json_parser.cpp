@@ -50,7 +50,7 @@ constexpr int MEM_GB = 1024 * 1024;
 
 constexpr uint32_t DEFAULT_RECORD_FILE_NUMBER_LIMIT = 15;
 
-constexpr uint32_t DEFAULT_SNAPSHOT_FILE_NUMBER_LIMIT = 20;
+constexpr uint32_t DEFAULT_SNAPSHOT_FILE_NUMBER_LIMIT = 35;
 
 bool GetInt64FromJson(cJSON* jsonNode, const std::string& key, int64_t& value)
 {

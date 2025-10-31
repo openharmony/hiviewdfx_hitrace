@@ -251,7 +251,7 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest008, TestSize.Level2)
 
     AgeingParam param = jsonParser->GetAgeingParam(TraceDumpType::TRACE_SNAPSHOT);
     EXPECT_EQ(param.rootEnable, true);
-    EXPECT_EQ(param.fileNumberLimit, 20);
+    EXPECT_EQ(param.fileNumberLimit, 35);
     EXPECT_EQ(param.fileSizeKbLimit, 1024);
 
     param = jsonParser->GetAgeingParam(TraceDumpType::TRACE_RECORDING);
@@ -632,6 +632,30 @@ HWTEST_F(HitraceUtilsTest, ProcessExistTest002, TestSize.Level2)
     GTEST_LOG_(INFO) << "ProcessExistTest002: start.";
     EXPECT_FALSE(IsProcessExist(-1));
     GTEST_LOG_(INFO) << "ProcessExistTest002: end.";
+}
+
+/**
+ * @tc.name: IsTraceFilePathLegal001
+ * @tc.desc: test IsTraceFilePathLegal func
+ * @tc.type: FUNC
+*/
+HWTEST_F(HitraceUtilsTest, IsTraceFilePathLegal001, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "IsTraceFilePathLegal001: start.";
+    char realFilePath[PATH_MAX];
+    std::string fileName = "/data/log/hitrace/trace.txt";
+    std::ofstream file(fileName);
+    EXPECT_TRUE(IsTraceFilePathLegal(fileName, realFilePath, PATH_MAX));
+    std::string nonexistFile = "/data/log/hitrace/nonexistfile.txt";
+    EXPECT_FALSE(IsTraceFilePathLegal(nonexistFile, realFilePath, PATH_MAX));
+    std::string errpathFile = "/data/local/tmp/trace.txt";
+    std::ofstream file2(errpathFile);
+    EXPECT_FALSE(IsTraceFilePathLegal(errpathFile, realFilePath, PATH_MAX));
+    const std::filesystem::path filePath= "/data/log/hitrace/trace.txt";
+    std::filesystem::remove(filePath);
+    const std::filesystem::path filePath2 = "/data/local/tmp/trace.txt";
+    std::filesystem::remove(filePath2);
+    GTEST_LOG_(INFO) << "IsTraceFilePathLegal001: end.";
 }
 } // namespace
 } // namespace Hitrace
