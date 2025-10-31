@@ -200,7 +200,7 @@ void HandleAgeingSnapShort(std::vector<TraceFileInfo>& fileList, const TraceDump
             if (getxattr(fileInfo.filename.c_str(), ATTR_NAME_LINK, nullptr, 0) == -1) {
                 countSize += fileInfo.fileSize;
             } else {
-                if((++currLinkNum) > DEFAULT_LINK_NUM) {
+                if ((++currLinkNum) > DEFAULT_LINK_NUM) {
                     countSize += fileInfo.fileSize;
                 }
             }
