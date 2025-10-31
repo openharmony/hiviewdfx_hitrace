@@ -185,6 +185,20 @@ void HandleAgeingImpl(std::vector<TraceFileInfo>& fileList, const TraceDumpType 
     HandleFileNotInVec(fileList, traceType, deleteCount);
 }
 
+static void calculateFilesize(const std::vector<TraceFileInfo>& fileList, int64_t& countSize)
+{
+    size_t currLinkNum = 0;
+    for (const auto &fileInfo : fileList) {
+        if (getxattr(fileInfo.filename.c_str(), ATTR_NAME_LINK, nullptr, 0) == -1) {
+            countSize += fileInfo.fileSize;
+        } else {
+            if ((++currLinkNum) > DEFAULT_LINK_NUM) {
+                countSize += fileInfo.fileSize;
+            }
+        }
+    }
+}
+
 void HandleAgeingSnapShort(std::vector<TraceFileInfo>& fileList, const TraceDumpType traceType,
     const CheckType checkType)
 {
@@ -195,16 +209,7 @@ void HandleAgeingSnapShort(std::vector<TraceFileInfo>& fileList, const TraceDump
     std::queue<TraceFileInfo> linkFiles= {};
     if (checkType == CheckType::FILESIZE) {
         int64_t countSize = 0;
-        size_t currLinkNum = 0;
-        for (const auto &fileInfo : fileList) {
-            if (getxattr(fileInfo.filename.c_str(), ATTR_NAME_LINK, nullptr, 0) == -1) {
-                countSize += fileInfo.fileSize;
-            } else {
-                if ((++currLinkNum) > DEFAULT_LINK_NUM) {
-                    countSize += fileInfo.fileSize;
-                }
-            }
-        }
+        calculateFilesize(fileList, countSize);
         needDelete = countSize - param.fileSizeKbLimit * BYTE_PER_KB;
         if (needDelete <= 0 || needDelete == countSize) {
             HandleFileNotInVec(fileList, traceType, deleteCount);
