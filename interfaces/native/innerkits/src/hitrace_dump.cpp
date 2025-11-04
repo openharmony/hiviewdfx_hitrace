@@ -37,6 +37,7 @@
 
 #include "common_define.h"
 #include "common_utils.h"
+#include "dfx_dump_catcher.h"
 #include "dynamic_buffer.h"
 #include "file_ageing_utils.h"
 #include "hitrace_meter.h"
@@ -84,7 +85,7 @@ constexpr uint64_t DEFAULT_ASYNC_TRACE_SIZE = 50 * 1024 * 1024;          // 50M
 constexpr int HUNDRED_MILLISECONDS = 100 * 1000; // 100ms
 constexpr int ASYNC_WAIT_EMPTY_LOOP_MS = 15 * 1000; // 15 seconds
 
-std::atomic<pid_t> g_traceDumpTaskPid(-1);
+static volatile sig_atomic_t g_traceDumpTaskPid = -1;
 
 std::mutex g_traceMutex;
 bool g_serviceThreadIsStart = false;
@@ -555,10 +556,44 @@ void TimeoutSignalHandler(int signum)
     if (signum == SIGUSR1) {
         _exit(EXIT_SUCCESS);
     } else if (signum == SIGCHLD) {
-        pid_t pid;
-        do {
-            pid = waitpid(-1, nullptr, WNOHANG);
-        } while (pid > 0);
+        // only work for async dump process.
+        if (g_traceDumpTaskPid > 0 && waitpid(g_traceDumpTaskPid, nullptr, WNOHANG) > 0) {
+            g_traceDumpTaskPid = -1;
+        }
+    }
+}
+
+void LogStackTrace(const pid_t pid)
+{
+    DfxDumpCatcher dumplog;
+    std::string stack;
+    bool ret = dumplog.DumpCatch(pid, 0, stack);
+    if (!ret) {
+        HILOG_ERROR(LOG_CORE, "LogStackTrace: dump stack trace failed, pid: %{public}d", pid);
+    }
+    HILOG_INFO(LOG_CORE, "LogStackTrace: %{public}s", stack.c_str());
+}
+
+void WaitForChildProcess(const pid_t pid)
+{
+    const int maxWaitTime = 5000;
+    const int checkInterval = 100;
+    int waitedTime = 0;
+    while (waitedTime < maxWaitTime) {
+        pid_t result = TEMP_FAILURE_RETRY(waitpid(pid, nullptr, WNOHANG));
+        if (result > 0) {
+            HILOG_INFO(LOG_CORE, "Child process %{public}d exited successfully.", pid);
+            break;
+        } else if (result == 0) {
+            usleep(checkInterval * 1000); // 1000 : 1ms
+            waitedTime += checkInterval;
+        } else {
+            HILOG_ERROR(LOG_CORE, "waitpid failed: %{public}s", strerror(errno));
+            break;
+        }
+    }
+    if (waitedTime >= maxWaitTime) {
+        HILOG_ERROR(LOG_CORE, "Child process %{public}d did not exit within timeout.", pid);
     }
 }
 
@@ -569,7 +604,6 @@ bool EpollWaitforChildProcess(pid_t& pid, int& pipefd, std::string& reOutPath)
         HILOG_ERROR(LOG_CORE, "epoll_create1 error.");
         return false;
     }
-
     struct epoll_event event;
     event.events = EPOLLIN;
     event.data.fd = pipefd;
@@ -578,22 +612,22 @@ bool EpollWaitforChildProcess(pid_t& pid, int& pipefd, std::string& reOutPath)
         close(epollfd);
         return false;
     }
-
     struct epoll_event events[1];
-    constexpr int waitTimeoutMs = 10000; // 10000ms = 10s
-    int numEvents = TEMP_FAILURE_RETRY(epoll_wait(epollfd, events, 1, waitTimeoutMs));
-    if (numEvents <= 0) {
+    int numEvents = 0;
+    for (int retry = 0; retry < 10 && numEvents <= 0; retry++) { // 10 : ten seconds timeout
+        numEvents = TEMP_FAILURE_RETRY(epoll_wait(epollfd, events, 1, 1000)); // 1000 : one second timeout
         if (numEvents == -1) {
             HILOG_ERROR(LOG_CORE, "epoll_wait error, error: (%{public}s).", strerror(errno));
-        } else {
-            HILOG_ERROR(LOG_CORE, "epoll_wait timeout.");
+            break;
         }
-        if (waitpid(pid, nullptr, WNOHANG) <= 0) {
-            HILOG_ERROR(LOG_CORE, "kill timeout child process.");
-            if (kill(pid, SIGUSR1) != 0) {
-                HILOG_ERROR(LOG_CORE, "kill child process failed.");
-            }
+    }
+    if (numEvents <= 0) {
+        LogStackTrace(pid);
+        HILOG_ERROR(LOG_CORE, "kill timeout child process.");
+        if (kill(pid, SIGUSR1) != 0) {
+            HILOG_ERROR(LOG_CORE, "kill child process failed.");
         }
+        WaitForChildProcess(pid);
         close(epollfd);
         return false;
     }
@@ -606,11 +640,8 @@ bool EpollWaitforChildProcess(pid_t& pid, int& pipefd, std::string& reOutPath)
     reOutPath = retVal.outputFile;
     g_firstPageTimestamp = retVal.traceStartTime;
     g_lastPageTimestamp = retVal.traceEndTime;
-
     close(epollfd);
-    if (waitpid(pid, nullptr, 0) <= 0) {
-        HILOG_ERROR(LOG_CORE, "wait HitraceDump(%{public}d) exit failed, errno: (%{public}d)", pid, errno);
-    }
+    WaitForChildProcess(pid);
     return true;
 }
 
@@ -755,10 +786,12 @@ TraceDumpTask WaitSyncDumpRetLoop(const pid_t pid, const std::shared_ptr<Hitrace
     } else {
         task.code = TraceErrorCode::TRACE_TASK_DUMP_TIMEOUT;
         TraceDumpExecutor::GetInstance().ClearTraceDumpTask();
+        LogStackTrace(pid);
         if (kill(pid, SIGUSR1) != 0) {
             HILOG_ERROR(LOG_CORE, "WaitSyncDumpRetLoop: kill dump process failed.");
         }
         HILOG_WARN(LOG_CORE, "WaitSyncDumpRetLoop: wait timeout, clear task and kill dump process.");
+        WaitForChildProcess(pid);
     }
     HILOG_INFO(LOG_CORE, "WaitSyncDumpRetLoop: exit.");
     return task;
@@ -817,7 +850,7 @@ TraceErrorCode SubmitTaskAndWaitReturn(const TraceDumpTask& task, const bool clo
     if (!dumpPipe->SubmitTraceDumpTask(task)) {
         return TraceErrorCode::TRACE_TASK_SUBMIT_ERROR;
     }
-    auto taskRet = WaitSyncDumpRetLoop(g_traceDumpTaskPid.load(), dumpPipe);
+    auto taskRet = WaitSyncDumpRetLoop(g_traceDumpTaskPid, dumpPipe);
     HandleAsyncDumpResult(taskRet, traceRetInfo);
     if (taskRet.status == TraceDumpStatus::FINISH) {
         HILOG_INFO(LOG_CORE, "SubmitTaskAndWaitReturn: task finished.");
@@ -892,7 +925,7 @@ TraceErrorCode ProcessDumpAsync(const uint64_t taskid, const int64_t fileSizeLim
         loopWriteThread.join();
         _exit(EXIT_SUCCESS);
     }
-    g_traceDumpTaskPid.store(pid);
+    g_traceDumpTaskPid = static_cast<sig_atomic_t>(pid);
     return SubmitTaskAndWaitReturn(task, true, traceRetInfo);
 }
 
