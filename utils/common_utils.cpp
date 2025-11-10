@@ -24,6 +24,7 @@
 #include <sys/statvfs.h>
 #include <sys/time.h>
 #include <sys/utsname.h>
+#include <sys/wait.h>
 
 #include "common_define.h"
 #include "hilog/log.h"
@@ -399,12 +400,21 @@ bool IsProcessExist(const pid_t pid)
         HILOG_WARN(LOG_CORE, "IsProcessExist: pid %{public}d is invalid", pid);
         return false;
     }
-    if (kill(pid, 0) == 0) {
+    int status;
+    pid_t result = TEMP_FAILURE_RETRY(waitpid(pid, &status, WNOHANG));
+    if (result == 0) {
         HILOG_INFO(LOG_CORE, "IsProcessExist: %{public}d process exist", pid);
         return true;
+    } else if (result == pid) {
+        HILOG_WARN(LOG_CORE, "IsProcessExist: %{public}d process is a zombie, cleaning up", pid);
+        return false;
+    } else if (errno == ECHILD) {
+        HILOG_WARN(LOG_CORE, "IsProcessExist: %{public}d process not exist", pid);
+        return false;
+    } else {
+        HILOG_WARN(LOG_CORE, "IsProcessExist: waitpid failed with error: %s", strerror(errno));
+        return false;
     }
-    HILOG_WARN(LOG_CORE, "IsProcessExist: %{public}d process not exist", pid);
-    return false;
 }
 
 std::vector<std::string> GetNoFilterEvents(const std::vector<std::string>& enablePath)
