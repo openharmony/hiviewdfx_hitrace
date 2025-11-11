@@ -617,8 +617,23 @@ HWTEST_F(HitraceUtilsTest, GetNoFilterEvents004, TestSize.Level2)
 HWTEST_F(HitraceUtilsTest, ProcessExistTest001, TestSize.Level2)
 {
     GTEST_LOG_(INFO) << "ProcessExistTest001: start.";
-    EXPECT_TRUE(IsProcessExist(1));
-    EXPECT_FALSE(IsProcessExist(65536)); // 65536 : max pid
+    pid_t pid = fork();
+
+    if (pid < 0) {
+        GTEST_LOG_(INFO) << "fork failed" << strerror(errno);
+    } else if (pid == 0) {
+        sleep(2);
+        GTEST_LOG_(INFO) << "child process exited";
+    } else {
+        // child proc exist
+        EXPECT_TRUE(IsProcessExist(pid));
+
+        sleep(6);
+        // child proc zombie
+        EXPECT_FALSE(IsProcessExist(pid));
+    }
+    // proc not exist
+    EXPECT_FALSE(IsProcessExist(65536));
     GTEST_LOG_(INFO) << "ProcessExistTest001: end.";
 }
 
