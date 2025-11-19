@@ -567,12 +567,19 @@ void TimeoutSignalHandler(int signum)
 void LogStackTrace(const pid_t pid)
 {
     DfxDumpCatcher dumplog;
-    std::string stack;
-    bool ret = dumplog.DumpCatch(pid, 0, stack);
-    if (!ret) {
-        HILOG_ERROR(LOG_CORE, "LogStackTrace: dump stack trace failed, pid: %{public}d", pid);
+    std::string ret;
+    std::pair<int, std::string> dumpResult = dumplog.DumpCatchWithTimeout(pid, ret);
+    constexpr int dumpNormalSuccess = 0;
+    if (dumpResult.first != dumpNormalSuccess) {
+        constexpr int dumpKernelSuccess = 1;
+        if (dumpResult.first == dumpKernelSuccess) {
+            ret = "Failed to dump normal stacktrace for " + std::to_string(pid) + "\n" +
+                dumpResult.second + ret;
+        } else {
+            ret = "Failed to dump stacktrace for " + std::to_string(pid) + "\n";
+        }
     }
-    HILOG_INFO(LOG_CORE, "LogStackTrace: %{public}s", stack.c_str());
+    HILOG_INFO(LOG_CORE, "LogStackTrace: %{public}s", ret.c_str());
 }
 
 void WaitForChildProcess(const pid_t pid)
@@ -625,7 +632,7 @@ bool EpollWaitforChildProcess(pid_t& pid, int& pipefd, std::string& reOutPath)
     if (numEvents <= 0) {
         LogStackTrace(pid);
         HILOG_ERROR(LOG_CORE, "kill timeout child process.");
-        if (kill(pid, SIGUSR1) != 0) {
+        if (kill(pid, SIGKILL) != 0) {
             HILOG_ERROR(LOG_CORE, "kill child process failed.");
         }
         WaitForChildProcess(pid);
@@ -788,7 +795,7 @@ TraceDumpTask WaitSyncDumpRetLoop(const pid_t pid, const std::shared_ptr<Hitrace
         task.code = TraceErrorCode::TRACE_TASK_DUMP_TIMEOUT;
         TraceDumpExecutor::GetInstance().ClearTraceDumpTask();
         LogStackTrace(pid);
-        if (kill(pid, SIGUSR1) != 0) {
+        if (kill(pid, SIGKILL) != 0) {
             HILOG_ERROR(LOG_CORE, "WaitSyncDumpRetLoop: kill dump process failed.");
         }
         HILOG_WARN(LOG_CORE, "WaitSyncDumpRetLoop: wait timeout, clear task and kill dump process.");
