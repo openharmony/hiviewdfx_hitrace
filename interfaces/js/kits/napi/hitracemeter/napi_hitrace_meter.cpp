@@ -56,8 +56,6 @@ using STR_NUM_PARAM_FUNC = std::function<bool(std::string, napi_value&)>;
 constexpr int32_t INVALID_PARAMETER = -2;
 constexpr int32_t INVALID_INDEX = -2;
 struct CallbackContext {
-    napi_env env = nullptr;
-    napi_ref callbackRef = nullptr;
     napi_threadsafe_function tsFunc = nullptr;
     bool traceEnable;
 };
@@ -383,20 +381,19 @@ static void JsDeleteCallback(void* ctx)
     CallbackContext* context = reinterpret_cast<CallbackContext*>(ctx);
     if (context != nullptr) {
         napi_release_threadsafe_function(context->tsFunc, napi_tsfn_release);
-        napi_delete_reference(context->env, context->callbackRef);
         delete context;
     }
 }
 
 static void JsThreadSafeCall(napi_env env, napi_value callback, void* context, void* data)
 {
-    CallbackContext *callbackContext = reinterpret_cast<CallbackContext *>(data);
-    if (callbackContext == nullptr) {
+    if (env == nullptr) {
+        HILOG_ERROR(LOG_CORE, "JsThreadSafeCall: env is nullptr.");
         return;
     }
-    napi_get_reference_value(env, callbackContext->callbackRef, &callback);
-
-    if (!TypeCheck(env, callback, napi_function)) {
+    CallbackContext* callbackContext = reinterpret_cast<CallbackContext*>(data);
+    if (callbackContext == nullptr) {
+        HILOG_ERROR(LOG_CORE, "JsThreadSafeCall: callbackContext is nullptr.");
         return;
     }
 
@@ -426,10 +423,8 @@ static napi_value JSRegisterTraceListener(napi_env env, napi_callback_info info)
     napi_value workName;
     napi_create_string_utf8(env, "TraceListenerCallback", NAPI_AUTO_LENGTH, &workName);
     CallbackContext* asyncContext = new CallbackContext();
-    napi_create_threadsafe_function(env, nullptr, nullptr, workName, 0, 1, nullptr, nullptr, nullptr,
+    napi_create_threadsafe_function(env, callback, nullptr, workName, 0, 1, nullptr, nullptr, nullptr,
         JsThreadSafeCall, &asyncContext->tsFunc);
-    asyncContext->env = env;
-    napi_create_reference(env, callback, 1, &asyncContext->callbackRef);
 
     SetCallbacksNapi(JsExcuteCallBack, JsDeleteCallback);
     int32_t registerRet = RegisterTraceListenerNapi(reinterpret_cast<void *>(asyncContext));
