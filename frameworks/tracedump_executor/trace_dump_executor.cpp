@@ -47,7 +47,9 @@ constexpr int DEFAULT_CACHE_FILE_SIZE = 15 * 1024;
 #else
 constexpr int DEFAULT_CACHE_FILE_SIZE = 150 * 1024;
 #endif
+constexpr uint64_t SYNC_RETURN_TIMEOUT_NS = 5000000000; // 5s
 constexpr int64_t ASYNC_DUMP_FILE_SIZE_ADDITION = 1024 * 1024; // 1MB
+constexpr int MAX_WRITE_RETRY = 10;
 
 static bool g_isRootVer = IsRootVersion();
 
@@ -264,26 +266,40 @@ void TraceDumpExecutor::ProcessNewTask(std::shared_ptr<HitraceDumpPipe>& dumpPip
 void TraceDumpExecutor::DoProcessTraceDumpTask(std::shared_ptr<HitraceDumpPipe>& dumpPipe, TraceDumpTask& task,
     std::vector<TraceDumpTask>& completedTasks)
 {
+    uint64_t curBootTime = GetCurBootTime();
     if (task.status == TraceDumpStatus::WRITE_DONE) {
-        if (task.hasSyncReturn && dumpPipe->WriteAsyncReturn(task)) {
+        if (task.hasSyncReturn && dumpPipe->WriteAsyncReturn(task)) { // Async return
             completedTasks.push_back(task);
-        } else if (!task.hasSyncReturn && dumpPipe->WriteSyncReturn(task)) {
+        } else if (!task.hasSyncReturn && dumpPipe->WriteSyncReturn(task)) { // Sync return
             task.hasSyncReturn = true;
-        }
-    } else if (task.status == TraceDumpStatus::READ_DONE) {
-        if (task.code != TraceErrorCode::SUCCESS) { // read trace exception
-            if (!task.hasSyncReturn && dumpPipe->WriteSyncReturn(task)) {
-                task.hasSyncReturn = true;
-            } else if (task.hasSyncReturn && dumpPipe->WriteAsyncReturn(task)) {
+            if (curBootTime - task.time <= SYNC_RETURN_TIMEOUT_NS) {
                 completedTasks.push_back(task);
             }
-        } else if (!task.hasSyncReturn) { // sync return
+        }
+    } else if (task.status == TraceDumpStatus::READ_DONE) {
+        if (task.code != TraceErrorCode::SUCCESS) {
+            task.status = TraceDumpStatus::WRITE_DONE;
+            auto writeRet = false;
+            if (!task.hasSyncReturn) {
+                writeRet = dumpPipe->WriteSyncReturn(task);
+            } else {
+                writeRet = dumpPipe->WriteAsyncReturn(task);
+            }
+            if (writeRet) {
+                completedTasks.push_back(task);
+            }
+        } else if (!task.hasSyncReturn && curBootTime - task.time > SYNC_RETURN_TIMEOUT_NS) { // write trace timeout
             if (dumpPipe->WriteSyncReturn(task)) {
                 task.hasSyncReturn = true;
                 task.status = TraceDumpStatus::WAIT_WRITE;
                 writeCondVar_.notify_one();
             }
         }
+    }
+    if (task.writeRetry >= MAX_WRITE_RETRY) {
+        HILOG_WARN(LOG_CORE, "DoProcessTraceDumpTask: write retry exceed max retry, taskid[%{public}" PRIu64 "]",
+            task.time);
+        completedTasks.push_back(task);
     }
 }
 
@@ -505,6 +521,9 @@ bool TraceDumpExecutor::DoReadRawTrace(TraceDumpTask& task)
     if (task.code == TraceErrorCode::SUCCESS && task.fileSize > task.fileSizeLimit) {
         task.isFileSizeOverLimit = true;
     }
+#ifdef HITRACE_ASYNC_READ_TIMEOUT_TEST
+    sleep(10); // 10 : sleep 10 seconds to construct a timeout task
+#endif
     if (!UpdateTraceDumpTask(task)) {
         HILOG_ERROR(LOG_CORE, "DoReadRawTrace: update trace dump task failed.");
         return false;
@@ -539,6 +558,9 @@ bool TraceDumpExecutor::DoWriteRawTrace(TraceDumpTask& task)
     if (task.code == TraceErrorCode::SUCCESS && task.fileSize > task.fileSizeLimit) {
         task.isFileSizeOverLimit = true;
     }
+#ifdef HITRACE_ASYNC_WRITE_TIMEOUT_TEST
+    sleep(10); // 10 : sleep 10 seconds to construct a timeout task
+#endif
     if (!UpdateTraceDumpTask(task)) {
         HILOG_ERROR(LOG_CORE, "DoWriteRawTrace: update trace dump task failed.");
         return false;

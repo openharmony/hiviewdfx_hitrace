@@ -493,14 +493,14 @@ void ProcessCacheTask()
     const std::string threadName = "CacheTraceTask";
     prctl(PR_SET_NAME, threadName.c_str());
     struct TraceDumpParam param = {
-        TraceDumpType::TRACE_CACHE,
-        g_currentTraceParams.outputFile,
-        g_currentTraceParams.fileLimit,
-        g_currentTraceParams.fileSize,
-        0,
-        std::numeric_limits<uint64_t>::max()
+        .type = TraceDumpType::TRACE_CACHE,
+        .outputFile = g_currentTraceParams.outputFile,
+        .fileLimit = g_currentTraceParams.fileLimit,
+        .fileSize = g_currentTraceParams.fileSize,
+        .cacheTotalFileSizeLmt = g_totalFileSizeLimit,
+        .cacheSliceDuration = g_sliceMaxDuration
     };
-    if (!TraceDumpExecutor::GetInstance().StartCacheTraceLoop(param, g_totalFileSizeLimit, g_sliceMaxDuration)) {
+    if (!TraceDumpExecutor::GetInstance().StartCacheTraceLoop(param)) {
         HILOG_ERROR(LOG_CORE, "ProcessCacheTask: StartCacheTraceLoop failed.");
         return;
     }

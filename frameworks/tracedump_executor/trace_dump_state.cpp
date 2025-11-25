@@ -44,6 +44,9 @@ void TraceDumpState::EndLoopDumpSelf()
 
 void TraceDumpState::EndLoopDump()
 {
+    if (state_.load(std::memory_order_acquire) == DumpState::IDLE) {
+        return;
+    }
     state_.store(DumpState::STOPPING, std::memory_order_release);
     std::unique_lock<std::mutex> lock(conditionMutex_);
     stateCondition_.wait_for(lock, std::chrono::milliseconds(WAIT_TIMEOUT_MS),
