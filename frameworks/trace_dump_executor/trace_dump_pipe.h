@@ -54,7 +54,7 @@ private:
     UniqueFd taskSubmitFd_;
     UniqueFd syncRetFd_;
     UniqueFd asyncRetFd_;
-    int epollFd_ = -1;
+    UniqueFd epollFd_;
     bool epollInitialized_ = false;
 };
 } // namespace Hitrace
