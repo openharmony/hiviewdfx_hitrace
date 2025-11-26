@@ -48,7 +48,7 @@ const mode_t PIPE_FILE_MODE = 0666;
 HitraceDumpPipe::HitraceDumpPipe(bool isParent)
 {
     isParent_ = isParent;
-    epollFd_ = epoll_create1(EPOLL_CLOEXEC);
+    epollFd_ = UniqueFd(epoll_create1(EPOLL_CLOEXEC));
     if (epollFd_ < 0) {
         HILOG_ERROR(LOG_CORE, "epoll_create1 failed, errno: %{public}d", errno);
         return;
