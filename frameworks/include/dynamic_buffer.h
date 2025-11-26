@@ -38,7 +38,7 @@ public:
      * traceRootPath, eg: /sys/kernel/debug/tracing/;
      * cpuNums, Number of CPU cores.
     */
-    DynamicBuffer(std::string& traceRootPath, int cpuNums)
+    DynamicBuffer(const std::string& traceRootPath, int cpuNums)
         : traceRootPath(traceRootPath), cpuNums(cpuNums) {}
 
     /**
