@@ -197,8 +197,10 @@ ohos_unittest("HitraceDumpTest") {
   sources = [
     "$hitrace_frameworks_path/native/dynamic_buffer.cpp",
     "$hitrace_interfaces_path/native/innerkits/src/hitrace_dump.cpp",
+    "$hitrace_interfaces_path/native/innerkits/src/hitrace_util.cpp",
     "$hitrace_utils_path/file_ageing_utils.cpp",
     "hitrace_dump/hitrace_dump_test.cpp",
+    "hitrace_dump/hitrace_util_test.cpp",
   ]
   configs = [ "$hitrace_common_path/build:coverage_flags" ]
 
@@ -250,6 +252,7 @@ async_dump_test_sources = [
   "$hitrace_frameworks_path/trace_dump_executor/trace_dump_executor.cpp",
   "$hitrace_frameworks_path/trace_dump_executor/trace_dump_pipe.cpp",
   "$hitrace_interfaces_path/native/innerkits/src/hitrace_dump.cpp",
+  "$hitrace_interfaces_path/native/innerkits/src/hitrace_util.cpp",
   "$hitrace_utils_path/file_ageing_utils.cpp",
 ]
 

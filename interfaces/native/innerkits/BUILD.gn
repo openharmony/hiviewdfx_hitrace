@@ -133,6 +133,7 @@ ohos_shared_library("hitrace_dump") {
     "$hitrace_frameworks_path/native/dynamic_buffer.cpp",
     "$hitrace_utils_path/file_ageing_utils.cpp",
     "src/hitrace_dump.cpp",
+    "src/hitrace_util.cpp",
   ]
 
   deps = [

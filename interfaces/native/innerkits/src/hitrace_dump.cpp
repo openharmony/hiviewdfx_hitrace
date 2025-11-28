@@ -42,6 +42,7 @@
 #include "dynamic_buffer.h"
 #include "file_ageing_utils.h"
 #include "hitrace_meter.h"
+#include "hitrace_util.h"
 #include "hitrace_option/hitrace_option.h"
 #include "hilog/log.h"
 #include "parameters.h"
@@ -89,7 +90,6 @@ static volatile sig_atomic_t g_traceDumpTaskPid = -1;
 std::atomic<pid_t> g_asyncWaitTid(-1);
 
 std::mutex g_traceMutex;
-bool g_serviceThreadIsStart = false;
 uint64_t g_sysInitParamTags = 0;
 uint8_t g_traceMode = TraceMode::CLOSE;
 std::string g_traceRootPath;
@@ -970,48 +970,44 @@ bool CheckServiceRunning()
     return false;
 }
 
-void CpuBufferBalanceTask()
+bool CpuBufferBalanceTask(const std::string& traceRootPath)
 {
-    g_serviceThreadIsStart = true;
-    const std::string threadName = "CpuBufferBalancer";
-    prctl(PR_SET_NAME, threadName.c_str());
-    HILOG_INFO(LOG_CORE, "CpuBufferBalanceTask: monitor thread start.");
-    const int intervalTime = 15;
-    while (IsTraceOpen() && CheckServiceRunning()) {
-        sleep(intervalTime);
-
-        const int cpuNums = GetCpuProcessors();
-        std::vector<int> result;
-        std::unique_ptr<DynamicBuffer> dynamicBuffer = std::make_unique<DynamicBuffer>(g_traceRootPath, cpuNums);
-        dynamicBuffer->CalculateBufferSize(result);
-
-        if (static_cast<int>(result.size()) != cpuNums) {
-            HILOG_ERROR(LOG_CORE, "CalculateAllNewBufferSize failed.");
-            break;
-        }
-
-        for (size_t i = 0; i < result.size(); i++) {
-            HILOG_DEBUG(LOG_CORE, "cpu%{public}zu set size %{public}d.", i, result[i]);
-            std::string path = "per_cpu/cpu" + std::to_string(i) + "/buffer_size_kb";
-            if (!WriteStrToFile(path, std::to_string(result[i]))) {
-                HILOG_ERROR(LOG_CORE, "CpuBufferBalanceTask: WriteStrToFile failed.");
-            }
+    if (!IsTraceOpen() || !CheckServiceRunning()) {
+        return false;
+    }
+    const int cpuNums = GetCpuProcessors();
+    std::vector<int> result;
+    DynamicBuffer dynamicBuffer(traceRootPath, cpuNums);
+    dynamicBuffer.CalculateBufferSize(result);
+    if (static_cast<int>(result.size()) != cpuNums) {
+        HILOG_ERROR(LOG_CORE, "CalculateAllNewBufferSize failed.");
+        return false;
+    }
+    for (size_t i = 0; i < result.size(); i++) {
+        HILOG_DEBUG(LOG_CORE, "cpu%{public}zu set size %{public}d.", i, result[i]);
+        std::string path = "per_cpu/cpu" + std::to_string(i) + "/buffer_size_kb";
+        if (!WriteStrToFile(path, std::to_string(result[i]))) {
+            HILOG_ERROR(LOG_CORE, "CpuBufferBalanceTask: WriteStrToFile failed.");
         }
     }
-    HILOG_INFO(LOG_CORE, "CpuBufferBalanceTask: monitor thread exit.");
-    g_serviceThreadIsStart = false;
+    return true;
 }
+
+static std::unique_ptr<StoppableThreadHelper> g_cpuBufferBalanceService = nullptr;
 
 void StartCpuBufferBalanceService()
 {
-    if (!IsHmKernel() && !g_serviceThreadIsStart) {
-        // open monitor thread
-        auto it = []() {
-            CpuBufferBalanceTask();
-        };
-        std::thread auxiliaryTask(it);
-        auxiliaryTask.detach();
+    if (IsHmKernel()) {
+        return;
     }
+    if (!g_cpuBufferBalanceService) {
+        g_cpuBufferBalanceService = std::make_unique<StoppableThreadHelper>();
+    }
+    constexpr int intervalTimeInSecond = 15;
+    const auto threadName = "CpuBufferBalancer";
+    g_cpuBufferBalanceService->StartSubThread([traceRootPath = g_traceRootPath] {
+            return CpuBufferBalanceTask(traceRootPath);
+        }, intervalTimeInSecond, threadName);
 }
 
 bool PreWriteEventsFormat(const std::vector<std::string>& eventFormats)
@@ -1534,6 +1530,7 @@ TraceErrorCode CloseTrace()
         TraceDumpExecutor::GetInstance().StopDumpTraceLoop();
     }
     g_traceMode = TraceMode::CLOSE;
+    g_cpuBufferBalanceService = nullptr;
     OHOS::system::SetParameter(TRACE_KEY_APP_PID, "-1");
 
     const std::map<std::string, TraceTag>& allTags = TraceJsonParser::Instance().GetAllTagInfos();
