@@ -60,9 +60,12 @@ constexpr uint32_t TEN_SEC = 10;
 constexpr uint32_t S_TO_MS = 1000;
 constexpr uint32_t MAX_RATIO_UNIT = 1000;
 constexpr int DEFAULT_FULL_TRACE_LENGTH = 30;
+constexpr uint32_t DEFAULT_BUFFER_SIZE = 144 * 1024; // 144MB
+constexpr uint32_t DEFAULT_FILE_SIZE_LIMIT = 200 * 1024; // 200MB
 const std::string TRACE_SNAPSHOT_PREFIX = "trace_";
 const std::string TRACE_RECORDING_PREFIX = "record_trace_";
 const std::string TRACE_CACHE_PREFIX = "cache_trace_";
+
 struct FileWithTime {
     std::string filename;
     time_t ctime;
@@ -894,11 +897,14 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_006, TestSize.Level0)
  */
 HWTEST_F(HitraceDumpTest, DumpForServiceMode_007, TestSize.Level0)
 {
-    ASSERT_TRUE(OpenTrace("default") == TraceErrorCode::SUCCESS);
+    std::vector<std::string> tagGroups = {"default"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
-    ASSERT_TRUE(OpenTrace("scene_performance") == TraceErrorCode::SUCCESS);
+    tagGroups = {"scene_performance"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
-    ASSERT_TRUE(OpenTrace("telemetry") == TraceErrorCode::SUCCESS);
+    tagGroups = {"telemetry"};
+    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
@@ -1516,5 +1522,132 @@ HWTEST_F(HitraceDumpTest, RemoveSymlinkXattr002, TestSize.Level2)
 
     EXPECT_FALSE(RemoveSymlinkXattr(fileName));
     ClearFile();
+}
+
+/**
+ * @tc.name: OpenTraceTest001
+ * @tc.desc: Test OpenTrace 2 times
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, OpenTraceTest001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "OpenTraceTest001: start.";
+
+    TraceArgs traceArgs = {
+        .tags = { "app" },
+        .clockType = "boot",
+        .isOverWrite = true,
+        .bufferSize = DEFAULT_BUFFER_SIZE,
+        .fileSizeLimit = DEFAULT_FILE_SIZE_LIMIT,
+        .appPid = 0,
+        .filterPids = {}
+    };
+    ASSERT_TRUE(OpenTrace(traceArgs) == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(OpenTrace(traceArgs) == TraceErrorCode::WRONG_TRACE_MODE);
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+
+    GTEST_LOG_(INFO) << "OpenTraceTest001: end.";
+}
+
+/**
+ * @tc.name: OpenTraceTest002
+ * @tc.desc: Test OpenTrace with bufferSize 0, try to get default bufferSize
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, OpenTraceTest002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "OpenTraceTest002: start.";
+
+    TraceArgs traceArgs = {
+        .tags = { "app" },
+        .clockType = "boot",
+        .isOverWrite = true,
+        .bufferSize = 0,
+        .fileSizeLimit = DEFAULT_FILE_SIZE_LIMIT,
+        .appPid = 0,
+        .filterPids = {}
+    };
+    ASSERT_TRUE(OpenTrace(traceArgs) == TraceErrorCode::SUCCESS);
+
+    std::string traceRootPath = "";
+    ASSERT_TRUE(IsTraceMounted(traceRootPath));
+    std::string curBufferSizeStr = ReadFile("buffer_size_kb", traceRootPath);
+    curBufferSizeStr = curBufferSizeStr.substr(0, curBufferSizeStr.find("\n"));
+    TraceJsonParser& parser = TraceJsonParser::Instance();
+    int defaultBufferSize = parser.GetSnapshotDefaultBufferSizeKb();
+    int curBuffersize = 0;
+    ASSERT_TRUE(StringToInt(curBufferSizeStr, curBuffersize));
+    GTEST_LOG_(INFO) << "defaultBufferSize: " << defaultBufferSize << ", curBuffersize: " << curBuffersize;
+    ASSERT_TRUE(std::abs(defaultBufferSize - curBuffersize) < 4);
+
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+
+    GTEST_LOG_(INFO) << "OpenTraceTest002: end.";
+}
+
+/**
+ * @tc.name: OpenTraceTest003
+ * @tc.desc: Test OpenTrace with appPid 0 or 101
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, OpenTraceTest003, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "OpenTraceTest003: start.";
+
+    ASSERT_TRUE(SetPropertyInner(TRACE_KEY_APP_PID, "100"));
+    TraceArgs traceArgs = {
+        .tags = { "app" },
+        .clockType = "boot",
+        .isOverWrite = true,
+        .bufferSize = DEFAULT_BUFFER_SIZE,
+        .fileSizeLimit = DEFAULT_FILE_SIZE_LIMIT,
+        .appPid = 0,
+        .filterPids = {}
+    };
+    ASSERT_TRUE(OpenTrace(traceArgs) == TraceErrorCode::SUCCESS);
+    std::string appPid = GetPropertyInner(TRACE_KEY_APP_PID, "");
+    ASSERT_EQ(appPid, "100");
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+
+    traceArgs.appPid = 101;
+    ASSERT_TRUE(OpenTrace(traceArgs) == TraceErrorCode::SUCCESS);
+    appPid = GetPropertyInner(TRACE_KEY_APP_PID, "");
+    ASSERT_EQ(appPid, "101");
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+
+    GTEST_LOG_(INFO) << "OpenTraceTest003: end.";
+}
+
+/**
+ * @tc.name: OpenTraceTest004
+ * @tc.desc: Test OpenTrace with sched and schedlt
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, OpenTraceTest004, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "OpenTraceTest004: start.";
+
+    ASSERT_TRUE(SetPropertyInner(TRACE_KEY_APP_PID, "100"));
+    TraceArgs traceArgs = {
+        .tags = { "app", "sched", "schedlt", "freq" },
+        .clockType = "boot",
+        .isOverWrite = true,
+        .bufferSize = DEFAULT_BUFFER_SIZE,
+        .fileSizeLimit = DEFAULT_FILE_SIZE_LIMIT,
+        .appPid = 0,
+        .filterPids = {}
+    };
+    ASSERT_TRUE(OpenTrace(traceArgs) == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+
+    traceArgs.tags = { "app", "sched", "freq" };
+    ASSERT_TRUE(OpenTrace(traceArgs) == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+
+    traceArgs.tags = { "app", "schedlt", "freq" };
+    ASSERT_TRUE(OpenTrace(traceArgs) == TraceErrorCode::SUCCESS);
+    ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
+
+    GTEST_LOG_(INFO) << "OpenTraceTest004: end.";
 }
 } // namespace

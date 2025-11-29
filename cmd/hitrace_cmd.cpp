@@ -57,6 +57,7 @@ using namespace OHOS::HiviewDFX::Hitrace;
 #endif
 
 namespace {
+using HiviewTraceParam = OHOS::HiviewDFX::UCollectClient::TraceParam;
 enum RunningState {
     /* Initial value */
     STATE_NULL = 0,
@@ -118,6 +119,7 @@ static bool SetRunningState(const RunningState& setValue);
 namespace {
 struct TraceArgs {
     std::string tags;
+    std::vector<std::string> tagsVec;
     std::string tagGroups;
     std::string clockType;
     std::string level;
@@ -271,7 +273,7 @@ const int KB_PER_MB = 1024;
 const int MIN_BUFFER_SIZE = 256;
 const int MAX_BUFFER_SIZE = 307200; // 300 MB
 const int HM_MAX_BUFFER_SIZE = 1024 * KB_PER_MB; // 1024 MB
-const int DEFAULT_BUFFER_SIZE = 18432; // 18 MB
+constexpr uint32_t DEFAULT_BUFFER_SIZE = 18432; // 18 MB
 constexpr unsigned int MAX_OUTPUT_LEN = 255;
 const int PAGE_SIZE_KB = 4; // 4 KB
 const int MIN_FILE_SIZE = 51200; // 50 MB
@@ -707,12 +709,13 @@ static bool AddTagItems(int argc, char** argv)
             ConsoleLog(errorInfo);
             return false;
         }
-
         if (i == optind) {
+            g_traceArgs.tagsVec.clear();
             g_traceArgs.tags = tag;
         } else {
             g_traceArgs.tags += ("," + tag);
         }
+        g_traceArgs.tagsVec.emplace_back(tag);
     }
     return true;
 }
@@ -869,21 +872,24 @@ static void DumpTrace()
     close(traceFd);
 }
 
-static std::string ReloadTraceArgs()
+static void ReloadTraceArgs(std::vector<std::string>& tagsVec, HiviewTraceParam& hiviewTraceParam)
 {
     if (g_traceArgs.tags.size() == 0) {
         ConsoleLog("error: tag is empty, please add.");
-        return "";
+        return;
     }
     std::string args = "tags:" + g_traceArgs.tags;
-
+    tagsVec = g_traceArgs.tagsVec;
     if (g_traceArgs.bufferSize > 0) {
+        hiviewTraceParam.bufferSize = static_cast<uint32_t>(g_traceArgs.bufferSize);
         args += (" bufferSize:" + std::to_string(g_traceArgs.bufferSize));
     } else {
+        hiviewTraceParam.bufferSize = DEFAULT_BUFFER_SIZE;
         args += (" bufferSize:" + std::to_string(DEFAULT_BUFFER_SIZE));
     }
 
     if (g_traceArgs.clockType.size() > 0) {
+        hiviewTraceParam.clockType = g_traceArgs.clockType;
         args += (" clockType:" + g_traceArgs.clockType);
     }
 
@@ -894,9 +900,11 @@ static std::string ReloadTraceArgs()
         args += " overwrite:";
         args += "0";
     }
+    hiviewTraceParam.isOverWrite = g_traceArgs.overwrite;
 
     if (g_traceArgs.fileSize > 0) {
         if (g_runningState == RECORDING_SHORT_RAW || g_runningState == RECORDING_LONG_BEGIN_RECORD) {
+            hiviewTraceParam.fileSizeLimit = static_cast<uint32_t>(g_traceArgs.fileSize);
             args += (" fileSize:" + std::to_string(g_traceArgs.fileSize));
         } else {
             ConsoleLog("warning: The current state does not support specifying the file size, file size: " +
@@ -907,17 +915,23 @@ static std::string ReloadTraceArgs()
     if (g_runningState != RECORDING_SHORT_TEXT) {
         ConsoleLog("args: " + args);
     }
-    return args;
 }
 
 static bool HandleRecordingShortRaw()
 {
-    std::string args = ReloadTraceArgs();
+    std::vector<std::string> tags = {};
+    HiviewTraceParam hiviewTraceParam = {
+        .bufferSize = 0,
+        .clockType = "boot",
+        .isOverWrite = true,
+        .fileSizeLimit = 0
+    };
+    ReloadTraceArgs(tags, hiviewTraceParam);
     if (g_traceArgs.output.size() > 0) {
         ConsoleLog("warning: The current state does not support specifying the output file path, " +
                    g_traceArgs.output + " is invalid.");
     }
-    auto openRet = g_traceCollector->OpenRecording(args);
+    auto openRet = g_traceCollector->OpenTrace(tags, hiviewTraceParam, {});
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
         return false;
@@ -951,8 +965,15 @@ static bool HandleRecordingShortRaw()
 
 static bool HandleRecordingShortText()
 {
-    std::string args = ReloadTraceArgs();
-    auto openRet = g_traceCollector->OpenRecording(args);
+    std::vector<std::string> tags = {};
+    HiviewTraceParam hiviewTraceParam = {
+        .bufferSize = 0,
+        .clockType = "boot",
+        .isOverWrite = true,
+        .fileSizeLimit = 0
+    };
+    ReloadTraceArgs(tags, hiviewTraceParam);
+    auto openRet = g_traceCollector->OpenTrace(tags, hiviewTraceParam, {});
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
         return false;
@@ -980,12 +1001,19 @@ static bool HandleRecordingShortText()
 
 static bool HandleRecordingLongBegin()
 {
-    std::string args = ReloadTraceArgs();
+    std::vector<std::string> tags = {};
+    HiviewTraceParam hiviewTraceParam = {
+        .bufferSize = 0,
+        .clockType = "boot",
+        .isOverWrite = true,
+        .fileSizeLimit = 0
+    };
+    ReloadTraceArgs(tags, hiviewTraceParam);
     if (g_traceArgs.output.size() > 0) {
         ConsoleLog("warning: The current state does not support specifying the output file path, " +
                    g_traceArgs.output + " is invalid.");
     }
-    auto openRet = g_traceCollector->OpenRecording(args);
+    auto openRet = g_traceCollector->OpenTrace(tags, hiviewTraceParam, {});
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
         return false;
@@ -1045,12 +1073,19 @@ static bool HandleRecordingLongFinishNodump()
 
 static bool HandleRecordingLongBeginRecord()
 {
-    std::string args = ReloadTraceArgs();
+    std::vector<std::string> tags = {};
+    HiviewTraceParam hiviewTraceParam = {
+        .bufferSize = 0,
+        .clockType = "boot",
+        .isOverWrite = true,
+        .fileSizeLimit = 0
+    };
+    ReloadTraceArgs(tags, hiviewTraceParam);
     if (g_traceArgs.output.size() > 0) {
         ConsoleLog("warning: The current state does not support specifying the output file path, " +
                    g_traceArgs.output + " is invalid.");
     }
-    auto openRet = g_traceCollector->OpenRecording(args);
+    auto openRet = g_traceCollector->OpenTrace(tags, hiviewTraceParam, {});
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
         return false;
@@ -1087,8 +1122,19 @@ static bool HandleRecordingLongFinishRecord()
 static bool HandleOpenSnapshot()
 {
     g_needSysEvent = false;
-    std::vector<std::string> tagGroups = { "scene_performance" };
-    auto openRet = g_traceCollector->OpenSnapshot(tagGroups);
+    const std::vector<std::string> tags = {
+        "net", "dsched", "graphic", "multimodalinput", "dinput", "ark", "ace", "window",
+        "zaudio", "daudio", "zmedia", "dcamera", "zcamera", "dhfwk", "app", "gresource",
+        "ability", "power", "samgr", "ffrt", "nweb", "hdf", "virse", "workq", "ipa",
+        "sched", "freq", "disk", "sync", "binder", "mmc", "membus", "load"
+    };
+    HiviewTraceParam hiviewTraceParam = {
+        .bufferSize = 0,
+        .clockType = "boot",
+        .isOverWrite = true,
+        .fileSizeLimit = DEFAULT_FILE_SIZE
+    };
+    auto openRet = g_traceCollector->OpenTrace(tags, hiviewTraceParam, {});
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenSnapshot failed, errorCode(" + std::to_string(openRet.retCode) +")");
         return false;

@@ -28,6 +28,16 @@ constexpr uint64_t DEFAULT_TRACE_SLICE_DURATION = 10;
 constexpr uint64_t DEFAULT_TOTAL_CACHE_FILE_SIZE = 800;
 constexpr uint32_t DEFAULT_XATTR_VALUE_SIZE = 32;
 
+struct TraceArgs {
+    std::vector<std::string> tags {};
+    std::string clockType = "boot";
+    bool isOverWrite = true;
+    uint32_t bufferSize = 0;
+    uint32_t fileSizeLimit = 0;
+    int32_t appPid = 0;
+    std::vector<int32_t> filterPids {};
+};
+
 #ifdef HITRACE_UNITTEST
 void SetSysInitParamTags(uint64_t sysInitParamTags);
 bool SetCheckParam();
@@ -37,6 +47,11 @@ bool SetCheckParam();
  * Get the current trace mode.
 */
 uint8_t GetTraceMode();
+
+/**
+ * Open trace with customized args.
+*/
+TraceErrorCode OpenTrace(const TraceArgs& traceArgs);
 
 /**
  * Open trace with customized args.

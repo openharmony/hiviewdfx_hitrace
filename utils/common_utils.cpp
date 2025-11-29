@@ -188,7 +188,7 @@ bool SetPropertyInner(const std::string& property, const std::string& value)
 {
     bool result = OHOS::system::SetParameter(property, value);
     if (!result) {
-        fprintf(stderr, "Error: Failed to set %s property.\n", property.c_str());
+        HILOG_ERROR(LOG_CORE, "Error: Failed to set %{public}s property.", property.c_str());
     }
     return result;
 }
@@ -273,7 +273,7 @@ bool StringToInt(const std::string &str, int &val)
     errno = 0;
     long num = std::strtol(str.c_str(), &endPtr, OHOS::HiviewDFX::Hitrace::DECIMAL_SCALE);
     if (endPtr == str.c_str() || *endPtr != '\0' || errno != 0 || num > INT_MAX || num < INT_MIN) {
-        HILOG_ERROR(LOG_CORE, "get int failed, str: %s", str.c_str());
+        HILOG_ERROR(LOG_CORE, "get int failed, str: %{public}s", str.c_str());
         return false;
     }
     val = static_cast<int>(num);
@@ -286,7 +286,7 @@ bool StringToInt64(const std::string &str, int64_t &val)
     errno = 0;
     int64_t num = std::strtoll(str.c_str(), &endPtr, OHOS::HiviewDFX::Hitrace::DECIMAL_SCALE);
     if (endPtr == str.c_str() || *endPtr != '\0' || errno != 0 || num > LLONG_MAX || num < LLONG_MIN) {
-        HILOG_ERROR(LOG_CORE, "get int64 failed, str: %s", str.c_str());
+        HILOG_ERROR(LOG_CORE, "get int64 failed, str: %{public}s", str.c_str());
         return false;
     }
     val = num;
@@ -299,7 +299,7 @@ bool StringToUint64(const std::string &str, uint64_t &val)
     errno = 0;
     uint64_t num = std::strtoull(str.c_str(), &endPtr, OHOS::HiviewDFX::Hitrace::DECIMAL_SCALE);
     if (endPtr == str.c_str() || *endPtr != '\0' || errno != 0 || num > ULLONG_MAX || str.c_str()[0] == '-') {
-        HILOG_ERROR(LOG_CORE, "get uint64 failed, str: %s", str.c_str());
+        HILOG_ERROR(LOG_CORE, "get uint64 failed, str: %{public}s", str.c_str());
         return false;
     }
     val = num;
@@ -312,7 +312,7 @@ bool StringToDouble(const std::string &str, double &val)
     errno = 0;
     double num = std::strtod(str.c_str(), &endPtr);
     if (endPtr == str.c_str() || *endPtr != '\0' || errno != 0) {
-        HILOG_ERROR(LOG_CORE, "get double failed, str: %s", str.c_str());
+        HILOG_ERROR(LOG_CORE, "get double failed, str: %{public}s", str.c_str());
         return false;
     }
     val = num;
@@ -412,7 +412,7 @@ bool IsProcessExist(const pid_t pid)
         HILOG_WARN(LOG_CORE, "IsProcessExist: %{public}d process not exist", pid);
         return false;
     } else {
-        HILOG_WARN(LOG_CORE, "IsProcessExist: waitpid failed with error: %s", strerror(errno));
+        HILOG_WARN(LOG_CORE, "IsProcessExist: waitpid failed with error: %{public}s", strerror(errno));
         return false;
     }
 }

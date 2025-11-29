@@ -46,6 +46,7 @@
         SetCallbacksNapi;
         SetCallbacksAni;
         "OHOS::HiviewDFX::Hitrace::GetTraceMode()";
+        "OHOS::HiviewDFX::Hitrace::OpenTrace(OHOS::HiviewDFX::Hitrace::TraceArgs const&)";
         "OHOS::HiviewDFX::Hitrace::OpenTrace(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
         "OHOS::HiviewDFX::Hitrace::OpenTrace(std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&)";
         "OHOS::HiviewDFX::Hitrace::DumpTrace(unsigned int, unsigned long)";
