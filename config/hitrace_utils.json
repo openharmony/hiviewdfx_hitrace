@@ -305,6 +305,23 @@
         "events/sched/sched_wakeup_new/format"
       ]
     },
+    "schedlt": {
+      "description": "CPU Scheduling lite",
+      "tag_offset": 0,
+      "enable_path": [
+        "events/sched/sched_switch_lite/enable",
+        "events/sched/sched_wakeup_lite/enable",
+        "events/sched/sched_blocked_reason/enable",
+        "events/sched/sched_wakeup_new/enable"
+      ],
+      "type": 1,
+      "format_path": [
+        "events/sched/sched_switch_lite/format",
+        "events/sched/sched_wakeup_lite/format",
+        "events/sched/sched_blocked_reason/format",
+        "events/sched/sched_wakeup_new/format"
+      ]
+    },
     "preemptoff": {
       "description": "Preempt-disabled code section tracing",
       "tag_offset": 0,

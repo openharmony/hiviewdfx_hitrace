@@ -62,7 +62,7 @@ TraceSource<Strategy>::TraceSource(const std::string& tracefsPath, const std::st
     std::string path = CanonicalizeSpecPath(traceFilePath.c_str());
     traceFileFd_ = open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644 : -rw-r--r--
     if (traceFileFd_ < 0) {
-        HILOG_ERROR(LOG_CORE, "TraceSource: open %{public}s failed.", traceFilePath.c_str());
+        HILOG_ERROR(LOG_CORE, "TraceSource: open %{public}s failed, errno(%{public}d)", traceFilePath.c_str(), errno);
     }
 }
 

@@ -269,8 +269,21 @@ void SetAllTags(const TraceParams& traceParams, const std::map<std::string, Trac
                 std::vector<std::string>& tagFmts)
 {
     std::set<std::string> readyEnableTagList;
+    bool isSchedltExisting = false;
+    bool isSchedExisting = false;
     for (std::string tagName : traceParams.tags) {
+        if (tagName == "schedlt") {
+            isSchedltExisting = true;
+        } else if (tagName == "sched") {
+            isSchedExisting = true;
+        }
         readyEnableTagList.insert(tagName);
+    }
+    if (isSchedltExisting && !isSchedExisting) {
+        if (access((g_traceRootPath + "events/sched/sched_switch_lite/enable").c_str(), W_OK) < 0) {
+            HILOG_WARN(LOG_CORE, "SetAllTags: Failed to access schedlt, try to open sched.");
+            readyEnableTagList.insert("sched");
+        }
     }
 
     for (std::string groupName : traceParams.tagGroups) {
@@ -287,7 +300,7 @@ void SetAllTags(const TraceParams& traceParams, const std::map<std::string, Trac
     for (std::string tagName : readyEnableTagList) {
         auto iter = allTags.find(tagName);
         if (iter == allTags.end()) {
-            HILOG_ERROR(LOG_CORE, "tag<%{public}s> is invalid.", tagName.c_str());
+            HILOG_ERROR(LOG_CORE, "SetAllTags: tag[%{public}s] is invalid.", tagName.c_str());
             continue;
         }
 
@@ -298,7 +311,7 @@ void SetAllTags(const TraceParams& traceParams, const std::map<std::string, Trac
         if (iter->second.type == 1) {
             for (const auto& path : iter->second.enablePath) {
                 if (!SetTraceNodeStatus(path, true)) {
-                    HILOG_ERROR(LOG_CORE, "SetAllTags: SetTraceNodeStatus fail");
+                    HILOG_ERROR(LOG_CORE, "SetAllTags: SetTraceNodeStatus failed.");
                 }
             }
             for (const auto& format : iter->second.formatPath) {
@@ -366,9 +379,8 @@ void SetClock(const std::string& clockType)
     return;
 }
 
-bool SetTraceSetting(const TraceParams& traceParams, const std::map<std::string, TraceTag>& allTags,
-                     const std::map<std::string, std::vector<std::string>>& tagGroupTable,
-                     std::vector<std::string>& tagFmts)
+static bool SetTraceSetting(const TraceParams& traceParams, const std::map<std::string, TraceTag>& allTags,
+    const std::map<std::string, std::vector<std::string>>& tagGroupTable, std::vector<std::string>& tagFmts)
 {
     AddFilterPids(traceParams.filterPids);
     if (!traceParams.filterPids.empty()) {
@@ -381,7 +393,7 @@ bool SetTraceSetting(const TraceParams& traceParams, const std::map<std::string,
     SetAllTags(traceParams, allTags, tagGroupTable, tagFmts);
 
     if (!WriteStrToFile("current_tracer", "nop")) {
-        HILOG_ERROR(LOG_CORE, "SetTraceSetting: WriteStrToFile fail.");
+        HILOG_ERROR(LOG_CORE, "SetTraceSetting: Write current_tracer failed.");
     }
     if (!WriteStrToFile("buffer_size_kb", traceParams.bufferSize)) {
         HILOG_ERROR(LOG_CORE, "SetTraceSetting: WriteStrToFile fail.");
@@ -391,22 +403,22 @@ bool SetTraceSetting(const TraceParams& traceParams, const std::map<std::string,
 
     if (traceParams.isOverWrite == "1") {
         if (!WriteStrToFile("options/overwrite", "1")) {
-            HILOG_ERROR(LOG_CORE, "SetTraceSetting: WriteStrToFile fail.");
+            HILOG_ERROR(LOG_CORE, "SetTraceSetting: Write options/overwrite failed.");
         }
     } else {
         if (!WriteStrToFile("options/overwrite", "0")) {
-            HILOG_ERROR(LOG_CORE, "SetTraceSetting: WriteStrToFile fail.");
+            HILOG_ERROR(LOG_CORE, "SetTraceSetting: Write options/overwrite failed.");
         }
     }
 
     if (!WriteStrToFile("saved_cmdlines_size", std::to_string(SAVED_CMDLINES_SIZE))) {
-        HILOG_ERROR(LOG_CORE, "SetTraceSetting: WriteStrToFile fail.");
+        HILOG_ERROR(LOG_CORE, "SetTraceSetting: Write saved_cmdlines_size failed.");
     }
     if (!WriteStrToFile("options/record-tgid", "1")) {
-        HILOG_ERROR(LOG_CORE, "SetTraceSetting: WriteStrToFile fail.");
+        HILOG_ERROR(LOG_CORE, "SetTraceSetting: Write options/record-tgid failed.");
     }
     if (!WriteStrToFile("options/record-cmd", "1")) {
-        HILOG_ERROR(LOG_CORE, "SetTraceSetting: WriteStrToFile fail.");
+        HILOG_ERROR(LOG_CORE, "SetTraceSetting: Write options/record-cmd failed.");
     }
     return true;
 }
@@ -1297,6 +1309,110 @@ TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups)
     return ret;
 }
 
+static void OpenTraceLog(const TraceParams& traceParams)
+{
+    std::string tags = "";
+    for (auto tag : traceParams.tags) {
+        if (!tags.empty()) {
+            tags += ", ";
+        }
+        tags += tag;
+    }
+    std::string filterPids = "";
+    for (auto filterPid : traceParams.filterPids) {
+        if (!filterPids.empty()) {
+            filterPids += ", ";
+        }
+        filterPids += filterPid;
+    }
+    HILOG_INFO(LOG_CORE, "OpenTrace: open by trace args success, tags[%{public}s], filterPids[%{public}s], "
+        "bufferSize[%{public}s], clockType[%{public}s], isOverWrite[%{public}s], fileSizeLimit[%{public}d]",
+        tags.c_str(), filterPids.c_str(), traceParams.bufferSize.c_str(), traceParams.clockType.c_str(),
+        traceParams.isOverWrite.c_str(), traceParams.fileSize);
+}
+
+static void SetNoFilterEvents(const std::map<std::string, TraceTag>& allTags)
+{
+    if (IsHmKernel()) {
+        auto iter = allTags.find("binder");
+        if (iter != allTags.end()) {
+            const std::vector<std::string> enablePath = iter->second.enablePath;
+            auto noFilterEvents = GetNoFilterEvents(enablePath);
+            if (noFilterEvents.size() > 0) {
+                AddNoFilterEvents(noFilterEvents);
+            }
+        }
+    }
+}
+
+static std::vector<std::string> TransformFilterPids(const std::vector<int32_t>& filterPids)
+{
+    std::vector<std::string> ret {};
+    std::transform(filterPids.begin(), filterPids.end(), std::back_inserter(ret), [](int32_t pid) {
+        return std::to_string(pid);
+    });
+    return ret;
+}
+
+TraceErrorCode OpenTrace(const TraceArgs& traceArgs)
+{
+    std::lock_guard<std::mutex> lock(g_traceMutex);
+    ClearFilterParam();
+    if (g_traceMode != TraceMode::CLOSE) {
+        HILOG_ERROR(LOG_CORE, "OpenTrace: WRONG_TRACE_MODE, current trace mode: %{public}u.", g_traceMode);
+        return TraceErrorCode::WRONG_TRACE_MODE;
+    }
+
+    if (!IsTraceMounted(g_traceRootPath)) {
+        HILOG_ERROR(LOG_CORE, "OpenTrace: TRACE_NOT_SUPPORTED.");
+        return TraceErrorCode::TRACE_NOT_SUPPORTED;
+    }
+
+    TraceJsonParser& traceJsonParser = TraceJsonParser::Instance();
+    const std::map<std::string, TraceTag>& allTags = traceJsonParser.GetAllTagInfos();
+    const std::map<std::string, std::vector<std::string>>& tagGroupTable = traceJsonParser.GetTagGroups();
+    std::vector<std::string> traceFormats = traceJsonParser.GetBaseFmtPath();
+
+    if (allTags.size() == 0 || tagGroupTable.size() == 0 || !CheckTags(traceArgs.tags, allTags)) {
+        HILOG_ERROR(LOG_CORE, "OpenTrace: ParseTagInfo TAG_ERROR.");
+        return TraceErrorCode::TAG_ERROR;
+    }
+
+    SetNoFilterEvents(allTags);
+
+    if (traceArgs.appPid > 0) {
+        OHOS::system::SetParameter(TRACE_KEY_APP_PID, std::to_string(traceArgs.appPid));
+    }
+
+    std::string bufferSizeStr = std::to_string(traceArgs.bufferSize);
+    if (traceArgs.bufferSize == 0) {
+        bufferSizeStr = std::to_string(traceJsonParser.GetSnapshotDefaultBufferSizeKb());
+    }
+
+    TraceParams traceParams = {
+        .tags = traceArgs.tags,
+        .filterPids = TransformFilterPids(traceArgs.filterPids),
+        .bufferSize = bufferSizeStr,
+        .clockType = traceArgs.clockType,
+        .isOverWrite = traceArgs.isOverWrite ? "1" : "0",
+        .fileSize = traceArgs.fileSizeLimit,
+    };
+    TraceErrorCode ret = HandleTraceOpen(traceParams, allTags, tagGroupTable, traceFormats);
+    if (ret != TraceErrorCode::SUCCESS) {
+        HILOG_ERROR(LOG_CORE, "OpenTrace: open by args failed.");
+        return ret;
+    }
+
+    RefreshTraceVec(g_traceFileVec, TRACE_SNAPSHOT);
+    std::vector<TraceFileInfo> cacheFileVec;
+    RefreshTraceVec(cacheFileVec, TRACE_CACHE);
+    ClearCacheTraceFileByDuration(cacheFileVec);
+    g_sysInitParamTags = GetSysParamTags();
+    g_traceMode = TraceMode::OPEN;
+    OpenTraceLog(traceParams);
+    return ret;
+}
+
 TraceErrorCode OpenTrace(const std::string& args)
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
@@ -1340,7 +1456,7 @@ TraceErrorCode OpenTrace(const std::string& args)
     TraceErrorCode ret = HandleTraceOpen(traceParams, allTags, tagGroupTable, traceFormats);
     if (ret != SUCCESS) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: open by args failed.");
-        return FILE_ERROR;
+        return ret;
     }
     g_sysInitParamTags = GetSysParamTags();
     g_traceMode = TraceMode::OPEN;

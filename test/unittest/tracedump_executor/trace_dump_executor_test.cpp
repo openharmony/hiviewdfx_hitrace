@@ -189,7 +189,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest005, TestSize.Level2)
     EXPECT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
     TraceDumpParam param = {
         .type = TraceDumpType::TRACE_CACHE,
-        .cacheTotalFileSizeLmt = 50 * BYTE_PER_MB, // 50 : file size
+        .cacheTotalFileSizeLmt = 100 * BYTE_PER_MB, // 100 : file size
         .cacheSliceDuration = 5 // 5 : slice
     };
     auto it = [&traceDumpExecutor](const TraceDumpParam& param) {

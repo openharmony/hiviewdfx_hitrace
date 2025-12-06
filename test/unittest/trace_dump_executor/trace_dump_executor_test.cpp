@@ -228,7 +228,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest005, TestSize.Level2)
         std::numeric_limits<uint64_t>::max() // trace end time
     };
     auto it = [&traceDumpExecutor](const TraceDumpParam& param) {
-        EXPECT_TRUE(traceDumpExecutor.StartCacheTraceLoop(param, 50 * BYTE_PER_MB, 5)); // 50 : file size  5 : slice
+        EXPECT_TRUE(traceDumpExecutor.StartCacheTraceLoop(param, 100 * BYTE_PER_MB, 5)); // 100 : file size  5 : slice
     };
     std::thread traceLoopThread(it, param);
     sleep(7);
