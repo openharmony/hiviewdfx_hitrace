@@ -341,7 +341,8 @@ def parse_block_rq_issue_hm(data, one_event):
     sector = parse_int_field(one_event, "sector", False)
     nr_sector = parse_int_field(one_event, "nr_sector", False)
     bytes_num = parse_int_field(one_event, "bytes", False)
-    rwbs = parse_bytes_to_str(one_event["fields"]["rwbs[8]"])
+    rwbs_key = "rwbs[16]" if "rwbs[16]" in one_event["fields"] else "rwbs[8]"
+    rwbs = parse_bytes_to_str(one_event["fields"][rwbs_key])
     comm = parse_bytes_to_str(one_event["fields"]["comm[16]"])
     cmd = parse_bytes_to_str(one_event["fields"]["cmd[16]"])
 
@@ -367,7 +368,8 @@ def parse_block_rq_complete_hm(data, one_event):
     sector = parse_int_field(one_event, "sector", False)
     nr_sector = parse_int_field(one_event, "nr_sector", False)
     error = parse_int_field(one_event, "error", True)
-    rwbs = parse_bytes_to_str(one_event["fields"]["rwbs[8]"])
+    rwbs_key = "rwbs[16]" if "rwbs[16]" in one_event["fields"] else "rwbs[8]"
+    rwbs = parse_bytes_to_str(one_event["fields"][rwbs_key])
     cmd = parse_bytes_to_str(one_event["fields"]["cmd[16]"])
 
     return "%d,%d %s (%s) %d + %d [%d]" \
@@ -835,6 +837,253 @@ def parse_phase_task_delta(data, one_event):
     return "comm=%s tid=%d delta_exec=%d deltas={%s}" % (name, tid, delta_exec, info)
 
 
+def parse_hmfs_bread(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    target = parse_int_field(one_event, "target", False)
+    data_pos_fsop = parse_int_field(one_event, "fsop", False) & 0xffff
+    data_pos_pgtype = parse_int_field(one_event, "pgtype", False) & 0xffff
+    op_flags = parse_int_field(one_event, "op_flags", True)
+    sector = parse_int_field(one_event, "sector", False)
+    size = parse_int_field(one_event, "size", False)
+    return "dev = (%d,%d)/(%d,%d), rw = %s, op_flags = %d, type = %s," " sector = %ld, size = %u" % (target >> 20, target & 0xfffff, dev >> 20, dev & 0xfffff, parse_bytes_to_str(data[data_pos_fsop:]), op_flags, parse_bytes_to_str(data[data_pos_pgtype:]), sector, size)
+
+
+def parse_hmfs_direct_io_enter(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    index = parse_int_field(one_event, "index", False)
+    off = parse_int_field(one_event, "off", False)
+    size = parse_int_field(one_event, "size", False)
+    rw = parse_int_field(one_event, "rw", False)
+    return "dev = (%d,%d), ino = %lu offset = %ld size = %lu rw = %hu" % (dev >> 20, dev & 0xfffff, index, off, size, rw)
+
+
+def parse_hmfs_direct_io_exit(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    index = parse_int_field(one_event, "index", False)
+    off = parse_int_field(one_event, "off", False)
+    size = parse_int_field(one_event, "size", False)
+    rw = parse_int_field(one_event, "rw", False)
+    res = parse_int_field(one_event, "res", True)
+    return "dev = (%d,%d), ino = %lu offset = %ld size = %lu rw = %hu res = %d" % (dev >> 20, dev & 0xfffff, index, off, size, rw, res)
+
+
+def parse_hmfs_read_enter(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    ino = parse_int_field(one_event, "ino", False)
+    off = parse_int_field(one_event, "off", False)
+    size = parse_int_field(one_event, "size", False)
+    i_size = parse_int_field(one_event, "i_size", False)
+    entry_name = parse_int_field(one_event, "name", False) & 0xffff
+    return "dev=%d,%d ino=%lu offset=%lu size=%d i_size=%lu entry_name=%s" % (dev >> 20, dev & 0xfffff, ino, off, size, i_size, parse_bytes_to_str(data[data_loc_name:]))
+
+
+def parse_hmfs_read_exit(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    ino = parse_int_field(one_event, "ino", False)
+    off = parse_int_field(one_event, "off", False)
+    size = parse_int_field(one_event, "size", False)
+    res = parse_int_field(one_event, "res", True)
+    return "dev=%d,%d ino=%lu offset=%lu size=%d res=%d" % (dev >> 20, dev & 0xfffff, ino, off, size, res)
+
+
+def parse_hmfs_read_iter_enter(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    ino = parse_int_field(one_event, "ino", False)
+    off = parse_int_field(one_event, "off", False)
+    size = parse_int_field(one_event, "size", False)
+    return "dev=%d,%d ino=%lu offset=%lu size=%d" % (dev >> 20, dev & 0xfffff, ino, off, size)
+
+
+def parse_hmfs_readpage(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    index = parse_int_field(one_event, "index", False)
+    data_pos_pgtype = parse_int_field(one_event, "pgtype", False) & 0xffff
+    data_pos_dir = parse_int_field(one_event, "dir", False) & 0xffff
+    page_index = parse_int_field(one_event, "page_index", False)
+    dirty = parse_int_field(one_event, "dirty", True)
+    uptodate = parse_int_field(one_event, "uptodate", True)
+    return "dev = (%d,%d), ino = %lu, %s, %s, page_index = %lu, " "dirty = %d, uptodate = %d" % (dev >> 20, dev & 0xfffff, index, parse_bytes_to_str(data[data_pos_pgtype:]), parse_bytes_to_str(data[data_pos_dir:]), page_index, dirty, uptodate)
+
+
+def parse_hmfs_readpages(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    index = parse_int_field(one_event, "index", False)
+    start = parse_int_field(one_event, "start", False)
+    nrpage = parse_int_field(one_event, "nrpage", False)
+    return "dev = (%d,%d), ino = %lu, start = %lu nrpage = %u" % (dev >> 20, dev & 0xfffff, index, start, nrpage)
+
+
+def parse_hmfs_do_write_data_page(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    index = parse_int_field(one_event, "index", False)
+    data_pos_pgtype = parse_int_field(one_event, "pgtype", False) & 0xffff
+    data_pos_dir = parse_int_field(one_event, "dir", False) & 0xffff
+    page_index = parse_int_field(one_event, "page_index", False)
+    dirty = parse_int_field(one_event, "dirty", False)
+    uptodate = parse_int_field(one_event, "uptodate", False)
+    return "dev = (%d,%d), ino = %lu, %s, %s, page_index = %lu, " "dirty = %d, uptodate = %d" % (dev >> 20, dev & 0xfffff, index, parse_bytes_to_str(data[data_pos_pgtype:]), parse_bytes_to_str(data[data_pos_dir:]), page_index, dirty, uptodate)
+
+
+def parse_hmfs_fscache_end_pages_io(data, one_event):
+    dev_id = parse_int_field(one_event, "dev_id", False)
+    fi_flags = parse_int_field(one_event, "fi_flags", False)
+    fi_status = parse_int_field(one_event, "fi_status", False)
+    return "dev = (%d,%d), fi_flags = %lu, fi_status = %d" % (dev_id >> 20, dev_id & 0xfffff, fi_flags, fi_status)
+
+
+def parse_hmfs_mmap_enter(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    index = parse_int_field(one_event, "index", False)
+    mode = parse_int_field(one_event, "mode", False)
+    mmap_fd_file = parse_int_field(one_event, "mmap_fd_file", False)
+    mmap_offset = parse_int_field(one_event, "mmap_offset", False)
+    mmap_len = parse_int_field(one_event, "mmap_len", False)
+    mmap_cnode_idx = parse_int_field(one_event, "mmap_cnode_idx", False)
+    mmap_prot = parse_int_field(one_event, "mmap_prot", False)
+    mmap_flags = parse_int_field(one_event, "mmap_flags", False)
+    ext_flags = parse_int_field(one_event, "ext_flags", False)
+    f_flags = parse_int_field(one_event, "f_flags", False)
+    f_modes = parse_int_field(one_event, "f_modes", False)
+    return "dev = (%d,%d), ino = %lu, mode = 0x%hx, mmap_fd_file = %lu," "mmap_offset = %ld, mmap_len = %ld, mmap_cnode_idx = %ld," \
+    " mmap_prot = 0x%hx, mmap_flags = 0x%hx, ext_flags = 0x%hx," " f_flags = 0x%hx, f_modes = 0x%hx" % \
+    (dev >> 20, dev & 0xfffff, index, mode, mmap_fd_file, mmap_offset, mmap_len, mmap_cnode_idx, mmap_prot, mmap_flags, ext_flags, f_flags, f_modes)
+
+
+def parse_hmfs_mmap_exit(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    index = parse_int_field(one_event, "index", False)
+    mode = parse_int_field(one_event, "mode", False)
+    ext_flags = parse_int_field(one_event, "ext_flags", False)
+    res = parse_int_field(one_event, "res", False)
+    return "dev = (%d,%d), ino = %lu, mode = 0x%hx, ext_flags = 0x%hx, ret = %d" % (dev >> 20, dev & 0xfffff, index, mode, ext_flags, res)
+
+
+def parse_hmfs_submit_buffers_write(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    index = parse_int_field(one_event, "index", False)
+    page_index = parse_int_field(one_event, "page_index", False)
+    old_blkaddr = parse_int_field(one_event, "old_blkaddr", False)
+    new_blkaddr = parse_int_field(one_event, "new_blkaddr", False)
+    data_loc_hop = parse_int_field(one_event, "hop", False) & 0xffff
+    data_loc_tptype = parse_int_field(one_event, "tptype", False) & 0xffff
+    data_loc_pgtype = parse_int_field(one_event, "pgtype", False) & 0xffff
+    return "dev = (%d,%d), ino = %lu, page_index = 0x%lx, oldaddr = 0x%lx," " newaddr = 0x%lx, rw = %s, type = %s_%s" \
+    % (dev >> 20, dev & 0xfffff, index, page_index, old_blkaddr, new_blkaddr, parse_bytes_to_str(data[data_loc_hop:]), \
+    parse_bytes_to_str(data[data_loc_tptype:]), parse_bytes_to_str(data[data_loc_pgtype:]))
+
+
+def parse_hmfs_submit_write_io(data, one_event):
+    target = parse_int_field(one_event, "target", False)
+    dev = parse_int_field(one_event, "dev", False)
+    data_loc_fsop = parse_int_field(one_event, "fsop", False) & 0xffff
+    op_flags = parse_int_field(one_event, "op_flags", False)
+    data_loc_pgtype = parse_int_field(one_event, "pgtype", False) & 0xffff
+    sector = parse_int_field(one_event, "sector", False)
+    size = parse_int_field(one_event, "size", False)
+    return "dev = (%d,%d)/(%d,%d), rw = %s, op_flags = %d, type = %s," " sector = %ld, size = %u" \
+    % (target >> 20, target & 0xfffff, dev >> 20, dev & 0xfffff, parse_bytes_to_str(data[data_loc_fsop:]), op_flags, parse_bytes_to_str(data[data_loc_pgtype:]), sector, size)
+
+
+def parse_hmfs_write_enter(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    ino = parse_int_field(one_event, "ino", False)
+    off = parse_int_field(one_event, "off", False)
+    size = parse_int_field(one_event, "size", False)
+    i_size = parse_int_field(one_event, "i_size", False)
+    data_loc_name = parse_int_field(one_event, "name", False) & 0xffff
+    return "dev=%d,%d ino=%lu offset=%lu size=%d i_size=%lu entry_name=%s" % (dev >> 20, dev & 0xfffff, ino, off, size, i_size, parse_bytes_to_str(data[data_loc_name:]))
+
+
+def parse_hmfs_write_exit(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    ino = parse_int_field(one_event, "ino", False)
+    off = parse_int_field(one_event, "off", False)
+    size = parse_int_field(one_event, "size", False)
+    res = parse_int_field(one_event, "res", False)
+    return "dev=%d,%d ino=%lu offset=%lu size=%d res=%d" % (dev >> 20, dev & 0xfffff, ino, off, size, res)
+
+
+def parse_hmfs_write_iter_enter(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    ino = parse_int_field(one_event, "ino", False)
+    off = parse_int_field(one_event, "off", False)
+    size = parse_int_field(one_event, "size", False)
+    return "dev=%d,%d ino=%lu offset=%lu size=%d" % (dev >> 20, dev & 0xfffff, ino, off, size)
+
+
+def parse_hmfs_write_iter_exit(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    ino = parse_int_field(one_event, "ino", False)
+    off = parse_int_field(one_event, "off", False)
+    size = parse_int_field(one_event, "size", False)
+    res = parse_int_field(one_event, "res", False)
+    return "dev=%d,%d ino=%lu offset=%lu size=%d res=%d" % (dev >> 20, dev & 0xfffff, ino, off, size, res)
+
+
+def parse_hmfs_writepage(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    index = parse_int_field(one_event, "index", False)
+    data_loc_pgtype = parse_int_field(one_event, "pgtype", False) & 0xffff
+    data_loc_dir = parse_int_field(one_event, "dir", False) & 0xffff
+    page_index = parse_int_field(one_event, "page_index", False)
+    dirty = parse_int_field(one_event, "dirty", False)
+    uptodate = parse_int_field(one_event, "uptodate", False)
+    return "dev = (%d,%d), ino = %lu, %s, %s, page_index = %lu, " "dirty = %d, uptodate = %d" % (dev >> 20, dev & 0xfffff, \
+    index, parse_bytes_to_str(data[data_loc_pgtype:]), parse_bytes_to_str(data[data_loc_dir:]), page_index, dirty, uptodate)
+
+
+def parse_hmfs_writepages(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    index = parse_int_field(one_event, "index", False)
+    data_loc_pgtype = parse_int_field(one_event, "pgtype", False) & 0xffff
+    data_loc_dir = parse_int_field(one_event, "dir", False) & 0xffff
+    nr_to_write = parse_int_field(one_event, "nr_to_write", False)
+    data_loc_skip_status = parse_int_field(one_event, "skip_status", False) & 0xffff
+    range_start = parse_int_field(one_event, "range_start", False)
+    range_end = parse_int_field(one_event, "range_end", False)
+    data_loc_wbctype = parse_int_field(one_event, "wbctype", False) & 0xffff
+    return "dev = (%d,%d), ino = %lu, type = %s, %s, nr_to_write %ld, " "skipped %s, start %ld, end %ld, wbc_type %s" % \
+    (dev >> 20, dev & 0xfffff, index, parse_bytes_to_str(data[data_loc_pgtype:]), parse_bytes_to_str(data[data_loc_dir:]), nr_to_write, \
+    parse_bytes_to_str(data[data_loc_skip_status:]), range_start, range_end, parse_bytes_to_str(data[data_loc_wbctype:]))
+
+
+def parse_hmfs_writepages_end_io(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    fi_flags = parse_int_field(one_event, "fi_flags", False)
+    fi_status = parse_int_field(one_event, "fi_status", False)
+    return "dev = (%d,%d), fi_flags = %lu, fi_status = %d" % (dev >> 20, dev & 0xfffff, fi_flags, fi_status)
+
+
+def parse_hmfs_sync(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    dirty = parse_int_field(one_event, "dirty", False)
+    return "dev = (%d,%d), superblock is %s" % (dev >> 20, dev & 0xfffff, dirty)
+
+
+def parse_hmfs_sync_exit(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    index = parse_int_field(one_event, "index", False)
+    res = parse_int_field(one_event, "res", False)
+    return "dev = (%d,%d), ino = %lu, ret = %d" % (dev >> 20, dev & 0xfffff, index, res)
+
+
+def parse_hmfs_sync_file_enter(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    ino = parse_int_field(one_event, "ino", False)
+    size = parse_int_field(one_event, "size", False)
+    mode = parse_int_field(one_event, "mode", False)
+    return "dev = (%d,%d) ino = %lu," " i_mode = 0x%hx, size = %lu" % (dev >> 20, dev & 0xfffff, ino, mode, size)
+
+
+def parse_hmfs_sync_file_exit(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    ino = parse_int_field(one_event, "ino", False)
+    size = parse_int_field(one_event, "size", False)
+    mode = parse_int_field(one_event, "mode", False)
+    res = parse_int_field(one_event, "res", False)
+    return "dev=%d,%d ino=%lu i_mode=0x%hx size=%lu res=%d" % (dev >> 20, dev & 0xfffff, ino, mode, size, res)
+
+
 def parse_erofs_read_enter(data, one_event):
     dev = parse_int_field(one_event, "dev", False)
     ino = parse_int_field(one_event, "ino", False)
@@ -1051,6 +1300,34 @@ PRINT_FMT_PRINT = '"%ps: %s", (void *)REC->ip, REC->buf'
 PRINT_FMT_TRACING_MARK_WRITE = '"%s", ((void *)((char *)REC + (REC->__data_loc_buffer & 0xffff)))'
 PRINT_FMT_XACCT_TRACING_MARK_WRITE = '"%c|%d|%s", "EB"[REC->start], REC->pid, REC->start ? REC->name : ""'
 PRINT_FMT_PHASE_TASK_DELTA = '"comm=%s tid=%d delta_exec=%llu deltas={%s}", REC->name, REC->tid, REC->delta_exec, REC->info'
+PRINT_FMT_HMFS_BREAD = '"dev = (%d,%d)/(%d,%d), rw = %s, op_flags = %d, type = %s," " sector = %ld, size = %u", ((unsigned int) ((REC->target) >> 20)), ((unsigned int) ((REC->target) & ((1U << 20) - 1))), ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), ((char *)((void *)((char *)REC + (REC->__data_loc_fsop & 0xffff)))), REC->op_flags, ((char *)((void *)((char *)REC + (REC->__data_loc_pgtype & 0xffff)))), (unsigned long)REC->sector, REC->size'
+PRINT_FMT_HMFS_BREAD_ASYNC = '"dev = (%d,%d)/(%d,%d), rw = %s, op_flags = %d, type = %s," " sector = %ld, size = %u", ((unsigned int) ((REC->target) >> 20)), ((unsigned int) ((REC->target) & ((1U << 20) - 1))), ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), ((char *)((void *)((char *)REC + (REC->__data_loc_fsop & 0xffff)))), REC->op_flags, ((char *)((void *)((char *)REC + (REC->__data_loc_pgtype & 0xffff)))), (unsigned long)REC->sector, REC->size'
+PRINT_FMT_HMFS_DIRECT_IO_ENTER = '"dev = (%d,%d), ino = %lu offset = %lld size = %lu rw = %hhu", ((unsigned int) (((REC)->dev) >> 20)), ((unsigned int) (((REC)->dev) & ((1U << 20) - 1))), ((unsigned long)((REC)->index)), REC->off, REC->size, REC->rw'
+PRINT_FMT_HMFS_DIRECT_IO_EXIT = '"dev = (%d,%d), ino = %lu offset = %lld size = %lu rw = %hhu res = %zd", ((unsigned int) (((REC)->dev) >> 20)), ((unsigned int) (((REC)->dev) & ((1U << 20) - 1))), ((unsigned long)((REC)->index)), REC->off, REC->size, REC->rw, REC->res'
+PRINT_FMT_HMFS_READ_ENTER = '"dev=%d,%d ino=%lu offset=%llu size=%zd i_size=%llu entry_name=%s", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->ino, REC->off, REC->size, REC->i_size, ((char *)((void *)((char *)REC + (REC->__data_loc_name & 0xffff))))'
+PRINT_FMT_HMFS_READ_EXIT = '" dev=%d,%d ino=%lu offset=%llu size=%zd res=%zd", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->ino, REC->off, REC->size, REC->res'
+PRINT_FMT_HMFS_READ_ITER_ENTER = '"dev=%d,%d ino=%lu offset=%llu size=%zd", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->ino, REC->off, REC->size'
+PRINT_FMT_HMFS_READ_ITER_EXIT = '"dev=%d,%d ino=%lu offset=%llu size=%zd res=%zd", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->ino, REC->off, REC->size, REC->res'
+PRINT_FMT_HMFS_READPAGE = '"dev = (%d,%d), ino = %lu, %s, %s, page_index = %lu, " "dirty = %d, uptodate = %d", ((unsigned int) (((REC)->dev) >> 20)), ((unsigned int) (((REC)->dev) & ((1U << 20) - 1))), ((unsigned long)((REC)->index)), ((char *)((void *)((char *)REC + (REC->__data_loc_pgtype & 0xffff)))), ((char *)((void *)((char *)REC + (REC->__data_loc_dir & 0xffff)))), (unsigned long)REC->page_index, REC->dirty, REC->uptodate'
+PRINT_FMT_HMFS_READPAGES = '"dev = (%d,%d), ino = %lu, start = %lu nrpage = %u", ((unsigned int) (((REC)->dev) >> 20)), ((unsigned int) (((REC)->dev) & ((1U << 20) - 1))), ((unsigned long)((REC)->index)), REC->start, REC->nrpage'
+PRINT_FMT_HMFS_SUBMIT_READ_IO = '"dev = (%d,%d)/(%d,%d), rw = %s, op_flags = %d, type = %s," " sector = %ld, size = %u", ((unsigned int) ((REC->target) >> 20)), ((unsigned int) ((REC->target) & ((1U << 20) - 1))), ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), ((char *)((void *)((char *)REC + (REC->__data_loc_fsop & 0xffff)))), REC->op_flags, ((char *)((void *)((char *)REC + (REC->__data_loc_pgtype & 0xffff)))), (unsigned long)REC->sector, REC->size'
+PRINT_FMT_HMFS_DO_WRITE_DATA_PAGE = '"dev = (%d,%d), ino = %lu, %s, %s, page_index = %lu, " "dirty = %d, uptodate = %d", ((unsigned int) (((REC)->dev) >> 20)), ((unsigned int) (((REC)->dev) & ((1U << 20) - 1))), ((unsigned long)((REC)->index)), ((char *)((void *)((char *)REC + (REC->__data_loc_pgtype & 0xffff)))), ((char *)((void *)((char *)REC + (REC->__data_loc_dir & 0xffff)))), (unsigned long)REC->page_index, REC->dirty, REC->uptodate'
+PRINT_FMT_HMFS_FSCACHE_END_PAGES_IO = '"dev = (%d,%d), fi_flags = %lu, fi_status = %d", ((unsigned int) ((REC->dev_id) >> 20)), ((unsigned int) ((REC->dev_id) & ((1U << 20) - 1))), REC->fi_flags, REC->fi_status'
+PRINT_FMT_HMFS_MMAP_ENTER = '"dev = (%d,%d), ino = %lu, mode = 0x%hx, mmap_fd_file = %lu," "mmap_offset = %lld, mmap_len = %lld, mmap_cnode_idx = %ld," " mmap_prot = 0x%hx, mmap_flags = 0x%hx, ext_flags = 0x%hx," " f_flags = 0x%hx, f_modes = 0x%hx", ((unsigned int) (((REC)->dev) >> 20)), ((unsigned int) (((REC)->dev) & ((1U << 20) - 1))), ((unsigned long)((REC)->index)), REC->mode, REC->mmap_fd_file, REC->mmap_offset, REC->mmap_len, REC->mmap_cnode_idx, REC->mmap_prot, REC->mmap_flags, REC->ext_flags'
+PRINT_FMT_HMFS_MMAP_EXIT = '"dev = (%d,%d), ino = %lu, mode = 0x%hx, ext_flags = 0x%hx, ret = %d", ((unsigned int) (((REC)->dev) >> 20)), ((unsigned int) (((REC)->dev) & ((1U << 20) - 1))), ((unsigned long)((REC)->index)), REC->mode, REC->ext_flags, REC->res'
+PRINT_FMT_HMFS_SUBMIT_BUFFERS_WRITE = '"dev = (%d,%d), ino = %lu, page_index = 0x%lx, oldaddr = 0x%llx," " newaddr = 0x%llx, rw = %s, type = %s_%s", ((unsigned int) (((REC)->dev) >> 20)), ((unsigned int) (((REC)->dev) & ((1U << 20) - 1))), ((unsigned long)((REC)->index)), (unsigned long)REC->page_index, (unsigned long long)REC->old_blkaddr, (unsigned long long)REC->new_blkaddr, ((char *)((void *)((char *)REC + (REC->__data_loc_hop & 0xffff)))), ((char *)((void *)((char *)REC + (REC->__data_loc_tptype & 0xffff)))), ((char *)((void *)((char *)REC + (REC->__data_loc_pgtype & 0xffff))))'
+PRINT_FMT_HMFS_SUBMIT_WRITE_IO = '"dev = (%d,%d)/(%d,%d), rw = %s, op_flags = %d, type = %s," " sector = %ld, size = %u", ((unsigned int) ((REC->target) >> 20)), ((unsigned int) ((REC->target) & ((1U << 20) - 1))), ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), ((char *)((void *)((char *)REC + (REC->__data_loc_fsop & 0xffff)))), REC->op_flags, ((char *)((void *)((char *)REC + (REC->__data_loc_pgtype & 0xffff)))), (unsigned long)REC->sector, REC->size'
+PRINT_FMT_HMFS_WRITE_ENTER = '"dev=%d,%d ino=%lu offset=%llu size=%zd i_size=%llu entry_name=%s", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->ino, REC->off, REC->size, REC->i_size, ((char *)((void *)((char *)REC + (REC->__data_loc_name & 0xffff))))'
+PRINT_FMT_HMFS_WRITE_EXIT = '"dev=%d,%d ino=%lu offset=%llu size=%zd res=%zd", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->ino, REC->off, REC->size, REC->res'
+PRINT_FMT_HMFS_WRITE_ITER_ENTER = '"dev=%d,%d ino=%lu offset=%llu size=%zd", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->ino, REC->off, REC->size'
+PRINT_FMT_HMFS_WRITE_ITER_EXIT = '"dev=%d,%d ino=%lu offset=%llu size=%zd res=%zd", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->ino, REC->off, REC->size, REC->res'
+PRINT_FMT_HMFS_WRITEPAGE = '"dev = (%d,%d), ino = %lu, %s, %s, page_index = %lu, " "dirty = %d, uptodate = %d", ((unsigned int) (((REC)->dev) >> 20)), ((unsigned int) (((REC)->dev) & ((1U << 20) - 1))), ((unsigned long)((REC)->index)), ((char *)((void *)((char *)REC + (REC->__data_loc_pgtype & 0xffff)))), ((char *)((void *)((char *)REC + (REC->__data_loc_dir & 0xffff)))), (unsigned long)REC->page_index, REC->dirty, REC->uptodate'
+PRINT_FMT_HMFS_WRITEPAGES = '"dev = (%d,%d), ino = %lu, type = %s, %s, nr_to_write %ld, " "skipped %s, start %lld, end %lld, wbc_type %s", ((unsigned int) (((REC)->dev) >> 20)), ((unsigned int) (((REC)->dev) & ((1U << 20) - 1))), ((unsigned long)((REC)->index)), ((char *)((void *)((char *)REC + (REC->__data_loc_pgtype & 0xffff)))), ((char *)((void *)((char *)REC + (REC->__data_loc_dir & 0xffff)))), REC->nr_to_write, ((char *)((void *)((char *)REC + (REC->__data_loc_skip_status & 0xffff)))), REC->range_start, REC->range_end, ((char *)((void *)((char *)REC + (REC->__data_loc_wbctype & 0xffff))))'
+PRINT_FMT_HMFS_WRITEPAGES_END_IO = '"dev = (%d,%d), fi_flags = %lu, fi_status = %d", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->fi_flags, REC->fi_status'
+PRINT_FMT_HMFS_SYNC = '"dev = (%d,%d), superblock is %s", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->dirty ? "dirty" : "not dirty"'
+PRINT_FMT_HMFS_SYNC_EXIT = '"dev = (%d,%d), ino = %lu, ret = %d", ((unsigned int) (((REC)->dev) >> 20)), ((unsigned int) (((REC)->dev) & ((1U << 20) - 1))), ((unsigned long)((REC)->index)), REC->res'
+PRINT_FMT_HMFS_SYNC_FILE_ENTER = '"dev = (%d,%d) ino = %lu," " i_mode = 0x%hx, size = %llu", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->ino, REC->mode, REC->size'
+PRINT_FMT_HMFS_SYNC_FILE_EXIT = '"dev=%d,%d ino=%lu i_mode=0x%hx size=%llu res=%d", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->ino, REC->mode, REC->size, REC->res'
 PRINT_FMT_EROFS_READ_ENTER = '"dev:%d,%d ino:%lu offset:%llu size:%zd entry_name:%s", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->ino, REC->off, REC->size, ((char *)((void *)((char *)REC + (REC->__data_loc_name & 0xffff))))'
 PRINT_FMT_EROFS_READ_EXIT = '"dev:%d,%d ino:%lu offset:%llu size:%zd res:%zd", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->ino, REC->off, REC->size, REC->res'
 PRINT_FMT_EROFS_READ_ITER_ENTER = '"dev:%d,%d ino:%lu offset:%llu size:%zd", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->ino, REC->off, REC->size'
@@ -1139,6 +1416,34 @@ PRINT_FMT_PRINT: parse_print,
 PRINT_FMT_TRACING_MARK_WRITE: parse_tracing_mark_write,
 PRINT_FMT_XACCT_TRACING_MARK_WRITE: parse_xacct_tracing_mark_write,
 PRINT_FMT_PHASE_TASK_DELTA: parse_phase_task_delta,
+PRINT_FMT_HMFS_BREAD: parse_hmfs_bread,
+PRINT_FMT_HMFS_BREAD_ASYNC: parse_hmfs_bread,
+PRINT_FMT_HMFS_DIRECT_IO_ENTER: parse_hmfs_direct_io_enter,
+PRINT_FMT_HMFS_DIRECT_IO_EXIT: parse_hmfs_direct_io_exit,
+PRINT_FMT_HMFS_READ_ENTER: parse_hmfs_read_enter,
+PRINT_FMT_HMFS_READ_EXIT: parse_hmfs_read_exit,
+PRINT_FMT_HMFS_READ_ITER_ENTER: parse_hmfs_read_iter_enter,
+PRINT_FMT_HMFS_READ_ITER_EXIT: parse_hmfs_read_exit,
+PRINT_FMT_HMFS_READPAGE: parse_hmfs_readpage,
+PRINT_FMT_HMFS_READPAGES: parse_hmfs_readpages,
+PRINT_FMT_HMFS_SUBMIT_READ_IO: parse_hmfs_bread,
+PRINT_FMT_HMFS_DO_WRITE_DATA_PAGE: parse_hmfs_do_write_data_page,
+PRINT_FMT_HMFS_FSCACHE_END_PAGES_IO: parse_hmfs_fscache_end_pages_io,
+PRINT_FMT_HMFS_MMAP_ENTER: parse_hmfs_mmap_enter,
+PRINT_FMT_HMFS_MMAP_EXIT: parse_hmfs_mmap_exit,
+PRINT_FMT_HMFS_SUBMIT_BUFFERS_WRITE: parse_hmfs_submit_buffers_write,
+PRINT_FMT_HMFS_SUBMIT_WRITE_IO: parse_hmfs_submit_write_io,
+PRINT_FMT_HMFS_WRITE_ENTER: parse_hmfs_write_enter,
+PRINT_FMT_HMFS_WRITE_EXIT: parse_hmfs_write_exit,
+PRINT_FMT_HMFS_WRITE_ITER_ENTER: parse_hmfs_write_iter_enter,
+PRINT_FMT_HMFS_WRITE_ITER_EXIT: parse_hmfs_write_iter_exit,
+PRINT_FMT_HMFS_WRITEPAGE: parse_hmfs_writepage,
+PRINT_FMT_HMFS_WRITEPAGES: parse_hmfs_writepages,
+PRINT_FMT_HMFS_WRITEPAGES_END_IO: parse_hmfs_writepages_end_io,
+PRINT_FMT_HMFS_SYNC: parse_hmfs_sync,
+PRINT_FMT_HMFS_SYNC_EXIT: parse_hmfs_sync_exit,
+PRINT_FMT_HMFS_SYNC_FILE_ENTER: parse_hmfs_sync_file_enter,
+PRINT_FMT_HMFS_SYNC_FILE_EXIT: parse_hmfs_sync_file_exit,
 PRINT_FMT_EROFS_READ_ENTER: parse_erofs_read_enter,
 PRINT_FMT_EROFS_READ_EXIT: parse_erofs_read_exit,
 PRINT_FMT_EROFS_READ_ITER_ENTER: parse_erofs_read_iter_enter,
