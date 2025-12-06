@@ -71,5 +71,35 @@ StoppableThreadHelper::~StoppableThreadHelper()
 {
     StopSubThread();
 }
+
+std::vector<std::string> SearchWordsByKeyWord(const std::string& source, const std::string& key)
+{
+    std::vector<std::string> subStrings;
+    if (key.empty()) {
+        return subStrings;
+    }
+    size_t pos = source.find(key);
+    while (pos != std::string::npos) {
+        size_t left = pos;
+        while (left > 0) {
+            const char c = source[left - 1];
+            if (c == ' ' || c == '\n' || c == '\r' || c == '\t') {
+                break;
+            }
+            left--;
+        }
+        size_t right = pos + key.length();
+        while (right < source.length()) {
+            const char c = source[right];
+            if (c == ' ' || c == '\n' || c == '\r' || c == '\t') {
+                break;
+            }
+            right++;
+        }
+        subStrings.emplace_back(source.substr(left, right - left));
+        pos = source.find(key, right);
+    }
+    return subStrings;
+}
 }
 }

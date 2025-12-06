@@ -471,7 +471,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest015, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "HitraceCMDTest015: start.";
 
-    std::string cmdStart = "hitrace --trace_begin app ace -b 102400 --overwrite --trace_clock boot";
+    std::string cmdStart = "hitrace --trace_begin app ace -b 102400 --overwrite --trace_clock mono";
     std::vector<std::string> keywordsStart = {
         "RECORDING_LONG_BEGIN",
         "OpenRecording done",

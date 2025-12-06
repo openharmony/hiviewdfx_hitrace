@@ -27,8 +27,6 @@ struct TraceStatsInfo {
     double oldTs = 0;
     double nowTs = 0;
     int bytes = 0;
-    int averageTrace = 0;
-    double freq = 0;
 };
 
 class DynamicBuffer {
@@ -39,27 +37,21 @@ public:
      * cpuNums, Number of CPU cores.
     */
     DynamicBuffer(const std::string& traceRootPath, int cpuNums)
-        : traceRootPath(traceRootPath), cpuNums(cpuNums) {}
+        : traceRootPath_(traceRootPath), cpuNums_(cpuNums) {}
 
     /**
      * Evaluate the set values of each buffer based on the load balancing algorithm,
      * and the results are stored.
     */
-    void CalculateBufferSize(std::vector<int>& result);
-
+    std::vector<int> CalculateBufferSize();
 private:
     bool GetPerCpuStatsInfo(const size_t cpuIndex, TraceStatsInfo& traceStats);
-    void UpdateTraceLoad();
-
-    std::vector<TraceStatsInfo> allTraceStats;
-    std::string traceRootPath;
-    int cpuNums = 0;
-    double totalCpusLoad = 0.0;
-    int totalAverage = 0;
-    int maxAverage = 0;
+    std::vector<double> CalculateTraceLoad();
+    std::string traceRootPath_;
+    int cpuNums_ = 0;
+    double totalCpusLoad_ = 0.0;
+    int maxAverage_ = 0;
 };
-
-
 } // Hitrace
 } // HiviewDFX
 } // OHOS

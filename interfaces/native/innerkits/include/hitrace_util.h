@@ -17,6 +17,8 @@
 #define HITRACE_STOPPABLE_THREAD_HELPER_H
 #include <condition_variable>
 #include <functional>
+#include <vector>
+#include <string>
 
 namespace OHOS {
 namespace HiviewDFX {
@@ -37,6 +39,8 @@ private:
     std::condition_variable cvTask_;
     std::condition_variable cvFinished_;
 };
+
+std::vector<std::string> SearchWordsByKeyWord(const std::string& source, const std::string& key);
 }
 }
 

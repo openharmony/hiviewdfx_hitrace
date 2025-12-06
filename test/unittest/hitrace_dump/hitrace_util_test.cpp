@@ -93,5 +93,24 @@ HWTEST_F(HiTraceUtilTest, StoppableThreadHelperTest_004, TestSize.Level1)
     ASSERT_TRUE(helper.StartSubThread(task, 1, "testSubThread2"));
     ASSERT_FALSE(helper.StartSubThread(task, 1, "testSubThread2"));
 }
+
+/**
+ * @tc.name: SearchWordsByKeyWordTest_001
+ * @tc.desc: test search words by key word from a long string.
+ * @tc.type: FUNC
+ * @tc.require: AR000CQVA0
+ */
+HWTEST_F(HiTraceUtilTest, SearchWordsByKeyWordTest_001, TestSize.Level1)
+{
+    ASSERT_EQ(SearchWordsByKeyWord("", "").size(), 0);
+    std::string testString = "a \tab\t \rabc\r \nabcd\n abcde";
+    ASSERT_EQ(SearchWordsByKeyWord(testString, "").size(), 0);
+    ASSERT_EQ(SearchWordsByKeyWord(testString, "a").size(), 5);
+    ASSERT_EQ(SearchWordsByKeyWord(testString, "ab").size(), 4);
+    ASSERT_EQ(SearchWordsByKeyWord(testString, "abc").size(), 3);
+    ASSERT_EQ(SearchWordsByKeyWord(testString, "abcd").size(), 2);
+    ASSERT_EQ(SearchWordsByKeyWord(testString, "abcde").size(), 1);
+    ASSERT_EQ(SearchWordsByKeyWord(testString, "abcdef").size(), 0);
+}
 }
 }
