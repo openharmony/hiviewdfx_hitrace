@@ -17,6 +17,14 @@
 import re
 
 
+cmd_lines = {}
+
+
+def initialize_cmd_lines(cmd_lines_dict):
+    global cmd_lines
+    cmd_lines.update(cmd_lines_dict)
+
+
 def parse_bytes_to_str(data):
     decoded_str = ""
 
@@ -83,6 +91,19 @@ def parse_sched_wakeup(data, one_event):
     return "comm=%s pid=%d prio=%d target_cpu=%03d" % (comm, pid, prio, target_cpu)
 
 
+def parse_sched_wakeup_hm_lite(data, one_event):
+    global cmd_lines
+    pid = parse_int_field(one_event, "pid", True)
+    if pid == 0:
+        pname = "tppmgr-idle-" + str(one_event["cpu_id"])
+    else:
+        pname = cmd_lines.get(pid, "")
+    prio = parse_int_field(one_event, "prio", True)
+    target_cpu = parse_int_field(one_event, "target_cpu", True)
+
+    return "comm=%s pid=%d prio=%d target_cpu=%03d" % (pname, pid, prio, target_cpu)
+
+
 def parse_sched_switch_hm_new(data, one_event):
     pname = parse_bytes_to_str(one_event["fields"]["pname[16]"])
     prev_tid = parse_int_field(one_event, "prev_tid", True)
@@ -90,6 +111,53 @@ def parse_sched_switch_hm_new(data, one_event):
     pstate = parse_int_field(one_event, "pstate", False)
     nname = parse_bytes_to_str(one_event["fields"]["nname[16]"])
     next_tid = parse_int_field(one_event, "next_tid", True)
+    nprio = parse_int_field(one_event, "nprio", True)
+    ninfo = one_event["fields"]["ninfo[8]"]
+
+    tmp_affinity = int.from_bytes(ninfo[:4], byteorder="little")
+    affinity = hex(tmp_affinity)[2:]
+    affinity = affinity.lstrip('0') or '0'
+    remaining = int.from_bytes(ninfo[4:], byteorder='little')
+
+    # 位域参数定义
+    load_mask = (1 << 10) - 1
+    group_mask = (1 << 2) - 1
+    restricted_mask = 1
+    expel_mask = (1 << 3) - 1
+    cgid_mask = (1 << 5) - 1
+
+    # 按位域偏移量解析
+    load = (remaining >> 0) & load_mask      # 0-9 bit
+    group = (remaining >> 10) & group_mask     # 10-11 bit
+    restricted = (remaining >> 12) & restricted_mask # 12 bit
+    expel = (remaining >> 13) & expel_mask     # 13-15 bit
+    cgid = (remaining >> 16) & cgid_mask      # 16-20 bit
+
+    # The load has been moved one bit to right before storing. Hence, it should be moved one bit to left.
+    next_info = affinity + ',' + str(load << 1) + ',' + str(group) + ',' + str(restricted) + ',' + str(expel) + \
+        ',' + str(cgid)
+
+    pstate_map = {0x0: 'R', 0x1: 'S', 0x2: 'D', 0x10: 'X', 0x100: 'R+'}
+    prev_state = pstate_map.get(pstate, '?')
+
+    return "prev_comm=%s prev_pid=%d prev_prio=%d prev_state=%s ==> next_comm=%s next_pid=%d next_prio=%d next_info=%s" \
+        % (pname, prev_tid, pprio, prev_state, nname, next_tid, nprio, next_info)
+
+
+def parse_sched_switch_hm_lite(data, one_event):
+    global cmd_lines
+    prev_tid = parse_int_field(one_event, "prev_tid", True)
+    if prev_tid == 0:
+        pname = "tppmgr-idle-" + str(one_event["cpu_id"])
+    else:
+        pname = cmd_lines.get(prev_tid, "")
+    pprio = parse_int_field(one_event, "pprio", True)
+    pstate = parse_int_field(one_event, "pstate", False)
+    next_tid = parse_int_field(one_event, "next_tid", True)
+    if next_tid == 0:
+        nname = "tppmgr-idle-" + str(one_event["cpu_id"])
+    else:
+        nname = cmd_lines.get(next_tid, "")
     nprio = parse_int_field(one_event, "nprio", True)
     ninfo = one_event["fields"]["ninfo[8]"]
 
@@ -873,7 +941,7 @@ def parse_hmfs_read_enter(data, one_event):
     off = parse_int_field(one_event, "off", False)
     size = parse_int_field(one_event, "size", False)
     i_size = parse_int_field(one_event, "i_size", False)
-    entry_name = parse_int_field(one_event, "name", False) & 0xffff
+    data_loc_name = parse_int_field(one_event, "name", False) & 0xffff
     return "dev=%d,%d ino=%lu offset=%lu size=%d i_size=%lu entry_name=%s" % (dev >> 20, dev & 0xfffff, ino, off, size, i_size, parse_bytes_to_str(data[data_loc_name:]))
 
 
@@ -1237,9 +1305,11 @@ PRINT_FMT_IRQ_HANDLER_ENTRY = '"irq=%d name=%s", REC->irq, ((char *)((void *)((c
 PRINT_FMT_IRQ_HANDLER_EXIT = '"irq=%d ret=%s", REC->irq, REC->ret ? "handled" : "unhandled"'
 PRINT_FMT_SOFTIRQ_ENTRY_EXIT = '"vec=%u [action=%s]", REC->vec, __print_symbolic(REC->vec, { 0, "HI" }, { 1, "TIMER" }, { 2, "NET_TX" }, { 3, "NET_RX" }, { 4, "BLOCK" }, { 5, "IRQ_POLL" }, { 6, "TASKLET" }, { 7, "SCHED" }, { 8, "HRTIMER" }, { 9, "RCU" })'
 PRINT_FMT_SCHED_WAKEUP_HM = '"comm=%s pid=%d prio=%d target_cpu=%03d", REC->pname, REC->pid, REC->prio, REC->target_cpu'
+PRINT_FMT_SCHED_WAKEUP_HM_LITE = '"comm=%s pid=%d prio=%d target_cpu=%03d", trace_cmdline_of(REC->pid, tmp_thread_name_next), REC->pid, REC->prio, REC->target_cpu'
 PRINT_FMT_SCHED_WAKEUP = '"comm=%s pid=%d prio=%d target_cpu=%03d", REC->comm, REC->pid, REC->prio, REC->target_cpu'
 PRINT_FMT_SCHED_SWITCH_HM = '"prev_comm=%s prev_pid=%d prev_prio=%d prev_state=%s" " ==> next_comm=%s next_pid=%d next_prio=%d", REC->pname, REC->prev_tid, REC->pprio, hm_trace_tcb_state2str(REC->pstate), REC->nname, REC->next_tid, REC->nprio'
 PRINT_FMT_SCHED_SWITCH_HM_NEW = '"prev_comm=%s prev_pid=%d prev_prio=%d prev_state=%s" " ==> next_comm=%s next_pid=%d next_prio=%d next_info=%s", REC->pname, REC->prev_tid, REC->pprio, hm_trace_tcb_state2str(REC->pstate), REC->nname, REC->next_tid, REC->nprio, hm_trace_tcb_unpack_schedinfo(REC->ninfo, sizeof(REC->ninfo))'
+PRINT_FMT_SCHED_SWITCH_HM_LITE = '"prev_comm=%s prev_pid=%d prev_prio=%d prev_state=%s" " ==> next_comm=%s next_pid=%d next_prio=%d next_info=%s", trace_cmdline_of(REC->prev_tid, tmp_thread_name_prev), REC->prev_tid, REC->pprio, hm_trace_tcb_state2str(REC->pstate), trace_cmdline_of(REC->next_tid, tmp_thread_name_next), REC->next_tid, REC->nprio, hm_trace_tcb_unpack_schedinfo(REC->ninfo, sizeof(REC->ninfo))'
 PRINT_FMT_SCHED_SWITCH_HM_NINFO_CG = '"prev_comm=%s prev_pid=%d prev_prio=%d prev_state=%s" " ==> next_comm=%s next_pid=%d next_prio=%d next_info=%s cg=%s", REC->pname, REC->prev_tid, REC->pprio, hm_trace_tcb_state2str(REC->pstate), REC->nname, REC->next_tid, REC->nprio, hm_trace_tcb_unpack_schedinfo(REC->ninfo, sizeof(REC->ninfo)), REC->cg'
 PRINT_FMT_SCHED_SWITCH = '"prev_comm=%s prev_pid=%d prev_prio=%d prev_state=%s%s ==> next_comm=%s next_pid=%d next_prio=%d expeller_type=%u", REC->prev_comm, REC->prev_pid, REC->prev_prio, (REC->prev_state & ((((0x0000 | 0x0001 | 0x0002 | 0x0004 | 0x0008 | 0x0010 | 0x0020 | 0x0040) + 1) << 1) - 1)) ? __print_flags(REC->prev_state & ((((0x0000 | 0x0001 | 0x0002 | 0x0004 | 0x0008 | 0x0010 | 0x0020 | 0x0040) + 1) << 1) - 1), "|", { 0x0001, "S" }, { 0x0002, "D" }, { 0x0004, "T" }, { 0x0008, "t" }, { 0x0010, "X" }, { 0x0020, "Z" }, { 0x0040, "P" }, { 0x0080, "I" }) : "R", REC->prev_state & (((0x0000 | 0x0001 | 0x0002 | 0x0004 | 0x0008 | 0x0010 | 0x0020 | 0x0040) + 1) << 1) ? "+" : "", REC->next_comm, REC->next_pid, REC->next_prio, REC->expeller_type'
 PRINT_FMT_SCHED_BLOCKED_REASON_HM_OLD = '"pid=%d iowait=%d caller=%s delay=%llu", REC->pid, REC->iowait, hm_trace_sched_blocked_reason_of(REC->cnode_idx, REC->caller), REC->delay >> 10'
@@ -1353,11 +1423,11 @@ PRINT_FMT_IRQ_HANDLER_ENTRY: parse_irq_handler_entry,
 PRINT_FMT_IRQ_HANDLER_EXIT: parse_irq_handler_exit,
 PRINT_FMT_SOFTIRQ_ENTRY_EXIT: parse_softirq_entry_exit,
 PRINT_FMT_SCHED_WAKEUP_HM: parse_sched_wakeup_hm,
+PRINT_FMT_SCHED_WAKEUP_HM_LITE: parse_sched_wakeup_hm_lite,
 PRINT_FMT_SCHED_WAKEUP: parse_sched_wakeup,
 PRINT_FMT_SCHED_SWITCH_HM: parse_sched_switch_hm,
 PRINT_FMT_SCHED_SWITCH_HM_NEW: parse_sched_switch_hm_new,
-PRINT_FMT_SCHED_SWITCH_HM_NINFO_CG: parse_sched_switch_hm_ninfo_cg,
-PRINT_FMT_SCHED_SWITCH: parse_sched_switch,
+PRINT_FMT_SCHED_SWITCH_HM_LITE: parse_sched_switch_hm_lite,
 PRINT_FMT_SCHED_BLOCKED_REASON_HM_OLD: parse_sched_blocked_reason_hm_old,
 PRINT_FMT_SCHED_BLOCKED_REASON_HM: parse_sched_blocked_reason_hm,
 PRINT_FMT_SCHED_BLOCKED_REASON: parse_sched_blocked_reason,

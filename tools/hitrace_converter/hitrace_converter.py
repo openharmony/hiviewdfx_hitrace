@@ -534,6 +534,7 @@ class CmdLinesSegment(SegmentOperator):
         cmd_lines = parser.parse_cmd_lines(segment)
         context = parser.get_context()
         context.set_param(TraceParseContext.CONTEXT_CMD_LINES, cmd_lines)
+        parse_functions.initialize_cmd_lines(cmd_lines)
         return True
 
 
@@ -788,6 +789,7 @@ class SysTraceViewer(Viewer):
         one_event["name"] = event_format["name"]
         one_event["print_fmt"] = event_format["print_fmt"]
         one_event["fields"] = {}
+        one_event["cpu_id"] = core_id
         for field in fields:
             offset = field["offset"]
             size = field["size"]
