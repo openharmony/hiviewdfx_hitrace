@@ -32,6 +32,7 @@
 
 #include "common_define.h"
 #include "common_utils.h"
+#include "dynamic_buffer.h"
 #include "hitrace_define.h"
 #include "hilog/log.h"
 #include "parameters.h"
@@ -1649,5 +1650,25 @@ HWTEST_F(HitraceDumpTest, OpenTraceTest004, TestSize.Level1)
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 
     GTEST_LOG_(INFO) << "OpenTraceTest004: end.";
+}
+
+/**
+ * @tc.name: DynamicBufferTest001
+ * @tc.desc: Test DynaMicBuffer
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceDumpTest, DynamicBufferTest001, TestSize.Level2)
+{
+    const int cpuNums = GetCpuProcessors();
+    std::string tracePath;
+    DynamicBuffer emptyTracePath(tracePath, cpuNums);
+    ASSERT_EQ(emptyTracePath.CalculateBufferSize().size(), 0lu);
+    bool isTraceMounted = IsTraceMounted(tracePath);
+    DynamicBuffer dynamicBuffer(tracePath, cpuNums);
+    if (isTraceMounted && !IsHmKernel()) {
+        ASSERT_EQ(dynamicBuffer.CalculateBufferSize().size(), static_cast<uint64_t>(cpuNums));
+    } else {
+        ASSERT_EQ(dynamicBuffer.CalculateBufferSize().size(), 0lu);
+    }
 }
 } // namespace

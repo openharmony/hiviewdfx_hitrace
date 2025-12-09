@@ -325,58 +325,34 @@ void SetAllTags(const TraceParams& traceParams, const std::map<std::string, Trac
 void SetClock(const std::string& clockType)
 {
     const std::string traceClockPath = "trace_clock";
-    if (clockType.size() == 0) {
-        if (!WriteStrToFile(traceClockPath, "boot")) { // set default: boot
-            HILOG_ERROR(LOG_CORE, "SetClock: WriteStrToFile fail.");
+    std::string targetClockType = "boot";
+    do {
+        if (clockType.empty()) {
+            break;
         }
-        return;
-    }
-    std::string allClocks = ReadFile(traceClockPath, g_traceRootPath);
-    if (allClocks.find(clockType) == std::string::npos) {
-        HILOG_ERROR(LOG_CORE, "SetClock: %{public}s is non-existent, set to boot", clockType.c_str());
-        if (!WriteStrToFile(traceClockPath, "boot")) { // set default: boot
-            HILOG_ERROR(LOG_CORE, "SetClock: WriteStrToFile fail.");
+        std::string allClocks = ReadFile(traceClockPath, g_traceRootPath);
+        auto findTypes =  SearchWordsByKeyWord(allClocks, clockType);
+        if (findTypes.empty()) {
+            break;
         }
-        return;
-    }
-
-    allClocks.erase(allClocks.find_last_not_of(" \n") + 1);
-    allClocks.push_back(' ');
-
-    std::set<std::string> allClockTypes;
-    size_t curPos = 0;
-    for (size_t i = 0; i < allClocks.size(); i++) {
-        if (allClocks[i] == ' ') {
-            allClockTypes.insert(allClocks.substr(curPos, i - curPos));
-            curPos = i + 1;
-        }
-    }
-
-    std::string currentClockType;
-    for (auto i : allClockTypes) {
-        if (clockType.compare(i) == 0) {
-            HILOG_INFO(LOG_CORE, "SetClock: set clock %{public}s success.", clockType.c_str());
-            if (!WriteStrToFile(traceClockPath, clockType)) {
-                HILOG_ERROR(LOG_CORE, "SetClock: WriteStrToFile fail.");
+        for (auto& findType : findTypes) {
+            if (findType.size() == clockType.size()) {
+                targetClockType = clockType;
+                break;
             }
-            return;
+            constexpr auto markNum = 2lu;
+            if (findType.size() - clockType.size() == markNum &&
+                findType[0] == '[' && findType[findType.size() - 1] == ']') {
+                HILOG_INFO(LOG_CORE, "SetClock: has already set clock %{public}s.", clockType.c_str());
+                return;
+            }
         }
-        if (i[0] == '[') {
-            currentClockType = i;
-        }
-    }
-
-    const int marks = 2;
-    if (clockType.compare(currentClockType.substr(1, currentClockType.size() - marks)) == 0) {
-        HILOG_INFO(LOG_CORE, "SetClock: set clock %{public}s success.", clockType.c_str());
-        return;
-    }
-
-    HILOG_INFO(LOG_CORE, "SetClock: unknown %{public}s, change to default clock_type: boot.", clockType.c_str());
-    if (!WriteStrToFile(traceClockPath, "boot")) { // set default: boot
+    } while (false);
+    if (!WriteStrToFile(traceClockPath, targetClockType)) { // set default: boot
         HILOG_ERROR(LOG_CORE, "SetClock: WriteStrToFile fail.");
+    } else {
+        HILOG_INFO(LOG_CORE, "SetClock: set clock %{public}s success.", targetClockType.c_str());
     }
-    return;
 }
 
 static bool SetTraceSetting(const TraceParams& traceParams, const std::map<std::string, TraceTag>& allTags,
@@ -988,9 +964,8 @@ bool CpuBufferBalanceTask(const std::string& traceRootPath)
         return false;
     }
     const int cpuNums = GetCpuProcessors();
-    std::vector<int> result;
     DynamicBuffer dynamicBuffer(traceRootPath, cpuNums);
-    dynamicBuffer.CalculateBufferSize(result);
+    std::vector<int> result = dynamicBuffer.CalculateBufferSize();
     if (static_cast<int>(result.size()) != cpuNums) {
         HILOG_ERROR(LOG_CORE, "CalculateAllNewBufferSize failed.");
         return false;

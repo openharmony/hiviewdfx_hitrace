@@ -43,33 +43,32 @@ constexpr int PAGE_KB = 4;
 
 bool DynamicBuffer::GetPerCpuStatsInfo(const size_t cpuIndex, TraceStatsInfo& traceStats)
 {
-    std::string statsPath = traceRootPath + "per_cpu/cpu" + std::to_string(cpuIndex) + "/stats";
+    std::string statsPath = traceRootPath_ + "per_cpu/cpu" + std::to_string(cpuIndex) + "/stats";
     std::string standardizedPath = CanonicalizeSpecPath(statsPath.c_str());
     std::ifstream inFile;
     inFile.open(standardizedPath.c_str(), std::ios::in);
     if (!inFile.is_open()) {
         return false;
     }
-
     std::string line;
-    const size_t oldTsPos = 17;
-    const size_t nowTsPos = 8;
-    const size_t bytesPos = 7;
     while (std::getline(inFile, line)) {
-        if ((line.find("oldest event ts: ")) != std::string::npos) {
-            if (!OHOS::HiviewDFX::Hitrace::StringToDouble(line.substr(oldTsPos).c_str(), traceStats.oldTs)) {
+        if (line.find("oldest event ts: ") != std::string::npos) {
+            constexpr size_t oldTsPos = 17;
+            if (!StringToDouble(line.substr(oldTsPos), traceStats.oldTs)) {
                 inFile.close();
                 return false;
             }
         }
-        if ((line.find("now ts: ")) != std::string::npos) {
-            if (!OHOS::HiviewDFX::Hitrace::StringToDouble(line.substr(nowTsPos).c_str(), traceStats.nowTs)) {
+        if (line.find("now ts: ") != std::string::npos) {
+            constexpr size_t nowTsPos = 8;
+            if (!StringToDouble(line.substr(nowTsPos), traceStats.nowTs)) {
                 inFile.close();
                 return false;
             }
         }
-        if ((line.find("bytes: ")) != std::string::npos) {
-            if (!OHOS::HiviewDFX::Hitrace::StringToInt(line.substr(bytesPos).c_str(), traceStats.bytes)) {
+        if (line.find("bytes: ") != std::string::npos) {
+            constexpr size_t bytesPos = 7;
+            if (!StringToInt(line.substr(bytesPos), traceStats.bytes)) {
                 inFile.close();
                 return false;
             }
@@ -79,56 +78,54 @@ bool DynamicBuffer::GetPerCpuStatsInfo(const size_t cpuIndex, TraceStatsInfo& tr
     return true;
 }
 
-void DynamicBuffer::UpdateTraceLoad()
+std::vector<double> DynamicBuffer::CalculateTraceLoad()
 {
-    if (!allTraceStats.empty()) {
-        allTraceStats.clear();
-    }
-    totalCpusLoad = 0.0;
-    totalAverage = 0;
-    maxAverage = 0;
-    for (int i = 0; i < cpuNums; i++) {
+    std::vector<double> traceLoad;
+    int totalAverage = 0;
+    for (int i = 0; i < cpuNums_; i++) {
         TraceStatsInfo traceStats = {};
         if (!GetPerCpuStatsInfo(i, traceStats)) {
             HILOG_ERROR(LOG_CORE, "GetPerCpuStatsInfo failed.");
-            return;
+            return traceLoad;
         }
         int duration = floor(traceStats.nowTs - traceStats.oldTs);
         if (duration == 0) {
             HILOG_ERROR(LOG_CORE, "nowTs:%{public}lf, oldTs:%{public}lf", traceStats.nowTs, traceStats.oldTs);
-            return;
+            traceLoad.push_back(0);
+            continue;
         }
-        traceStats.averageTrace = traceStats.bytes / duration;
-        totalAverage += traceStats.averageTrace;
-        if (maxAverage < traceStats.averageTrace) {
-            maxAverage = traceStats.averageTrace;
+        auto averageTrace = traceStats.bytes / duration;
+        totalAverage += averageTrace;
+        if (maxAverage_ < averageTrace) {
+            maxAverage_ = averageTrace;
         }
-        traceStats.freq = pow(traceStats.averageTrace, EXPONENT);
-        totalCpusLoad += traceStats.freq;
-        allTraceStats.push_back(traceStats);
+        auto freq = pow(averageTrace, EXPONENT);
+        totalCpusLoad_ += freq;
+        traceLoad.push_back(freq);
     }
+    HILOG_DEBUG(LOG_CORE, "hitrace: average = %{public}d.", totalAverage / cpuNums_);
+    return traceLoad;
 }
 
-void DynamicBuffer::CalculateBufferSize(std::vector<int>& result)
+std::vector<int> DynamicBuffer::CalculateBufferSize()
 {
-    UpdateTraceLoad();
-    if (static_cast<int>(allTraceStats.size()) != cpuNums) {
-        return;
+    std::vector<int> result;
+    auto allCpuFrequencies = CalculateTraceLoad();
+    if (allCpuFrequencies.size() != cpuNums_) {
+        return result;
     }
-    HILOG_DEBUG(LOG_CORE, "hitrace: average = %{public}d.", totalAverage / cpuNums);
-
-    int totalBonus = 0;
-    if (maxAverage > LOW_THRESHOLD) {
-        totalBonus = EXPANSION_SIZE * cpuNums;
+    if (maxAverage_ <= LOW_THRESHOLD) {
+        result.insert(result.begin(), cpuNums_, BASE_SIZE);
+        return result;
     }
-
-    for (int i = 0; i < cpuNums; i++) {
-        int newSize = BASE_SIZE + floor((allTraceStats[i].freq / totalCpusLoad) * totalBonus);
+    auto totalBonus =  EXPANSION_SIZE * cpuNums_;
+    for (double cpuFrequency : allCpuFrequencies) {
+        int newSize = BASE_SIZE + static_cast<int32_t>(floor((cpuFrequency / totalCpusLoad_) * totalBonus));
         newSize = newSize / PAGE_KB * PAGE_KB;
         result.push_back(newSize);
     }
+    return result;
 }
-
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS
