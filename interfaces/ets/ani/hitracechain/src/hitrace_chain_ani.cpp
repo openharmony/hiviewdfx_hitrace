@@ -49,7 +49,7 @@ ani_object HiTraceChainAni::Begin(ani_env* env, ani_string nameAni, ani_object f
         return val;
     }
     if (!isUndefined &&
-        env->Object_CallMethodByName_Int(flagAni, "unboxed", ":i", &flag) != ANI_OK) {
+        env->Object_CallMethodByName_Int(flagAni, "toInt", ":i", &flag) != ANI_OK) {
         HILOG_ERROR(LOG_CORE, "Begin flag parsing failed");
         return val;
     }
@@ -156,7 +156,7 @@ static bool GetIntProp(ani_env* env, ani_object traceIdAni, const char* prop, an
         return false;
     }
     if (!isUndefined &&
-        env->Object_CallMethodByName_Int(static_cast<ani_object>(propRef), "unboxed", ":i", &value) != ANI_OK) {
+        env->Object_CallMethodByName_Int(static_cast<ani_object>(propRef), "toInt", ":i", &value) != ANI_OK) {
         HILOG_ERROR(LOG_CORE, "%{public}s parsing failed", prop);
         return false;
     }
