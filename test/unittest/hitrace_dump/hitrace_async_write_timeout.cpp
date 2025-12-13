@@ -13,9 +13,11 @@
  * limitations under the License.
  */
 
+#include <chrono>
 #include <gtest/gtest.h>
 #include <set>
 #include <string>
+#include <thread>
 
 #include "hitrace_dump.h"
 #include "trace_file_utils.h"
@@ -74,18 +76,18 @@ HWTEST_F(HitraceAsyncWriteTimeoutTest, AsyncWriteTimeoutTest001, TestSize.Level2
         EXPECT_EQ(totalFileSz, traceInfo.fileSize);
     };
     auto ret = DumpTraceAsync(0, 0, INT64_MAX, func);
-    EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
+    EXPECT_EQ(static_cast<int>(ret.errorCode), TraceErrorCode::SUCCESS);
     GTEST_LOG_(INFO) << "interface return file size : " << ret.fileSize;
     for (auto file : ret.outputFiles) {
         GTEST_LOG_(INFO) << "interface return file : " << file;
     }
     ret = DumpTraceAsync(0, 0, INT64_MAX, func);
-    EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
+    EXPECT_EQ(static_cast<int>(ret.errorCode), TraceErrorCode::SUCCESS);
     GTEST_LOG_(INFO) << "interface return file size : " << ret.fileSize;
     for (auto file : ret.outputFiles) {
         GTEST_LOG_(INFO) << "interface return file : " << file;
     }
-    sleep(15); // 15 : wait 15 seconds to avoid crash in SIGPIPE
+    std::this_thread::sleep_for(std::chrono::seconds(15)); // 15 : wait 15 seconds to avoid crash in SIGPIPE
     // Close trace after async dump
     ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
 }
