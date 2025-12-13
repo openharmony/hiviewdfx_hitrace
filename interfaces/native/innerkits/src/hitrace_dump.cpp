@@ -280,8 +280,9 @@ void SetAllTags(const TraceParams& traceParams, const std::map<std::string, Trac
         readyEnableTagList.insert(tagName);
     }
     if (isSchedltExisting && !isSchedExisting) {
-        if (access((g_traceRootPath + "events/sched/sched_switch_lite/enable").c_str(), W_OK) < 0) {
-            HILOG_WARN(LOG_CORE, "SetAllTags: Failed to access schedlt, try to open sched.");
+        // If the saved_cmdlines_size of the device is equal to 10240, then the device supports schedlt
+        if (ReadFile("saved_cmdlines_size", g_traceRootPath).find("10240") == std::string::npos) {
+            HILOG_WARN(LOG_CORE, "SetAllTags: Not support schedlt, try to open sched.");
             readyEnableTagList.insert("sched");
         }
     }
