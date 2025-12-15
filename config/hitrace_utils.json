@@ -4,7 +4,7 @@
   "record_file_aging": 0,
   "tag_category": {
     "commercial": {
-      "description": "Commercial version tag",
+      "description": "Commercial Version Tag",
       "tag_offset": 5,
       "type": 0
     },
@@ -14,17 +14,17 @@
       "type": 0
     },
     "security": {
-      "description": "Security subsystem",
+      "description": "Security Subsystem",
       "tag_offset": 7,
       "type": 0
     },
     "animation": {
-      "description": "Animation",
+      "description": "Animation Module",
       "tag_offset": 9,
       "type": 0
     },
     "push": {
-      "description": "Push subsystem",
+      "description": "Push Subsystem",
       "tag_offset": 10,
       "type": 0
     },
@@ -34,52 +34,52 @@
       "type": 0
     },
     "musl": {
-      "description": "musl module",
+      "description": "musl Module",
       "tag_offset": 12,
       "type": 0
     },
     "ffrt": {
-      "description": "ffrt tasks",
+      "description": "FFRT Tasks",
       "tag_offset": 13,
       "type": 0
     },
     "cloud": {
-      "description": "Cloud subsystem tag",
+      "description": "Cloud Subsystem",
       "tag_offset": 14,
       "type": 0
     },
     "deviceauth": {
-      "description": "Device Auth",
+      "description": "Device Authentication",
       "tag_offset": 15,
       "type": 0
     },
     "commonlibrary": {
-      "description": "commonlibrary subsystem",
+      "description": "Common Library",
       "tag_offset": 16,
       "type": 0
     },
     "hdcd": {
-      "description": "hdcd",
+      "description": "hdcd Tool",
       "tag_offset": 17,
       "type": 0
     },
     "hdf": {
-      "description": "hdf subsystem",
+      "description": "Hardware Driver Foundation",
       "tag_offset": 18,
       "type": 0
     },
     "usb": {
-      "description": "usb subsystem",
+      "description": "USB Subsystem",
       "tag_offset": 19,
       "type": 0
     },
     "interconn": {
-      "description": "Interconnection subsystem",
+      "description": "Interconnection Subsystem",
       "tag_offset": 20,
       "type": 0
     },
     "dlpcre": {
-      "description": "Dlp Credential Service",
+      "description": "Data Loss Prevention Credential Service",
       "tag_offset": 21,
       "type": 0
     },
@@ -89,22 +89,22 @@
       "type": 0
     },
     "net": {
-      "description": "net",
+      "description": "Net Module",
       "tag_offset": 23,
       "type": 0
     },
     "nweb": {
-      "description": "NWEB Module",
+      "description": "NWeb Module",
       "tag_offset": 24,
       "type": 0
     },
     "huks": {
-      "description": "Universal KeyStore",
+      "description": "Universal Key Store",
       "tag_offset": 25,
       "type": 0
     },
     "useriam": {
-      "description": "useriam",
+      "description": "User Identity and Access Management",
       "tag_offset": 26,
       "type": 0
     },
@@ -114,42 +114,42 @@
       "type": 0
     },
     "dslm": {
-      "description": "device security level",
+      "description": "Device Security Level Management",
       "tag_offset": 28,
       "type": 0
     },
     "filemanagement": {
-      "description": "filemanagement",
+      "description": "File Management",
       "tag_offset": 29,
       "type": 0
     },
     "ohos": {
-      "description": "OpenHarmony",
+      "description": "System General Tag",
       "tag_offset": 30,
       "type": 0
     },
     "ability": {
-      "description": "Ability Manager",
+      "description": "Ability Manager Service",
       "tag_offset": 31,
       "type": 0
     },
     "zcamera": {
-      "description": "OpenHarmony Camera Module",
+      "description": "Camera Module",
       "tag_offset": 32,
       "type": 0
     },
     "zmedia": {
-      "description": "OpenHarmony Media Module",
+      "description": "Media Module",
       "tag_offset": 33,
       "type": 0
     },
     "zimage": {
-      "description": "OpenHarmony Image Module",
+      "description": "Image Module",
       "tag_offset": 34,
       "type": 0
     },
     "zaudio": {
-      "description": "OpenHarmony Audio Module",
+      "description": "Audio Module",
       "tag_offset": 35,
       "type": 0
     },
@@ -169,7 +169,7 @@
       "type": 0
     },
     "ace": {
-      "description": "ACE development framework",
+      "description": "ArkUI Cross-platform Engine Development Framework",
       "tag_offset": 39,
       "type": 0
     },
@@ -184,7 +184,7 @@
       "type": 0
     },
     "multimodalinput": {
-      "description": "HITRACE_TAG_MULTIMODALINPUT",
+      "description": "Multimodal Input",
       "tag_offset": 42,
       "type": 0
     },
@@ -209,7 +209,7 @@
       "type": 0
     },
     "ark": {
-      "description": "ARK Module",
+      "description": "Ark Module",
       "tag_offset": 47,
       "type": 0
     },
@@ -234,7 +234,7 @@
       "type": 0
     },
     "dhfwk": {
-      "description": "Distributed Hardware FWK",
+      "description": "Distributed Hardware Framework",
       "tag_offset": 52,
       "type": 0
     },
@@ -249,7 +249,7 @@
       "type": 0
     },
     "samgr": {
-      "description": "samgr",
+      "description": "Service Ability Manager Group",
       "tag_offset": 55,
       "type": 0
     },
@@ -274,7 +274,7 @@
       "type": 0
     },
     "bluetooth": {
-      "description": "communication bluetooth",
+      "description": "Communication Bluetooth",
       "tag_offset": 60,
       "type": 0
     },
@@ -284,7 +284,7 @@
       "type": 0
     },
     "app": {
-      "description": "APP Module",
+      "description": "Application Module",
       "tag_offset": 62,
       "type": 0
     },
@@ -306,7 +306,7 @@
       ]
     },
     "schedlt": {
-      "description": "CPU Scheduling lite",
+      "description": "CPU Scheduling Lite",
       "tag_offset": 0,
       "enable_path": [
         "events/sched/sched_switch_lite/enable",
@@ -323,7 +323,7 @@
       ]
     },
     "preemptoff": {
-      "description": "Preempt-disabled code section tracing",
+      "description": "Preempt-disabled Code Section Tracing",
       "tag_offset": 0,
       "enable_path": [
         "events/preemptirq/preempt_enable/enable",
@@ -332,7 +332,7 @@
       "type": 1
     },
     "binder": {
-      "description": "Binder kernel Info",
+      "description": "Binder Kernel Info",
       "tag_offset": 0,
       "enable_path": [
         "events/binder/binder_transaction/enable",
@@ -345,7 +345,7 @@
       ]
     },
     "sync": {
-      "description": "Synchronization",
+      "description": "DMA Synchronization",
       "tag_offset": 0,
       "enable_path": [
         "events/dma_fence/enable"
@@ -393,7 +393,7 @@
       ]
     },
     "pagecache": {
-      "description": "Page cache",
+      "description": "Page Cache",
       "tag_offset": 0,
       "enable_path": [
         "events/filemap/enable"
@@ -420,7 +420,7 @@
       ]
     },
     "zbinder": {
-      "description": "OpenHarmony binder communication",
+      "description": "ZBinder Events",
       "tag_offset": 0,
       "enable_path": [
         "events/zbinder/enable"
@@ -488,7 +488,7 @@
       ]
     },
     "irqoff": {
-      "description": "IRQ-disabled code section tracing",
+      "description": "IRQ-disabled Code Section Tracing",
       "tag_offset": 0,
       "enable_path": [
         "events/preemptirq/irq_enable/enable",
@@ -540,7 +540,7 @@
       ]
     },
     "mmc": {
-      "description": "eMMC commands",
+      "description": "Embedded MultiMediaCard Commands",
       "tag_offset": 0,
       "enable_path": [
         "events/mmc/enable"
@@ -552,7 +552,7 @@
       ]
     },
     "ufs": {
-      "description": "UFS commands",
+      "description": "Universal Flash Storage Commands",
       "tag_offset": 0,
       "enable_path": [
         "events/ufs/enable"
@@ -563,7 +563,7 @@
       ]
     },
     "i2c": {
-      "description": "I2C Events",
+      "description": "Inter-Integrated Circuit Events",
       "tag_offset": 0,
       "enable_path": [
         "events/i2c/enable",
@@ -611,7 +611,7 @@
       ]
     },
     "ipa": {
-      "description": "thermal power allocator",
+      "description": "Thermal Power Allocator",
       "tag_offset": 0,
       "enable_path": [
         "events/thermal_power_allocator/enable"
@@ -623,7 +623,7 @@
       ]
     },
     "erofs": {
-      "description": "EROFS command",
+      "description": "Enhanced Read-Only File System",
       "tag_offset": 0,
       "enable_path": [
         "events/erofs/erofs_read_enter/enable",
