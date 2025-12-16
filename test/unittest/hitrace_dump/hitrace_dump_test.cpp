@@ -26,6 +26,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <sys/xattr.h>
 #include <unistd.h>
 #include <vector>
@@ -1347,7 +1348,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceAsyncTest004, TestSize.Level2)
 {
     const std::vector<std::string> tagGroups = {"scene_performance"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    sleep(3); // 3 : 3 seconds
+    std::this_thread::sleep_for(std::chrono::seconds(3)); // 3 : 3 seconds
     uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr));
     auto ret = DumpTrace(0, traceEndTime);
     EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
@@ -1365,7 +1366,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceAsyncTest004, TestSize.Level2)
         EXPECT_EQ(totalFileSz, traceInfo.fileSize);
     };
     ret = DumpTraceAsync(1, traceEndTime - 2, INT64_MAX, func); // 2 : 2 seconds
-    EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
+    EXPECT_EQ(static_cast<int>(ret.errorCode), TraceErrorCode::SUCCESS);
     GTEST_LOG_(INFO) << "interface return file size :" << ret.fileSize;
     for (auto& file : ret.outputFiles) {
         GTEST_LOG_(INFO) << "interface return file :" << file;
@@ -1385,9 +1386,9 @@ HWTEST_F(HitraceDumpTest, DumpTraceAsyncTest005, TestSize.Level2)
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
     // total cache filesize limit: 800MB, sliceduration: 5s
     ASSERT_TRUE(CacheTraceOn(800, 5) == TraceErrorCode::SUCCESS);
-    sleep(8); // wait 8s
+    std::this_thread::sleep_for(std::chrono::seconds(8)); // wait 8s
     std::function<void(TraceRetInfo)> func = [](TraceRetInfo traceInfo) {
-        EXPECT_EQ(traceInfo.errorCode, TraceErrorCode::SUCCESS);
+        EXPECT_EQ(static_cast<int>(traceInfo.errorCode), TraceErrorCode::SUCCESS);
         EXPECT_GE(traceInfo.outputFiles.size(), 2); // 2 : 2 files
         off_t totalFileSz = 0;
         for (auto& files : traceInfo.outputFiles) {
@@ -1397,7 +1398,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceAsyncTest005, TestSize.Level2)
         EXPECT_EQ(totalFileSz, traceInfo.fileSize);
     };
     auto ret = DumpTraceAsync(8, 0, INT64_MAX, func); // 8 : 8 seconds
-    EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
+    EXPECT_EQ(static_cast<int>(ret.errorCode), TraceErrorCode::SUCCESS);
     EXPECT_GE(ret.outputFiles.size(), 2); // 2 : 2 files
     GTEST_LOG_(INFO) << "interface return file size :" << ret.fileSize;
     for (auto& file : ret.outputFiles) {

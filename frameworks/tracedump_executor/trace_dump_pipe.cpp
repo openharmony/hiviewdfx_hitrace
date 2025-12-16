@@ -90,7 +90,7 @@ void HitraceDumpPipe::ClearTraceDumpPipe()
 void HitraceDumpPipe::InitPipeFd()
 {
     if (isParent_) {
-        taskSubmitFd_ = UniqueFd(open(TRACE_TASK_SUBMIT_PIPE, O_WRONLY));
+        taskSubmitFd_ = UniqueFd(open(TRACE_TASK_SUBMIT_PIPE, O_RDWR | O_NONBLOCK));
         if (taskSubmitFd_ < 0) {
             HILOG_ERROR(LOG_CORE, "parent open %{public}s failed, errno(%{public}d)",
                 TRACE_TASK_SUBMIT_PIPE, errno);
