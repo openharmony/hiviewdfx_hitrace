@@ -111,7 +111,7 @@ std::vector<int> DynamicBuffer::CalculateBufferSize()
 {
     std::vector<int> result;
     auto allCpuFrequencies = CalculateTraceLoad();
-    if (allCpuFrequencies.size() != cpuNums_) {
+    if (static_cast<int>(allCpuFrequencies.size()) != cpuNums_) {
         return result;
     }
     if (maxAverage_ <= LOW_THRESHOLD) {
