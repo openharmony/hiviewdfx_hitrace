@@ -46,7 +46,10 @@ group("hitrace_unittest") {
     deps += [ "unittest/common/napi:unittest" ]
   }
   if (!use_clang_coverage) {
-    deps += [ "unittest/rust/hitracechain:rust_hitracechain_test" ]
+    deps += [
+      "unittest/rust/hitrace_meter:rust_meter_test",
+      "unittest/rust/hitracechain:rust_hitracechain_test",
+    ]
   }
 }
 
