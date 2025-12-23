@@ -285,20 +285,22 @@ static void UpdateSysParamTags()
         return;
     }
 
-    {
-        std::unique_lock<std::mutex> lock(g_tagsChangeMutex);
-        int changed = 0;
-        const char* paramValue = CachedParameterGetChanged(g_cachedHandle, &changed);
-        if (UNEXPECTANTLY(changed == 1) && paramValue != nullptr) {
-            uint64_t tags = 0;
-            if (!OHOS::HiviewDFX::Hitrace::StringToUint64(paramValue, tags)) {
-                return;
-            }
-
+    int changed = 0;
+    const char* paramValue = CachedParameterGetChanged(g_cachedHandle, &changed);
+    if (UNEXPECTANTLY(changed == 1) && paramValue != nullptr) {
+        uint64_t tags = 0;
+        if (!OHOS::HiviewDFX::Hitrace::StringToUint64(paramValue, tags)) {
+            return;
+        }
+        uint64_t targetTags = (tags | HITRACE_TAG_ALWAYS) & HITRACE_TAG_VALID_MASK;
+        uint64_t currentTags = g_tagsProperty.load();
+        if (currentTags != targetTags) {
             uint64_t oldTags = g_tagsProperty.load() | g_appTag.load();
-            g_tagsProperty.store((tags | HITRACE_TAG_ALWAYS) & HITRACE_TAG_VALID_MASK);
-            uint64_t newTags = g_tagsProperty.load() | g_appTag.load();
-            HandleAppTagChange(oldTags, newTags);
+            bool exchanged = g_tagsProperty.compare_exchange_strong(currentTags, targetTags);
+            if (exchanged) {
+                uint64_t newTags = g_tagsProperty.load() | g_appTag.load();
+                HandleAppTagChange(oldTags, newTags);
+            }
         }
     }
     int appPidChanged = 0;
