@@ -90,7 +90,6 @@ void HitraceMeterFfiTest::TearDown(void)
     ASSERT_TRUE(CleanTrace()) << "TearDown: Cleaning trace failed.";
 }
 
-
 /**
  * @tc.name: HitraceFfiTest01
  * @tc.desc: Testing FfiOHOSHiTraceStartAsyncTrace and FfiOHOSHiTraceFinishAsyncTrace
@@ -118,7 +117,6 @@ HWTEST_F(HitraceMeterFfiTest, HitraceFfiTest01, TestSize.Level1)
 
     GTEST_LOG_(INFO) << "HitraceFfiTest01: end.";
 }
-
 
 /**
  * @tc.name: HitraceFfiTest02
