@@ -34,6 +34,8 @@ constexpr int32_t HITRACE_WRITE_FILE_ERROR = -2;
 
 int32_t SetFilterAppName(const std::string& app);
 
+int32_t SetFilterAppName(const std::vector<std::string>& apps);
+
 int32_t AddFilterPid(const pid_t pid);
 
 int32_t AddFilterPids(const std::vector<std::string>& pids);

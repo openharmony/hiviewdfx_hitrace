@@ -123,6 +123,23 @@ int32_t SetFilterAppName(const std::string& app)
     return ret ? HITRACE_NO_ERROR : HITRACE_SET_PARAM_ERROR;
 }
 
+int32_t SetFilterAppName(const std::vector<std::string>& apps)
+{
+    auto appsSize = apps.size();
+    constexpr auto maxAppNameLen = 10;
+    if (appsSize > maxAppNameLen) {
+        return HITRACE_SET_PARAM_ERROR;
+    }
+    std::string appNames;
+    for (size_t i = 0; i < appsSize; i++) {
+        appNames.append(apps[i]);
+        if (i != apps.size() - 1) {
+            appNames.append("\t");
+        }
+    }
+    return SetFilterAppName(appNames);
+}
+
 int32_t AddFilterPid(const pid_t pid)
 {
     std::vector<std::string> vec = { std::to_string(pid) };
@@ -176,8 +193,17 @@ void FilterAppTrace(const char* app, pid_t pid)
     }
     HILOG_INFO(LOG_CORE, "FilterAppTrace %{public}s %{public}d", app, pid);
     std::string paramApp = OHOS::system::GetParameter(TELEMETRY_APP_PARAM, "");
-    if (paramApp == app) {
+    auto pos = paramApp.find(app);
+    while (pos != std::string::npos) {
+        size_t left = pos;
+        size_t right = pos + strlen(app);
+        if ((left > 0 && paramApp.at(left - 1) != '\t') ||
+            (right < paramApp.size() && paramApp.at(right) != '\t')) {
+            pos = paramApp.find(app, right);
+            continue;
+        }
         AddFilterPid(pid);
+        return;
     }
 }
 
