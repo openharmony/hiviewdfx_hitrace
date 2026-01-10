@@ -18,6 +18,8 @@
 #include "parameters.h"
 #include "common_utils.h"
 #include "hitrace_option/hitrace_option.h"
+
+#include <cstring>
 #include <gtest/gtest.h>
 
 using namespace testing::ext;
@@ -146,6 +148,20 @@ HWTEST_F(HitraceOptionTest, SetTelemetryAppNameTest_001, TestSize.Level1)
     EXPECT_EQ(OHOS::system::GetParameter(TELEMETRY_APP_PARAM, ""), "com.test.app");
 }
 
+HWTEST_F(HitraceOptionTest, SetTelemetryAppNameTest_002, TestSize.Level1)
+{
+    constexpr auto testApp1 = "com.test.app1";
+    constexpr auto testApp2 = "2com.test.app2";
+    std::vector<std::string> appNames({testApp1, testApp2});
+    EXPECT_EQ(SetFilterAppName(appNames), HITRACE_NO_ERROR);
+    std::vector<std::string> appNames2(10, testApp2);
+    EXPECT_EQ(SetFilterAppName(appNames2), HITRACE_SET_PARAM_ERROR);
+    appNames2.emplace_back(testApp2);
+    EXPECT_EQ(SetFilterAppName(appNames2), HITRACE_SET_PARAM_ERROR);
+    EXPECT_EQ(OHOS::system::GetParameter(TELEMETRY_APP_PARAM, ""),
+        std::string(testApp1) + "\t" + std::string(testApp2));
+}
+
 HWTEST_F(HitraceOptionTest, AddFilterPid_001, TestSize.Level1)
 {
     WriteStrToFile(SET_EVENT_PID, "");
@@ -191,6 +207,25 @@ HWTEST_F(HitraceOptionTest, FilterAppTrace_001, TestSize.Level1)
     FilterAppTrace("com.test.app", 1);
     EXPECT_TRUE(ContainsPid(SET_EVENT_PID, 1));
     EXPECT_TRUE(ContainsPid(DEBUG_SET_EVENT_PID, 1));
+}
+
+HWTEST_F(HitraceOptionTest, FilterAppTrace_002, TestSize.Level1)
+{
+    constexpr auto testApp1 = "com.test.app1";
+    constexpr auto testApp2 = "2com.test.app";
+    std::vector<std::string> appNames({testApp1, testApp2});
+    SetFilterAppName(appNames);
+    EXPECT_EQ(OHOS::system::GetParameter(TELEMETRY_APP_PARAM, ""),
+        std::string(testApp1) + "\t" + std::string(testApp2));
+    WriteStrToFile(SET_EVENT_PID, "");
+    FilterAppTrace("com.test.app", 1);
+    EXPECT_FALSE(ContainsPid(SET_EVENT_PID, 1));
+    constexpr auto testApp3 = "com.test.app";
+    appNames.emplace_back(testApp3);
+    WriteStrToFile(SET_EVENT_PID, "");
+    SetFilterAppName(appNames);
+    FilterAppTrace("com.test.app", 1);
+    EXPECT_TRUE(ContainsPid(SET_EVENT_PID, 1));
 }
 
 HWTEST_F(HitraceOptionTest, AddNoFilterEvents001, TestSize.Level1)

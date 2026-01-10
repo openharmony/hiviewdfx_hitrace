@@ -73,6 +73,7 @@
         "HitraceMeterFmtScopedEx::HitraceMeterFmtScopedEx(HiTraceOutputLevel, unsigned long long, char const*, char const*, ...)";
         "HitraceMeterFmtScopedEx::~HitraceMeterFmtScopedEx()";
         "OHOS::HiviewDFX::Hitrace::SetFilterAppName(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+        "OHOS::HiviewDFX::Hitrace::SetFilterAppName(std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&)";
         "OHOS::HiviewDFX::Hitrace::AddFilterPid(int)";
         "OHOS::HiviewDFX::Hitrace::ClearFilterPid()";
         "OHOS::HiviewDFX::Hitrace::AddFilterPids(std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&)";
