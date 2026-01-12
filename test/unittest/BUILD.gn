@@ -214,16 +214,16 @@ ohos_unittest("HitraceDumpTest") {
     "$hitrace_common_path",
     "$hitrace_cmd_path/include",
     "$hitrace_frameworks_path/include",
-    "$hitrace_frameworks_path/trace_dump_executor",
-    "$hitrace_frameworks_path/trace_source",
+    "$hitrace_frameworks_path/tracedump_executor",
+    "$hitrace_frameworks_path/trace_factory",
     "$hitrace_interfaces_path/native/innerkits/include",
     "$hitrace_path/test/utils",
     "$hitrace_utils_path",
   ]
 
   deps = [
-    "$hitrace_frameworks_path/trace_dump_executor:trace_dump_executor",
-    "$hitrace_frameworks_path/trace_source:trace_source",
+    "$hitrace_frameworks_path/trace_factory:trace_source_factory",
+    "$hitrace_frameworks_path/tracedump_executor:tracedump_executor",
     "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
     "$hitrace_interfaces_path/native/innerkits:libhitrace_option",
     "$hitrace_path/test/utils:hitrace_test_utils",
@@ -249,8 +249,11 @@ ohos_unittest("HitraceDumpTest") {
 
 async_dump_test_sources = [
   "$hitrace_frameworks_path/native/dynamic_buffer.cpp",
-  "$hitrace_frameworks_path/trace_dump_executor/trace_dump_executor.cpp",
-  "$hitrace_frameworks_path/trace_dump_executor/trace_dump_pipe.cpp",
+  "$hitrace_frameworks_path/tracedump_executor/trace_dump_executor.cpp",
+  "$hitrace_frameworks_path/tracedump_executor/trace_dump_pipe.cpp",
+  "$hitrace_frameworks_path/tracedump_executor/trace_dump_state.cpp",
+  "$hitrace_frameworks_path/tracedump_executor/trace_dump_strategy.cpp",
+  "$hitrace_frameworks_path/tracedump_executor/trace_strategy_factory.cpp",
   "$hitrace_interfaces_path/native/innerkits/src/hitrace_dump.cpp",
   "$hitrace_interfaces_path/native/innerkits/src/hitrace_util.cpp",
   "$hitrace_utils_path/file_ageing_utils.cpp",
@@ -260,14 +263,14 @@ async_dump_test_include_dirs = [
   "$hitrace_common_path",
   "$hitrace_cmd_path/include",
   "$hitrace_frameworks_path/include",
-  "$hitrace_frameworks_path/trace_dump_executor",
-  "$hitrace_frameworks_path/trace_source",
+  "$hitrace_frameworks_path/tracedump_executor",
+  "$hitrace_frameworks_path/trace_factory",
   "$hitrace_interfaces_path/native/innerkits/include",
   "$hitrace_utils_path",
 ]
 
 async_dump_test_deps = [
-  "$hitrace_frameworks_path/trace_source:trace_source",
+  "$hitrace_frameworks_path/trace_factory:trace_source_factory",
   "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
   "$hitrace_interfaces_path/native/innerkits:libhitrace_option",
   "$hitrace_utils_path:hitrace_common_utils",
@@ -454,9 +457,7 @@ ohos_unittest("HitraceOptionTest") {
     "hitrace_option/hitrace_option_test.cpp",
   ]
 
-  deps = [
-    "$hitrace_utils_path:hitrace_common_utils",
-  ]
+  deps = [ "$hitrace_utils_path:hitrace_common_utils" ]
 
   external_deps = [
     "googletest:gtest_main",
@@ -511,77 +512,6 @@ ohos_unittest("HitraceCMDTest") {
 
   if (device_company != "qemu" && hitrace_support_executable_file) {
     external_deps += [ "hiview:libucollection_client" ]
-  }
-}
-
-ohos_unittest("HitraceSourceTest") {
-  module_out_path = module_output_path
-  configs = [ "$hitrace_common_path/build:coverage_flags" ]
-
-  include_dirs = [
-    "$hitrace_common_path",
-    "$hitrace_frameworks_path/trace_source",
-    "$hitrace_interfaces_path/native/innerkits/include",
-    "$hitrace_utils_path",
-  ]
-
-  sources = [ "trace_source/hitrace_source_test.cpp" ]
-
-  deps = [
-    "$hitrace_frameworks_path/trace_source:trace_source",
-    "$hitrace_interfaces_path/native/innerkits:hitrace_dump",
-    "$hitrace_utils_path:hitrace_common_utils",
-    "$hitrace_utils_path:hitrace_json_parser",
-  ]
-
-  external_deps = [
-    "c_utils:utils",
-    "googletest:gtest_main",
-  ]
-  if (defined(ohos_lite)) {
-    external_deps += [ "hilog_lite:hilog_lite" ]
-  } else {
-    external_deps += [ "hilog:libhilog" ]
-  }
-}
-
-ohos_unittest("HitraceDumpExecutorTest") {
-  module_out_path = module_output_path
-
-  cflags = [ "-DHITRACE_UNITTEST" ]
-  configs = [ "$hitrace_common_path/build:coverage_flags" ]
-
-  include_dirs = [
-    "$hitrace_common_path",
-    "$hitrace_frameworks_path/trace_dump_executor",
-    "$hitrace_frameworks_path/trace_source",
-    "$hitrace_interfaces_path/native/innerkits/include",
-    "$hitrace_utils_path",
-  ]
-
-  sources = [
-    "$hitrace_frameworks_path/trace_dump_executor/trace_dump_executor.cpp",
-    "$hitrace_frameworks_path/trace_dump_executor/trace_dump_pipe.cpp",
-    "$hitrace_utils_path/file_ageing_utils.cpp",
-    "trace_dump_executor/trace_dump_executor_test.cpp",
-  ]
-
-  deps = [
-    "$hitrace_frameworks_path/trace_source:trace_source",
-    "$hitrace_interfaces_path/native/innerkits:hitrace_dump",
-    "$hitrace_utils_path:hitrace_common_utils",
-    "$hitrace_utils_path:hitrace_file_utils",
-  ]
-
-  external_deps = [
-    "bounds_checking_function:libsec_shared",
-    "c_utils:utils",
-    "googletest:gtest_main",
-  ]
-  if (defined(ohos_lite)) {
-    external_deps += [ "hilog_lite:hilog_lite" ]
-  } else {
-    external_deps += [ "hilog:libhilog" ]
   }
 }
 
@@ -692,6 +622,7 @@ ohos_unittest("HitraceDumpExecutorNewTest") {
     "$hitrace_utils_path/file_ageing_utils.cpp",
     "tracedump_executor/trace_dump_executor_test.cpp",
   ]
+  
 
   deps = [
     "$hitrace_frameworks_path/trace_factory:trace_source_factory",

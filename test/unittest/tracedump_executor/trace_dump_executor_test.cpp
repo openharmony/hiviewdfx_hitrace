@@ -19,8 +19,11 @@
 #include <thread>
 #include <unistd.h>
 
+#include "common_utils.h"
 #include "hitrace_dump.h"
+#define private public
 #include "trace_dump_executor.h"
+#undef private
 #include "trace_dump_pipe.h"
 
 using namespace testing::ext;
@@ -32,6 +35,8 @@ namespace Hitrace {
 namespace {
 static const char* const TEST_TRACE_TEMP_FILE = "/data/local/tmp/test_trace_file";
 constexpr int BYTE_PER_MB = 1024 * 1024;
+constexpr int TIMEOUT_5S = 5;
+constexpr uint64_t SYNC_RETURN_TIMEOUT_NS = 5000000000; // 5s
 }
 
 class TraceDumpExecutorTest : public testing::Test {
@@ -616,6 +621,214 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpTaskTest004, TestSize.Level2)
     traceDumpExecutor.ClearTraceDumpTask();
     EXPECT_TRUE(traceDumpExecutor.IsTraceDumpTaskEmpty());
     EXPECT_EQ(traceDumpExecutor.GetTraceDumpTaskCount(), 0);
+}
+
+/**
+ * @tc.name: TraceDumpTaskTest005
+ * @tc.desc: Test DoProcessTraceDumpTask async return when task status is WRITE_DONE
+ * @tc.type: FUNC
+ */
+HWTEST_F(TraceDumpExecutorTest, TraceDumpTaskTest005, TestSize.Level2)
+{
+    HitraceDumpPipe::ClearTraceDumpPipe();
+    ASSERT_TRUE(HitraceDumpPipe::InitTraceDumpPipe());
+    std::thread childThread([]() {
+        auto dumpPipe = std::make_shared<HitraceDumpPipe>(false);
+        TraceDumpTask task = {
+            .time = GetCurBootTime(),
+            .hasSyncReturn = true,
+            .writeRetry = 0,
+            .code = TraceErrorCode::UNSET,
+            .status = TraceDumpStatus::WRITE_DONE
+        };
+        std::vector<TraceDumpTask> completedTasks;
+        TraceDumpExecutor::GetInstance().DoProcessTraceDumpTask(dumpPipe, task, completedTasks);
+        EXPECT_EQ(completedTasks.size(), 1);
+        GTEST_LOG_(INFO) << "TraceDumpTaskTest005: child thread exit.";
+    });
+    auto dumpPipe = std::make_shared<HitraceDumpPipe>(true);
+    TraceDumpTask task;
+    EXPECT_TRUE(dumpPipe->ReadAsyncDumpRet(TIMEOUT_5S, task));
+    childThread.join();
+    HitraceDumpPipe::ClearTraceDumpPipe();
+}
+
+/**
+ * @tc.name: TraceDumpTaskTest006
+ * @tc.desc: Test DoProcessTraceDumpTask sync return when task status is WRITE_DONE
+ * @tc.type: FUNC
+ */
+HWTEST_F(TraceDumpExecutorTest, TraceDumpTaskTest006, TestSize.Level2)
+{
+    HitraceDumpPipe::ClearTraceDumpPipe();
+    ASSERT_TRUE(HitraceDumpPipe::InitTraceDumpPipe());
+    std::thread childThread([]() {
+        auto dumpPipe = std::make_shared<HitraceDumpPipe>(false);
+        TraceDumpTask task = {
+            .time = GetCurBootTime(),
+            .hasSyncReturn = false,
+            .writeRetry = 0,
+            .code = TraceErrorCode::UNSET,
+            .status = TraceDumpStatus::WRITE_DONE
+        };
+        std::vector<TraceDumpTask> completedTasks;
+        TraceDumpExecutor::GetInstance().DoProcessTraceDumpTask(dumpPipe, task, completedTasks);
+        EXPECT_EQ(completedTasks.size(), 1);
+        EXPECT_TRUE(task.hasSyncReturn);
+
+        task.time -= SYNC_RETURN_TIMEOUT_NS;
+        task.hasSyncReturn = false;
+        completedTasks.clear();
+        TraceDumpExecutor::GetInstance().DoProcessTraceDumpTask(dumpPipe, task, completedTasks);
+        EXPECT_EQ(completedTasks.size(), 0);
+        EXPECT_TRUE(task.hasSyncReturn);
+        GTEST_LOG_(INFO) << "TraceDumpTaskTest006: child thread exit.";
+    });
+    auto dumpPipe = std::make_shared<HitraceDumpPipe>(true);
+    TraceDumpTask task;
+    EXPECT_TRUE(dumpPipe->ReadSyncDumpRet(TIMEOUT_5S, task));
+    EXPECT_TRUE(dumpPipe->ReadSyncDumpRet(TIMEOUT_5S, task));
+    childThread.join();
+    HitraceDumpPipe::ClearTraceDumpPipe();
+}
+
+/**
+ * @tc.name: TraceDumpTaskTest007
+ * @tc.desc: Test DoProcessTraceDumpTask async return when task status is READ_DONE
+ * @tc.type: FUNC
+ */
+HWTEST_F(TraceDumpExecutorTest, TraceDumpTaskTest007, TestSize.Level2)
+{
+    HitraceDumpPipe::ClearTraceDumpPipe();
+    ASSERT_TRUE(HitraceDumpPipe::InitTraceDumpPipe());
+    std::thread childThread([]() {
+        auto dumpPipe = std::make_shared<HitraceDumpPipe>(false);
+        TraceDumpTask task = {
+            .time = GetCurBootTime(),
+            .hasSyncReturn = true,
+            .writeRetry = 0,
+            .code = TraceErrorCode::UNSET,
+            .status = TraceDumpStatus::READ_DONE
+        };
+        std::vector<TraceDumpTask> completedTasks;
+        TraceDumpExecutor::GetInstance().DoProcessTraceDumpTask(dumpPipe, task, completedTasks);
+        EXPECT_EQ(completedTasks.size(), 1);
+        GTEST_LOG_(INFO) << "TraceDumpTaskTest007: child thread exit.";
+    });
+    auto dumpPipe = std::make_shared<HitraceDumpPipe>(true);
+    TraceDumpTask task;
+    EXPECT_TRUE(dumpPipe->ReadAsyncDumpRet(1000, task)); // 1000 : timeout
+    EXPECT_EQ(task.status, TraceDumpStatus::WRITE_DONE);
+    childThread.join();
+    HitraceDumpPipe::ClearTraceDumpPipe();
+}
+
+/**
+ * @tc.name: TraceDumpTaskTest008
+ * @tc.desc: Test DoProcessTraceDumpTask sync return when task status is READ_DONE
+ * @tc.type: FUNC
+ */
+HWTEST_F(TraceDumpExecutorTest, TraceDumpTaskTest008, TestSize.Level2)
+{
+    HitraceDumpPipe::ClearTraceDumpPipe();
+    ASSERT_TRUE(HitraceDumpPipe::InitTraceDumpPipe());
+    std::thread childThread([]() {
+        auto dumpPipe = std::make_shared<HitraceDumpPipe>(false);
+        TraceDumpTask task = {
+            .time = GetCurBootTime(),
+            .hasSyncReturn = false,
+            .writeRetry = 0,
+            .code = TraceErrorCode::UNSET,
+            .status = TraceDumpStatus::READ_DONE
+        };
+        std::vector<TraceDumpTask> completedTasks;
+        TraceDumpExecutor::GetInstance().DoProcessTraceDumpTask(dumpPipe, task, completedTasks);
+        EXPECT_EQ(completedTasks.size(), 1);
+        GTEST_LOG_(INFO) << "TraceDumpTaskTest008: child thread exit.";
+    });
+    auto dumpPipe = std::make_shared<HitraceDumpPipe>(true);
+    TraceDumpTask task;
+    EXPECT_TRUE(dumpPipe->ReadSyncDumpRet(TIMEOUT_5S, task));
+    EXPECT_EQ(task.status, TraceDumpStatus::WRITE_DONE);
+    childThread.join();
+    HitraceDumpPipe::ClearTraceDumpPipe();
+}
+
+/**
+ * @tc.name: TraceDumpTaskTest009
+ * @tc.desc: Test DoProcessTraceDumpTask retry 10 times
+ * @tc.type: FUNC
+ */
+HWTEST_F(TraceDumpExecutorTest, TraceDumpTaskTest009, TestSize.Level2)
+{
+    HitraceDumpPipe::ClearTraceDumpPipe();
+    ASSERT_TRUE(HitraceDumpPipe::InitTraceDumpPipe());
+    std::thread childThread([]() {
+        auto dumpPipe = std::make_shared<HitraceDumpPipe>(false);
+        TraceDumpTask task = {
+            .time = GetCurBootTime(),
+            .hasSyncReturn = false,
+            .writeRetry = 0,
+            .code = TraceErrorCode::UNSET,
+            .status = TraceDumpStatus::START
+        };
+        std::vector<TraceDumpTask> completedTasks;
+        TraceDumpExecutor::GetInstance().DoProcessTraceDumpTask(dumpPipe, task, completedTasks);
+        EXPECT_EQ(completedTasks.size(), 0);
+        task.writeRetry = 10; // retry 10 times
+        TraceDumpExecutor::GetInstance().DoProcessTraceDumpTask(dumpPipe, task, completedTasks);
+        EXPECT_EQ(completedTasks.size(), 1);
+        GTEST_LOG_(INFO) << "TraceDumpTaskTest009: child thread exit.";
+    });
+    auto dumpPipe = std::make_shared<HitraceDumpPipe>(true);
+    TraceDumpTask task;
+    EXPECT_FALSE(dumpPipe->ReadSyncDumpRet(TIMEOUT_5S, task));
+    childThread.join();
+    HitraceDumpPipe::ClearTraceDumpPipe();
+}
+
+/**
+ * @tc.name: TraceDumpTaskTest010
+ * @tc.desc: Test DoProcessTraceDumpTask sync return timeout
+ * @tc.type: FUNC
+ */
+HWTEST_F(TraceDumpExecutorTest, TraceDumpTaskTest010, TestSize.Level2)
+{
+    HitraceDumpPipe::ClearTraceDumpPipe();
+    ASSERT_TRUE(HitraceDumpPipe::InitTraceDumpPipe());
+    std::thread childThread([]() {
+        auto dumpPipe = std::make_shared<HitraceDumpPipe>(false);
+        TraceDumpTask task = {
+            .time = GetCurBootTime(),
+            .hasSyncReturn = true,
+            .writeRetry = 0,
+            .code = TraceErrorCode::SUCCESS,
+            .status = TraceDumpStatus::READ_DONE
+        };
+        std::vector<TraceDumpTask> completedTasks;
+        TraceDumpExecutor::GetInstance().DoProcessTraceDumpTask(dumpPipe, task, completedTasks);
+        EXPECT_EQ(completedTasks.size(), 0);
+        EXPECT_TRUE(task.hasSyncReturn);
+        EXPECT_EQ(task.status, TraceDumpStatus::READ_DONE);
+
+        task.hasSyncReturn = false;
+        TraceDumpExecutor::GetInstance().DoProcessTraceDumpTask(dumpPipe, task, completedTasks);
+        EXPECT_EQ(completedTasks.size(), 0);
+        EXPECT_FALSE(task.hasSyncReturn);
+        EXPECT_EQ(task.status, TraceDumpStatus::READ_DONE);
+
+        task.time -=  - SYNC_RETURN_TIMEOUT_NS;
+        TraceDumpExecutor::GetInstance().DoProcessTraceDumpTask(dumpPipe, task, completedTasks);
+        EXPECT_EQ(completedTasks.size(), 0);
+        EXPECT_TRUE(task.hasSyncReturn);
+        EXPECT_EQ(task.status, TraceDumpStatus::WAIT_WRITE);
+        GTEST_LOG_(INFO) << "TraceDumpTaskTest010: child thread exit.";
+    });
+    auto dumpPipe = std::make_shared<HitraceDumpPipe>(true);
+    TraceDumpTask task;
+    EXPECT_TRUE(dumpPipe->ReadSyncDumpRet(TIMEOUT_5S, task));
+    childThread.join();
+    HitraceDumpPipe::ClearTraceDumpPipe();
 }
 } // namespace
 } // namespace Hitrace

@@ -33,20 +33,20 @@ public:
     static void ClearTraceDumpPipe();
 
     // parent side
-    bool SubmitTraceDumpTask(const TraceDumpTask& task);
+    bool SubmitTraceDumpTask(TraceDumpTask& task);
     bool ReadSyncDumpRet(const int timeout, TraceDumpTask& task);
     bool ReadAsyncDumpRet(const int timeout, TraceDumpTask& task);
 
     // child side
     bool ReadTraceTask(const int timeoutMs, TraceDumpTask& task);
-    bool WriteSyncReturn(const TraceDumpTask& task);
-    bool WriteAsyncReturn(const TraceDumpTask& task);
+    bool WriteSyncReturn(TraceDumpTask& task);
+    bool WriteAsyncReturn(TraceDumpTask& task);
 
 private:
     void InitPipeFd();
     bool CheckProcessRole(bool shouldBeParent, const char* operation) const;
     bool CheckFdValidity(const int fd, const char* operation, const char* pipeName) const;
-    bool WriteToPipe(const int fd, const TraceDumpTask& task, const char* operation);
+    bool WriteToPipe(const int fd, TraceDumpTask& task, const char* operation);
     bool ReadFromPipe(const int fd, TraceDumpTask& task, const int timeoutMs, const char* operation);
     bool AddFdToEpoll(const int fd);
 
@@ -54,7 +54,7 @@ private:
     UniqueFd taskSubmitFd_;
     UniqueFd syncRetFd_;
     UniqueFd asyncRetFd_;
-    int epollFd_ = -1;
+    UniqueFd epollFd_;
     bool epollInitialized_ = false;
 };
 } // namespace Hitrace

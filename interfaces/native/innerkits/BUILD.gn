@@ -123,8 +123,8 @@ ohos_shared_library("hitrace_dump") {
     "$hitrace_common_path",
     "$hitrace_cmd_path/include",
     "$hitrace_frameworks_path/include",
-    "$hitrace_frameworks_path/trace_dump_executor",
-    "$hitrace_frameworks_path/trace_source",
+    "$hitrace_frameworks_path/tracedump_executor",
+    "$hitrace_frameworks_path/trace_factory",
     "$hitrace_utils_path",
   ]
   public_configs = [ ":hitrace_dump_config" ]
@@ -140,7 +140,7 @@ ohos_shared_library("hitrace_dump") {
     ":hitrace_meter",
     ":libhitrace_option",
     "$hitrace_config_path:hitrace_tags",
-    "$hitrace_frameworks_path/trace_dump_executor:trace_dump_executor",
+    "$hitrace_frameworks_path/tracedump_executor:tracedump_executor",
     "$hitrace_utils_path:hitrace_common_utils",
     "$hitrace_utils_path:hitrace_file_utils",
     "$hitrace_utils_path:hitrace_json_parser",

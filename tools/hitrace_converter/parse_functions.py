@@ -125,6 +125,7 @@ def parse_sched_switch_hm_new(data, one_event):
     restricted_mask = 1
     expel_mask = (1 << 3) - 1
     cgid_mask = (1 << 5) - 1
+    eff_flags_mask = (1 << 7) - 1
 
     # 按位域偏移量解析
     load = (remaining >> 0) & load_mask      # 0-9 bit
@@ -132,10 +133,11 @@ def parse_sched_switch_hm_new(data, one_event):
     restricted = (remaining >> 12) & restricted_mask # 12 bit
     expel = (remaining >> 13) & expel_mask     # 13-15 bit
     cgid = (remaining >> 16) & cgid_mask      # 16-20 bit
+    eff_flags = (remaining >> 21) & eff_flags_mask # 21-27 bit
 
     # The load has been moved one bit to right before storing. Hence, it should be moved one bit to left.
     next_info = affinity + ',' + str(load << 1) + ',' + str(group) + ',' + str(restricted) + ',' + str(expel) + \
-        ',' + str(cgid)
+        ',' + str(cgid) + ',' + str(eff_flags)
 
     pstate_map = {0x0: 'R', 0x1: 'S', 0x2: 'D', 0x10: 'X', 0x100: 'R+'}
     prev_state = pstate_map.get(pstate, '?')
@@ -172,6 +174,7 @@ def parse_sched_switch_hm_lite(data, one_event):
     restricted_mask = 1
     expel_mask = (1 << 3) - 1
     cgid_mask = (1 << 5) - 1
+    eff_flags_mask = (1 << 7) - 1
 
     # 按位域偏移量解析
     load = (remaining >> 0) & load_mask      # 0-9 bit
@@ -179,10 +182,11 @@ def parse_sched_switch_hm_lite(data, one_event):
     restricted = (remaining >> 12) & restricted_mask # 12 bit
     expel = (remaining >> 13) & expel_mask     # 13-15 bit
     cgid = (remaining >> 16) & cgid_mask      # 16-20 bit
+    eff_flags = (remaining >> 21) & eff_flags_mask # 21-27 bit
 
     # The load has been moved one bit to right before storing. Hence, it should be moved one bit to left.
     next_info = affinity + ',' + str(load << 1) + ',' + str(group) + ',' + str(restricted) + ',' + str(expel) + \
-        ',' + str(cgid)
+        ',' + str(cgid) + ',' + str(eff_flags)
 
     pstate_map = {0x0: 'R', 0x1: 'S', 0x2: 'D', 0x10: 'X', 0x100: 'R+'}
     prev_state = pstate_map.get(pstate, '?')

@@ -31,7 +31,6 @@ group("hitrace_unittest") {
     "unittest:HitraceChainNDKTest",
     "unittest:HitraceCppTest",
     "unittest:HitraceDumpExecutorNewTest",
-    "unittest:HitraceDumpExecutorTest",
     "unittest:HitraceDumpTest",
     "unittest:HitraceEventTest",
     "unittest:HitraceFactoryTest",
@@ -39,7 +38,6 @@ group("hitrace_unittest") {
     "unittest:HitraceMeterNDKTest",
     "unittest:HitraceMeterTest",
     "unittest:HitraceOptionTest",
-    "unittest:HitraceSourceTest",
     "unittest:HitraceUtilsTest",
   ]
   if (support_jsapi) {
