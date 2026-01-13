@@ -422,6 +422,27 @@ def parse_block_rq_issue_hm(data, one_event):
         % (dev >> 20, dev & 0xfffff, rwbs, bytes_num, cmd, sector, nr_sector, comm)
 
 
+def parse_decrypt_endio_entry_hm(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    sector = parse_int_field(one_event, "sector", False)
+    nr_sector = parse_int_field(one_event, "nr_sector", False)
+    old_dev = parse_int_field(one_event, "old_dev", False)
+
+    return "%d,%d %d + %u" \
+        % (dev >> 20, dev & 0xfffff, sector, nr_sector)
+        
+        
+def parse_decrypt_endio_exit_hm(data, one_event):
+    dev = parse_int_field(one_event, "dev", False)
+    sector = parse_int_field(one_event, "sector", False)
+    nr_sector = parse_int_field(one_event, "nr_sector", False)
+    old_dev = parse_int_field(one_event, "old_dev", False)
+    result = parse_int_field(one_event, "result", False)
+
+    return "%d,%d %d + %u result= %d" \
+        % (dev >> 20, dev & 0xfffff, sector, nr_sector, result)
+
+
 def parse_block_rq_issue_or_insert(data, one_event):
     dev = parse_int_field(one_event, "dev", False)
     sector = parse_int_field(one_event, "sector", False)
@@ -1336,6 +1357,8 @@ PRINT_FMT_EXT4_SYNC_FILE_EXIT = '"dev %d,%d ino %lu ret %d", ((unsigned int) ((R
 PRINT_FMT_BLOCK_BIO_REMAP = '"%d,%d %s %llu + %u <- (%d,%d) %llu", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->rwbs, (unsigned long long)REC->sector, REC->nr_sector, ((unsigned int) ((REC->old_dev) >> 20)), ((unsigned int) ((REC->old_dev) & ((1U << 20) - 1))), (unsigned long long)REC->old_sector'
 PRINT_FMT_BLOCK_BIO_REMAP_NEW = '"%d,%d %llu + %u <- (%d,%d) %llu", ((unsigned int) ((REC->dev) >> 20U)), ((unsigned int) ((REC->dev) & ((1U << 20U) - 1U))), (unsigned long long)REC->sector, REC->nr_sector, ((unsigned int) ((REC->old_dev) >> 20U)), ((unsigned int) ((REC->old_dev) & ((1U << 20U) - 1U))), (unsigned long long)REC->old_sector'
 PRINT_FMT_BLOCK_RQ_ISSUE_HM = '"%d,%d %s %u (%s) %llu + %u [%s]", ((unsigned int) ((REC->dev) >> 20U)), ((unsigned int) ((REC->dev) & ((1U << 20U) - 1U))), REC->rwbs, REC->bytes, REC->cmd, (unsigned long long)REC->sector, REC->nr_sector, REC->comm'
+PRINT_FMT_DECRYPT_ENDIO_ENTRY_HM = '"%d,%d %llu + %u", ((unsigned int) ((REC->dev) >> 20U)), ((unsigned int) ((REC->dev) & ((1U << 20U) - 1U))), (unsigned long long)REC->sector, REC->nr_sector'
+PRINT_FMT_DECRYPT_ENDIO_EXIT_HM = '"%d,%d %llu + %u result= %d", ((unsigned int) ((REC->dev) >> 20U)), ((unsigned int) ((REC->dev) & ((1U << 20U) - 1U))), (unsigned long long)REC->sector, REC->nr_sector, REC->result'
 PRINT_FMT_BLOCK_RQ_ISSUE_OR_INSERT = '"%d,%d %s %u (%s) %llu + %u [%s]", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->rwbs, REC->bytes, __get_str(cmd), (unsigned long long)REC->sector, REC->nr_sector, REC->comm'
 PRINT_FMT_BLOCK_RQ_COMPLETE_HM = '"%d,%d %s (%s) %llu + %u [%d]", ((unsigned int) ((REC->dev) >> 20U)), ((unsigned int) ((REC->dev) & ((1U << 20U) - 1U))), REC->rwbs, REC->cmd, (unsigned long long)REC->sector, REC->nr_sector, REC->error'
 PRINT_FMT_BLOCK_RQ_COMPLETE = '"%d,%d %s (%s) %llu + %u [%d]", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), REC->rwbs, __get_str(cmd), (unsigned long long)REC->sector, REC->nr_sector, REC->error'
@@ -1454,6 +1477,8 @@ PRINT_FMT_EXT4_SYNC_FILE_EXIT: parse_ext4_sync_file_exit,
 PRINT_FMT_BLOCK_BIO_REMAP: parse_block_bio_remap,
 PRINT_FMT_BLOCK_BIO_REMAP_NEW: parse_block_bio_remap_new,
 PRINT_FMT_BLOCK_RQ_ISSUE_HM: parse_block_rq_issue_hm,
+PRINT_FMT_DECRYPT_ENDIO_ENTRY_HM: parse_decrypt_endio_entry_hm,
+PRINT_FMT_DECRYPT_ENDIO_EXIT_HM: parse_decrypt_endio_exit_hm,
 PRINT_FMT_BLOCK_RQ_ISSUE_OR_INSERT: parse_block_rq_issue_or_insert,
 PRINT_FMT_BLOCK_RQ_COMPLETE_HM: parse_block_rq_complete_hm,
 PRINT_FMT_BLOCK_RQ_COMPLETE: parse_block_rq_complete,
