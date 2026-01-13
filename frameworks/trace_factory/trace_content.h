@@ -16,10 +16,10 @@
 #ifndef TRACE_CONTENT_H
 #define TRACE_CONTENT_H
 
-#include <cinttypes>
 #include <string>
 
 #include "hitrace_define.h"
+#include "smart_fd.h"
 #include "trace_buffer_manager.h"
 
 namespace OHOS {
@@ -65,7 +65,7 @@ struct PageHeader {
 class ITraceContent {
 public:
     ITraceContent(const int fd, const std::string& tracefsPath, const std::string& traceFilePath, const bool ishm);
-    virtual ~ITraceContent();
+    virtual ~ITraceContent() = default;
     virtual bool WriteTraceContent() = 0;
     bool WriteTraceData(const uint8_t contentType);
     void DoWriteTraceData(const uint8_t* buffer, const int bytes, ssize_t& writeLen);
@@ -84,7 +84,7 @@ private:
 
 protected:
     int traceFileFd_ = -1;
-    int traceSourceFd_ = -1;
+    SmartFd traceSourceFd_;
     std::string tracefsPath_;
     std::string traceFilePath_;
     bool isHm_;

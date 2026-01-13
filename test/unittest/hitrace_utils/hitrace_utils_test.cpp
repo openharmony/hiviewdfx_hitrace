@@ -23,6 +23,7 @@
 
 #include "common_define.h"
 #include "common_utils.h"
+#include "smart_fd.h"
 #include "trace_file_utils.h"
 #include "trace_json_parser.h"
 
@@ -69,8 +70,7 @@ HWTEST_F(HitraceUtilsTest, CommonUtilsTest001, TestSize.Level2)
     // prepare a file
     std::string filePath = "/data/local/tmp/tmp.txt";
     if (access(filePath.c_str(), F_OK) != 0) {
-        int fd = open(filePath.c_str(), O_CREAT);
-        close(fd);
+        SmartFd(open(filePath.c_str(), O_CREAT));
     }
     ASSERT_TRUE(CanonicalizeSpecPath(filePath.c_str()) == filePath);
     filePath = "/data/local/tmp/tmp1.txt";

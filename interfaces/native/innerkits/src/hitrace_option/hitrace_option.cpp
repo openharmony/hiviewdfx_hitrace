@@ -22,6 +22,7 @@
 
 #include "hilog/log.h"
 #include "parameters.h"
+#include "smart_fd.h"
 
 namespace OHOS {
 namespace HiviewDFX {
@@ -43,8 +44,6 @@ static const char* SET_NO_FILTER_EVENT = "/sys/kernel/tracing/no_filter_events";
 static const char* DEBUG_SET_NO_FILTER_EVENT = "/sys/kernel/debug/tracing/no_filter_events";
 
 class FileLock {
-private:
-    int fd_ = -1;
 public:
     explicit FileLock(const std::string& filename, int flags)
     {
@@ -53,37 +52,36 @@ public:
             HILOG_ERROR(LOG_CORE, "FileLock: %{public}s realpath failed, errno%{public}d", filename.c_str(), errno);
             return;
         }
-        fd_ = open(canonicalPath, flags);
-        if (fd_ == -1) {
+        fd_ = SmartFd(open(canonicalPath, flags));
+        if (!fd_) {
             HILOG_ERROR(LOG_CORE, "FileLock: %{public}s open failed, errno%{public}d", filename.c_str(), errno);
             return;
         }
-
 #ifdef ENABLE_LOCK
-        if (flock(fd_, LOCK_EX) != 0) {
+        if (flock(fd_.GetFd(), LOCK_EX) != 0) {
             HILOG_ERROR(LOG_CORE, "FileLock: %{public}s lock failed.", filename.c_str());
-            close(fd_);
-            fd_ = -1;
+            fd_.Reset();
         }
-        HILOG_INFO(LOG_CORE, "FileLock: %{public}s lock succ, fd = %{public}d", filename.c_str(), fd_);
+        HILOG_INFO(LOG_CORE, "FileLock: %{public}s lock succ, fd = %{public}d", filename.c_str(), fd_.GetFd());
 #endif
     }
 
     ~FileLock()
     {
-        if (fd_ != -1) {
+        if (fd_) {
 #ifdef ENABLE_LOCK
             flock(fd_, LOCK_UN);
             HILOG_INFO(LOG_CORE, "FileLock: %{public}d unlock succ", fd_);
 #endif
-            close(fd_);
         }
     }
 
     int Fd()
     {
-        return fd_;
+        return fd_.GetFd();
     }
+private:
+    SmartFd fd_;
 };
 
 std::vector<std::string> GetSubThreadIds(const std::string& pid)
