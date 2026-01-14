@@ -64,17 +64,6 @@ TraceBufferManager::TraceBufferManager()
 
 TraceBufferManager::~TraceBufferManager() {}
 
-std::mutex& TraceBufferManager::GetTaskMutex(uint64_t taskId)
-{
-    std::lock_guard<std::mutex> lck(taskMutexesMutex_);
-    auto it = taskMutexes_.find(taskId);
-    if (it == taskMutexes_.end()) {
-        auto [insertIt, inserted] = taskMutexes_.emplace(taskId, std::make_unique<std::mutex>());
-        return *(insertIt->second);
-    }
-    return *(it->second);
-}
-
 bool TraceBufferManager::TryAllocateMemorySpace(uint64_t taskId)
 {
     size_t cur = curTotalSz_.load(std::memory_order_relaxed);
@@ -98,20 +87,8 @@ bool TraceBufferManager::TryAllocateMemorySpace(uint64_t taskId)
     return true;
 }
 
-void TraceBufferManager::RemoveTaskMutex(uint64_t taskId)
-{
-    std::lock_guard<std::mutex> lck(taskMutexesMutex_);
-    taskMutexes_.erase(taskId);
-}
-
 BufferBlockPtr TraceBufferManager::AllocateBlock(const uint64_t taskId, const int cpu)
 {
-    if (curTotalSz_.load(std::memory_order_relaxed) + blockSz_ > maxTotalSz_) {
-        HILOG_ERROR(LOG_CORE, "AllocateBlock : taskid(%{public}" PRIu64 ") cannot allocate more blocks", taskId);
-        return nullptr;
-    }
-    std::mutex& taskMutex = GetTaskMutex(taskId);
-    std::lock_guard<std::mutex> taskLock(taskMutex);
     if (curTotalSz_.load(std::memory_order_relaxed) + blockSz_ > maxTotalSz_) {
         HILOG_ERROR(LOG_CORE, "AllocateBlock : taskid(%{public}" PRIu64 ") cannot allocate more blocks", taskId);
         return nullptr;
@@ -129,22 +106,17 @@ BufferBlockPtr TraceBufferManager::AllocateBlock(const uint64_t taskId, const in
 
 void TraceBufferManager::ReleaseTaskBlocks(const uint64_t taskId)
 {
-    std::mutex& taskMutex = GetTaskMutex(taskId);
-    std::lock_guard<std::mutex> taskLock(taskMutex);
     std::unique_lock<std::shared_mutex> globalWriteLock(globalMutex_);
     if (auto it = taskBuffers_.find(taskId); it != taskBuffers_.end()) {
         size_t released = it->second.size() * blockSz_;
         taskBuffers_.erase(it);
         globalWriteLock.unlock();
         curTotalSz_.fetch_sub(released, std::memory_order_relaxed);
-        RemoveTaskMutex(taskId);
     }
 }
 
 BufferList TraceBufferManager::GetTaskBuffers(const uint64_t taskId)
 {
-    std::mutex& taskMutex = GetTaskMutex(taskId);
-    std::lock_guard<std::mutex> taskLock(taskMutex);
     std::shared_lock<std::shared_mutex> globalReadLock(globalMutex_);
     if (auto it = taskBuffers_.find(taskId); it != taskBuffers_.end()) {
         return it->second;
@@ -156,8 +128,6 @@ BufferList TraceBufferManager::GetTaskBuffers(const uint64_t taskId)
 size_t TraceBufferManager::GetTaskTotalUsedBytes(const uint64_t taskId)
 {
     size_t totalUsed = 0;
-    std::mutex& taskMutex = GetTaskMutex(taskId);
-    std::lock_guard<std::mutex> taskLock(taskMutex);
     std::shared_lock<std::shared_mutex> globalReadLock(globalMutex_);
     if (auto it = taskBuffers_.find(taskId); it != taskBuffers_.end()) {
         for (auto& bufBlock : it->second) {
