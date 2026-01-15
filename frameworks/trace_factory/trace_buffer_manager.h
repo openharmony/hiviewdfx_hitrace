@@ -20,9 +20,7 @@
 #include <list>
 #include <map>
 #include <memory>
-#include <mutex>
 #include <shared_mutex>
-#include <unordered_map>
 #include <vector>
 
 #include "singleton.h"
@@ -67,8 +65,6 @@ public:
     size_t GetBlockSize() const;
 
 private:
-    std::mutex& GetTaskMutex(uint64_t taskId);
-    void RemoveTaskMutex(uint64_t taskId);
     bool TryAllocateMemorySpace(uint64_t taskId);
 
 private:
@@ -76,8 +72,6 @@ private:
     size_t blockSz_;
     std::atomic_size_t curTotalSz_;
     mutable std::shared_mutex globalMutex_;
-    std::mutex taskMutexesMutex_;
-    std::unordered_map<uint64_t, std::unique_ptr<std::mutex>> taskMutexes_;
     std::map<uint64_t, BufferList> taskBuffers_;
 };
 } // namespace Hitrace
