@@ -41,6 +41,7 @@
 #include "hilog/log.h"
 #include "param/sys_param.h"
 #include "parameters.h"
+#include "smart_fd.h"
 #include "hitrace/tracechain.h"
 
 #ifdef LOG_DOMAIN
@@ -55,8 +56,8 @@
 using namespace OHOS::HiviewDFX;
 
 namespace {
-int g_markerFd = -1;
-int g_appFd = -1;
+SmartFd g_markerFd;
+SmartFd g_appFd;
 std::once_flag g_onceFlag;
 std::once_flag g_onceWriteMarkerFailedFlag;
 std::atomic<CachedHandle> g_cachedHandle;
@@ -328,14 +329,14 @@ void OpenTraceMarkerFile()
 {
     const std::string debugFile = DEBUGFS_TRACING_DIR + TRACE_MARKER_NODE;
     const std::string traceFile = TRACEFS_DIR + TRACE_MARKER_NODE;
-    g_markerFd = open(debugFile.c_str(), O_WRONLY | O_CLOEXEC);
+    g_markerFd = SmartFd(open(debugFile.c_str(), O_WRONLY | O_CLOEXEC));
 #ifdef HITRACE_UNITTEST
-    SetMarkerFd(g_markerFd);
+    SetMarkerFd(g_markerFd.GetFd());
 #endif
-    if (g_markerFd == -1) {
+    if (!g_markerFd) {
         HILOG_ERROR(LOG_CORE, "open trace file %{public}s failed: %{public}d", debugFile.c_str(), errno);
-        g_markerFd = open(traceFile.c_str(), O_WRONLY | O_CLOEXEC);
-        if (g_markerFd == -1) {
+        g_markerFd = SmartFd(open(traceFile.c_str(), O_WRONLY | O_CLOEXEC));
+        if (!g_markerFd) {
             HILOG_ERROR(LOG_CORE, "open trace file %{public}s failed: %{public}d", traceFile.c_str(), errno);
             g_tagsProperty = 0;
             return;
@@ -352,15 +353,8 @@ void OpenTraceMarkerFile()
 
 __attribute__((destructor)) static void LibraryUnload()
 {
-    if (g_markerFd != -1) {
-        close(g_markerFd);
-        g_markerFd = -1;
-    }
-    if (g_appFd != -1) {
-        close(g_appFd);
-        g_appFd = -1;
-    }
-
+    g_markerFd.Reset();
+    g_appFd.Reset();
     CachedParameterDestroy(g_cachedHandle);
     g_cachedHandle = nullptr;
 
@@ -394,7 +388,7 @@ void WriteFailedLog()
 
 void WriteToTraceMarker(const char* buf, int bytes)
 {
-    if (write(g_markerFd, buf, bytes) < 0) {
+    if (write(g_markerFd.GetFd(), buf, bytes) < 0) {
         std::call_once(g_onceWriteMarkerFailedFlag, WriteFailedLog);
     }
 }
@@ -521,7 +515,7 @@ int InitTraceHead()
         HILOG_ERROR(LOG_CORE, "format reserved trace header failed: %{public}d(%{public}s)", errno, strerror(errno));
         return RET_FAILD;
     }
-    if (write(g_appFd, buffer.data(), used) != used) {
+    if (write(g_appFd.GetFd(), buffer.data(), used) != used) {
         HILOG_ERROR(LOG_CORE, "write reserved trace header failed: %{public}d(%{public}s)", errno, strerror(errno));
         return RET_FAILD;
     }
@@ -530,13 +524,13 @@ int InitTraceHead()
     g_fileSize = used;
     g_traceEventNum = 0;
 
-    lseek(g_appFd, used, SEEK_SET); // Reserve space to write the file header.
+    lseek(g_appFd.GetFd(), used, SEEK_SET); // Reserve space to write the file header.
     return RET_SUCC;
 }
 
 bool WriteTraceToFile(char* buf, const int len)
 {
-    if (write(g_appFd, buf, len) != len) {
+    if (write(g_appFd.GetFd(), buf, len) != len) {
         static bool isWriteLog = false;
         WriteOnceLog(LOG_ERROR, "write app trace data failed", isWriteLog);
         return false;
@@ -860,7 +854,7 @@ void AddHitraceMeterMarker(TraceMarker& traceMarker)
         return;
     }
     SetNullptrToEmpty(traceMarker);
-    if (UNEXPECTANTLY(g_tagsProperty & traceMarker.tag) && g_markerFd != -1) {
+    if (UNEXPECTANTLY(g_tagsProperty & traceMarker.tag) && g_markerFd) {
         if (traceMarker.tag & HITRACE_TAG_COMMERCIAL) {
             traceMarker.level = HITRACE_LEVEL_COMMERCIAL;
         }
@@ -890,7 +884,7 @@ void AddHitraceMeterMarker(TraceMarker& traceMarker)
 #ifdef HITRACE_UNITTEST
     appTagload = HITRACE_TAG_APP;
 #endif
-    if (UNEXPECTANTLY(appTagload != HITRACE_TAG_NOT_READY) && g_appFd != -1 && (traceMarker.tag & g_appTag) != 0) {
+    if (UNEXPECTANTLY(appTagload != HITRACE_TAG_NOT_READY) && g_appFd && (traceMarker.tag & g_appTag) != 0) {
         if (traceMarker.pid == -1) {
             traceMarker.pid = getprocpid();
         }
@@ -917,7 +911,7 @@ void SetCachedHandle(const char* name, CachedHandle cachedHandle)
 
 void SetMarkerFd(int markerFd)
 {
-    g_markerFd = -1;
+    g_markerFd.Reset();
 }
 
 void SetWriteOnceLog(LogLevel loglevel, const std::string& logStr, bool& isWrite)
@@ -1018,7 +1012,7 @@ void StartTraceArgs(uint64_t tag, const char* fmt, ...)
 {
     UpdateSysParamTags();
     if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
-        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+        if (!g_appFd || ((tag & g_appTag.load()) == 0)) {
             return;
         }
     }
@@ -1039,7 +1033,7 @@ void StartTraceArgsEx(HiTraceOutputLevel level, uint64_t tag, const char* custom
 {
     UpdateSysParamTags();
     if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
-        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+        if (!g_appFd || ((tag & g_appTag.load()) == 0)) {
             return;
         }
     }
@@ -1063,7 +1057,7 @@ void StartTraceArgsDebug(bool isDebug, uint64_t tag, const char* fmt, ...)
         return;
     }
     if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
-        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+        if (!g_appFd || ((tag & g_appTag.load()) == 0)) {
             return;
         }
     }
@@ -1141,7 +1135,7 @@ void StartAsyncTraceArgs(uint64_t tag, int32_t taskId, const char* fmt, ...)
 {
     UpdateSysParamTags();
     if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
-        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+        if (!g_appFd || ((tag & g_appTag.load()) == 0)) {
             return;
         }
     }
@@ -1164,7 +1158,7 @@ void StartAsyncTraceArgsEx(HiTraceOutputLevel level, uint64_t tag, int32_t taskI
 {
     UpdateSysParamTags();
     if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
-        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+        if (!g_appFd || ((tag & g_appTag.load()) == 0)) {
             return;
         }
     }
@@ -1189,7 +1183,7 @@ void StartAsyncTraceArgsDebug(bool isDebug, uint64_t tag, int32_t taskId, const 
         return;
     }
     if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
-        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+        if (!g_appFd || ((tag & g_appTag.load()) == 0)) {
             return;
         }
     }
@@ -1238,7 +1232,7 @@ void FinishAsyncTraceArgs(uint64_t tag, int32_t taskId, const char* fmt, ...)
 {
     UpdateSysParamTags();
     if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
-        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+        if (!g_appFd || ((tag & g_appTag.load()) == 0)) {
             return;
         }
     }
@@ -1260,7 +1254,7 @@ void FinishAsyncTraceArgsEx(HiTraceOutputLevel level, uint64_t tag, int32_t task
 {
     UpdateSysParamTags();
     if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
-        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+        if (!g_appFd || ((tag & g_appTag.load()) == 0)) {
             return;
         }
     }
@@ -1285,7 +1279,7 @@ void FinishAsyncTraceArgsDebug(bool isDebug, uint64_t tag, int32_t taskId, const
         return;
     }
     if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
-        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+        if (!g_appFd || ((tag & g_appTag.load()) == 0)) {
             return;
         }
     }
@@ -1354,7 +1348,7 @@ HitraceMeterFmtScoped::HitraceMeterFmtScoped(uint64_t tag, const char* fmt, ...)
 {
     UpdateSysParamTags();
     if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
-        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+        if (!g_appFd || ((tag & g_appTag.load()) == 0)) {
             return;
         }
     }
@@ -1377,7 +1371,7 @@ HitraceMeterFmtScopedEx::HitraceMeterFmtScopedEx(HiTraceOutputLevel level, uint6
 {
     UpdateSysParamTags();
     if (!(tag & g_tagsProperty) || UNEXPECTANTLY(g_isHitraceMeterDisabled)) {
-        if ((g_appFd == -1) || ((tag & g_appTag.load()) == 0)) {
+        if (!g_appFd  || ((tag & g_appTag.load()) == 0)) {
             return;
         }
     }
@@ -1403,8 +1397,7 @@ bool IsTagEnabled(uint64_t tag)
 
 static void ResetGlobalStatus()
 {
-    close(g_appFd);
-    g_appFd = -1;
+    g_appFd.Reset();
     g_fileSize = 0;
     g_writeOffset = 0;
     g_traceEventNum = 0;
@@ -1439,7 +1432,7 @@ int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std:
     }
 
     std::unique_lock<std::recursive_mutex> lock(g_appTraceMutex);
-    if (g_appFd != -1) {
+    if (g_appFd) {
         HILOG_INFO(LOG_CORE, "CaptureAppTrace started, return");
         return RET_STARTED;
     }
@@ -1467,8 +1460,8 @@ int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std:
     }
 
     mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH; // 0644
-    g_appFd = open(destFileName.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC, mode);
-    ret = CheckFd(g_appFd);
+    g_appFd = SmartFd(open(destFileName.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC, mode));
+    ret = CheckFd(g_appFd.GetFd());
     if (ret != RET_SUCC) {
         HILOG_ERROR(LOG_CORE, "open destFileName failed: %{public}d(%{public}s)", errno, strerror(errno));
         ResetGlobalStatus();
@@ -1491,7 +1484,7 @@ int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std:
 int StopCaptureAppTrace()
 {
     std::unique_lock<std::recursive_mutex> lock(g_appTraceMutex);
-    if (g_appFd == -1) {
+    if (!g_appFd)  {
         HILOG_INFO(LOG_CORE, "CaptureAppTrace stopped, return");
         return RET_STOPPED;
     }
@@ -1508,8 +1501,8 @@ int StopCaptureAppTrace()
         return RET_FAILD;
     }
 
-    lseek(g_appFd, 0, SEEK_SET); // Move the write pointer to populate the file header.
-    if (write(g_appFd, buffer.data(), used) != used) {
+    lseek(g_appFd.GetFd(), 0, SEEK_SET); // Move the write pointer to populate the file header.
+    if (write(g_appFd.GetFd(), buffer.data(), used) != used) {
         HILOG_ERROR(LOG_CORE, "write trace header failed: %{public}d(%{public}s)", errno, strerror(errno));
         return RET_FAILD;
     }

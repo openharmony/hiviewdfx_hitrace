@@ -30,6 +30,7 @@
 
 #include "common_utils.h"
 #include "common_define.h"
+#include "smart_fd.h"
 #include "hilog/log.h"
 
 namespace OHOS {
@@ -214,14 +215,13 @@ void GetTraceFileNamesInDir(std::set<std::string>& fileSet, TraceDumpType traceT
 bool RemoveFile(const std::string& fileName)
 {
     bool result = false;
-    int fd = open(fileName.c_str(), O_RDONLY | O_NONBLOCK);
-    if (fd == -1) {
+    SmartFd fd = SmartFd(open(fileName.c_str(), O_RDONLY | O_NONBLOCK));
+    if (!fd) {
         HILOG_WARN(LOG_CORE, "RemoveFile :: open file failed: %{public}s", fileName.c_str());
         return result;
     }
-    if (flock(fd, LOCK_EX | LOCK_NB) < 0) {
+    if (flock(fd.GetFd(), LOCK_EX | LOCK_NB) < 0) {
         HILOG_WARN(LOG_CORE, "RemoveFile :: get file lock failed, skip remove: %{public}s", fileName.c_str());
-        close(fd);
         return result;
     }
     if (remove(fileName.c_str()) == 0) {
@@ -230,8 +230,7 @@ bool RemoveFile(const std::string& fileName)
     } else {
         HILOG_WARN(LOG_CORE, "RemoveFile :: Delete %{public}s failed.", fileName.c_str());
     }
-    flock(fd, LOCK_UN);
-    close(fd);
+    flock(fd.GetFd(), LOCK_UN);
     return result;
 }
 

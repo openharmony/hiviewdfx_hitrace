@@ -35,15 +35,14 @@ namespace {
 #define LOG_TAG "HitraceSource"
 #endif
 
-static bool UpdateFileFd(const std::string& traceFile, UniqueFd& fd)
+bool UpdateFileFd(const std::string& traceFile, SmartFd& fd)
 {
     std::string path = CanonicalizeSpecPath(traceFile.c_str());
-    UniqueFd newFd(open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644)); // 0644 : -rw-r--r--
-    if (newFd < 0) {
+    SmartFd newFd(open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644)); // 0644 : -rw-r--r--
+    if (!newFd) {
         HILOG_ERROR(LOG_CORE, "TraceSource: open %{public}s failed, errno(%{public}d).", traceFile.c_str(), errno);
         return false;
     }
-    fd.Release();
     fd = std::move(newFd);
     return true;
 }
@@ -56,8 +55,8 @@ TraceSourceLinuxFactory::TraceSourceLinuxFactory(const std::string& tracefsPath,
         return;
     }
     std::string path = CanonicalizeSpecPath(traceFilePath.c_str());
-    traceFileFd_ = UniqueFd(open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644)); // 0644 : -rw-r--r--
-    if (traceFileFd_ < 0) {
+    traceFileFd_ = SmartFd(open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644)); // 0644 : -rw-r--r--
+    if (!traceFileFd_) {
         HILOG_ERROR(LOG_CORE, "TraceSourceLinux: open %{public}s failed, errno(%{public}d).",
             traceFilePath.c_str(), errno);
     }
@@ -65,42 +64,42 @@ TraceSourceLinuxFactory::TraceSourceLinuxFactory(const std::string& tracefsPath,
 
 std::unique_ptr<ITraceFileHdrContent> TraceSourceLinuxFactory::GetTraceFileHeader()
 {
-    return std::make_unique<TraceFileHdrLinux>(traceFileFd_, tracefsPath_, traceFilePath_);
+    return std::make_unique<TraceFileHdrLinux>(traceFileFd_.GetFd(), tracefsPath_, traceFilePath_);
 }
 
 std::unique_ptr<TraceBaseInfoContent> TraceSourceLinuxFactory::GetTraceBaseInfo()
 {
-    return std::make_unique<TraceBaseInfoContent>(traceFileFd_, tracefsPath_, traceFilePath_, false);
+    return std::make_unique<TraceBaseInfoContent>(traceFileFd_.GetFd(), tracefsPath_, traceFilePath_, false);
 }
 
 std::unique_ptr<ITraceCpuRawContent> TraceSourceLinuxFactory::GetTraceCpuRaw(const TraceDumpRequest& request)
 {
-    return std::make_unique<TraceCpuRawLinux>(traceFileFd_, tracefsPath_, traceFilePath_, request);
+    return std::make_unique<TraceCpuRawLinux>(traceFileFd_.GetFd(), tracefsPath_, traceFilePath_, request);
 }
 
 std::unique_ptr<ITraceHeaderPageContent> TraceSourceLinuxFactory::GetTraceHeaderPage()
 {
-    return std::make_unique<TraceHeaderPageLinux>(traceFileFd_, tracefsPath_, traceFilePath_);
+    return std::make_unique<TraceHeaderPageLinux>(traceFileFd_.GetFd(), tracefsPath_, traceFilePath_);
 }
 
 std::unique_ptr<ITracePrintkFmtContent> TraceSourceLinuxFactory::GetTracePrintkFmt()
 {
-    return std::make_unique<TracePrintkFmtLinux>(traceFileFd_, tracefsPath_, traceFilePath_);
+    return std::make_unique<TracePrintkFmtLinux>(traceFileFd_.GetFd(), tracefsPath_, traceFilePath_);
 }
 
 std::unique_ptr<TraceEventFmtContent> TraceSourceLinuxFactory::GetTraceEventFmt()
 {
-    return std::make_unique<TraceEventFmtContent>(traceFileFd_, tracefsPath_, traceFilePath_, false);
+    return std::make_unique<TraceEventFmtContent>(traceFileFd_.GetFd(), tracefsPath_, traceFilePath_, false);
 }
 
 std::unique_ptr<TraceCmdLinesContent> TraceSourceLinuxFactory::GetTraceCmdLines()
 {
-    return std::make_unique<TraceCmdLinesContent>(traceFileFd_, tracefsPath_, traceFilePath_, false);
+    return std::make_unique<TraceCmdLinesContent>(traceFileFd_.GetFd(), tracefsPath_, traceFilePath_, false);
 }
 
 std::unique_ptr<TraceTgidsContent> TraceSourceLinuxFactory::GetTraceTgids()
 {
-    return std::make_unique<TraceTgidsContent>(traceFileFd_, tracefsPath_, traceFilePath_, false);
+    return std::make_unique<TraceTgidsContent>(traceFileFd_.GetFd(), tracefsPath_, traceFilePath_, false);
 }
 
 std::unique_ptr<ITraceCpuRawRead> TraceSourceLinuxFactory::GetTraceCpuRawRead(const TraceDumpRequest& request)
@@ -110,7 +109,7 @@ std::unique_ptr<ITraceCpuRawRead> TraceSourceLinuxFactory::GetTraceCpuRawRead(co
 
 std::unique_ptr<ITraceCpuRawWrite> TraceSourceLinuxFactory::GetTraceCpuRawWrite(const uint64_t taskId)
 {
-    return std::make_unique<TraceCpuRawWriteLinux>(traceFileFd_, traceFilePath_, taskId);
+    return std::make_unique<TraceCpuRawWriteLinux>(traceFileFd_.GetFd(), traceFilePath_, taskId);
 }
 
 std::string TraceSourceLinuxFactory::GetTraceFilePath()
@@ -134,50 +133,50 @@ TraceSourceHMFactory::TraceSourceHMFactory(const std::string& tracefsPath, const
         return;
     }
     std::string path = CanonicalizeSpecPath(traceFilePath.c_str());
-    traceFileFd_ = UniqueFd(open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644)); // 0644 : -rw-r--r--
-    if (traceFileFd_ < 0) {
+    traceFileFd_ = SmartFd(open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644)); // 0644 : -rw-r--r--
+    if (!traceFileFd_) {
         HILOG_ERROR(LOG_CORE, "TraceSourceHM: open %{public}s failed.", traceFilePath.c_str());
     }
 }
 
 std::unique_ptr<ITraceFileHdrContent> TraceSourceHMFactory::GetTraceFileHeader()
 {
-    return std::make_unique<TraceFileHdrHM>(traceFileFd_, tracefsPath_, traceFilePath_);
+    return std::make_unique<TraceFileHdrHM>(traceFileFd_.GetFd(), tracefsPath_, traceFilePath_);
 }
 
 std::unique_ptr<TraceBaseInfoContent> TraceSourceHMFactory::GetTraceBaseInfo()
 {
-    return std::make_unique<TraceBaseInfoContent>(traceFileFd_, tracefsPath_, traceFilePath_, true);
+    return std::make_unique<TraceBaseInfoContent>(traceFileFd_.GetFd(), tracefsPath_, traceFilePath_, true);
 }
 
 std::unique_ptr<ITraceCpuRawContent> TraceSourceHMFactory::GetTraceCpuRaw(const TraceDumpRequest& request)
 {
-    return std::make_unique<TraceCpuRawHM>(traceFileFd_, tracefsPath_, traceFilePath_, request);
+    return std::make_unique<TraceCpuRawHM>(traceFileFd_.GetFd(), tracefsPath_, traceFilePath_, request);
 }
 
 std::unique_ptr<ITraceHeaderPageContent> TraceSourceHMFactory::GetTraceHeaderPage()
 {
-    return std::make_unique<TraceHeaderPageHM>(traceFileFd_, tracefsPath_, traceFilePath_);
+    return std::make_unique<TraceHeaderPageHM>(traceFileFd_.GetFd(), tracefsPath_, traceFilePath_);
 }
 
 std::unique_ptr<ITracePrintkFmtContent> TraceSourceHMFactory::GetTracePrintkFmt()
 {
-    return std::make_unique<TracePrintkFmtHM>(traceFileFd_, tracefsPath_, traceFilePath_);
+    return std::make_unique<TracePrintkFmtHM>(traceFileFd_.GetFd(), tracefsPath_, traceFilePath_);
 }
 
 std::unique_ptr<TraceEventFmtContent> TraceSourceHMFactory::GetTraceEventFmt()
 {
-    return std::make_unique<TraceEventFmtContent>(traceFileFd_, tracefsPath_, traceFilePath_, true);
+    return std::make_unique<TraceEventFmtContent>(traceFileFd_.GetFd(), tracefsPath_, traceFilePath_, true);
 }
 
 std::unique_ptr<TraceCmdLinesContent> TraceSourceHMFactory::GetTraceCmdLines()
 {
-    return std::make_unique<TraceCmdLinesContent>(traceFileFd_, tracefsPath_, traceFilePath_, true);
+    return std::make_unique<TraceCmdLinesContent>(traceFileFd_.GetFd(), tracefsPath_, traceFilePath_, true);
 }
 
 std::unique_ptr<TraceTgidsContent> TraceSourceHMFactory::GetTraceTgids()
 {
-    return std::make_unique<TraceTgidsContent>(traceFileFd_, tracefsPath_, traceFilePath_, true);
+    return std::make_unique<TraceTgidsContent>(traceFileFd_.GetFd(), tracefsPath_, traceFilePath_, true);
 }
 
 std::unique_ptr<ITraceCpuRawRead> TraceSourceHMFactory::GetTraceCpuRawRead(const TraceDumpRequest& request)
@@ -187,7 +186,7 @@ std::unique_ptr<ITraceCpuRawRead> TraceSourceHMFactory::GetTraceCpuRawRead(const
 
 std::unique_ptr<ITraceCpuRawWrite> TraceSourceHMFactory::GetTraceCpuRawWrite(const uint64_t taskId)
 {
-    return std::make_unique<TraceCpuRawWriteHM>(traceFileFd_, traceFilePath_, taskId);
+    return std::make_unique<TraceCpuRawWriteHM>(traceFileFd_.GetFd(), traceFilePath_, taskId);
 }
 
 std::string TraceSourceHMFactory::GetTraceFilePath()

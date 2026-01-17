@@ -214,7 +214,10 @@ ohos_shared_library("hitrace_meter") {
 config("libhitrace_option_config") {
   visibility = [ ":*" ]
 
-  include_dirs = [ "include" ]
+  include_dirs = [
+    "$hitrace_common_path",
+    "include",
+  ]
 }
 
 ohos_shared_library("libhitrace_option") {

@@ -42,6 +42,7 @@
 #include "hitrace_meter.h"
 #include "parameters.h"
 #include "securec.h"
+#include "smart_fd.h"
 #include "trace_collector_client.h"
 #include "trace_json_parser.h"
 
@@ -821,39 +822,37 @@ static void DumpTrace()
 {
     std::string tracePath = g_traceRootPath + TRACE_NODE;
     std::string traceSpecPath = CanonicalizeSpecPath(tracePath.c_str());
-    int traceFd = open(traceSpecPath.c_str(), O_RDONLY);
-    if (traceFd == -1) {
+    auto traceFd = OHOS::HiviewDFX::SmartFd(open(traceSpecPath.c_str(), O_RDONLY));
+    if (!traceFd) {
         ConsoleLog("error: opening " + tracePath + ", errno: " + std::to_string(errno));
         g_traceSysEventParams.errorCode = OPEN_ROOT_PATH_FAILURE;
         g_traceSysEventParams.errorMessage = "error: opening " + tracePath + ", errno: " +
             std::to_string(errno);
         return;
     }
-
-    int outFd = STDOUT_FILENO;
+    OHOS::HiviewDFX::SmartFd outFileFd;
     if (g_traceArgs.output.size() > 0) {
         std::string outSpecPath = CanonicalizeSpecPath(g_traceArgs.output.c_str());
-        outFd = open(outSpecPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+        outFileFd = OHOS::HiviewDFX::SmartFd(
+            open(outSpecPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH));
+        if (!outFileFd) {
+            ConsoleLog("error: opening " + g_traceArgs.output + ", errno: " + std::to_string(errno));
+            g_traceSysEventParams.errorCode = OPEN_FILE_PATH_FAILURE;
+            g_traceSysEventParams.errorMessage = "error: opening " + g_traceArgs.output + ", errno: " +
+                std::to_string(errno);
+            return;
+        }
     }
-
-    if (outFd == -1) {
-        ConsoleLog("error: opening " + g_traceArgs.output + ", errno: " + std::to_string(errno));
-        g_traceSysEventParams.errorCode = OPEN_FILE_PATH_FAILURE;
-        g_traceSysEventParams.errorMessage = "error: opening " + g_traceArgs.output + ", errno: " +
-            std::to_string(errno);
-        close(traceFd);
-        return;
-    }
-
+    int outFd = outFileFd ? outFileFd.GetFd() : STDOUT_FILENO;
     ssize_t bytesWritten;
     ssize_t bytesRead;
     if (g_traceArgs.isCompress) {
-        DumpCompressedTrace(traceFd, outFd);
+        DumpCompressedTrace(traceFd.GetFd(), outFd);
     } else {
         const int blockSize = 4096;
         char buffer[blockSize];
         do {
-            bytesRead = TEMP_FAILURE_RETRY(read(traceFd, buffer, blockSize));
+            bytesRead = TEMP_FAILURE_RETRY(read(traceFd.GetFd(), buffer, blockSize));
             if ((bytesRead == 0) || (bytesRead == -1)) {
                 break;
             }
@@ -867,9 +866,7 @@ static void DumpTrace()
     g_traceSysEventParams.fileSize = g_traceSysEventParams.fileSize / KB_PER_MB;
     if (outFd != STDOUT_FILENO) {
         ConsoleLog("trace read done, output: " + g_traceArgs.output);
-        close(outFd);
     }
-    close(traceFd);
 }
 
 static void ReloadTraceArgs(std::vector<std::string>& tagsVec, HiviewTraceParam& hiviewTraceParam)

@@ -202,13 +202,10 @@ bool SetTraceNodeStatus(const std::string &path, bool enabled)
 
 void TruncateFile(const std::string& path)
 {
-    int fd = creat((g_traceRootPath + path).c_str(), 0);
-    if (fd == -1) {
+    auto fd = SmartFd(creat((g_traceRootPath + path).c_str(), 0));
+    if (!fd) {
         HILOG_ERROR(LOG_CORE, "TruncateFile: clear old trace failed.");
-        return;
     }
-    close(fd);
-    return;
 }
 
 bool SetProperty(const std::string& property, const std::string& value)
@@ -594,25 +591,24 @@ void WaitForChildProcess(const pid_t pid)
     }
 }
 
-bool EpollWaitforChildProcess(pid_t& pid, int& pipefd, std::string& reOutPath)
+bool EpollWaitforChildProcess(pid_t& pid, int pipefd, std::string& reOutPath)
 {
-    int epollfd = epoll_create1(0);
-    if (epollfd == -1) {
+    SmartFd epollfd = SmartFd(epoll_create1(0));
+    if (!epollfd) {
         HILOG_ERROR(LOG_CORE, "epoll_create1 error.");
         return false;
     }
     struct epoll_event event;
     event.events = EPOLLIN;
     event.data.fd = pipefd;
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, pipefd, &event) == -1) {
+    if (epoll_ctl(epollfd.GetFd(), EPOLL_CTL_ADD, pipefd, &event) == -1) {
         HILOG_ERROR(LOG_CORE, "epoll_ctl error.");
-        close(epollfd);
         return false;
     }
     struct epoll_event events[1];
     int numEvents = 0;
     for (int retry = 0; retry < 10 && numEvents <= 0; retry++) { // 10 : ten seconds timeout
-        numEvents = TEMP_FAILURE_RETRY(epoll_wait(epollfd, events, 1, 1000)); // 1000 : one second timeout
+        numEvents = TEMP_FAILURE_RETRY(epoll_wait(epollfd.GetFd(), events, 1, 1000)); // 1000 : one second timeout
         if (numEvents == -1) {
             HILOG_ERROR(LOG_CORE, "epoll_wait error, error: (%{public}s).", strerror(errno));
             break;
@@ -625,7 +621,6 @@ bool EpollWaitforChildProcess(pid_t& pid, int& pipefd, std::string& reOutPath)
             HILOG_ERROR(LOG_CORE, "kill child process failed.");
         }
         WaitForChildProcess(pid);
-        close(epollfd);
         return false;
     }
     TraceDumpRet retVal;
@@ -637,7 +632,6 @@ bool EpollWaitforChildProcess(pid_t& pid, int& pipefd, std::string& reOutPath)
     reOutPath = retVal.outputFile;
     g_firstPageTimestamp = retVal.traceStartTime;
     g_lastPageTimestamp = retVal.traceEndTime;
-    close(epollfd);
     WaitForChildProcess(pid);
     return true;
 }
@@ -714,16 +708,20 @@ TraceErrorCode ProcessDumpSync(TraceRetInfo& traceRetInfo)
         HILOG_ERROR(LOG_CORE, "ProcessDumpSync: pipe creation error.");
         return TraceErrorCode::PIPE_CREATE_ERROR;
     }
-
     g_dumpStatus = TraceErrorCode::UNSET;
     /*Child process handles task, Father process wait.*/
     pid_t pid = fork();
     if (pid < 0) {
+        SmartFd readFd(pipefd[0]);
+        SmartFd writeFd(pipefd[1]);
         HILOG_ERROR(LOG_CORE, "fork error.");
         return TraceErrorCode::FORK_ERROR;
     } else if (pid == 0) {
         signal(SIGUSR1, TimeoutSignalHandler);
-        close(pipefd[0]);
+        {
+            SmartFd readFd(pipefd[0]);
+        }
+        SmartFd writeFd(pipefd[1]);
         std::string processName = "HitraceDump";
         SetProcessName(processName);
         struct TraceDumpParam param = { TRACE_SNAPSHOT, "", 0, 0, g_traceStartTime, g_traceEndTime };
@@ -731,19 +729,16 @@ TraceErrorCode ProcessDumpSync(TraceRetInfo& traceRetInfo)
         HILOG_INFO(LOG_CORE,
             "TraceDumpRet : %{public}d, outputFile: %{public}s, [%{public}" PRIu64 ", %{public}" PRIu64 "].",
             ret.code, ret.outputFile, ret.traceStartTime, ret.traceEndTime);
-        write(pipefd[1], &ret, sizeof(ret));
+        write(writeFd.GetFd(), &ret, sizeof(ret));
         _exit(EXIT_SUCCESS);
     } else {
-        close(pipefd[1]);
+        SmartFd writeFd(pipefd[1]);
     }
-
+    SmartFd readFd(pipefd[0]);
     std::string reOutPath;
-    if (!EpollWaitforChildProcess(pid, pipefd[0], reOutPath)) {
-        close(pipefd[0]);
+    if (!EpollWaitforChildProcess(pid, readFd.GetFd(), reOutPath)) {
         return TraceErrorCode::EPOLL_WAIT_ERROR;
     }
-
-    close(pipefd[0]);
     return HandleDumpResult(reOutPath, traceRetInfo);
 }
 
@@ -1002,18 +997,17 @@ bool PreWriteEventsFormat(const std::vector<std::string>& eventFormats)
 {
     DelSavedEventsFormat();
     const std::string savedEventsFormatPath = TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT;
-    int fd = open(savedEventsFormatPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644); // 0644:-rw-r--r--
-    if (fd < 0) {
+    SmartFd fd = SmartFd(open(savedEventsFormatPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644)); // 0644:-rw-r--r--
+    if (!fd) {
         HILOG_ERROR(LOG_CORE, "PreWriteEventsFormat: open %{public}s failed.", savedEventsFormatPath.c_str());
         return false;
     }
     for (auto& format : eventFormats) {
         std::string srcPath = g_traceRootPath + format;
         if (access(srcPath.c_str(), R_OK) != -1) {
-            WriteEventFile(srcPath, fd);
+            WriteEventFile(srcPath, fd.GetFd());
         }
     }
-    close(fd);
     HILOG_INFO(LOG_CORE, "PreWriteEventsFormat end.");
     return true;
 }

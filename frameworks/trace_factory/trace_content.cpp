@@ -102,21 +102,11 @@ ITraceContent::ITraceContent(const int fd,
                              const std::string& tracefsPath,
                              const std::string& traceFilePath,
                              const bool ishm)
-    : traceFileFd_(fd), tracefsPath_(tracefsPath), traceFilePath_(traceFilePath), isHm_(ishm)
-{
-    traceSourceFd_ = -1;
-}
-
-ITraceContent::~ITraceContent()
-{
-    if (traceSourceFd_ != -1) {
-        close(traceSourceFd_);
-    }
-}
+    : traceFileFd_(fd), tracefsPath_(tracefsPath), traceFilePath_(traceFilePath), isHm_(ishm) {}
 
 bool ITraceContent::WriteTraceData(const uint8_t contentType)
 {
-    if (traceSourceFd_ < 0) {
+    if (!traceSourceFd_) {
         HILOG_ERROR(LOG_CORE, "WriteTraceData: trace source fd is illegal.");
         return false;
     }
@@ -136,7 +126,7 @@ bool ITraceContent::WriteTraceData(const uint8_t contentType)
         bool endFlag = false;
         /* Write 1M at a time */
         while (bytes <= (BUFFER_SIZE - static_cast<int>(PAGE_SIZE)) && !endFlag) {
-            ssize_t readBytes = TEMP_FAILURE_RETRY(read(traceSourceFd_, g_buffer + bytes, PAGE_SIZE));
+            ssize_t readBytes = TEMP_FAILURE_RETRY(read(traceSourceFd_.GetFd(), g_buffer + bytes, PAGE_SIZE));
             if (readBytes <= 0) {
                 endFlag = true;
                 HILOG_DEBUG(LOG_CORE, "WriteTraceData: read raw trace done, size(%{public}zd), err(%{public}s).",
@@ -446,18 +436,18 @@ TraceEventFmtContent::TraceEventFmtContent(const int fd,
     const std::string savedEventsFormatPath = TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT;
     bool hasPreWrotten = true;
     if (access(savedEventsFormatPath.c_str(), F_OK) != -1) {
-        traceSourceFd_ = open(savedEventsFormatPath.c_str(), O_RDONLY | O_NONBLOCK);
+        traceSourceFd_ = SmartFd(open(savedEventsFormatPath.c_str(), O_RDONLY | O_NONBLOCK));
     } else {
-        traceSourceFd_ = open(savedEventsFormatPath.c_str(),
-            O_CREAT | O_RDWR | O_TRUNC | O_NONBLOCK, 0644); // 0644:-rw-r--r--
+        traceSourceFd_ = SmartFd(open(savedEventsFormatPath.c_str(),
+            O_CREAT | O_RDWR | O_TRUNC | O_NONBLOCK, 0644)); // 0644:-rw-r--r--
         hasPreWrotten = false;
     }
-    if (traceSourceFd_ < 0) {
+    if (!traceSourceFd_) {
         HILOG_ERROR(LOG_CORE, "TraceEventFmtContent: open %{public}s failed.", savedEventsFormatPath.c_str());
     }
-    if (!hasPreWrotten && traceSourceFd_ >= 0) {
-        PreWriteAllTraceEventsFormat(traceSourceFd_, tracefsPath_);
-        if (lseek(traceSourceFd_, 0, SEEK_SET) == -1) {
+    if (!hasPreWrotten && traceSourceFd_) {
+        PreWriteAllTraceEventsFormat(traceSourceFd_.GetFd(), tracefsPath_);
+        if (lseek(traceSourceFd_.GetFd(), 0, SEEK_SET) == -1) {
             HILOG_ERROR(LOG_CORE, "TraceEventFmtContent: lseek to start pos failed, errno(%{public}d)", errno);
         }
     }
@@ -475,8 +465,8 @@ TraceCmdLinesContent::TraceCmdLinesContent(const int fd,
     : ITraceContent(fd, tracefsPath, traceFilePath, ishm)
 {
     const std::string cmdlinesPath = tracefsPath_ + "saved_cmdlines";
-    traceSourceFd_ = open(cmdlinesPath.c_str(), O_RDONLY | O_NONBLOCK);
-    if (traceSourceFd_ < 0) {
+    traceSourceFd_ = SmartFd(open(cmdlinesPath.c_str(), O_RDONLY | O_NONBLOCK));
+    if (!traceSourceFd_) {
         HILOG_ERROR(LOG_CORE, "TraceCmdLinesContent: open %{public}s failed.", cmdlinesPath.c_str());
     }
 }
@@ -491,8 +481,8 @@ TraceTgidsContent::TraceTgidsContent(const int fd, const std::string& tracefsPat
     : ITraceContent(fd, tracefsPath, traceFilePath, ishm)
 {
     const std::string tgidsPath = tracefsPath_ + "saved_tgids";
-    traceSourceFd_ = open(tgidsPath.c_str(), O_RDONLY | O_NONBLOCK);
-    if (traceSourceFd_ < 0) {
+    traceSourceFd_ = SmartFd(open(tgidsPath.c_str(), O_RDONLY | O_NONBLOCK));
+    if (!traceSourceFd_) {
         HILOG_ERROR(LOG_CORE, "TraceTgidsContent: open %{public}s failed.", tgidsPath.c_str());
     }
 }
@@ -509,14 +499,13 @@ bool ITraceCpuRawContent::WriteTracePipeRawData(const std::string& srcPath, cons
         return false;
     }
     std::string path = CanonicalizeSpecPath(srcPath.c_str());
-    auto rawTraceFd = open(path.c_str(), O_RDONLY | O_NONBLOCK);
-    if (rawTraceFd < 0) {
+    auto rawTraceFd = SmartFd(open(path.c_str(), O_RDONLY | O_NONBLOCK));
+    if (!rawTraceFd) {
         HILOG_ERROR(LOG_CORE, "WriteTracePipeRawData: open %{public}s failed.", srcPath.c_str());
         return false;
     }
     struct TraceFileContentHeader rawtraceHdr;
     if (!DoWriteTraceContentHeader(rawtraceHdr, CONTENT_TYPE_CPU_RAW + cpuIdx)) {
-        close(rawTraceFd);
         return false;
     }
     ssize_t writeLen = 0;
@@ -527,7 +516,7 @@ bool ITraceCpuRawContent::WriteTracePipeRawData(const std::string& srcPath, cons
     while (shouldContinue) {
         int bytes = 0;
         bool endFlag = false;
-        ReadTracePipeRawLoop(rawTraceFd, bytes, endFlag, pageChkFailedTime, printFirstPageTime);
+        ReadTracePipeRawLoop(rawTraceFd.GetFd(), bytes, endFlag, pageChkFailedTime, printFirstPageTime);
         DoWriteTraceData(g_buffer, bytes, writeLen);
         if (IsWriteFileOverflow(g_outputFileSize, writeLen,
             request_.fileSize != 0 ? request_.fileSize : DEFAULT_FILE_SIZE * KB_PER_MB)) {
@@ -545,7 +534,6 @@ bool ITraceCpuRawContent::WriteTracePipeRawData(const std::string& srcPath, cons
     }
     HILOG_INFO(LOG_CORE, "WriteTracePipeRawData end, path: %{public}s, byte: %{public}zd. g_writeFileLimit: %{public}d",
         srcPath.c_str(), writeLen, g_writeFileLimit);
-    close(rawTraceFd);
     return true;
 }
 
@@ -692,8 +680,8 @@ bool ITraceCpuRawRead::CopyTracePipeRawLoop(const int srcFd, const int cpu, ssiz
 bool ITraceCpuRawRead::CacheTracePipeRawData(const std::string& srcPath, const int cpuIdx)
 {
     std::string path = CanonicalizeSpecPath(srcPath.c_str());
-    auto rawTraceFd = open(path.c_str(), O_RDONLY | O_NONBLOCK);
-    if (rawTraceFd < 0) {
+    SmartFd rawTraceFd = SmartFd(open(path.c_str(), O_RDONLY | O_NONBLOCK));
+    if (!rawTraceFd) {
         HILOG_ERROR(LOG_CORE, "CacheTracePipeRawData: open %{public}s failed.", srcPath.c_str());
         return false;
     }
@@ -702,7 +690,7 @@ bool ITraceCpuRawRead::CacheTracePipeRawData(const std::string& srcPath, const i
     bool printFirstPageTime = false; // attention: update first page time in every WriteTracePipeRawData calling.
     bool isStopRead = false;
     do {
-        isStopRead = CopyTracePipeRawLoop(rawTraceFd, cpuIdx, writeLen, pageChkFailedTime, printFirstPageTime);
+        isStopRead = CopyTracePipeRawLoop(rawTraceFd.GetFd(), cpuIdx, writeLen, pageChkFailedTime, printFirstPageTime);
     } while (!isStopRead);
     if (writeLen > 0) {
         dumpStatus_ = TraceErrorCode::SUCCESS;
@@ -710,7 +698,6 @@ bool ITraceCpuRawRead::CacheTracePipeRawData(const std::string& srcPath, const i
         dumpStatus_ = TraceErrorCode::OUT_OF_TIME;
     }
     HILOG_INFO(LOG_CORE, "CacheTracePipeRawData end, path: %{public}s, byte: %{public}zd", srcPath.c_str(), writeLen);
-    close(rawTraceFd);
     return true;
 }
 
@@ -798,8 +785,8 @@ TraceHeaderPageLinux::TraceHeaderPageLinux(const int fd,
     : ITraceHeaderPageContent(fd, tracefsPath, traceFilePath, false)
 {
     const std::string headerPagePath = tracefsPath_ + "events/header_page";
-    traceSourceFd_ = open(headerPagePath.c_str(), O_RDONLY | O_NONBLOCK);
-    if (traceSourceFd_ < 0) {
+    traceSourceFd_ = SmartFd(open(headerPagePath.c_str(), O_RDONLY | O_NONBLOCK));
+    if (!traceSourceFd_) {
         HILOG_ERROR(LOG_CORE, "TraceHeaderPageLinux: open %{public}s failed.", headerPagePath.c_str());
     }
 }
@@ -819,8 +806,8 @@ TracePrintkFmtLinux::TracePrintkFmtLinux(const int fd,
     : ITracePrintkFmtContent(fd, tracefsPath, traceFilePath, false)
 {
     const std::string printkFormatPath = tracefsPath_ + "printk_formats";
-    traceSourceFd_ = open(printkFormatPath.c_str(), O_RDONLY | O_NONBLOCK);
-    if (traceSourceFd_ < 0) {
+    traceSourceFd_ = SmartFd(open(printkFormatPath.c_str(), O_RDONLY | O_NONBLOCK));
+    if (!traceSourceFd_) {
         HILOG_ERROR(LOG_CORE, "TracePrintkFmtLinux: open %{public}s failed.", printkFormatPath.c_str());
     }
 }

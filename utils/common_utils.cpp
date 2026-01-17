@@ -30,6 +30,7 @@
 #include "hilog/log.h"
 #include "parameters.h"
 #include "securec.h"
+#include "smart_fd.h"
 
 namespace OHOS {
 namespace HiviewDFX {
@@ -85,8 +86,8 @@ bool MarkClockSync(const std::string& traceRootPath)
     constexpr unsigned int bufferSize = 128;
     char buffer[bufferSize] = { 0 };
     std::string resolvedPath = CanonicalizeSpecPath((traceRootPath + TRACE_MARKER_NODE).c_str());
-    int fd = open(resolvedPath.c_str(), O_WRONLY);
-    if (fd == -1) {
+    SmartFd fd = SmartFd(open(resolvedPath.c_str(), O_WRONLY));
+    if (!fd) {
         HILOG_ERROR(LOG_CORE, "MarkClockSync: open %{public}s fail, errno(%{public}d)", resolvedPath.c_str(), errno);
         return false;
     }
@@ -95,7 +96,6 @@ bool MarkClockSync(const std::string& traceRootPath)
     struct timespec rts = {0, 0};
     if (clock_gettime(CLOCK_REALTIME, &rts) == -1) {
         HILOG_ERROR(LOG_CORE, "MarkClockSync: get realtime error, errno(%{public}d)", errno);
-        close(fd);
         return false;
     }
     constexpr unsigned int nanoSeconds = 1000000000; // seconds converted to nanoseconds
@@ -105,11 +105,10 @@ bool MarkClockSync(const std::string& traceRootPath)
         static_cast<int64_t>((rts.tv_sec * nanoSeconds + rts.tv_nsec) / nanoToMill));
     if (len < 0) {
         HILOG_ERROR(LOG_CORE, "MarkClockSync: entering realtime_ts into buffer error, errno(%{public}d)", errno);
-        close(fd);
         return false;
     }
 
-    if (write(fd, buffer, len) < 0) {
+    if (write(fd.GetFd(), buffer, len) < 0) {
         HILOG_ERROR(LOG_CORE, "MarkClockSync: writing realtime error, errno(%{public}d)", errno);
     }
 
@@ -117,7 +116,6 @@ bool MarkClockSync(const std::string& traceRootPath)
     struct timespec mts = {0, 0};
     if (clock_gettime(CLOCK_MONOTONIC, &mts) == -1) {
         HILOG_ERROR(LOG_CORE, "MarkClockSync: get parent_ts error, errno(%{public}d)", errno);
-        close(fd);
         return false;
     }
     constexpr float nanoToSecond = 1000000000.0f; // consistent with the ftrace timestamp format
@@ -125,13 +123,11 @@ bool MarkClockSync(const std::string& traceRootPath)
         static_cast<float>(((static_cast<float>(mts.tv_sec)) * nanoSeconds + mts.tv_nsec) / nanoToSecond));
     if (len < 0) {
         HILOG_ERROR(LOG_CORE, "MarkClockSync: entering parent_ts into buffer error, errno(%{public}d)", errno);
-        close(fd);
         return false;
     }
-    if (write(fd, buffer, len) < 0) {
+    if (write(fd.GetFd(), buffer, len) < 0) {
         HILOG_ERROR(LOG_CORE, "MarkClockSync: writing parent_ts error, errno(%{public}d)", errno);
     }
-    close(fd);
     return true;
 }
 
@@ -323,14 +319,14 @@ void WriteEventFile(const std::string& srcPath, const int fd)
 {
     uint8_t buffer[PAGE_SIZE] = {0};
     std::string srcSpecPath = CanonicalizeSpecPath(srcPath.c_str());
-    int srcFd = open(srcSpecPath.c_str(), O_RDONLY);
-    if (srcFd < 0) {
+    SmartFd srcFd = SmartFd(open(srcSpecPath.c_str(), O_RDONLY));
+    if (!srcFd) {
         HILOG_ERROR(LOG_CORE, "WriteEventFile: open %{public}s failed.", srcPath.c_str());
         return;
     }
     int64_t readLen = 0;
     do {
-        int64_t len = read(srcFd, buffer, PAGE_SIZE);
+        int64_t len = read(srcFd.GetFd(), buffer, PAGE_SIZE);
         if (len <= 0) {
             break;
         }
@@ -341,7 +337,6 @@ void WriteEventFile(const std::string& srcPath, const int fd)
         }
         readLen += len;
     } while (true);
-    close(srcFd);
     HILOG_INFO(LOG_CORE, "WriteEventFile end, path: %{public}s, data size: (%{public}" PRIu64 ").",
         srcPath.c_str(), static_cast<uint64_t>(readLen));
 }

@@ -16,8 +16,7 @@
 #ifndef HITRACE_DUMP_PIPE_H
 #define HITRACE_DUMP_PIPE_H
 
-#include <unique_fd.h>
-
+#include "smart_fd.h"
 #include "hitrace_define.h"
 
 namespace OHOS {
@@ -51,10 +50,10 @@ private:
     bool AddFdToEpoll(const int fd);
 
     bool isParent_ = false;
-    UniqueFd taskSubmitFd_;
-    UniqueFd syncRetFd_;
-    UniqueFd asyncRetFd_;
-    UniqueFd epollFd_;
+    SmartFd taskSubmitFd_;
+    SmartFd syncRetFd_;
+    SmartFd asyncRetFd_;
+    SmartFd epollFd_;
     bool epollInitialized_ = false;
 };
 } // namespace Hitrace

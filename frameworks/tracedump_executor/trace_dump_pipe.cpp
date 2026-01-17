@@ -48,8 +48,8 @@ const mode_t PIPE_FILE_MODE = 0666;
 HitraceDumpPipe::HitraceDumpPipe(bool isParent)
 {
     isParent_ = isParent;
-    epollFd_ = UniqueFd(epoll_create1(EPOLL_CLOEXEC));
-    if (epollFd_ < 0) {
+    epollFd_ = SmartFd(epoll_create1(EPOLL_CLOEXEC));
+    if (!epollFd_) {
         HILOG_ERROR(LOG_CORE, "epoll_create1 failed, errno: %{public}d", errno);
         return;
     }
@@ -90,40 +90,40 @@ void HitraceDumpPipe::ClearTraceDumpPipe()
 void HitraceDumpPipe::InitPipeFd()
 {
     if (isParent_) {
-        taskSubmitFd_ = UniqueFd(open(TRACE_TASK_SUBMIT_PIPE, O_RDWR | O_NONBLOCK));
-        if (taskSubmitFd_ < 0) {
+        taskSubmitFd_ = SmartFd(open(TRACE_TASK_SUBMIT_PIPE, O_RDWR | O_NONBLOCK));
+        if (!taskSubmitFd_) {
             HILOG_ERROR(LOG_CORE, "parent open %{public}s failed, errno(%{public}d)",
                 TRACE_TASK_SUBMIT_PIPE, errno);
         }
-        syncRetFd_ = UniqueFd(open(TRACE_SYNC_RETURN_PIPE, O_RDONLY | O_NONBLOCK));
-        if (syncRetFd_ < 0) {
+        syncRetFd_ = SmartFd(open(TRACE_SYNC_RETURN_PIPE, O_RDONLY | O_NONBLOCK));
+        if (!syncRetFd_) {
             HILOG_ERROR(LOG_CORE, "parent open %{public}s failed, errno(%{public}d)",
                 TRACE_SYNC_RETURN_PIPE, errno);
         } else {
-            AddFdToEpoll(syncRetFd_.Get());
+            AddFdToEpoll(syncRetFd_.GetFd());
         }
-        asyncRetFd_ = UniqueFd(open(TRACE_ASYNC_RETURN_PIPE, O_RDONLY | O_NONBLOCK));
-        if (asyncRetFd_ < 0) {
+        asyncRetFd_ = SmartFd(open(TRACE_ASYNC_RETURN_PIPE, O_RDONLY | O_NONBLOCK));
+        if (!asyncRetFd_) {
             HILOG_ERROR(LOG_CORE, "parent open %{public}s failed, errno(%{public}d)",
                 TRACE_ASYNC_RETURN_PIPE, errno);
         } else {
-            AddFdToEpoll(asyncRetFd_.Get());
+            AddFdToEpoll(asyncRetFd_.GetFd());
         }
     } else {
-        taskSubmitFd_ = UniqueFd(open(TRACE_TASK_SUBMIT_PIPE, O_RDONLY | O_NONBLOCK));
-        if (taskSubmitFd_ < 0) {
+        taskSubmitFd_ = SmartFd(open(TRACE_TASK_SUBMIT_PIPE, O_RDONLY | O_NONBLOCK));
+        if (!taskSubmitFd_) {
             HILOG_ERROR(LOG_CORE, "child open %{public}s failed, errno(%{public}d)",
                 TRACE_TASK_SUBMIT_PIPE, errno);
         } else {
-            AddFdToEpoll(taskSubmitFd_.Get());
+            AddFdToEpoll(taskSubmitFd_.GetFd());
         }
-        syncRetFd_ = UniqueFd(open(TRACE_SYNC_RETURN_PIPE, O_WRONLY));
-        if (syncRetFd_ < 0) {
+        syncRetFd_ = SmartFd(open(TRACE_SYNC_RETURN_PIPE, O_WRONLY));
+        if (!syncRetFd_) {
             HILOG_ERROR(LOG_CORE, "child open %{public}s failed, errno(%{public}d)",
                 TRACE_SYNC_RETURN_PIPE, errno);
         }
-        asyncRetFd_ = UniqueFd(open(TRACE_ASYNC_RETURN_PIPE, O_WRONLY));
-        if (asyncRetFd_ < 0) {
+        asyncRetFd_ = SmartFd(open(TRACE_ASYNC_RETURN_PIPE, O_WRONLY));
+        if (!asyncRetFd_) {
             HILOG_ERROR(LOG_CORE, "child open %{public}s failed, errno(%{public}d)",
                 TRACE_ASYNC_RETURN_PIPE, errno);
         }
@@ -163,7 +163,7 @@ bool HitraceDumpPipe::WriteToPipe(const int fd, TraceDumpTask& task, const char*
 
 bool HitraceDumpPipe::ReadFromPipe(const int fd, TraceDumpTask& task, const int timeoutMs, const char* operation)
 {
-    if (!epollInitialized_ || epollFd_ < 0) {
+    if (!epollInitialized_ || !epollFd_) {
         HILOG_ERROR(LOG_CORE, "%{public}s: epoll not initialized", operation);
         return false;
     }
@@ -172,7 +172,7 @@ bool HitraceDumpPipe::ReadFromPipe(const int fd, TraceDumpTask& task, const int 
     auto start = std::chrono::steady_clock::now();
     int remaining = timeoutMs;
     while (remaining > 0) {
-        int ret = TEMP_FAILURE_RETRY(epoll_wait(epollFd_.Get(), events, 1, remaining));
+        int ret = TEMP_FAILURE_RETRY(epoll_wait(epollFd_.GetFd(), events, 1, remaining));
         if (ret > 0 && (events[0].data.fd == fd) && (events[0].events & EPOLLIN)) {
             ssize_t readSize = TEMP_FAILURE_RETRY(read(fd, &task, sizeof(task)));
             if (readSize > 0) {
@@ -200,14 +200,14 @@ bool HitraceDumpPipe::ReadFromPipe(const int fd, TraceDumpTask& task, const int 
 
 bool HitraceDumpPipe::AddFdToEpoll(const int fd)
 {
-    if (!epollInitialized_ || epollFd_ < 0) {
+    if (!epollInitialized_ || !epollFd_) {
         return false;
     }
 
     struct epoll_event event;
     event.events = EPOLLIN;
     event.data.fd = fd;
-    if (epoll_ctl(epollFd_.Get(), EPOLL_CTL_ADD, fd, &event) < 0) {
+    if (epoll_ctl(epollFd_.GetFd(), EPOLL_CTL_ADD, fd, &event) < 0) {
         HILOG_ERROR(LOG_CORE, "failed add fd to epoll, errno: %{public}d", errno);
         return false;
     }
@@ -217,55 +217,55 @@ bool HitraceDumpPipe::AddFdToEpoll(const int fd)
 bool HitraceDumpPipe::SubmitTraceDumpTask(TraceDumpTask& task)
 {
     const char* operation = "SubmitTraceDumpTask";
-    if (!CheckProcessRole(true, operation) || !CheckFdValidity(taskSubmitFd_, operation, "submit pipe")) {
+    if (!CheckProcessRole(true, operation) || !CheckFdValidity(taskSubmitFd_.GetFd(), operation, "submit pipe")) {
         return false;
     }
-    return WriteToPipe(taskSubmitFd_, task, operation);
+    return WriteToPipe(taskSubmitFd_.GetFd(), task, operation);
 }
 
 bool HitraceDumpPipe::ReadSyncDumpRet(const int timeout, TraceDumpTask& task)
 {
     const char* operation = "ReadSyncDumpRet";
-    if (!CheckProcessRole(true, operation) || !CheckFdValidity(syncRetFd_, operation, "sync return pipe")) {
+    if (!CheckProcessRole(true, operation) || !CheckFdValidity(syncRetFd_.GetFd(), operation, "sync return pipe")) {
         return false;
     }
-    return ReadFromPipe(syncRetFd_, task, timeout * S_TO_MS, operation);
+    return ReadFromPipe(syncRetFd_.GetFd(), task, timeout * S_TO_MS, operation);
 }
 
 bool HitraceDumpPipe::ReadAsyncDumpRet(const int timeout, TraceDumpTask& task)
 {
     const char* operation = "ReadAsyncDumpRet";
-    if (!CheckProcessRole(true, operation) || !CheckFdValidity(asyncRetFd_, operation, "async return pipe")) {
+    if (!CheckProcessRole(true, operation) || !CheckFdValidity(asyncRetFd_.GetFd(), operation, "async return pipe")) {
         return false;
     }
-    return ReadFromPipe(asyncRetFd_, task, timeout * S_TO_MS, operation);
+    return ReadFromPipe(asyncRetFd_.GetFd(), task, timeout * S_TO_MS, operation);
 }
 
 bool HitraceDumpPipe::ReadTraceTask(const int timeoutMs, TraceDumpTask& task)
 {
     const char* operation = "ReadTraceTask";
-    if (!CheckProcessRole(false, operation) || !CheckFdValidity(taskSubmitFd_, operation, "submit pipe")) {
+    if (!CheckProcessRole(false, operation) || !CheckFdValidity(taskSubmitFd_.GetFd(), operation, "submit pipe")) {
         return false;
     }
-    return ReadFromPipe(taskSubmitFd_, task, timeoutMs, operation);
+    return ReadFromPipe(taskSubmitFd_.GetFd(), task, timeoutMs, operation);
 }
 
 bool HitraceDumpPipe::WriteSyncReturn(TraceDumpTask& task)
 {
     const char* operation = "WriteSyncReturn";
-    if (!CheckProcessRole(false, operation) || !CheckFdValidity(syncRetFd_, operation, "sync return pipe")) {
+    if (!CheckProcessRole(false, operation) || !CheckFdValidity(syncRetFd_.GetFd(), operation, "sync return pipe")) {
         return false;
     }
-    return WriteToPipe(syncRetFd_, task, operation);
+    return WriteToPipe(syncRetFd_.GetFd(), task, operation);
 }
 
 bool HitraceDumpPipe::WriteAsyncReturn(TraceDumpTask& task)
 {
     const char* operation = "WriteAsyncReturn";
-    if (!CheckProcessRole(false, operation) || !CheckFdValidity(asyncRetFd_, operation, "async return pipe")) {
+    if (!CheckProcessRole(false, operation) || !CheckFdValidity(asyncRetFd_.GetFd(), operation, "async return pipe")) {
         return false;
     }
-    return WriteToPipe(asyncRetFd_, task, operation);
+    return WriteToPipe(asyncRetFd_.GetFd(), task, operation);
 }
 } // namespace Hitrace
 } // namespace HiviewDFX

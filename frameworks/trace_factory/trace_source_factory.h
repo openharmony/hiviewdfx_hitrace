@@ -20,7 +20,7 @@
 #include <string>
 
 #include "trace_content.h"
-#include "unique_fd.h"
+#include "smart_fd.h"
 
 namespace OHOS {
 namespace HiviewDFX {
@@ -46,6 +46,8 @@ public:
     virtual std::unique_ptr<ITraceCpuRawWrite> GetTraceCpuRawWrite(const uint64_t taskId) = 0;
     virtual std::string GetTraceFilePath() = 0;
     virtual bool UpdateTraceFile(const std::string& traceFilePath) = 0;
+protected:
+    SmartFd traceFileFd_;
 };
 
 class TraceSourceLinuxFactory : public ITraceSourceFactory {
@@ -68,7 +70,6 @@ public:
     bool UpdateTraceFile(const std::string& traceFilePath) override;
 
 private:
-    UniqueFd traceFileFd_;
     std::string tracefsPath_;
     std::string traceFilePath_;
 };
@@ -93,7 +94,6 @@ public:
     bool UpdateTraceFile(const std::string& traceFilePath) override;
 
 private:
-    UniqueFd traceFileFd_;
     std::string tracefsPath_;
     std::string traceFilePath_;
 };
