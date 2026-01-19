@@ -51,13 +51,9 @@ using namespace std;
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
-class HitraceAgeingTest : public testing::Test {
-public:
-    static void SetUpTestCase(void) {}
-    static void TearDownTestCase(void) {}
-    void SetUp() {}
-    void TearDown() {}
-};
+constexpr size_t DEFAULT_LINK_NUM = 16;
+
+class HitraceAgeingTest : public testing::Test {};
 
 HWTEST_F(HitraceAgeingTest, CreateFileChecker_001, TestSize.Level1)
 {
@@ -295,47 +291,34 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_004, TestSize.Level1)
 */
 HWTEST_F(HitraceAgeingTest, HandleAgeing_005, TestSize.Level1)
 {
-    TraceJsonParser::Instance().snapShotAgeingParam_ = { true, 20, 0 };
+    constexpr auto fileNumberLimit = 20;
+    TraceJsonParser::Instance().snapShotAgeingParam_ = { true, fileNumberLimit, 0 };
     ClearFile();
 
     std::vector<TraceFileInfo> vec;
     std::vector<std::string> otherFiles;
-    for (uint32_t i = 0; i < 16; i++) {
-        TraceFileInfo info;
+    for (uint32_t i = 0; i <= 22; i++) {
+        TraceFileInfo& info = vec.emplace_back();
         info.filename = "/data/log/hitrace/trace_" + std::to_string(i) + ".a";
         CreateFile(info.filename);
-        vec.push_back(info);
-
-        std::string value = "1";
-        int ret = TEMP_FAILURE_RETRY(setxattr(info.filename.c_str(), ATTR_NAME_LINK, value.c_str(), value.size(), 0));
-        EXPECT_TRUE(ret != -1);
-
-        std::string otherFile = "/data/log/hitrace/trace_" + std::to_string(i) + ".b";
+        if (i <= DEFAULT_LINK_NUM) {
+            std::string value = "1";
+            int ret = TEMP_FAILURE_RETRY(
+                setxattr(info.filename.c_str(), ATTR_NAME_LINK, value.c_str(), value.size(), 0));
+            EXPECT_NE(ret, -1);
+        } else {
+            info.fileSize = 100 * 1024;
+        }
+        auto& otherFile = otherFiles.emplace_back("/data/log/hitrace/trace_" + std::to_string(i) + ".b");
         CreateFile(otherFile);
-        otherFiles.push_back(otherFile);
     }
-
-    for (uint32_t i = 16; i < 22; i++) {
-        TraceFileInfo info;
-        info.filename = "/data/log/hitrace/trace_" + std::to_string(i) + ".a";
-        CreateFile(info.filename);
-        info.fileSize = 100 * 1024;
-        vec.push_back(info);
-
-        std::string otherFile = "/data/log/hitrace/trace_" + std::to_string(i) + ".b";
-        CreateFile(otherFile);
-        otherFiles.push_back(otherFile);
-    }
-
     FileAgeingUtils::HandleAgeing(vec, TraceDumpType::TRACE_SNAPSHOT);
-
     for (const auto& filename : otherFiles) {
         EXPECT_FALSE(std::filesystem::exists(filename));
     }
     EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_0.a"));
-    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_16.a"));
-
-    ASSERT_EQ(vec.size(), 20);
+    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_17.a"));
+    ASSERT_EQ(vec.size(), fileNumberLimit);
     for (const auto& info : vec) {
         EXPECT_TRUE(std::filesystem::exists(info.filename));
     }
@@ -431,43 +414,32 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_007, TestSize.Level1)
 */
 HWTEST_F(HitraceAgeingTest, HandleAgeing_008, TestSize.Level1)
 {
-    TraceJsonParser::Instance().snapShotAgeingParam_ = { true, 0, 400 };
+    constexpr auto fileSizeLimit = 300;
+    TraceJsonParser::Instance().snapShotAgeingParam_ = { true, 0, fileSizeLimit };
     ClearFile();
-
     std::vector<TraceFileInfo> vec;
     std::vector<std::string> otherFiles;
-    for (uint32_t i = 0; i < 16; i++) {
-        TraceFileInfo info;
+    for (uint32_t i = 0; i < 22; i++) {
+        TraceFileInfo& info = vec.emplace_back();
         info.filename = "/data/log/hitrace/trace_" + std::to_string(i) + ".a";
         CreateFile(info.filename);
         info.fileSize = 100 * 1024;
-        vec.push_back(info);
-
-        std::string value = "1";
-        int ret = TEMP_FAILURE_RETRY(setxattr(info.filename.c_str(), ATTR_NAME_LINK, value.c_str(), value.size(), 0));
-        EXPECT_TRUE(ret != -1);
-
-        std::string otherFile = "/data/log/hitrace/trace_" + std::to_string(i) + ".b";
-        CreateFile(otherFile);
-        otherFiles.push_back(otherFile);
+        if (i <= DEFAULT_LINK_NUM) {
+            std::string value = "1";
+            int ret = TEMP_FAILURE_RETRY(
+                setxattr(info.filename.c_str(), ATTR_NAME_LINK, value.c_str(), value.size(), 0));
+            EXPECT_NE(ret, -1);
+            auto& otherFile = otherFiles.emplace_back("/data/log/hitrace/trace_" + std::to_string(i) + ".b");
+            CreateFile(otherFile);
+        }
     }
-
-    for (uint32_t i = 16; i < 22; i++) {
-        TraceFileInfo info;
-        info.filename = "/data/log/hitrace/trace_" + std::to_string(i) + ".a";
-        CreateFile(info.filename);
-        info.fileSize = 100 * 1024;
-        vec.push_back(info);
-    }
-
     FileAgeingUtils::HandleAgeing(vec, TraceDumpType::TRACE_SNAPSHOT);
-
     for (const auto& filename : otherFiles) {
         EXPECT_FALSE(std::filesystem::exists(filename));
     }
     EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_0.a"));
-    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_16.a"));
     EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_17.a"));
+    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_18.a"));
 
     ASSERT_EQ(vec.size(), 19);
     for (const auto& info : vec) {
