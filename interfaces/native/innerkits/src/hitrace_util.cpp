@@ -20,6 +20,15 @@
 
 #include "hilog/log.h"
 
+#ifdef LOG_DOMAIN
+#undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD002D33
+#endif
+#ifdef LOG_TAG
+#undef LOG_TAG
+#define LOG_TAG "HitraceMeter"
+#endif
+
 namespace OHOS {
 namespace HiviewDFX {
 
