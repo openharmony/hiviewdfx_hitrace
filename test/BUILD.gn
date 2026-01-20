@@ -39,15 +39,11 @@ group("hitrace_unittest") {
     "unittest:HitraceMeterTest",
     "unittest:HitraceOptionTest",
     "unittest:HitraceUtilsTest",
+    "unittest/rust/hitrace_meter:rust_meter_test",
+    "unittest/rust/hitracechain:rust_hitracechain_test",
   ]
   if (support_jsapi) {
     deps += [ "unittest/common/napi:unittest" ]
-  }
-  if (!use_clang_coverage) {
-    deps += [
-      "unittest/rust/hitrace_meter:rust_meter_test",
-      "unittest/rust/hitracechain:rust_hitracechain_test",
-    ]
   }
 }
 
