@@ -21,7 +21,8 @@
       "hitrace_snapshot_file_limit",
       "hitrace_record_file_limit",
       "hitrace_feature_enable_pgo",
-      "hitrace_feature_pgo_path"
+      "hitrace_feature_pgo_path",
+      "hitrace_feature_support_usr_symlink"
     ],
     "adapted_system_type": [
       "small",

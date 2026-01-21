@@ -59,6 +59,12 @@ ohos_executable("hitrace") {
 
   symlink_target_name = [ "bytrace" ]
 
+  if (hitrace_feature_support_usr_symlink) {
+    symlink_target_name += [
+      "../usr/bin/hitrace",
+    ]
+  }
+
   subsystem_name = "hiviewdfx"
   part_name = "hitrace"
 }
