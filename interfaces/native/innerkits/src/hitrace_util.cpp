@@ -26,7 +26,7 @@
 #endif
 #ifdef LOG_TAG
 #undef LOG_TAG
-#define LOG_TAG "HitraceMeter"
+#define LOG_TAG "HitraceDump"
 #endif
 
 namespace OHOS {
