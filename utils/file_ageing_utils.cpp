@@ -37,7 +37,7 @@
 
 namespace {
 constexpr int BYTE_PER_KB = 1024;
-constexpr size_t DEFAULT_LINK_NUM = 15;
+constexpr size_t DEFAULT_LINK_NUM = 16;
 using namespace OHOS::HiviewDFX::Hitrace;
 
 class FileAgeingChecker {
