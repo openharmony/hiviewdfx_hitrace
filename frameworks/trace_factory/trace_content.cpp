@@ -385,7 +385,7 @@ bool TraceBaseInfoContent::WriteTraceContent()
     auto writeLen = WriteKernelVersion();
     writeLen += WriteUnixTimeMs();
     writeLen += WriteBootTimeMs();
-    UpdateTraceContentHeader(contentHeader, writeLen);
+    UpdateTraceContentHeader(contentHeader, static_cast<uint32_t>(writeLen));
     return true;
 }
 
@@ -400,6 +400,9 @@ ssize_t TraceBaseInfoContent::WriteKeyValue(const std::string& key, const std::s
     if (writeRet != static_cast<ssize_t>(keyValue.size())) {
         HILOG_WARN(LOG_CORE, "Write Key %{public}s Value %{public}s failed, errno: %{public}d.",
             key.c_str(), value.c_str(), errno);
+    }
+    if (writeRet < 0) {
+        return 0;
     }
     return writeRet;
 }

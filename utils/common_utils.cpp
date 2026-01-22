@@ -54,21 +54,21 @@ constexpr int EXPECT_NUM = 2;
 std::string CanonicalizeSpecPath(const char* src)
 {
     if (src == nullptr || strlen(src) >= PATH_MAX) {
-        HILOG_ERROR(LOG_CORE, "CanonicalizeSpecPath: %{pubilc}s failed.", src);
+        HILOG_ERROR(LOG_CORE, "CanonicalizeSpecPath: %{public}s failed.", src);
         return "";
     }
     char resolvedPath[PATH_MAX] = { 0 };
 
     if (access(src, F_OK) == 0) {
         if (realpath(src, resolvedPath) == nullptr) {
-            HILOG_ERROR(LOG_CORE, "CanonicalizeSpecPath: realpath %{pubilc}s failed.", src);
+            HILOG_ERROR(LOG_CORE, "CanonicalizeSpecPath: realpath %{public}s failed.", src);
             return "";
         }
     } else {
         std::string fileName(src);
         if (fileName.find("..") == std::string::npos) {
             if (sprintf_s(resolvedPath, PATH_MAX, "%s", src) == -1) {
-                HILOG_ERROR(LOG_CORE, "CanonicalizeSpecPath: sprintf_s %{pubilc}s failed.", src);
+                HILOG_ERROR(LOG_CORE, "CanonicalizeSpecPath: sprintf_s %{public}s failed.", src);
                 return "";
             }
         } else {
