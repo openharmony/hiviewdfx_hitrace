@@ -33,4 +33,5 @@ declare_args() {
   hitrace_feature_enable_pgo = false
   hitrace_feature_pgo_path = ""
   use_shared_libz = true
+  hitrace_feature_support_usr_symlink = false
 }
