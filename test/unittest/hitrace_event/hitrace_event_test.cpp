@@ -43,9 +43,9 @@ public:
 
 void HitraceEventTest::SetUpTestCase()
 {
-    if (access((DEBUGFS_TRACING_DIR + TRACE_MARKER_NODE).c_str(), F_OK) != -1) {
+    if (access((std::string(DEBUGFS_TRACING_DIR) + std::string(TRACE_MARKER_NODE)).c_str(), F_OK) != -1) {
         g_traceRootPath = DEBUGFS_TRACING_DIR;
-    } else if (access((TRACEFS_DIR + TRACE_MARKER_NODE).c_str(), F_OK) != -1) {
+    } else if (access((std::string(TRACEFS_DIR) + std::string(TRACE_MARKER_NODE)).c_str(), F_OK) != -1) {
         g_traceRootPath = TRACEFS_DIR;
     } else {
         GTEST_LOG_(INFO) << "Error: Finding trace folder failed";

@@ -123,9 +123,9 @@ bool CheckTraceCommandOutput(const std::string& cmd, const std::vector<std::stri
                 break;
             }
         }
-        char* tracefile = strstr(buffer, TRACE_FILE_DEFAULT_DIR.c_str());
-        tracefile += TRACE_FILE_DEFAULT_DIR.length();
+        char* tracefile = strstr(buffer, TRACE_FILE_DEFAULT_DIR);
         if (tracefile != nullptr) {
+            tracefile += strlen(TRACE_FILE_DEFAULT_DIR);
             tracefile[strcspn(tracefile, "\n")] = '\0'; // replace "\n" with "\0"
             GTEST_LOG_(INFO) << "match trace file : " << tracefile;
             traceLists.push_back(std::string(tracefile));
@@ -141,7 +141,7 @@ bool CheckTraceCommandOutput(const std::string& cmd, const std::vector<std::stri
 
 bool IsTracingOn()
 {
-    std::ifstream tracingOnFile(TRACEFS_DIR + TRACING_ON_NODE);
+    std::ifstream tracingOnFile(std::string(TRACEFS_DIR) + std::string(TRACING_ON_NODE));
     if (!tracingOnFile.is_open()) {
         std::cout << "Failed to open /sys/kernel/tracing/tracing_on." << std::endl;
         return false;
@@ -199,7 +199,7 @@ bool IsFileExcludeAllKeyWords(const string& fileName, const std::vector<std::str
 
 std::string ReadBufferSizeKB()
 {
-    std::ifstream file(TRACEFS_DIR + "buffer_size_kb");
+    std::ifstream file(std::string(TRACEFS_DIR) + std::string("buffer_size_kb"));
     if (!file.is_open()) {
         GTEST_LOG_(ERROR) << "Failed to open buffer_size_kb";
         return "Unknown";
@@ -231,12 +231,13 @@ bool GetFileInfo(const TraceDumpType& traceType, const std::vector<std::string>&
     std::vector<FileWithInfo>& fileList)
 {
     struct stat fileStat;
+    static const size_t traceDirPathLen = strlen(TRACE_FILE_DEFAULT_DIR);
     for (auto i = 0; i < outputFiles.size(); i++) {
-        if (outputFiles[i].substr(TRACE_FILE_DEFAULT_DIR.size(), tracePrefixMap[traceType].size()) ==
+        if (outputFiles[i].substr(traceDirPathLen, tracePrefixMap[traceType].size()) ==
             tracePrefixMap[traceType]) {
             uint64_t duration = 0;
-            if (GetDurationFromFileName(outputFiles[i].substr(TRACE_FILE_DEFAULT_DIR.size(),
-                outputFiles[i].size() - TRACE_FILE_DEFAULT_DIR.size()), duration)) {
+            if (GetDurationFromFileName(outputFiles[i].substr(traceDirPathLen,
+                outputFiles[i].size() - traceDirPathLen), duration)) {
                 if (stat(outputFiles[i].c_str(), &fileStat) == 0) {
                     fileList.push_back({outputFiles[i], fileStat.st_ctime, static_cast<uint64_t>(fileStat.st_size),
                         duration});
@@ -651,9 +652,11 @@ HWTEST_F(HitraceSystemTest, RecordingModeTest001, TestSize.Level1)
     ASSERT_TRUE(CheckTraceCommandOutput("hitrace --trace_begin --record sched",
         {"RECORDING_LONG_BEGIN_RECORD", "tags:sched", "bufferSize:18432", "trace capturing"}, traceLists));
     ASSERT_TRUE(traceLists.empty());
-    ASSERT_TRUE(IsFileIncludeAllKeyWords(TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT,
+    const std::string savedEventsFormatPath = std::string(TRACE_FILE_DEFAULT_DIR) +
+        std::string(TRACE_SAVED_EVENTS_FORMAT);
+    ASSERT_TRUE(IsFileIncludeAllKeyWords(savedEventsFormatPath,
         {"name: print", "name: sched_wakeup", "name: sched_switch"}));
-    ASSERT_TRUE(IsFileExcludeAllKeyWords(TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT,
+    ASSERT_TRUE(IsFileExcludeAllKeyWords(savedEventsFormatPath,
         {"name: binder_transaction", "name: binder_transaction_received"}));
 }
 

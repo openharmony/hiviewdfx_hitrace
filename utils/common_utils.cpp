@@ -44,8 +44,8 @@ namespace Hitrace {
 #define LOG_TAG "HitraceUtils"
 #endif
 namespace {
-static const char* CPUFREQ_PREFIX = "/sys/devices/system/cpu/cpu";
-static const char* CPUFREQ_AFTERFIX = "/cpufreq/scaling_cur_freq";
+static const char* const CPUFREQ_PREFIX = "/sys/devices/system/cpu/cpu";
+static const char* const CPUFREQ_AFTERFIX = "/cpufreq/scaling_cur_freq";
 constexpr int DECIMAL_SCALE = 10;
 constexpr int BUFFER_LEN = 32;
 constexpr int EXPECT_NUM = 2;
@@ -217,11 +217,11 @@ bool IsRootVersion()
 
 bool IsTraceMounted(std::string& traceRootPath)
 {
-    if (access((DEBUGFS_TRACING_DIR + TRACE_MARKER_NODE).c_str(), F_OK) != -1) {
+    if (access((std::string(DEBUGFS_TRACING_DIR) + std::string(TRACE_MARKER_NODE)).c_str(), F_OK) != -1) {
         traceRootPath = DEBUGFS_TRACING_DIR;
         return true;
     }
-    if (access((TRACEFS_DIR + TRACE_MARKER_NODE).c_str(), F_OK) != -1) {
+    if (access((std::string(TRACEFS_DIR) + std::string(TRACE_MARKER_NODE)).c_str(), F_OK) != -1) {
         traceRootPath = TRACEFS_DIR;
         return true;
     }
@@ -437,7 +437,8 @@ bool IsTraceFilePathLegal(const std::string& fileName, char *realFilePath, size_
     }
     realFilePath[bufLen - 1] = '\0';
     std::string pathStr(realFilePath);
-    if (pathStr.substr(0, TRACE_FILE_DEFAULT_DIR.size()) != TRACE_FILE_DEFAULT_DIR) {
+    static const size_t traceDirPathLen = strlen(TRACE_FILE_DEFAULT_DIR);
+    if (pathStr.substr(0, traceDirPathLen) != TRACE_FILE_DEFAULT_DIR) {
         HILOG_ERROR(LOG_CORE, "file not at hitrace dir");
         return false;
     }

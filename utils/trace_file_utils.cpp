@@ -48,9 +48,9 @@ namespace {
 const int TIME_BUFFER_SIZE = 16;
 const int DEFAULT_TRACE_DURATION = 30;
 const int TIME_INIT = 1900;
-static const char* TRACE_SNAPSHOT_PREFIX = "trace_";
-static const char* TRACE_RECORDING_PREFIX = "record_trace_";
-static const char* TRACE_CACHE_PREFIX = "cache_trace_";
+static const char* const TRACE_SNAPSHOT_PREFIX = "trace_";
+static const char* const TRACE_RECORDING_PREFIX = "record_trace_";
+static const char* const TRACE_CACHE_PREFIX = "cache_trace_";
 std::map<TraceDumpType, std::string> tracePrefixMap = {
     {TraceDumpType::TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
     {TraceDumpType::TRACE_RECORDING, TRACE_RECORDING_PREFIX},
@@ -295,7 +295,8 @@ std::string GenerateTraceFileNameByTraceTime(TraceDumpType traceType,
  */
 void DelSavedEventsFormat()
 {
-    const std::string savedEventsFormatPath = TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT;
+    const std::string savedEventsFormatPath = std::string(TRACE_FILE_DEFAULT_DIR) +
+        std::string(TRACE_SAVED_EVENTS_FORMAT);
     if (access(savedEventsFormatPath.c_str(), F_OK) != 0) {
         // saved_events_format not exit
         return;
@@ -415,7 +416,8 @@ std::string RenameCacheFile(const std::string& cacheFile)
         return cacheFile;
     }
     std::string dirPath = cacheFile.substr(0, cacheFile.find_last_of("/") + 1);
-    std::string newFileName = fileName.substr(pos + CACHE_FILE_PREFIX.size());
+    static const size_t cacheFilePrefixLen = strlen(CACHE_FILE_PREFIX);
+    std::string newFileName = fileName.substr(pos + cacheFilePrefixLen);
     std::string newFilePath = dirPath + newFileName;
     if (rename(cacheFile.c_str(), newFilePath.c_str()) != 0) {
         HILOG_ERROR(LOG_CORE, "rename %{public}s to %{public}s failed, errno: %{public}d.",
