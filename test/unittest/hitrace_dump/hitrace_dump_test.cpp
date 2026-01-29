@@ -845,7 +845,7 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_004, TestSize.Level0)
 {
     const std::vector<std::string> tagGroups = {"scene_performance"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    ASSERT_TRUE(access(TRACE_FILE_DEFAULT_DIR.c_str(), F_OK) == 0) << "/data/log/hitrace not exists.";
+    ASSERT_TRUE(access(TRACE_FILE_DEFAULT_DIR, F_OK) == 0) << "/data/log/hitrace not exists.";
 
     SetSysInitParamTags(123);
     ASSERT_TRUE(SetCheckParam() == false);
@@ -1178,11 +1178,13 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_012, TestSize.Level0)
     std::string args = "tags: sched clockType: boot bufferSize:1024 overwrite: 1";
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
     sleep(1);
-    struct stat beforeStat = GetFileStatInfo(TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT);
+    const std::string savedEventsFormatPath = std::string(TRACE_FILE_DEFAULT_DIR) +
+        std::string(TRACE_SAVED_EVENTS_FORMAT);
+    struct stat beforeStat = GetFileStatInfo(savedEventsFormatPath);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(OpenTrace(args) == TraceErrorCode::SUCCESS);
     sleep(1);
-    struct stat afterStat = GetFileStatInfo(TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT);
+    struct stat afterStat = GetFileStatInfo(savedEventsFormatPath);
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(afterStat.st_ctime != beforeStat.st_ctime);
 }

@@ -106,7 +106,7 @@ private:
 namespace {
 std::string ReadBufferSizeKB()
 {
-    std::ifstream file(TRACEFS_DIR + "buffer_size_kb");
+    std::ifstream file(std::string(TRACEFS_DIR) + "buffer_size_kb");
     if (!file.is_open()) {
         GTEST_LOG_(ERROR) << "Failed to open buffer_size_kb";
         return "Unknown";

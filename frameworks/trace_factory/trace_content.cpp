@@ -436,7 +436,8 @@ TraceEventFmtContent::TraceEventFmtContent(const int fd,
                                            const bool ishm)
     : ITraceContent(fd, tracefsPath, traceFilePath, ishm)
 {
-    const std::string savedEventsFormatPath = TRACE_FILE_DEFAULT_DIR + TRACE_SAVED_EVENTS_FORMAT;
+    const std::string savedEventsFormatPath = std::string(TRACE_FILE_DEFAULT_DIR) +
+        std::string(TRACE_SAVED_EVENTS_FORMAT);
     bool hasPreWrotten = true;
     if (access(savedEventsFormatPath.c_str(), F_OK) != -1) {
         traceSourceFd_ = SmartFd(open(savedEventsFormatPath.c_str(), O_RDONLY | O_NONBLOCK));

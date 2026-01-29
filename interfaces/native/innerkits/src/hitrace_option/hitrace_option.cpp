@@ -37,12 +37,11 @@ namespace Hitrace {
 #define LOG_TAG "HitraceOption"
 #endif
 
-static const char* TELEMETRY_APP_PARAM = "debug.hitrace.telemetry.app";
-static const char* SET_EVENT_PID = "/sys/kernel/tracing/set_event_pid";
-static const char* DEBUG_SET_EVENT_PID = "/sys/kernel/debug/tracing/set_event_pid";
-static const char* SET_NO_FILTER_EVENT = "/sys/kernel/tracing/no_filter_events";
-static const char* DEBUG_SET_NO_FILTER_EVENT = "/sys/kernel/debug/tracing/no_filter_events";
-
+static const char* const TELEMETRY_APP_PARAM = "debug.hitrace.telemetry.app";
+static const char* const SET_EVENT_PID = "/sys/kernel/tracing/set_event_pid";
+static const char* const DEBUG_SET_EVENT_PID = "/sys/kernel/debug/tracing/set_event_pid";
+static const char* const SET_NO_FILTER_EVENT = "/sys/kernel/tracing/no_filter_events";
+static const char* const DEBUG_SET_NO_FILTER_EVENT = "/sys/kernel/debug/tracing/no_filter_events";
 class FileLock {
 public:
     explicit FileLock(const std::string& filename, int flags)

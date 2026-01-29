@@ -46,9 +46,9 @@ bool Init(const char (&pid)[6])
         HILOG_ERROR(LOG_CORE, "pid[%{public}s] strcpy_s fail ret: %{public}d.", pid, ret);
         return false;
     }
-    if (access((DEBUGFS_TRACING_DIR + TRACE_MARKER_NODE).c_str(), F_OK) != -1) {
+    if (access((std::string(DEBUGFS_TRACING_DIR) + std::string(TRACE_MARKER_NODE)).c_str(), F_OK) != -1) {
         g_traceRootPath = DEBUGFS_TRACING_DIR;
-    } else if (access((TRACEFS_DIR + TRACE_MARKER_NODE).c_str(), F_OK) != -1) {
+    } else if (access((std::string(TRACEFS_DIR) + std::string(TRACE_MARKER_NODE)).c_str(), F_OK) != -1) {
         g_traceRootPath = TRACEFS_DIR;
     } else {
         HILOG_ERROR(LOG_CORE, "Error: Finding trace folder failed");

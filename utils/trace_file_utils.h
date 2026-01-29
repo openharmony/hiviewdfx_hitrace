@@ -26,8 +26,6 @@
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
-const std::string CACHE_FILE_PREFIX = "cache_";
-
 struct TraceFileInfo {
     std::string filename = "";
     uint64_t traceStartTime = 0; // in ms

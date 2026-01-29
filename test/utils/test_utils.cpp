@@ -30,10 +30,10 @@ const std::string TRACE_RECORD_PREFIX = "record_";
 
 std::vector<std::string> GetTraceFileByPrefix(const std::string& prefix)
 {
-    if (access(TRACE_FILE_DEFAULT_DIR.c_str(), F_OK) != 0) {
+    if (access(TRACE_FILE_DEFAULT_DIR, F_OK) != 0) {
         return {};
     }
-    DIR* dirPtr = opendir(TRACE_FILE_DEFAULT_DIR.c_str());
+    DIR* dirPtr = opendir(TRACE_FILE_DEFAULT_DIR);
     if (dirPtr == nullptr) {
         return {};
     }

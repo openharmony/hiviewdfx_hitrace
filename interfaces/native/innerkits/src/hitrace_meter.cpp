@@ -72,9 +72,9 @@ std::atomic<uint64_t> g_appTag(HITRACE_TAG_NOT_READY);
 std::atomic<int64_t> g_appTagMatchPid(-1);
 std::atomic<HiTraceOutputLevel> g_levelThreshold(HITRACE_LEVEL_MAX);
 
-static const std::string SANDBOX_PATH = "/data/storage/el2/log/";
-static const char* PHYSICAL_PATH = "/data/app/el2/100/log/";
-const char* const EMPTY = "";
+static const char* const SANDBOX_PATH = "/data/storage/el2/log/";
+static const char* const PHYSICAL_PATH = "/data/app/el2/100/log/";
+static const char* const EMPTY = "";
 
 constexpr int VAR_NAME_MAX_SIZE = 400;
 constexpr int NAME_NORMAL_LEN = 512;
@@ -82,14 +82,14 @@ constexpr int RECORD_SIZE_MAX = 1024;
 
 static char g_appName[NAME_NORMAL_LEN + 1] = {0};
 static std::string g_appTracePrefix = "";
-constexpr const int COMM_STR_MAX = 14;
-constexpr const int PID_STR_MAX = 7;
-constexpr const int PREFIX_MAX_SIZE = 128; // comm-pid (tgid) [cpu] .... ts.tns: tracing_mark_write:
-constexpr const int TRACE_TXT_HEADER_MAX = 1024;
-constexpr const int CPU_CORE_NUM = 16;
-constexpr const int DEFAULT_CACHE_SIZE = 32 * 1024;
-constexpr const int MAX_FILE_SIZE = 500 * 1024 * 1024;
-constexpr const int NS_TO_MS = 1000;
+constexpr int COMM_STR_MAX = 14;
+constexpr int PID_STR_MAX = 7;
+constexpr int PREFIX_MAX_SIZE = 128; // comm-pid (tgid) [cpu] .... ts.tns: tracing_mark_write:
+constexpr int TRACE_TXT_HEADER_MAX = 1024;
+constexpr int CPU_CORE_NUM = 16;
+constexpr int DEFAULT_CACHE_SIZE = 32 * 1024;
+constexpr int MAX_FILE_SIZE = 500 * 1024 * 1024;
+constexpr int NS_TO_MS = 1000;
 int g_tgid = -1;
 uint64_t g_traceEventNum = 0;
 int g_writeOffset = 0;
@@ -122,7 +122,7 @@ const uint64_t VALID_TAGS = HITRACE_TAG_FFRT | HITRACE_TAG_COMMONLIBRARY | HITRA
     HITRACE_TAG_GLOBAL_RESMGR | HITRACE_TAG_DEVICE_MANAGER | HITRACE_TAG_SAMGR | HITRACE_TAG_POWER |
     HITRACE_TAG_DISTRIBUTED_SCHEDULE | HITRACE_TAG_DISTRIBUTED_INPUT | HITRACE_TAG_BLUETOOTH | HITRACE_TAG_APP;
 
-static const char* TRACE_TXT_HEADER_FORMAT = R"(# tracer: nop
+static const char* const TRACE_TXT_HEADER_FORMAT = R"(# tracer: nop
 #
 # entries-in-buffer/entries-written: %-21s   #P:%-3s
 #
@@ -184,17 +184,10 @@ private:
 
 class TaskQueue {
 public:
-    TaskQueue()
-    {
-        thread_ = std::thread(&TaskQueue::ProcessTasks, this);
-    }
-
-    ~TaskQueue()
-    {
-        stop_ = true;
-        condition_.notify_one();
-        thread_.join();
-    }
+    TaskQueue(const TaskQueue&) = delete;
+    TaskQueue& operator=(const TaskQueue&) = delete;
+    TaskQueue(TaskQueue&&) = delete;
+    TaskQueue& operator=(TaskQueue&&) = delete;
 
     static TaskQueue& Instance()
     {
@@ -202,21 +195,35 @@ public:
         return instance;
     }
 
-    void Enqueue(std::function<void()> task)
+    void Enqueue(std::function<void()>&& task)
     {
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            queue_.push(task);
+            queue_.push(std::move(task));
+            if (!thread_.joinable()) {
+                thread_ = std::thread(&TaskQueue::ProcessTasks, this);
+            }
         }
         condition_.notify_one();
     }
 
 private:
+    TaskQueue() = default;
+
+    ~TaskQueue()
+    {
+        stop_.store(true);
+        condition_.notify_one();
+        if (thread_.joinable()) {
+            thread_.join();
+        }
+    }
+
     void ProcessRemainingTasks()
     {
         std::unique_lock<std::mutex> lock(mutex_);
         while (!queue_.empty()) {
-            auto task = queue_.front();
+            auto task = std::move(queue_.front());
             queue_.pop();
             lock.unlock();
             task();
@@ -226,16 +233,16 @@ private:
 
     void ProcessTasks()
     {
-        while (!stop_) {
+        while (!stop_.load()) {
             std::function<void()> task;
             {
                 std::unique_lock<std::mutex> lock(mutex_);
-                condition_.wait(lock, [this] { return !queue_.empty() || stop_; });
-                if (stop_) {
+                condition_.wait(lock, [this] { return !queue_.empty() || stop_.load(); });
+                if (stop_.load()) {
                     HILOG_INFO(LOG_CORE, "ProcessTasks stop");
                     break;
                 }
-                task = queue_.front();
+                task = std::move(queue_.front());
                 queue_.pop();
             }
             task();
@@ -247,7 +254,7 @@ private:
     std::mutex mutex_;
     std::condition_variable condition_;
     std::thread thread_;
-    bool stop_ = false;
+    std::atomic<bool> stop_{false};
 };
 
 static void HandleAppTagChange(uint64_t oldTags, uint64_t newTags)
@@ -327,8 +334,8 @@ static void UpdateSysParamTags()
 // open file "trace_marker".
 void OpenTraceMarkerFile()
 {
-    const std::string debugFile = DEBUGFS_TRACING_DIR + TRACE_MARKER_NODE;
-    const std::string traceFile = TRACEFS_DIR + TRACE_MARKER_NODE;
+    const std::string debugFile = std::string(DEBUGFS_TRACING_DIR) + std::string(TRACE_MARKER_NODE);
+    const std::string traceFile = std::string(TRACEFS_DIR) + std::string(TRACE_MARKER_NODE);
     g_markerFd = SmartFd(open(debugFile.c_str(), O_WRONLY | O_CLOEXEC));
 #ifdef HITRACE_UNITTEST
     SetMarkerFd(g_markerFd.GetFd());
@@ -463,7 +470,7 @@ int CheckAppTraceArgs(TraceFlag flag, uint64_t tags, uint64_t limitSize)
 
 int SetAppFileName(std::string& destFileName, std::string& fileName)
 {
-    destFileName = SANDBOX_PATH + "trace/";
+    destFileName = std::string(SANDBOX_PATH) + "trace/";
     mode_t permissions = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH; // 0755
 #ifdef HITRACE_UNITTEST
     destFileName = "/data/local/tmp/";
@@ -1699,6 +1706,7 @@ void HiTraceCallbackRegistry::ExecuteOne(int32_t index, bool appTagEnable)
 void HiTraceCallbackRegistry::SetCallbacksNapi(ExecuteCallbackNapi executeCallbackNapi,
     DeleteCallbackNapi deleteCallbackNapi)
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     executeCallbackNapi_ = executeCallbackNapi;
     deleteCallbackNapi_ = deleteCallbackNapi;
 }
@@ -1706,6 +1714,7 @@ void HiTraceCallbackRegistry::SetCallbacksNapi(ExecuteCallbackNapi executeCallba
 void HiTraceCallbackRegistry::SetCallbacksAni(ExecuteCallbackAni executeCallbackAni,
     DeleteCallbackAni deleteCallbackAni)
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     executeCallbackAni_ = executeCallbackAni;
     deleteCallbackAni_ = deleteCallbackAni;
 }
