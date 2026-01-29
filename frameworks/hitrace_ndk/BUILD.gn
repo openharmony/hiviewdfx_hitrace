@@ -38,7 +38,10 @@ ohos_shared_library("hitrace_ndk") {
     external_deps += [ "hilog:libhilog" ]
   }
   version_script = "hitrace_ndk.map"
-  innerapi_tags = [ "ndk" ]
+  innerapi_tags = [
+    "llndk",
+    "ndk",
+  ]
   part_name = "hitrace"
   subsystem_name = "hiviewdfx"
 }
