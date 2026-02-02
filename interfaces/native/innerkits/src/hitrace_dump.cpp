@@ -41,6 +41,7 @@
 #include "dfx_dump_catcher.h"
 #include "dynamic_buffer.h"
 #include "file_ageing_utils.h"
+#include "hisysevent.h"
 #include "hitrace_meter.h"
 #include "hitrace_util.h"
 #include "hitrace_option/hitrace_option.h"
@@ -873,6 +874,25 @@ bool SetSigChldHandler()
     return true;
 }
 
+void ReportMemScene()
+{
+    using namespace std::chrono;
+    auto timeStampInMs = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
+    static constexpr char performanceDomain[] = "PERFORMANCE";
+    static constexpr char sceneType[] = "MEM_SCENE_ENTRY";
+    static constexpr char processName[] = "hiview";
+    static constexpr char asyncTraceSceneId[] = "6";
+    auto ret = HiSysEventWrite(performanceDomain, sceneType, HiSysEvent::BEHAVIOR,
+        "PACKAGE_NAME", processName,
+        "SCENE_ID", asyncTraceSceneId,
+        "HAPPEN_TIME", timeStampInMs.count());
+    if (ret != 0) {
+        HILOG_WARN(LOG_CORE, "failed to report mem event, sceneId=%{public}s, ret=%{public}d", asyncTraceSceneId, ret);
+    } else {
+        HILOG_INFO(LOG_CORE, "succ to report mem event, sceneId=%{public}s", asyncTraceSceneId);
+    }
+}
+
 TraceErrorCode ProcessDumpAsync(const uint64_t taskid, const int64_t fileSizeLimit, TraceRetInfo& traceRetInfo)
 {
     auto taskCnt = TraceDumpExecutor::GetInstance().GetTraceDumpTaskCount();
@@ -919,6 +939,7 @@ TraceErrorCode ProcessDumpAsync(const uint64_t taskid, const int64_t fileSizeLim
         loopWriteThread.join();
         _exit(EXIT_SUCCESS);
     }
+    ReportMemScene();
     g_traceDumpTaskPid = static_cast<sig_atomic_t>(pid);
     return SubmitTaskAndWaitReturn(task, traceRetInfo);
 }
