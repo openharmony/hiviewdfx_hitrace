@@ -16,6 +16,8 @@
 #ifndef TRACE_FILE_UTILS_H
 #define TRACE_FILE_UTILS_H
 
+#include <dirent.h>
+#include <functional>
 #include <map>
 #include <set>
 #include <string>
@@ -54,6 +56,9 @@ void RefreshTraceVec(std::vector<TraceFileInfo>& traceVec, const TraceDumpType t
 std::string RenameCacheFile(const std::string& cacheFile);
 bool SetFileInfo(const bool isFileExist, const std::string outPath, const uint64_t& firstPageTimestamp,
     const uint64_t& lastPageTimestamp, TraceFileInfo& traceFileInfo);
+
+bool TraverseFiles(const std::string &dirPath, bool recursion,
+    const std::function<void(const char*, const dirent*)>& handler);
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS

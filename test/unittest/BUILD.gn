@@ -341,7 +341,10 @@ ohos_unittest("HitraceUtilsTest") {
     "$hitrace_utils_path",
   ]
 
-  sources = [ "hitrace_utils/hitrace_utils_test.cpp" ]
+  sources = [
+    "hitrace_utils/hitrace_utils_test.cpp",
+    "hitrace_utils/trace_file_utils_test.cpp",
+  ]
 
   cflags = [
     "-Dprivate=public",  #allow test code access private members
@@ -458,7 +461,10 @@ ohos_unittest("HitraceOptionTest") {
     "hitrace_option/hitrace_option_test.cpp",
   ]
 
-  deps = [ "$hitrace_utils_path:hitrace_common_utils" ]
+  deps = [
+    "$hitrace_utils_path:hitrace_common_utils",
+    "$hitrace_utils_path:hitrace_file_utils"
+  ]
 
   external_deps = [
     "googletest:gtest_main",
