@@ -15,6 +15,8 @@
 
 #include "hitrace_option/hitrace_option.h"
 
+#include <cstring>
+#include <dirent.h>
 #include <fcntl.h>
 #include <sstream>
 #include <filesystem>
@@ -87,13 +89,18 @@ std::vector<std::string> GetSubThreadIds(const std::string& pid)
 {
     std::vector<std::string> ret;
     std::string path = "/proc/" + pid + "/task/";
-
-    if (std::filesystem::exists(path) && std::filesystem::is_directory(path)) {
-        for (const auto& entry : std::filesystem::directory_iterator(path)) {
-            ret.emplace_back(entry.path().filename());
-        }
+    DIR* dir = opendir(path.c_str());
+    if (dir == nullptr) {
+        HILOG_ERROR(LOG_CORE, "failed open dirpath %{public}s for %{public}d", path.c_str(), errno);
+        return ret;
     }
-
+    for (dirent* entry = readdir(dir); entry != nullptr; entry = readdir(dir)) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+        ret.emplace_back(entry->d_name);
+    }
+    closedir(dir);
     return ret;
 }
 

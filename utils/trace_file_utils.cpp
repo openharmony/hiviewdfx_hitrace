@@ -17,10 +17,10 @@
 
 #include <cinttypes>
 #include <cstdio>
+#include <cstring>
 #include <ctime>
 #include <dirent.h>
 #include <fcntl.h>
-#include <filesystem>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/sysinfo.h>
@@ -146,6 +146,40 @@ bool RenameTraceFile(const std::string& fileName, std::string& newFileName,
         fileName.c_str(), newFileName.c_str());
     return true;
 }
+
+std::string TrimTrailingSlashes(const std::string& path)
+{
+    if (path.empty()) {
+        return "";
+    }
+    size_t lastValidPos = path.find_last_not_of('/');
+    if (lastValidPos == std::string::npos) {
+        return "/";
+    }
+    return path.substr(0, lastValidPos + 1);
+}
+
+bool TraverseFilesInner(const char* dirPath, bool recursion,
+    const std::function<void(const char*, const dirent*)>& handler)
+{
+    DIR* dir = opendir(dirPath);
+    if (dir == nullptr) {
+        HILOG_WARN(LOG_CORE, "failed open dirpath %{public}s for %{public}d", dirPath, errno);
+        return false;
+    }
+    for (dirent* entry = readdir(dir); entry != nullptr; entry = readdir(dir)) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+        std::string path = std::string(dirPath) + "/" + entry->d_name;
+        if (recursion && entry->d_type == DT_DIR) {
+            TraverseFilesInner(path.c_str(), recursion, handler);
+        }
+        handler(dirPath, entry);
+    }
+    closedir(dir);
+    return true;
+}
 }
 
 TraceFileInfo::TraceFileInfo(const std::string& name)
@@ -170,23 +204,21 @@ TraceFileInfo::TraceFileInfo(const std::string& name, time_t time, int64_t sizek
 
 void GetTraceFilesInDir(std::vector<TraceFileInfo>& fileList, TraceDumpType traceType)
 {
-    if (!std::filesystem::exists(TRACE_FILE_DEFAULT_DIR) || !std::filesystem::is_directory(TRACE_FILE_DEFAULT_DIR)) {
-        HILOG_INFO(LOG_CORE, "GetTraceFilesInDir fail, directory not exist");
-        return;
-    }
-    struct stat fileStat;
-    for (const auto &entry : std::filesystem::directory_iterator(TRACE_FILE_DEFAULT_DIR)) {
-        if (!entry.is_regular_file()) {
-            continue;
-        }
-        std::string fileName = entry.path().filename().string();
-        if (fileName.substr(0, tracePrefixMap[traceType].size()) == tracePrefixMap[traceType]) {
-            fileName = TRACE_FILE_DEFAULT_DIR + fileName;
-            if (stat(fileName.c_str(), &fileStat) == 0) {
-                fileList.emplace_back(fileName, fileStat.st_ctime, static_cast<int64_t>(fileStat.st_size), false);
+    auto target = tracePrefixMap[traceType];
+    TraverseFiles(TRACE_FILE_DEFAULT_DIR, false,
+        [&fileList, &target] (const char* dirPath, const dirent* item) {
+            if (item->d_type != DT_REG) {
+                return;
             }
-        }
-    }
+            if (strncmp(item->d_name, target.c_str(), target.size()) != 0) {
+                return;
+            }
+            std::string filePath = std::string(dirPath) + "/" + item->d_name;
+            struct stat fileStat{};
+            if (stat(filePath.c_str(), &fileStat) == 0) {
+                fileList.emplace_back(filePath, fileStat.st_ctime, static_cast<int64_t>(fileStat.st_size), false);
+            }
+    });
     HILOG_INFO(LOG_CORE, "GetTraceFilesInDir fileList size: %{public}d.", static_cast<int>(fileList.size()));
     std::sort(fileList.begin(), fileList.end(), [](const TraceFileInfo& a, const TraceFileInfo& b) {
         return a.ctime < b.ctime;
@@ -195,20 +227,14 @@ void GetTraceFilesInDir(std::vector<TraceFileInfo>& fileList, TraceDumpType trac
 
 void GetTraceFileNamesInDir(std::set<std::string>& fileSet, TraceDumpType traceType)
 {
-    if (!std::filesystem::exists(TRACE_FILE_DEFAULT_DIR) || !std::filesystem::is_directory(TRACE_FILE_DEFAULT_DIR)) {
-        HILOG_INFO(LOG_CORE, "GetTraceFileNamesInDir fail, directory not exist");
-        return;
-    }
-    for (const auto &entry : std::filesystem::directory_iterator(TRACE_FILE_DEFAULT_DIR)) {
-        if (!entry.is_regular_file()) {
-            continue;
-        }
-        std::string fileName = entry.path().filename().string();
-        if (fileName.substr(0, tracePrefixMap[traceType].size()) == tracePrefixMap[traceType]) {
-            fileName = TRACE_FILE_DEFAULT_DIR + fileName;
-            fileSet.emplace(fileName);
-        }
-    }
+    auto target = tracePrefixMap[traceType];
+    TraverseFiles(TRACE_FILE_DEFAULT_DIR, false,
+        [&fileSet, &target] (const char* dirPath, const dirent* item) {
+            if (item->d_type == DT_REG &&
+                strncmp(item->d_name, target.c_str(), target.size()) == 0) {
+                fileSet.emplace(std::string(dirPath) + "/" + item->d_name);
+            }
+    });
     HILOG_INFO(LOG_CORE, "GetTraceFileNamesInDir fileSet size: %{public}d.", static_cast<int>(fileSet.size()));
 }
 
@@ -445,6 +471,16 @@ bool SetFileInfo(const bool isFileExist, const std::string outPath, const uint64
         traceFileInfo.fileSize = 0;
     }
     return true;
+}
+
+bool TraverseFiles(const std::string &dirPath, bool recursion,
+    const std::function<void(const char*, const dirent*)>& handler)
+{
+    const auto trimmedDirPath = TrimTrailingSlashes(dirPath);
+    if (trimmedDirPath.empty() || !handler) {
+        return false;
+    }
+    return TraverseFilesInner(trimmedDirPath.c_str(), recursion, handler);
 }
 } // namespace Hitrace
 } // namespace HiviewDFX
