@@ -238,6 +238,7 @@ ohos_unittest("HitraceDumpTest") {
     "c_utils:utils",
     "faultloggerd:libdfx_dumpcatcher",
     "googletest:gtest_main",
+    "hisysevent:libhisysevent",
     "init:libbegetutil",
   ]
   if (defined(ohos_lite)) {
@@ -284,6 +285,7 @@ async_dump_test_external_deps = [
   "c_utils:utils",
   "faultloggerd:libdfx_dumpcatcher",
   "googletest:gtest_main",
+  "hisysevent:libhisysevent",
   "init:libbegetutil",
 ]
 
