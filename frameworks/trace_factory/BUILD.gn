@@ -20,6 +20,7 @@ ohos_static_library("trace_source_factory") {
     ".",
     "$hitrace_common_path",
     "$hitrace_utils_path",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace_option",
   ]
   sources = [
     "trace_buffer_manager.cpp",
@@ -30,6 +31,7 @@ ohos_static_library("trace_source_factory") {
   deps = [
     "$hitrace_utils_path:hitrace_file_utils",
     "$hitrace_utils_path:hitrace_json_parser",
+    "$hitrace_interfaces_path/native/innerkits:libhitrace_option"
   ]
 
   if (defined(ohos_lite)) {

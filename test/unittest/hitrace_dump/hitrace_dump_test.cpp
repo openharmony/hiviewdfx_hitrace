@@ -1544,7 +1544,7 @@ HWTEST_F(HitraceDumpTest, OpenTraceTest001, TestSize.Level1)
         .bufferSize = DEFAULT_BUFFER_SIZE,
         .fileSizeLimit = DEFAULT_FILE_SIZE_LIMIT,
         .appPid = 0,
-        .filterPids = {}
+        .filterPids = { getpid() }
     };
     ASSERT_TRUE(OpenTrace(traceArgs) == TraceErrorCode::SUCCESS);
     ASSERT_TRUE(OpenTrace(traceArgs) == TraceErrorCode::WRONG_TRACE_MODE);

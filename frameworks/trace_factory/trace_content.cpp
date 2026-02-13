@@ -27,6 +27,7 @@
 #include "securec.h"
 #include "trace_file_utils.h"
 #include "trace_json_parser.h"
+#include "trace_context.h"
 
 namespace OHOS {
 namespace HiviewDFX {
@@ -106,17 +107,50 @@ ITraceContent::ITraceContent(const int fd,
 
 bool ITraceContent::WriteTraceData(const uint8_t contentType)
 {
-    if (!traceSourceFd_) {
-        HILOG_ERROR(LOG_CORE, "WriteTraceData: trace source fd is illegal.");
-        return false;
-    }
     if (!IsFileExist()) {
         HILOG_ERROR(LOG_CORE, "WriteTraceData: trace file (%{public}s) not found.", traceFilePath_.c_str());
         return false;
     }
     TraceFileContentHeader contentHeader;
-    if (!DoWriteTraceContentHeader(contentHeader, contentType)) {
+    contentHeader.type = contentType;
+    auto dataHeaderStart = lseek(traceFileFd_, 0, SEEK_CUR);
+    if (lseek(traceFileFd_, sizeof(TraceFileContentHeader), SEEK_CUR) == -1) {
+        HILOG_WARN(LOG_CORE, "lseek to dataContentStart position failed, errno(%{public}d)", errno);
         return false;
+    }
+    auto writeLength = WriteTraceDataContent();
+    if (lseek(traceFileFd_, dataHeaderStart, SEEK_SET) == -1) {
+        HILOG_WARN(LOG_CORE, "lseek to dataHeaderStart position failed, errno(%{public}d)", errno);
+        return false;
+    }
+    if (writeLength < 0) {
+        if (ftruncate(traceFileFd_, dataHeaderStart) == -1) {
+            HILOG_ERROR(LOG_CORE, "failed ftruncate errno(%{public}d)", errno);
+        }
+        return false;
+    }
+    contentHeader.length = static_cast<uint32_t>(writeLength);
+    ssize_t writeRet = TEMP_FAILURE_RETRY(write(traceFileFd_,
+        reinterpret_cast<char *>(&contentHeader), sizeof(contentHeader)));
+    if (writeRet != static_cast<ssize_t>(sizeof(contentHeader))) {
+        HILOG_WARN(LOG_CORE, "write header failed, err(%{public}d)", errno);
+        return false;
+    }
+    if (lseek(traceFileFd_, writeLength, SEEK_CUR) == -1) {
+        HILOG_WARN(LOG_CORE, "lseek to dataContentEnd position failed, errno(%{public}d)", errno);
+        return false;
+    }
+    HILOG_INFO(LOG_CORE, "WriteTraceData end, type: %{public}d, byte: %{public}zd. g_writeFileLimit: %{public}d",
+        contentType, writeLength, g_writeFileLimit);
+    g_outputFileSize += static_cast<int>(contentHeader.length + sizeof(TraceFileContentHeader));
+    return true;
+}
+
+ssize_t ITraceContent::WriteTraceDataContent()
+{
+    if (!traceSourceFd_) {
+        HILOG_ERROR(LOG_CORE, "WriteTraceData: trace source fd is illegal.");
+        return -1;
     }
     ssize_t writeLen = 0;
     int pageChkFailedTime = 0;
@@ -136,7 +170,7 @@ bool ITraceContent::WriteTraceData(const uint8_t contentType)
             if (!CheckPage(g_buffer + bytes)) {
                 pageChkFailedTime++;
             }
-            bytes += readBytes;
+            bytes += static_cast<int>(readBytes);
             if (pageChkFailedTime >= 2) { // 2 : check failed times threshold
                 endFlag = true;
                 break;
@@ -145,13 +179,7 @@ bool ITraceContent::WriteTraceData(const uint8_t contentType)
         DoWriteTraceData(g_buffer, bytes, writeLen);
         shouldContinue = !endFlag;
     }
-    if (contentType == CONTENT_TYPE_CMDLINES) {
-        WriteProcessLists(writeLen);
-    }
-    UpdateTraceContentHeader(contentHeader, static_cast<uint32_t>(writeLen));
-    HILOG_INFO(LOG_CORE, "WriteTraceData end, type: %{public}d, byte: %{public}zd. g_writeFileLimit: %{public}d",
-        contentType, writeLen, g_writeFileLimit);
-    return true;
+    return writeLen;
 }
 
 void ITraceContent::DoWriteTraceData(const uint8_t* buffer, const int bytes, ssize_t& writeLen)
@@ -468,6 +496,10 @@ TraceCmdLinesContent::TraceCmdLinesContent(const int fd,
                                            const bool ishm)
     : ITraceContent(fd, tracefsPath, traceFilePath, ishm)
 {
+    auto filterContext = TraceContextManager::GetInstance().GetTraceFilterContext();
+    if (filterContext != nullptr) {
+        return;
+    }
     const std::string cmdlinesPath = tracefsPath_ + "saved_cmdlines";
     traceSourceFd_ = SmartFd(open(cmdlinesPath.c_str(), O_RDONLY | O_NONBLOCK));
     if (!traceSourceFd_) {
@@ -480,10 +512,47 @@ bool TraceCmdLinesContent::WriteTraceContent()
     return WriteTraceData(CONTENT_TYPE_CMDLINES);
 }
 
+ssize_t TraceCmdLinesContent::WriteTraceDataContent()
+{
+    auto filterContext = TraceContextManager::GetInstance().GetTraceFilterContext();
+    if (filterContext == nullptr) {
+        auto size = ITraceContent::WriteTraceDataContent();
+        WriteProcessLists(size);
+        return size;
+    }
+    int bytes = 0;
+    ssize_t writeLen = 0;
+    filterContext->TraverseSavedCmdLine([&](const std::string& savedCmdLine) {
+        if (bytes + savedCmdLine.length() > BUFFER_SIZE) {
+            DoWriteTraceData(g_buffer, bytes,  writeLen);
+            bytes = 0;
+        }
+        for (size_t i = 0; i < savedCmdLine.length(); i++) {
+            g_buffer[bytes++] = savedCmdLine[i];
+        }
+    });
+    filterContext->TraverseFilterPid([this, &bytes, &writeLen](const std::string& pid) {
+        std::string pidStr = pid + " " + ReadProcessName(pid) + "\n";
+        if (bytes + pidStr.length() > BUFFER_SIZE) {
+            DoWriteTraceData(g_buffer, bytes,  writeLen);
+            bytes = 0;
+        }
+        for (size_t i = 0; i < pidStr.length(); i++) {
+            g_buffer[bytes++] = pidStr[i];
+        }
+    });
+    DoWriteTraceData(g_buffer, bytes,  writeLen);
+    return writeLen;
+}
+
 TraceTgidsContent::TraceTgidsContent(const int fd, const std::string& tracefsPath, const std::string& traceFilePath,
                                      const bool ishm)
     : ITraceContent(fd, tracefsPath, traceFilePath, ishm)
 {
+    auto filterContext = TraceContextManager::GetInstance().GetTraceFilterContext();
+    if (filterContext != nullptr) {
+        return;
+    }
     const std::string tgidsPath = tracefsPath_ + "saved_tgids";
     traceSourceFd_ = SmartFd(open(tgidsPath.c_str(), O_RDONLY | O_NONBLOCK));
     if (!traceSourceFd_) {
@@ -494,6 +563,28 @@ TraceTgidsContent::TraceTgidsContent(const int fd, const std::string& tracefsPat
 bool TraceTgidsContent::WriteTraceContent()
 {
     return WriteTraceData(CONTENT_TYPE_TGIDS);
+}
+
+ssize_t TraceTgidsContent::WriteTraceDataContent()
+{
+    auto filterContext = TraceContextManager::GetInstance().GetTraceFilterContext();
+    if (filterContext == nullptr) {
+        return ITraceContent::WriteTraceDataContent();
+    }
+    int bytes = 0;
+    ssize_t writeLen = 0;
+    filterContext->TraverseTGidsContent([&](const std::pair<std::string, std::string>& tgid) {
+        std::string result = tgid.first + " " + tgid.second + "\n";
+        if (bytes + result.length() > BUFFER_SIZE) {
+            DoWriteTraceData(g_buffer, bytes,  writeLen);
+            bytes = 0;
+        }
+        for (size_t i = 0; i < result.length(); i++) {
+            g_buffer[bytes++] = result[i];
+        }
+    });
+    DoWriteTraceData(g_buffer, bytes,  writeLen);
+    return writeLen;
 }
 
 bool ITraceCpuRawContent::WriteTracePipeRawData(const std::string& srcPath, const int cpuIdx)

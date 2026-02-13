@@ -1,0 +1,28 @@
+{
+  global:
+    extern "C++" {
+        "OHOS::HiviewDFX::Hitrace::SetFilterAppName(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+        "OHOS::HiviewDFX::Hitrace::SetFilterAppName(std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&)";
+        "OHOS::HiviewDFX::Hitrace::AddFilterPid(int)";
+        "OHOS::HiviewDFX::Hitrace::ClearFilterPid()";
+        "OHOS::HiviewDFX::Hitrace::AddFilterPids(std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&)";
+        "OHOS::HiviewDFX::Hitrace::AddNoFilterEvents(std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&)";
+        "OHOS::HiviewDFX::Hitrace::ClearNoFilterEvents()";
+        OHOS::HiviewDFX::Hitrace::TraceFilterContext::FilterTraceContent*;
+        OHOS::HiviewDFX::Hitrace::TraceFilterContext::TraverseSavedCmdLine*;
+        OHOS::HiviewDFX::Hitrace::TraceFilterContext::TraverseFilterPid*;
+        OHOS::HiviewDFX::Hitrace::TraceFilterContext::TraverseTGidsContent*;
+        OHOS::HiviewDFX::Hitrace::TraceFilterContext::ClearFilterTids*;
+        OHOS::HiviewDFX::Hitrace::TraceFilterContext::AddFilterAppName*;
+        OHOS::HiviewDFX::Hitrace::TraceFilterContext::AddFilterPids*;
+        OHOS::HiviewDFX::Hitrace::TraceFilterContext::AddFilterTids*;
+        "OHOS::HiviewDFX::Hitrace::TraceContextManager::GetInstance()";
+        "OHOS::HiviewDFX::Hitrace::TraceContextManager::ReleaseContext()";
+        OHOS::HiviewDFX::Hitrace::TraceContextManager::GetTraceFilterContext*;
+    };
+    extern "C" {
+        "FilterAppTrace";
+    };
+  local:
+    *;
+};

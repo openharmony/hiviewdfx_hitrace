@@ -217,6 +217,7 @@ ohos_unittest("HitraceDumpTest") {
     "$hitrace_frameworks_path/tracedump_executor",
     "$hitrace_frameworks_path/trace_factory",
     "$hitrace_interfaces_path/native/innerkits/include",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace_option",
     "$hitrace_path/test/utils",
     "$hitrace_utils_path",
   ]
@@ -267,6 +268,7 @@ async_dump_test_include_dirs = [
   "$hitrace_frameworks_path/tracedump_executor",
   "$hitrace_frameworks_path/trace_factory",
   "$hitrace_interfaces_path/native/innerkits/include",
+  "$hitrace_interfaces_path/native/innerkits/include/hitrace_option",
   "$hitrace_utils_path",
 ]
 
@@ -455,12 +457,17 @@ ohos_unittest("HitraceOptionTest") {
   include_dirs = [
     "$hitrace_common_path",
     "$hitrace_interfaces_path/native/innerkits/include",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace_option",
     "$hitrace_utils_path",
   ]
 
   sources = [
     "$hitrace_interfaces_path/native/innerkits/src/hitrace_option/hitrace_option.cpp",
+    "$hitrace_interfaces_path/native/innerkits/src/hitrace_option/hitrace_option_util.cpp",
+    "$hitrace_interfaces_path/native/innerkits/src/hitrace_option/trace_context.cpp",
     "hitrace_option/hitrace_option_test.cpp",
+    "hitrace_option/hitrace_option_util_test.cpp",
+    "hitrace_option/trace_context_test.cpp",
   ]
 
   deps = [
@@ -585,6 +592,7 @@ ohos_unittest("HitraceFactoryTest") {
     "$hitrace_common_path",
     "$hitrace_frameworks_path/trace_factory",
     "$hitrace_interfaces_path/native/innerkits/include",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace_option",
     "$hitrace_utils_path",
   ]
 
@@ -593,6 +601,7 @@ ohos_unittest("HitraceFactoryTest") {
   deps = [
     "$hitrace_frameworks_path/trace_factory:trace_source_factory",
     "$hitrace_interfaces_path/native/innerkits:hitrace_dump",
+    "$hitrace_interfaces_path/native/innerkits:libhitrace_option",
     "$hitrace_utils_path:hitrace_common_utils",
     "$hitrace_utils_path:hitrace_json_parser",
   ]
@@ -619,6 +628,7 @@ ohos_unittest("HitraceDumpExecutorNewTest") {
     "$hitrace_frameworks_path/tracedump_executor",
     "$hitrace_frameworks_path/trace_factory",
     "$hitrace_interfaces_path/native/innerkits/include",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace_option",
     "$hitrace_utils_path",
   ]
 
@@ -636,6 +646,7 @@ ohos_unittest("HitraceDumpExecutorNewTest") {
   deps = [
     "$hitrace_frameworks_path/trace_factory:trace_source_factory",
     "$hitrace_interfaces_path/native/innerkits:hitrace_dump",
+    "$hitrace_interfaces_path/native/innerkits:libhitrace_option",
     "$hitrace_utils_path:hitrace_common_utils",
     "$hitrace_utils_path:hitrace_file_utils",
   ]

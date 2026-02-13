@@ -32,15 +32,9 @@ constexpr int32_t HITRACE_NO_ERROR = 0;
 constexpr int32_t HITRACE_SET_PARAM_ERROR = -1;
 constexpr int32_t HITRACE_WRITE_FILE_ERROR = -2;
 
-int32_t SetFilterAppName(const std::string& app);
-
 int32_t SetFilterAppName(const std::vector<std::string>& apps);
 
 int32_t AddFilterPid(const pid_t pid);
-
-int32_t AddFilterPids(const std::vector<std::string>& pids);
-
-int32_t ClearFilterPid();
 
 int32_t AddNoFilterEvents(const std::vector<std::string>& events);
 

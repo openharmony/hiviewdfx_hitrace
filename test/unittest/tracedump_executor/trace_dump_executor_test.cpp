@@ -260,6 +260,26 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest006, TestSize.Level2)
 }
 
 /**
+ * @tc.name: TraceDumpExecutorTest007
+ * @tc.desc: Test TraceDumpExecutor with filtered pids.
+ * @tc.type: FUNC
+ */
+HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest007, TestSize.Level2)
+{
+    ASSERT_EQ(static_cast<int>(CloseTrace()), TraceErrorCode::SUCCESS);
+    TraceArgs traceArgs = {
+        .tags = { "sched" },
+        .clockType = "boot",
+        .isOverWrite = true,
+        .appPid = 0,
+        .filterPids = { getpid() }
+    };
+    ASSERT_EQ(static_cast<int>(OpenTrace(traceArgs)), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(TraceDumpExecutor::GetInstance().DumpTrace({}).code), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), TraceErrorCode::SUCCESS);
+}
+
+/**
  * @tc.name: TraceDumpPipeTest001
  * @tc.desc: Test TraceDumpExecutor class trace task pipe
  * @tc.type: FUNC
