@@ -139,15 +139,6 @@ bool ContainsEvents(const std::string& filename, const std::string& events)
     return find;
 }
 
-HWTEST_F(HitraceOptionTest, SetTelemetryAppNameTest_001, TestSize.Level1)
-{
-    ASSERT_TRUE(OHOS::system::SetParameter(TELEMETRY_APP_PARAM, "a"));
-    ASSERT_EQ(OHOS::system::GetParameter(TELEMETRY_APP_PARAM, ""), "a");
-
-    EXPECT_EQ(SetFilterAppName("com.test.app"), HITRACE_NO_ERROR);
-    EXPECT_EQ(OHOS::system::GetParameter(TELEMETRY_APP_PARAM, ""), "com.test.app");
-}
-
 HWTEST_F(HitraceOptionTest, SetTelemetryAppNameTest_002, TestSize.Level1)
 {
     constexpr auto testApp1 = "com.test.app1";
@@ -178,17 +169,6 @@ HWTEST_F(HitraceOptionTest, AddFilterPid_001, TestSize.Level1)
     EXPECT_TRUE(ContainsPid(DEBUG_SET_EVENT_PID, 1));
     EXPECT_TRUE(ContainsPid(SET_EVENT_PID, pid));
     EXPECT_TRUE(ContainsPid(DEBUG_SET_EVENT_PID, pid));
-}
-
-HWTEST_F(HitraceOptionTest, ClearFilterPid_001, TestSize.Level1)
-{
-    WriteStrToFile(SET_EVENT_PID, "1");
-    ASSERT_EQ(ReadFile(SET_EVENT_PID), "1\n");
-    ASSERT_EQ(ReadFile(DEBUG_SET_EVENT_PID), "1\n");
-
-    EXPECT_EQ(ClearFilterPid(), HITRACE_NO_ERROR);
-    EXPECT_EQ(ReadFile(SET_EVENT_PID), "");
-    EXPECT_EQ(ReadFile(DEBUG_SET_EVENT_PID), "");
 }
 
 HWTEST_F(HitraceOptionTest, FilterAppTrace_001, TestSize.Level1)

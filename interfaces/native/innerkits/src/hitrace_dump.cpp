@@ -48,6 +48,7 @@
 #include "hilog/log.h"
 #include "parameters.h"
 #include "securec.h"
+#include "trace_context.h"
 #include "trace_dump_executor.h"
 #include "trace_dump_pipe.h"
 #include "trace_file_utils.h"
@@ -222,17 +223,10 @@ bool SetProperty(const std::string& property, const std::string& value)
 
 void ClearFilterParam()
 {
-    bool ok = true;
     if (!OHOS::system::SetParameter(TELEMETRY_APP_PARAM, "")) {
         HILOG_ERROR(LOG_CORE, "ClearFilterParam: clear param fail");
-        ok = false;
     }
-    if (ClearFilterPid() != HITRACE_NO_ERROR) {
-        HILOG_ERROR(LOG_CORE, "ClearFilterParam: clear pid fail");
-        ok = false;
-    }
-
-    HILOG_INFO(LOG_CORE, "ClearFilterParam %{public}d.", ok);
+    TraceContextManager::GetInstance().ReleaseContext();
 }
 
 // close all trace node
@@ -357,8 +351,11 @@ void SetClock(const std::string& clockType)
 static bool SetTraceSetting(const TraceParams& traceParams, const std::map<std::string, TraceTag>& allTags,
     const std::map<std::string, std::vector<std::string>>& tagGroupTable, std::vector<std::string>& tagFmts)
 {
-    AddFilterPids(traceParams.filterPids);
     if (!traceParams.filterPids.empty()) {
+        auto traceFilterContext = TraceContextManager::GetInstance().GetTraceFilterContext(true);
+        if (traceFilterContext) {
+            traceFilterContext->AddFilterPids(traceParams.filterPids);
+        }
         TruncateFile("trace_pipe_raw");
     }
     TraceInit(allTags);

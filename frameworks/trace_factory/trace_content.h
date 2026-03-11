@@ -79,10 +79,10 @@ public:
     void WriteProcessLists(ssize_t& writeLen);
 
 private:
-    std::string ReadProcessName(const std::string& pid);
     bool AppendToBuffer(const std::string& data, int& bytes, ssize_t& writeLen);
-
 protected:
+    std::string ReadProcessName(const std::string& pid);
+    virtual ssize_t WriteTraceDataContent();
     int traceFileFd_ = -1;
     SmartFd traceSourceFd_;
     std::string tracefsPath_;
@@ -139,6 +139,8 @@ public:
     TraceCmdLinesContent(const int fd, const std::string& tracefsPath, const std::string& traceFilePath,
         const bool ishm);
     bool WriteTraceContent() override;
+protected:
+    ssize_t WriteTraceDataContent() override;
 };
 
 class TraceTgidsContent : public ITraceContent {
@@ -146,6 +148,8 @@ public:
     TraceTgidsContent(const int fd, const std::string& tracefsPath, const std::string& traceFilePath,
         const bool ishm);
     bool WriteTraceContent() override;
+protected:
+    ssize_t WriteTraceDataContent() override;
 };
 
 class ITraceCpuRawContent : public ITraceContent {

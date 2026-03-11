@@ -20,6 +20,7 @@
 
 #include "common_define.h"
 #include "common_utils.h"
+#include "trace_context.h"
 #include "hilog/log.h"
 #include "trace_dump_state.h"
 #include "trace_file_utils.h"
@@ -80,6 +81,10 @@ bool SafeGetTraceContent(std::unique_ptr<T>& target, F&& getter, const std::stri
 TraceDumpRet ITraceDumpStrategy::Execute(std::shared_ptr<ITraceSourceFactory> traceSourceFactory,
     const TraceDumpRequest& request)
 {
+    auto filterContext = TraceContextManager::GetInstance().GetTraceFilterContext();
+    if (filterContext != nullptr) {
+        filterContext->FilterTraceContent();
+    }
     int newFileCount = 1;
     TraceDumpRet ret;
     do {
@@ -95,14 +100,12 @@ bool ITraceDumpStrategy::ProcessTraceDumpIteration(std::shared_ptr<ITraceSourceF
     const TraceDumpRequest& request, TraceDumpRet& ret, int& newFileCount)
 {
     TraceContentPtr traceContentPtr;
-
     if (!InitializeTraceContent(traceSourceFactory, request, traceContentPtr)) {
         ret = {TraceErrorCode::WRITE_TRACE_INFO_ERROR, "", 0, 0, 0};
         return false;
     }
 
     ExecutePreProcessing(traceContentPtr);
-
     if (!DoCore(traceSourceFactory, request, traceContentPtr, ret)) {
         return HandleCoreFailure(traceSourceFactory, request, ret, newFileCount);
     }

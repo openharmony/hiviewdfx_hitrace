@@ -24,6 +24,7 @@
 
 #include "hitrace_option/hitrace_option.h"
 #include "hitrace_fuzztest_common.h"
+#include "trace_context.h"
 
 namespace OHOS {
 namespace HiviewDFX {
@@ -37,10 +38,10 @@ void FilterAppTest(const uint8_t* data, size_t size)
     }
     StreamToValueInfo(data, pid);
     std::string app(reinterpret_cast<const char*>(data), size - sizeof(pid));
-    SetFilterAppName(app);
+    SetFilterAppName({ app });
     AddFilterPid(pid);
     FilterAppTrace(app.c_str(), pid);
-    ClearFilterPid();
+    TraceContextManager::GetInstance().ReleaseContext();
 }
 
 } // namespace Hitrace

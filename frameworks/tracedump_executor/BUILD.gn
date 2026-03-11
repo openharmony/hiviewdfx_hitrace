@@ -21,6 +21,7 @@ ohos_static_library("tracedump_executor") {
     "$hitrace_common_path",
     "$hitrace_frameworks_path/trace_factory",
     "$hitrace_utils_path",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace_option",
   ]
   sources = [
     "trace_dump_executor.cpp",
@@ -32,6 +33,7 @@ ohos_static_library("tracedump_executor") {
 
   deps = [
     "$hitrace_frameworks_path/trace_factory:trace_source_factory",
+    "$hitrace_interfaces_path/native/innerkits:libhitrace_option",
     "$hitrace_utils_path:hitrace_common_utils",
     "$hitrace_utils_path:hitrace_file_utils",
     "$hitrace_utils_path:hitrace_json_parser",

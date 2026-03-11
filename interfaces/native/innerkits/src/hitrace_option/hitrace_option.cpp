@@ -13,18 +13,16 @@
  * limitations under the License.
  */
 
-#include "hitrace_option/hitrace_option.h"
+#include "hitrace_option.h"
 
 #include <cstring>
-#include <dirent.h>
-#include <fcntl.h>
 #include <sstream>
-#include <filesystem>
-#include <unistd.h>
 
+#include "hitrace_util.h"
 #include "hilog/log.h"
 #include "parameters.h"
-#include "smart_fd.h"
+#include "hitrace_option_util.h"
+#include "trace_context.h"
 
 namespace OHOS {
 namespace HiviewDFX {
@@ -39,93 +37,8 @@ namespace Hitrace {
 #define LOG_TAG "HitraceOption"
 #endif
 
-static const char* const TELEMETRY_APP_PARAM = "debug.hitrace.telemetry.app";
-static const char* const SET_EVENT_PID = "/sys/kernel/tracing/set_event_pid";
-static const char* const DEBUG_SET_EVENT_PID = "/sys/kernel/debug/tracing/set_event_pid";
-static const char* const SET_NO_FILTER_EVENT = "/sys/kernel/tracing/no_filter_events";
-static const char* const DEBUG_SET_NO_FILTER_EVENT = "/sys/kernel/debug/tracing/no_filter_events";
-class FileLock {
-public:
-    explicit FileLock(const std::string& filename, int flags)
-    {
-        char canonicalPath[PATH_MAX + 1] = {0};
-        if (realpath(filename.c_str(), canonicalPath) == nullptr) {
-            HILOG_ERROR(LOG_CORE, "FileLock: %{public}s realpath failed, errno%{public}d", filename.c_str(), errno);
-            return;
-        }
-        fd_ = SmartFd(open(canonicalPath, flags));
-        if (!fd_) {
-            HILOG_ERROR(LOG_CORE, "FileLock: %{public}s open failed, errno%{public}d", filename.c_str(), errno);
-            return;
-        }
-#ifdef ENABLE_LOCK
-        if (flock(fd_.GetFd(), LOCK_EX) != 0) {
-            HILOG_ERROR(LOG_CORE, "FileLock: %{public}s lock failed.", filename.c_str());
-            fd_.Reset();
-        }
-        HILOG_INFO(LOG_CORE, "FileLock: %{public}s lock succ, fd = %{public}d", filename.c_str(), fd_.GetFd());
-#endif
-    }
-
-    ~FileLock()
-    {
-        if (fd_) {
-#ifdef ENABLE_LOCK
-            flock(fd_, LOCK_UN);
-            HILOG_INFO(LOG_CORE, "FileLock: %{public}d unlock succ", fd_);
-#endif
-        }
-    }
-
-    int Fd()
-    {
-        return fd_.GetFd();
-    }
-private:
-    SmartFd fd_;
-};
-
-std::vector<std::string> GetSubThreadIds(const std::string& pid)
-{
-    std::vector<std::string> ret;
-    std::string path = "/proc/" + pid + "/task/";
-    DIR* dir = opendir(path.c_str());
-    if (dir == nullptr) {
-        HILOG_ERROR(LOG_CORE, "failed open dirpath %{public}s for %{public}d", path.c_str(), errno);
-        return ret;
-    }
-    for (dirent* entry = readdir(dir); entry != nullptr; entry = readdir(dir)) {
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-            continue;
-        }
-        ret.emplace_back(entry->d_name);
-    }
-    closedir(dir);
-    return ret;
-}
-
-bool AppendToFile(const std::string& filename, const std::string& str)
-{
-    FileLock fileLock(filename, O_RDWR);
-
-    int fd = fileLock.Fd();
-    if (fd == -1) {
-        return false;
-    }
-
-    if (write(fd, str.c_str(), str.size()) < 0) {
-        HILOG_ERROR(LOG_CORE, "AppendToFile: %{public}s write failed %{public}d", filename.c_str(), errno);
-        return false;
-    }
-    return true;
-}
-
-int32_t SetFilterAppName(const std::string& app)
-{
-    bool ret = OHOS::system::SetParameter(TELEMETRY_APP_PARAM, app);
-    HILOG_INFO(LOG_CORE, "SetTelemetryAppName %{public}s ret=%{public}d", app.c_str(), ret);
-    return ret ? HITRACE_NO_ERROR : HITRACE_SET_PARAM_ERROR;
-}
+constexpr auto TELEMETRY_APP_PARAM = "debug.hitrace.telemetry.app";
+constexpr auto SET_NO_FILTER_EVENT = "no_filter_events";
 
 int32_t SetFilterAppName(const std::vector<std::string>& apps)
 {
@@ -141,52 +54,19 @@ int32_t SetFilterAppName(const std::vector<std::string>& apps)
             appNames.append("\t");
         }
     }
-    return SetFilterAppName(appNames);
+    bool ret = OHOS::system::SetParameter(TELEMETRY_APP_PARAM, appNames);
+    HILOG_INFO(LOG_CORE, "SetTelemetryAppName %{public}s ret=%{public}d", appNames.c_str(), ret);
+    return ret ? HITRACE_NO_ERROR : HITRACE_SET_PARAM_ERROR;
 }
 
 int32_t AddFilterPid(const pid_t pid)
 {
-    std::vector<std::string> vec = { std::to_string(pid) };
-    return AddFilterPids(vec);
-}
-
-int32_t AddFilterPids(const std::vector<std::string>& pids)
-{
-    std::stringstream ss(" ");
-    for (const auto& pid : pids) {
-        for (const auto& tid : GetSubThreadIds(pid)) {
-            ss << tid << " ";
-        }
+    int32_t ret = HITRACE_WRITE_FILE_ERROR;
+    auto filterContext = TraceContextManager::GetInstance().GetTraceFilterContext(true);
+    if (filterContext && filterContext->AddFilterPids({ std::to_string(pid) })) {
+        ret = HITRACE_NO_ERROR;
     }
-
-    std::string pidStr = ss.str();
-    if (AppendToFile(DEBUG_SET_EVENT_PID, pidStr) || AppendToFile(SET_EVENT_PID, pidStr)) {
-        HILOG_INFO(LOG_CORE, "AddFilterPids %{public}s success", pidStr.c_str());
-        return HITRACE_NO_ERROR;
-    }
-
-    HILOG_INFO(LOG_CORE, "AddFilterPids %{public}s fail", pidStr.c_str());
-    return HITRACE_WRITE_FILE_ERROR;
-}
-
-int32_t ClearFilterPid()
-{
-    int fd = creat(DEBUG_SET_EVENT_PID, 0);
-    if (fd != -1) {
-        close(fd);
-        HILOG_INFO(LOG_CORE, "ClearFilterPid success");
-        return HITRACE_NO_ERROR;
-    }
-
-    fd = creat(SET_EVENT_PID, 0);
-    if (fd != -1) {
-        close(fd);
-        HILOG_INFO(LOG_CORE, "ClearFilterPid success");
-        return HITRACE_NO_ERROR;
-    }
-
-    HILOG_INFO(LOG_CORE, "ClearFilterPid fail");
-    return HITRACE_WRITE_FILE_ERROR;
+    return ret;
 }
 
 void FilterAppTrace(const char* app, pid_t pid)
@@ -214,38 +94,16 @@ void FilterAppTrace(const char* app, pid_t pid)
 int32_t AddNoFilterEvents(const std::vector<std::string>& events)
 {
     std::stringstream ss(" ");
-    for (size_t i = 0; i < events.size(); i++) {
-        ss << events[i] << " ";
+    for (const auto& event : events) {
+        ss << event << " ";
     }
-    std::string eventStr = ss.str();
-    if (AppendToFile(DEBUG_SET_NO_FILTER_EVENT, eventStr) || AppendToFile(SET_NO_FILTER_EVENT, eventStr)) {
-        HILOG_INFO(LOG_CORE, "AddNoFilterEvents %{public}s success", eventStr.c_str());
-        return HITRACE_NO_ERROR;
-    }
-    HILOG_INFO(LOG_CORE, "AddNoFilterEvents %{public}s fail", eventStr.c_str());
-    return HITRACE_WRITE_FILE_ERROR;
+    return AppendTracePoint(SET_NO_FILTER_EVENT, ss.str()) ? HITRACE_NO_ERROR : HITRACE_WRITE_FILE_ERROR;
 }
 
 int32_t ClearNoFilterEvents()
 {
-    int fd = creat(DEBUG_SET_NO_FILTER_EVENT, 0);
-    if (fd != -1) {
-        close(fd);
-        HILOG_INFO(LOG_CORE, "ClearNoFilterEvents success");
-        return HITRACE_NO_ERROR;
-    }
-
-    fd = creat(SET_NO_FILTER_EVENT, 0);
-    if (fd != -1) {
-        close(fd);
-        HILOG_INFO(LOG_CORE, "ClearNoFilterEvents success");
-        return HITRACE_NO_ERROR;
-    }
-
-    HILOG_INFO(LOG_CORE, "ClearNoFilterEvents fail");
-    return HITRACE_WRITE_FILE_ERROR;
+    return ClearTracePoint(SET_NO_FILTER_EVENT) ? HITRACE_NO_ERROR : HITRACE_WRITE_FILE_ERROR;
 }
-
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS
