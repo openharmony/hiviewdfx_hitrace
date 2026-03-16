@@ -22,6 +22,7 @@
 #include <climits>
 #include <ctime>
 #include <cerrno>
+#include <cstring>
 #include <fcntl.h>
 #include <fstream>
 #include <functional>
@@ -256,6 +257,93 @@ private:
     std::thread thread_;
     std::atomic<bool> stop_{false};
 };
+
+namespace StringUtil {
+constexpr auto NUM_TO_CHAR_MAPS = "0123456789abcdef";
+
+inline void AddStringToBuffer(char*& dst, const char* end, const char* src, size_t strLength)
+{
+    auto buffSize = static_cast<size_t>(end - dst);
+    auto copySize = strLength <= buffSize ? strLength : buffSize;
+    if (memcpy_s(dst, copySize, src, copySize) == EOK) {
+        dst += copySize;
+    }
+}
+
+inline void AddStringToBuffer(char*& dst, const char* end, const char* src)
+{
+    AddStringToBuffer(dst, end, src, strlen(src));
+}
+
+inline void AddCharToBuffer(char*& dst, const char* end, char value)
+{
+    if (EXPECTANTLY(dst < end)) {
+        *dst++ = value;
+    }
+}
+
+inline void AddUInt64HexValueToBuffer(char*& dst, const char* end, uint64_t value)
+{
+    if (value == 0) {
+        AddCharToBuffer(dst, end, '0');
+        return;
+    }
+    constexpr auto maxLength = 16;
+    char buff[maxLength];
+    const auto endPointer = buff + maxLength;
+    auto startPointer = buff + maxLength - 1;
+    while (value > 0) {
+        constexpr int32_t kHexDigitMask = 0xf;
+        *startPointer-- = NUM_TO_CHAR_MAPS[value & kHexDigitMask];
+        constexpr int32_t kHexDigitBitWidth = 4;
+        value >>= kHexDigitBitWidth;
+    }
+    AddStringToBuffer(dst, end, startPointer + 1, endPointer - startPointer - 1);
+}
+
+inline void AddUInt32DecValueToBuffer(char*& dst, const char* end, uint32_t value)
+{
+    if (value == 0) {
+        AddCharToBuffer(dst, end, '0');
+        return;
+    }
+    constexpr auto maxLength = 10;
+    char buff[maxLength];
+    const auto endPointer = buff + maxLength;
+    auto startPointer = buff + maxLength - 1;
+    while (value > 0) {
+        constexpr int32_t kDecimalBase = 10;
+        *(startPointer--) = NUM_TO_CHAR_MAPS[value % kDecimalBase];
+        value /= kDecimalBase;
+    }
+    AddStringToBuffer(dst, end, startPointer + 1, endPointer - startPointer - 1);
+}
+
+inline void AddInt64DecValue(char*& dst, const char* end, int64_t value)
+{
+    if (value == 0) {
+        AddCharToBuffer(dst, end, '0');
+        return;
+    }
+    if (value < 0) {
+        AddCharToBuffer(dst, end, '-');
+        if (value != INT64_MIN) {
+            value = -value;
+        }
+    }
+    constexpr auto maxLength = 20;
+    char buff[maxLength];
+    const auto endPointer = buff + maxLength;
+    auto startPointer = buff + maxLength - 1;
+    auto unsignedValue = static_cast<uint64_t>(value);
+    while (unsignedValue > 0) {
+        constexpr int32_t kDecimalBase = 10;
+        *(startPointer--) = NUM_TO_CHAR_MAPS[unsignedValue % kDecimalBase];
+        unsignedValue /= kDecimalBase;
+    }
+    AddStringToBuffer(dst, end, startPointer + 1, endPointer - startPointer - 1);
+}
+}
 
 static void HandleAppTagChange(uint64_t oldTags, uint64_t newTags)
 {
@@ -741,105 +829,99 @@ void WriteAppTrace(const TraceMarker& traceMarker)
     }
 }
 
-static int FmtSyncBeginRecord(TraceMarker& traceMarker, const char* bitStr,
-    char* record, int size)
+inline void WriteHitraceId(TraceMarker& traceMarker, char*& dst, const char* end)
 {
-    int bytes = 0;
     HiTraceId hiTraceId = (traceMarker.hiTraceIdStruct == nullptr) ?
-                          HiTraceChain::GetId() :
-                          HiTraceId(*traceMarker.hiTraceIdStruct);
+                  HiTraceChain::GetId() :
+                  HiTraceId(*traceMarker.hiTraceIdStruct);
     if (hiTraceId.IsValid()) {
-        if (*(traceMarker.customArgs) == '\0') {
-            bytes = snprintf_s(record, size, size - 1, "B|%d|H:[%llx,%llx,%llx]#%s|%c%s", traceMarker.pid,
-                hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
-                traceMarker.name, g_traceLevel[traceMarker.level], bitStr);
-        } else {
-            bytes = snprintf_s(record, size, size - 1, "B|%d|H:[%llx,%llx,%llx]#%s|%c%s|%s", traceMarker.pid,
-                hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
-                traceMarker.name, g_traceLevel[traceMarker.level], bitStr, traceMarker.customArgs);
-        }
-    } else {
-        if (*(traceMarker.customArgs) == '\0') {
-            bytes = snprintf_s(record, size, size - 1, "B|%d|H:%s|%c%s", traceMarker.pid,
-                traceMarker.name, g_traceLevel[traceMarker.level], bitStr);
-        } else {
-            bytes = snprintf_s(record, size, size - 1, "B|%d|H:%s|%c%s|%s", traceMarker.pid,
-                traceMarker.name, g_traceLevel[traceMarker.level], bitStr, traceMarker.customArgs);
-        }
+        StringUtil::AddCharToBuffer(dst, end, '[');
+        StringUtil::AddUInt64HexValueToBuffer(dst, end, hiTraceId.GetChainId());
+        StringUtil::AddCharToBuffer(dst, end, ',');
+        StringUtil::AddUInt64HexValueToBuffer(dst, end, hiTraceId.GetSpanId());
+        StringUtil::AddCharToBuffer(dst, end, ',');
+        StringUtil::AddUInt64HexValueToBuffer(dst, end, hiTraceId.GetParentSpanId());
+        StringUtil::AddStringToBuffer(dst, end, "]#");
     }
-    if (UNEXPECTANTLY(bytes == -1)) {
-        bytes = RECORD_SIZE_MAX;
-        HILOG_DEBUG(LOG_CORE, "Trace record buffer may be truncated");
-    }
-    return bytes;
 }
 
-static int FmtAsyncBeginRecord(TraceMarker& traceMarker, const char* bitStr,
-    char* record, int size)
+int WriteSyncBeginRecord(TraceMarker& traceMarker, const char* bitStr,
+    char* const dstBufferStart, const char* const dstBufferEnd)
 {
-    int bytes = 0;
-    HiTraceId hiTraceId = (traceMarker.hiTraceIdStruct == nullptr) ?
-                          HiTraceChain::GetId() :
-                          HiTraceId(*traceMarker.hiTraceIdStruct);
-    if (hiTraceId.IsValid()) {
-        if (*(traceMarker.customCategory) == '\0' && *(traceMarker.customArgs) == '\0') {
-            bytes = snprintf_s(record, size, size - 1, "S|%d|H:[%llx,%llx,%llx]#%s|%lld|%c%s", traceMarker.pid,
-                hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
-                traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitStr);
-        } else if (*(traceMarker.customArgs) == '\0') {
-            bytes = snprintf_s(record, size, size - 1, "S|%d|H:[%llx,%llx,%llx]#%s|%lld|%c%s|%s", traceMarker.pid,
-                hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
-                traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level],
-                bitStr, traceMarker.customCategory);
-        } else {
-            bytes = snprintf_s(record, size, size - 1, "S|%d|H:[%llx,%llx,%llx]#%s|%lld|%c%s|%s|%s", traceMarker.pid,
-                hiTraceId.GetChainId(), hiTraceId.GetSpanId(), hiTraceId.GetParentSpanId(),
-                traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level],
-                bitStr, traceMarker.customCategory, traceMarker.customArgs);
-        }
-    } else {
-        if (*(traceMarker.customCategory) == '\0' && *(traceMarker.customArgs) == '\0') {
-            bytes = snprintf_s(record, size, size - 1, "S|%d|H:%s|%lld|%c%s", traceMarker.pid,
-                traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitStr);
-        } else if (*(traceMarker.customArgs) == '\0') {
-            bytes = snprintf_s(record, size, size - 1, "S|%d|H:%s|%lld|%c%s|%s", traceMarker.pid,
-                traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level],
-                bitStr, traceMarker.customCategory);
-        } else {
-            bytes = snprintf_s(record, size, size - 1, "S|%d|H:%s|%lld|%c%s|%s|%s", traceMarker.pid,
-                traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level],
-                bitStr, traceMarker.customCategory, traceMarker.customArgs);
-        }
+    auto dataOffset = dstBufferStart;
+    StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, "B|");
+    StringUtil::AddUInt32DecValueToBuffer(dataOffset, dstBufferEnd, static_cast<uint32_t>(traceMarker.pid));
+    StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, "|H:");
+    WriteHitraceId(traceMarker, dataOffset, dstBufferEnd);
+    StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, traceMarker.name);
+    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
+    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, g_traceLevel[traceMarker.level]);
+    StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, bitStr);
+    if (*(traceMarker.customArgs) != '\0') {
+        StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
+        StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, traceMarker.customArgs);
     }
-    if (bytes == -1) {
-        bytes = RECORD_SIZE_MAX;
-        HILOG_DEBUG(LOG_CORE, "Trace record buffer may be truncated");
-    }
-    return bytes;
+    return static_cast<int>(dataOffset - dstBufferStart);
 }
 
-static int FmtOtherTypeRecord(TraceMarker& traceMarker, const char* bitStr,
-    char* record, int size)
+int WriteSyncEndRecord(TraceMarker& traceMarker, const char* bitStr,
+    char* const dstBufferStart, const char* const dstBufferEnd)
 {
-    int bytes = 0;
-    HiTraceId hiTraceId = (traceMarker.hiTraceIdStruct == nullptr) ?
-                          HiTraceChain::GetId() :
-                          HiTraceId(*traceMarker.hiTraceIdStruct);
-    if (hiTraceId.IsValid()) {
-        bytes = snprintf_s(record, size, size - 1, "%c|%d|H:[%llx,%llx,%llx]#%s|%lld|%c%s",
-            g_markTypes[traceMarker.type], traceMarker.pid, hiTraceId.GetChainId(), hiTraceId.GetSpanId(),
-            hiTraceId.GetParentSpanId(), traceMarker.name, traceMarker.value,
-            g_traceLevel[traceMarker.level], bitStr);
-    } else {
-        bytes = snprintf_s(record, size, size - 1, "%c|%d|H:%s|%lld|%c%s",
-            g_markTypes[traceMarker.type], traceMarker.pid, traceMarker.name,
-            traceMarker.value, g_traceLevel[traceMarker.level], bitStr);
+    auto dataOffset = dstBufferStart;
+    StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, "E|");
+    StringUtil::AddUInt32DecValueToBuffer(dataOffset, dstBufferEnd, static_cast<uint32_t>(traceMarker.pid));
+    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
+    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, g_traceLevel[traceMarker.level]);
+    StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, bitStr);
+    return static_cast<int>(dataOffset - dstBufferStart);
+}
+
+int WriteAsyncBeginRecord(TraceMarker& traceMarker, const char* bitStr,
+    char* const dstBufferStart, const char* const dstBufferEnd)
+{
+    auto dataOffset = dstBufferStart;
+    StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, "S|");
+    StringUtil::AddUInt32DecValueToBuffer(dataOffset, dstBufferEnd, static_cast<uint32_t>(traceMarker.pid));
+    StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, "|H:");
+    WriteHitraceId(traceMarker, dataOffset, dstBufferEnd);
+    StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, traceMarker.name);
+    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
+    StringUtil::AddInt64DecValue(dataOffset, dstBufferEnd, traceMarker.value);
+    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
+    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, g_traceLevel[traceMarker.level]);
+    StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, bitStr);
+    if (*(traceMarker.customCategory) != '\0') {
+        StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
+        StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, traceMarker.customCategory);
+        if (*(traceMarker.customArgs) != '\0') {
+            StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
+            StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, traceMarker.customArgs);
+        }
+    } else if (*(traceMarker.customArgs) != '\0') {
+        StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
+        StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, traceMarker.customCategory);
+        StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
+        StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, traceMarker.customArgs);
     }
-    if (bytes == -1) {
-        bytes = RECORD_SIZE_MAX;
-        HILOG_DEBUG(LOG_CORE, "Trace record buffer may be truncated");
-    }
-    return bytes;
+    return static_cast<int>(dataOffset - dstBufferStart);
+}
+
+int WriteOtherTypeRecord(TraceMarker& traceMarker, const char* bitStr,
+    char* const dstBufferStart, const char* const dstBufferEnd)
+{
+    auto dataOffset = dstBufferStart;
+    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, g_markTypes[traceMarker.type]);
+    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
+    StringUtil::AddUInt32DecValueToBuffer(dataOffset, dstBufferEnd, static_cast<uint32_t>(traceMarker.pid));
+    StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, "|H:");
+    WriteHitraceId(traceMarker, dataOffset, dstBufferEnd);
+    StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, traceMarker.name);
+    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
+    StringUtil::AddInt64DecValue(dataOffset, dstBufferEnd, traceMarker.value);
+    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
+    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, g_traceLevel[traceMarker.level]);
+    StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, bitStr);
+    return static_cast<int>(dataOffset - dstBufferStart);
 }
 
 void SetNullptrToEmpty(TraceMarker& traceMarker)
@@ -870,22 +952,25 @@ void AddHitraceMeterMarker(TraceMarker& traceMarker)
             (traceMarker.tag == HITRACE_TAG_APP && g_appTagMatchPid > 0 && g_appTagMatchPid != traceMarker.pid)) {
             return;
         }
-        char record[RECORD_SIZE_MAX + 1] = {0};
-        int bytes = 0;
+        char record[RECORD_SIZE_MAX];
+        const char* const bufferEnd = record + RECORD_SIZE_MAX;
         constexpr int bitStrSize = 7;
         char bitStr[bitStrSize] = {0};
         ParseTagBits(traceMarker.tag, bitStr, bitStrSize);
+        int dataSize = 0;
         if (traceMarker.type == MARKER_BEGIN) {
-            bytes = FmtSyncBeginRecord(traceMarker, bitStr, record, sizeof(record));
+            dataSize = WriteSyncBeginRecord(traceMarker, bitStr, record, bufferEnd);
         } else if (traceMarker.type == MARKER_END) {
-            bytes = snprintf_s(record, sizeof(record), sizeof(record) - 1, "E|%d|%c%s",
-                traceMarker.pid, g_traceLevel[traceMarker.level], bitStr);
+            dataSize = WriteSyncEndRecord(traceMarker, bitStr, record, bufferEnd);
         } else if (traceMarker.type == MARKER_ASYNC_BEGIN) {
-            bytes = FmtAsyncBeginRecord(traceMarker, bitStr, record, sizeof(record));
+            dataSize = WriteAsyncBeginRecord(traceMarker, bitStr, record, bufferEnd);
         } else {
-            bytes = FmtOtherTypeRecord(traceMarker, bitStr, record, sizeof(record));
+            dataSize = WriteOtherTypeRecord(traceMarker, bitStr, record, bufferEnd);
         }
-        WriteToTraceMarker(record, bytes);
+        if (dataSize == RECORD_SIZE_MAX) {
+            HILOG_DEBUG(LOG_CORE, "Trace record buffer may be truncated");
+        }
+        WriteToTraceMarker(record, dataSize);
     }
     auto appTagload = g_appTag.load();
 #ifdef HITRACE_UNITTEST

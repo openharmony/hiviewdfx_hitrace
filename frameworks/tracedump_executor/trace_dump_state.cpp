@@ -38,6 +38,7 @@ bool TraceDumpState::StartLoopDump()
 
 void TraceDumpState::EndLoopDumpSelf()
 {
+    std::unique_lock<std::mutex> lock(conditionMutex_);
     state_.store(DumpState::IDLE, std::memory_order_release);
     stateCondition_.notify_all();
 }
