@@ -80,7 +80,7 @@ bool TraceDumpExecutor::PreCheckDumpTraceLoopStatus()
     return TraceDumpState::GetInstance().StartLoopDump();
 }
 
-bool TraceDumpExecutor::StartDumpTraceLoop(const TraceDumpParam& param)
+bool TraceDumpExecutor::StartDumpTraceLoop(const TraceDumpParam& param, const std::string& outputPath)
 {
     {
         std::lock_guard<std::mutex> lck(traceFileMutex_);
@@ -90,7 +90,12 @@ bool TraceDumpExecutor::StartDumpTraceLoop(const TraceDumpParam& param)
     }
 
     if (param.fileSize == 0 && g_isRootVer) {
-        std::string traceFile = param.outputFile.empty() ? GenerateTraceFileName(param.type) : param.outputFile;
+        std::string traceFile;
+        if (!outputPath.empty()) {
+            traceFile = GenerateTraceFileName(param.type, outputPath);
+        } else {
+            traceFile = param.outputFile.empty() ? GenerateTraceFileName(param.type) : param.outputFile;
+        }
         if (DoDumpTraceLoop(param, traceFile, false)) {
             std::lock_guard<std::mutex> lck(traceFileMutex_);
             loopTraceFiles_.emplace_back(traceFile);
@@ -104,7 +109,7 @@ bool TraceDumpExecutor::StartDumpTraceLoop(const TraceDumpParam& param)
             std::lock_guard<std::mutex> lck(traceFileMutex_);
             FileAgeingUtils::HandleAgeing(loopTraceFiles_, param.type);
         }
-        std::string traceFile = GenerateTraceFileName(param.type);
+        std::string traceFile = GenerateTraceFileName(param.type, outputPath);
         if (DoDumpTraceLoop(param, traceFile, true)) {
             std::lock_guard<std::mutex> lck(traceFileMutex_);
             loopTraceFiles_.emplace_back(traceFile);
@@ -144,10 +149,10 @@ void TraceDumpExecutor::StopCacheTraceLoop()
     TraceDumpState::GetInstance().EndLoopDump();
 }
 
-TraceDumpRet TraceDumpExecutor::DumpTrace(const TraceDumpParam& param)
+TraceDumpRet TraceDumpExecutor::DumpTrace(const TraceDumpParam& param, const std::string& outputPath)
 {
     MarkClockSync(tracefsDir_);
-    const std::string traceFile = GenerateTraceFileName(param.type);
+    std::string traceFile = GenerateTraceFileName(param.type, outputPath);
     return DumpTraceInner(param, traceFile);
 }
 
@@ -456,7 +461,8 @@ bool TraceDumpExecutor::DoDumpTraceLoop(const TraceDumpParam& param, std::string
     traceFile = traceSourceFactory->GetTraceFilePath();
     if (param.type == TraceDumpType::TRACE_CACHE) {
         TraceFileInfo traceFileInfo;
-        if (!SetFileInfo(true, traceFile, dumpRet.traceStartTime, dumpRet.traceEndTime, traceFileInfo)) {
+        TimestampRange range{dumpRet.traceStartTime, dumpRet.traceEndTime};
+        if (!SetFileInfo(true, traceFile, range, traceFileInfo)) {
             RemoveFile(traceFile);
             return false;
         }

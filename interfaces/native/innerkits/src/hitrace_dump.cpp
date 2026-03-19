@@ -502,7 +502,7 @@ void ProcessCacheTask()
     HILOG_INFO(LOG_CORE, "ProcessCacheTask: trace cache thread exit.");
 }
 
-void ProcessRecordTask()
+void ProcessRecordTask(const std::string& outputPath)
 {
     const std::string threadName = "RecordTraceTask";
     prctl(PR_SET_NAME, threadName.c_str());
@@ -515,7 +515,7 @@ void ProcessRecordTask()
         std::numeric_limits<uint64_t>::max()
 
     };
-    TraceDumpExecutor::GetInstance().StartDumpTraceLoop(param);
+    TraceDumpExecutor::GetInstance().StartDumpTraceLoop(param, outputPath);
 }
 
 void SetProcessName(std::string& processName)
@@ -634,7 +634,7 @@ bool EpollWaitforChildProcess(pid_t& pid, int pipefd, std::string& reOutPath)
     return true;
 }
 
-TraceErrorCode HandleDumpResult(std::string& reOutPath, TraceRetInfo& traceRetInfo)
+TraceErrorCode HandleDumpResult(std::string& reOutPath, TraceRetInfo& traceRetInfo, const std::string& outputPath)
 {
     SearchTraceFiles(g_utDestTraceStartTime, g_utDestTraceEndTime, traceRetInfo);
     if (g_dumpStatus) {
@@ -648,7 +648,8 @@ TraceErrorCode HandleDumpResult(std::string& reOutPath, TraceRetInfo& traceRetIn
     } else {
         HILOG_INFO(LOG_CORE, "Output: %{public}s.", reOutPath.c_str());
         TraceFileInfo traceFileInfo;
-        if (!SetFileInfo(true, reOutPath, g_firstPageTimestamp, g_lastPageTimestamp, traceFileInfo)) {
+        TimestampRange range{g_firstPageTimestamp, g_lastPageTimestamp};
+        if (!SetFileInfo(true, reOutPath, range, traceFileInfo, outputPath)) {
             // trace rename error
             HILOG_ERROR(LOG_CORE, "SetFileInfo: set %{public}s info failed.", reOutPath.c_str());
             RemoveFile(reOutPath);
@@ -672,8 +673,8 @@ void HandleAsyncDumpResult(TraceDumpTask& task, TraceRetInfo& traceRetInfo)
     SearchTraceFiles(g_utDestTraceStartTime, g_utDestTraceEndTime, traceRetInfo);
     TraceFileInfo traceFileInfo;
     if (task.code == TraceErrorCode::SUCCESS) {
-        if (!SetFileInfo(false, std::string(task.outputFile),
-            g_firstPageTimestamp, g_lastPageTimestamp, traceFileInfo)) {
+        TimestampRange range{g_firstPageTimestamp, g_lastPageTimestamp};
+        if (!SetFileInfo(false, std::string(task.outputFile), range, traceFileInfo)) {
             // trace rename error
             HILOG_ERROR(LOG_CORE, "SetFileInfo: set %{public}s info failed.", task.outputFile);
         } else { // success
@@ -693,7 +694,7 @@ void HandleAsyncDumpResult(TraceDumpTask& task, TraceRetInfo& traceRetInfo)
     }
 }
 
-TraceErrorCode ProcessDumpSync(TraceRetInfo& traceRetInfo)
+TraceErrorCode ProcessDumpSync(TraceRetInfo& traceRetInfo, const std::string& outputPath)
 {
     auto taskCnt = TraceDumpExecutor::GetInstance().GetTraceDumpTaskCount();
     if (GetRemainingSpace("/data") <= SNAPSHOT_MIN_REMAINING_SPACE + taskCnt * DEFAULT_ASYNC_TRACE_SIZE) {
@@ -723,7 +724,7 @@ TraceErrorCode ProcessDumpSync(TraceRetInfo& traceRetInfo)
         std::string processName = "HitraceDump";
         SetProcessName(processName);
         struct TraceDumpParam param = { TRACE_SNAPSHOT, "", 0, 0, g_traceStartTime, g_traceEndTime };
-        TraceDumpRet ret = TraceDumpExecutor::GetInstance().DumpTrace(param);
+        TraceDumpRet ret = TraceDumpExecutor::GetInstance().DumpTrace(param, outputPath);
         HILOG_INFO(LOG_CORE,
             "TraceDumpRet : %{public}d, outputFile: %{public}s, [%{public}" PRIu64 ", %{public}" PRIu64 "].",
             ret.code, ret.outputFile, ret.traceStartTime, ret.traceEndTime);
@@ -737,7 +738,7 @@ TraceErrorCode ProcessDumpSync(TraceRetInfo& traceRetInfo)
     if (!EpollWaitforChildProcess(pid, readFd.GetFd(), reOutPath)) {
         return TraceErrorCode::EPOLL_WAIT_ERROR;
     }
-    return HandleDumpResult(reOutPath, traceRetInfo);
+    return HandleDumpResult(reOutPath, traceRetInfo, outputPath);
 }
 
 void LoadDumpRet(TraceRetInfo& ret, int32_t committedDuration)
@@ -1491,10 +1492,17 @@ TraceErrorCode CacheTraceOff()
     return SUCCESS;
 }
 
-TraceRetInfo DumpTrace(uint32_t maxDuration, uint64_t utTraceEndTime)
+TraceRetInfo DumpTrace(uint32_t maxDuration, uint64_t utTraceEndTime, const std::string& outputPath)
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
     TraceRetInfo ret;
+    if (!outputPath.empty()) {
+        std::string traceFile = GenerateTraceFileName(TraceDumpType::TRACE_RECORDING, outputPath);
+        if (traceFile.empty()) {
+            ret.errorCode = FILE_ERROR;
+            return ret;
+        }
+    }
     ret.mode = g_traceMode;
     if (!CheckTraceDumpStatus(maxDuration, utTraceEndTime, ret)) {
         return ret;
@@ -1519,7 +1527,7 @@ TraceRetInfo DumpTrace(uint32_t maxDuration, uint64_t utTraceEndTime)
     g_firstPageTimestamp = UINT64_MAX;
     g_lastPageTimestamp = 0;
 
-    ret.errorCode = ProcessDumpSync(ret);
+    ret.errorCode = ProcessDumpSync(ret, outputPath);
     LoadDumpRet(ret, committedDuration);
     RestoreTimeIntervalBoundary();
     SanitizeRetInfo(ret);
@@ -1579,7 +1587,7 @@ TraceRetInfo DumpTraceAsync(uint32_t maxDuration, uint64_t utTraceEndTime, int64
     return ret;
 }
 
-TraceErrorCode RecordTraceOn()
+TraceErrorCode RecordTraceOn(const std::string& outputPath)
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
     // check current trace status
@@ -1592,8 +1600,14 @@ TraceErrorCode RecordTraceOn()
         HILOG_ERROR(LOG_CORE, "RecordTraceOn: record trace is dumping now.");
         return WRONG_TRACE_MODE;
     }
-    auto it = []() {
-        ProcessRecordTask();
+    if (!outputPath.empty()) {
+        std::string traceFile = GenerateTraceFileName(TraceDumpType::TRACE_RECORDING, outputPath);
+        if (traceFile.empty()) {
+            return FILE_ERROR;
+        }
+    }
+    auto it = [outputPath]() {
+        ProcessRecordTask(outputPath);
     };
     std::thread task(it);
     task.detach();

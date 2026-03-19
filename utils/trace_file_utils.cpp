@@ -51,6 +51,7 @@ const int TIME_INIT = 1900;
 static const char* const TRACE_SNAPSHOT_PREFIX = "trace_";
 static const char* const TRACE_RECORDING_PREFIX = "record_trace_";
 static const char* const TRACE_CACHE_PREFIX = "cache_trace_";
+static const std::string TRACE_WRITABLE_PATH = "/data/local/tmp";
 std::map<TraceDumpType, std::string> tracePrefixMap = {
     {TraceDumpType::TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
     {TraceDumpType::TRACE_RECORDING, TRACE_RECORDING_PREFIX},
@@ -69,12 +70,15 @@ uint64_t ConvertPageTraceTimeToUtTimeMs(const uint64_t& pageTraceTime)
 }
 
 std::string RegenerateTraceFileName(const std::string& fileName, const uint64_t& firstPageTraceTime,
-    const uint64_t& traceDuration)
+    const uint64_t& traceDuration, const std::string& outputPath = "")
 {
     std::string namePrefix;
     auto index = fileName.find(TRACE_SNAPSHOT_PREFIX);
-    if (index == std::string::npos) {
+    if (index == std::string::npos && outputPath.empty()) {
         return "";
+    }
+    if (fileName == outputPath) {
+        return fileName;
     }
     namePrefix = fileName.substr(0, index);
     uint64_t utFirstPageTraceTimeMs = ConvertPageTraceTimeToUtTimeMs(firstPageTraceTime);
@@ -86,9 +90,18 @@ std::string RegenerateTraceFileName(const std::string& fileName, const uint64_t&
         return "";
     }
     (void)strftime(timeBuf, TIME_BUFFER_SIZE, "%Y%m%d%H%M%S", &timeInfo);
-    std::string newName = namePrefix + TRACE_SNAPSHOT_PREFIX + std::string(timeBuf) + "@" +
-        std::to_string(firstPageTraceTime / S_TO_NS) + "-" + std::to_string(traceDuration) + ".sys";
-    return newName;
+    if (index != std::string::npos) {
+        std::string newName = namePrefix + TRACE_SNAPSHOT_PREFIX + std::string(timeBuf) + "@" +
+            std::to_string(firstPageTraceTime / S_TO_NS) + "-" + std::to_string(traceDuration) + ".sys";
+        return newName;
+    }
+    struct stat buf;
+    if (stat(outputPath.c_str(), &buf) == 0 && (buf.st_mode & S_IFDIR)) {
+        std::string newName = outputPath + std::string(timeBuf) + "@" +
+            std::to_string(firstPageTraceTime / S_TO_NS) + "-" + std::to_string(traceDuration) + ".sys";
+        return newName;
+    }
+    return "";
 }
 
 bool GetStartAndEndTraceUtTimeFromFileName(const std::string& fileName, uint64_t& traceStartTime,
@@ -120,7 +133,7 @@ bool GetStartAndEndTraceUtTimeFromFileName(const std::string& fileName, uint64_t
 }
 
 bool RenameTraceFile(const std::string& fileName, std::string& newFileName,
-    const uint64_t& firstPageTraceTime, const uint64_t& lastPageTraceTime)
+    const uint64_t& firstPageTraceTime, const uint64_t& lastPageTraceTime, const std::string& outputPath = "")
 {
     if (firstPageTraceTime >= lastPageTraceTime) {
         HILOG_ERROR(LOG_CORE,
@@ -132,7 +145,7 @@ bool RenameTraceFile(const std::string& fileName, std::string& newFileName,
     HILOG_INFO(LOG_CORE, "RenameTraceFile: firstPageTraceTime:(%{public}" PRIu64
         "), lastPageTraceTime:(%{public}" PRIu64 ")", firstPageTraceTime, lastPageTraceTime);
     uint64_t traceDuration = (lastPageTraceTime - firstPageTraceTime) / MS_TO_NS;
-    newFileName = RegenerateTraceFileName(fileName, firstPageTraceTime, traceDuration).c_str();
+    newFileName = RegenerateTraceFileName(fileName, firstPageTraceTime, traceDuration, outputPath).c_str();
     if (newFileName == "") {
         HILOG_ERROR(LOG_CORE, "RenameTraceFile: RegenerateTraceFileName failed");
         return false;
@@ -260,11 +273,47 @@ bool RemoveFile(const std::string& fileName)
     return result;
 }
 
-std::string GenerateTraceFileName(TraceDumpType traceType)
+bool IsWritable(const std::string& fileName)
 {
-    // eg: /data/log/hitrace/trace_localtime@boottime.sys
-    std::string name = TRACE_FILE_DEFAULT_DIR;
-    name += tracePrefixMap[traceType];
+    if (fileName.find("../") != std::string::npos ||
+        fileName.find("..\\") != std::string::npos ||
+        fileName.find("./") != std::string::npos ||
+        fileName.find(".\\") != std::string::npos) {
+            return false;
+    }
+    return fileName.find(TRACE_WRITABLE_PATH) == 0;
+}
+
+bool IsWritableDir(const std::string& fileName)
+{
+    if (!IsWritable(fileName)) {
+        return false;
+    }
+    if (fileName == TRACE_WRITABLE_PATH || fileName == TRACE_WRITABLE_PATH + '/') {
+        return true;
+    }
+    return false;
+}
+
+std::string GenerateTraceFileName(TraceDumpType traceType, const std::string& outputPath)
+{
+    if (outputPath.empty()) {
+        return TRACE_FILE_DEFAULT_DIR + GenerateTraceFileNameInner(traceType);
+    }
+    if (IsWritable(outputPath) && !IsWritableDir(outputPath)) {
+        return outputPath;
+    } else if (IsWritableDir(outputPath)) {
+            std::string fileName = outputPath.back() == '/'
+                                        ? outputPath + GenerateTraceFileNameInner(traceType)
+                                        : outputPath + '/' + GenerateTraceFileNameInner(traceType);
+            return fileName;
+    }
+    return "";
+}
+
+std::string GenerateTraceFileNameInner(TraceDumpType traceType)
+{
+    std::string name = tracePrefixMap[traceType];
     // get localtime
     time_t currentTime = time(nullptr);
     struct tm timeInfo = {};
@@ -454,17 +503,18 @@ std::string RenameCacheFile(const std::string& cacheFile)
     return newFilePath;
 }
 
-bool SetFileInfo(const bool isFileExist, const std::string outPath, const uint64_t& firstPageTimestamp,
-    const uint64_t& lastPageTimestamp, TraceFileInfo& traceFileInfo)
+bool SetFileInfo(const bool isFileExist, const std::string outPath, const TimestampRange& timestampRange,
+    TraceFileInfo& traceFileInfo, const std::string& outputPath)
 {
     std::string newFileName = outPath;
-    if (isFileExist && !RenameTraceFile(outPath, newFileName, firstPageTimestamp, lastPageTimestamp)) {
+    if (isFileExist && !RenameTraceFile(outPath, newFileName, timestampRange.firstPageTimestamp,
+        timestampRange.lastPageTimestamp, outputPath)) {
         HILOG_INFO(LOG_CORE, "rename failed, outPath: %{public}s.", outPath.c_str());
         return false;
     }
     traceFileInfo.filename = newFileName;
-    traceFileInfo.traceStartTime = ConvertPageTraceTimeToUtTimeMs(firstPageTimestamp);
-    traceFileInfo.traceEndTime = ConvertPageTraceTimeToUtTimeMs(lastPageTimestamp);
+    traceFileInfo.traceStartTime = ConvertPageTraceTimeToUtTimeMs(timestampRange.firstPageTimestamp);
+    traceFileInfo.traceEndTime = ConvertPageTraceTimeToUtTimeMs(timestampRange.lastPageTimestamp);
     if (isFileExist) {
         traceFileInfo.fileSize = GetFileSize(newFileName);
     } else {
