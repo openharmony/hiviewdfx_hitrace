@@ -16,6 +16,8 @@
 #include "trace_context.h"
 
 #include <algorithm>
+#include <cstring>
+#include <fcntl.h>
 #include <memory>
 #include <set>
 #include <sstream>
@@ -122,7 +124,6 @@ TraceFilterContext::TraceFilterContext()
     standInThreadContext_ = new StandInThreadContext();
     standInTid_ = standInThreadContext_->tid;
     ClearTracePoint(SET_EVENT_PID);
-    AppendTracePoint(SET_EVENT_PID, std::to_string(standInTid_).append("\n"));
 }
 
 TraceFilterContext::~TraceFilterContext()
@@ -138,19 +139,39 @@ bool TraceFilterContext::AddFilterPids(const std::vector<std::string> &filterPid
     if (filterPids.empty()) {
         return false;
     }
-    if (!AddFilterTids(filterPids)) {
-        HILOG_WARN(LOG_CORE, "failed to add process id to set_event pid");
+    FileLock fileLock(GetTraceRootPath() + SET_EVENT_PID, O_RDWR);
+    std::string initContent = std::to_string(standInTid_);
+    for (const auto& tid : filterPids) {
+        initContent += (" " + tid);
+    }
+    if (write(fileLock.Fd(), initContent.c_str(), initContent.size()) < 0) {
+        HILOG_ERROR(LOG_CORE, "AppendToFile: set_event_pid %{public}s failed %{public}d", initContent.c_str(), errno);
         return false;
     }
     std::vector<std::string> tids;
     for (auto& pid : filterPids) {
-        if (!GetSubThreadIds(pid, tids)) {
-            HILOG_WARN(LOG_CORE, "failed to get sub tid for pid %{public}s", pid.c_str());
+        const std::string dirPath = "/proc/" + pid + "/task/";
+        const auto dir = std::unique_ptr<DIR, void(*)(DIR*)>(opendir(dirPath.c_str()), [](DIR* dir) {
+            if (dir != nullptr) {
+                closedir(dir);
+            }
+        });
+        if (!dir) {
+            HILOG_ERROR(LOG_CORE, "failed open dirpath %{public}s for %{public}d", dirPath.c_str(), errno);
+            continue;
+        }
+        for (dirent* entry = readdir(dir.get()); entry != nullptr; entry = readdir(dir.get())) {
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+                continue;
+            }
+            if (write(fileLock.Fd(), entry->d_name, strlen(entry->d_name)) < 0) {
+                HILOG_ERROR(LOG_CORE, "AppendToFile: set_event_pid %{public}s failed %{public}d", entry->d_name, errno);
+                return false;
+            }
         }
     }
-    return AddFilterTids(tids);
+    return true;
 }
-
 
 void TraceFilterContext::FilterSavedCmdLine()
 {
@@ -240,15 +261,6 @@ void TraceFilterContext::TraverseFilterPid(const std::function<void(const std::s
     if (handler) {
         std::for_each(filterPids_.begin(),  filterPids_.end(), handler);
     }
-}
-
-bool TraceFilterContext::AddFilterTids(const std::vector<std::string>& tids)
-{
-    std::stringstream ss;
-    for (const auto& tid : tids) {
-        ss << tid << ' ';
-    }
-    return AppendTracePoint(SET_EVENT_PID, ss.str());
 }
 
 TraceContextManager &TraceContextManager::GetInstance()

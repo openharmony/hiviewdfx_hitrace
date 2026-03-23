@@ -34,7 +34,6 @@
 #include <unistd.h>
 #include <unordered_map>
 #include <functional>
-#include <map>
 
 #include "common_define.h"
 #include "common_utils.h"
@@ -1625,7 +1624,6 @@ TraceRetInfo RecordTraceOff()
 TraceErrorCode CloseTrace()
 {
     std::lock_guard<std::mutex> lock(g_traceMutex);
-    ClearFilterParam();
     HILOG_INFO(LOG_CORE, "CloseTrace start.");
     if (g_traceMode == TraceMode::CLOSE) {
         HILOG_INFO(LOG_CORE, "Trace has already been closed.");
@@ -1634,17 +1632,15 @@ TraceErrorCode CloseTrace()
     if (IsRecordOn() || IsCacheOn()) {
         TraceDumpExecutor::GetInstance().StopDumpTraceLoop();
     }
+    ClearFilterParam();
     g_traceMode = TraceMode::CLOSE;
     g_cpuBufferBalanceService = nullptr;
     OHOS::system::SetParameter(TRACE_KEY_APP_PID, "-1");
-
     const std::map<std::string, TraceTag>& allTags = TraceJsonParser::Instance().GetAllTagInfos();
-
     if (allTags.size() == 0) {
         HILOG_ERROR(LOG_CORE, "CloseTrace: ParseTagInfo TAG_ERROR.");
         return TAG_ERROR;
     }
-
     TraceInit(allTags);
     TruncateFile(TRACE_NODE);
     if (IsHmKernel()) {
