@@ -39,7 +39,6 @@ public:
     void TraverseTGidsContent(
         const std::function<void(const std::pair<std::string, std::string>& tgid)>& handler) const;
 private:
-    static bool AddFilterTids(const std::vector<std::string>& tids);
     void FilterTGidsContent();
     void FilterSavedCmdLine();
     std::vector<std::string> filterCmdLines_;
