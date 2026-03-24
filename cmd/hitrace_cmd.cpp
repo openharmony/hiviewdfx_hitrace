@@ -279,6 +279,7 @@ constexpr unsigned int MAX_OUTPUT_LEN = 255;
 const int PAGE_SIZE_KB = 4; // 4 KB
 const int MIN_FILE_SIZE = 51200; // 50 MB
 const int MAX_FILE_SIZE = 512000; // 500 MB
+static const std::string TRACE_WRITABLE_PATH = "/data/local/tmp";
 
 std::string g_traceRootPath;
 std::shared_ptr<OHOS::HiviewDFX::UCollectClient::TraceCollector> g_traceCollector;
@@ -493,7 +494,9 @@ static bool CheckOutputFile(const char* path)
 {
     struct stat buf;
     size_t len = strnlen(path, MAX_OUTPUT_LEN);
-    if (len == MAX_OUTPUT_LEN || len < 1 || (stat(path, &buf) == 0 && (buf.st_mode & S_IFDIR))) {
+    if (len == MAX_OUTPUT_LEN || len < 1 ||
+        (stat(path, &buf) == 0 && (buf.st_mode & S_IFDIR) && g_runningState != RECORDING_LONG_BEGIN_RECORD &&
+            g_runningState != RECORDING_LONG_DUMP)) {
         ConsoleLog("error: output file is illegal");
         return false;
     }
@@ -1068,6 +1071,28 @@ static bool HandleRecordingLongFinishNodump()
     return true;
 }
 
+static bool IsWritable(const std::string& fileName)
+{
+    if (fileName.find("../") != std::string::npos ||
+        fileName.find("..\\") != std::string::npos ||
+        fileName.find("./") != std::string::npos ||
+        fileName.find(".\\") != std::string::npos) {
+            return false;
+    }
+    return fileName.find(TRACE_WRITABLE_PATH) == 0;
+}
+
+static bool IsWritableDir(const std::string& fileName)
+{
+    if (!IsWritable(fileName)) {
+        return false;
+    }
+    if (fileName == TRACE_WRITABLE_PATH || fileName == TRACE_WRITABLE_PATH + '/') {
+        return true;
+    }
+    return false;
+}
+
 static bool HandleRecordingLongBeginRecord()
 {
     std::vector<std::string> tags = {};
@@ -1078,17 +1103,16 @@ static bool HandleRecordingLongBeginRecord()
         .fileSizeLimit = 0
     };
     ReloadTraceArgs(tags, hiviewTraceParam);
-    if (g_traceArgs.output.size() > 0) {
-        ConsoleLog("warning: The current state does not support specifying the output file path, " +
-                   g_traceArgs.output + " is invalid.");
-    }
     auto openRet = g_traceCollector->OpenTrace(tags, hiviewTraceParam, {});
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
         return false;
     }
-
-    auto recOnRet = g_traceCollector->RecordingOn();
+    if (g_traceArgs.output.size() > 0 && !IsWritableDir(g_traceArgs.output)) {
+        ConsoleLog("error: illegal path");
+        return false;
+    }
+    auto recOnRet = g_traceCollector->RecordingOn(g_traceArgs.output);
     if (recOnRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: RecordingOn failed, errorCode(" + std::to_string(recOnRet.retCode) +")");
         g_traceCollector->Close();
@@ -1144,7 +1168,11 @@ static bool HandleDumpSnapshot()
 {
     g_needSysEvent = false;
     bool isSuccess = true;
-    auto dumpRet = g_traceCollector->DumpSnapshot(OHOS::HiviewDFX::UCollect::TraceClient::COMMAND);
+    if (g_traceArgs.output.size() > 0 && !IsWritable(g_traceArgs.output)) {
+        ConsoleLog("error: illegal path");
+        return false;
+    }
+    auto dumpRet = g_traceCollector->DumpSnapshot(OHOS::HiviewDFX::UCollect::TraceClient::COMMAND, g_traceArgs.output);
     if (dumpRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: DumpSnapshot failed, errorCode(" + std::to_string(dumpRet.retCode) +")");
         isSuccess = false;

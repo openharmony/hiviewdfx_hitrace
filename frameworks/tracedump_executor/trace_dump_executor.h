@@ -46,11 +46,11 @@ class TraceDumpExecutor : public DelayedRefSingleton<TraceDumpExecutor> {
 
 public:
     bool PreCheckDumpTraceLoopStatus();
-    bool StartDumpTraceLoop(const TraceDumpParam& param);
+    bool StartDumpTraceLoop(const TraceDumpParam& param, const std::string& outputPath = "");
     std::vector<std::string> StopDumpTraceLoop();
     bool StartCacheTraceLoop(const TraceDumpParam& param);
     void StopCacheTraceLoop();
-    TraceDumpRet DumpTrace(const TraceDumpParam& param);
+    TraceDumpRet DumpTrace(const TraceDumpParam& param, const std::string& outputPath = "");
 
     std::vector<TraceFileInfo> GetCacheTraceFiles();
     void ReadRawTraceLoop();

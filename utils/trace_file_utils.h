@@ -41,10 +41,18 @@ struct TraceFileInfo {
     TraceFileInfo(const std::string& name, time_t time, int64_t sizekB, bool newFile);
 };
 
+struct TimestampRange {
+    uint64_t firstPageTimestamp;
+    uint64_t lastPageTimestamp;
+};
+
 void GetTraceFilesInDir(std::vector<TraceFileInfo>& fileList, TraceDumpType traceType);
 void GetTraceFileNamesInDir(std::set<std::string>& fileSet, TraceDumpType traceType);
 bool RemoveFile(const std::string& fileName);
-std::string GenerateTraceFileName(TraceDumpType traceType);
+bool IsWritable(const std::string& fileName);
+bool IsWritableDir(const std::string& fileName);
+std::string GenerateTraceFileName(TraceDumpType traceType, const std::string& outputPath = "");
+std::string GenerateTraceFileNameInner(TraceDumpType traceType);
 std::string GenerateTraceFileNameByTraceTime(TraceDumpType traceType,
     const uint64_t& firstPageTraceTime, const uint64_t& lastPageTraceTime);
 void DelSavedEventsFormat();
@@ -54,8 +62,8 @@ off_t GetFileSize(const std::string& filePath);
 uint64_t GetCurUnixTimeMs();
 void RefreshTraceVec(std::vector<TraceFileInfo>& traceVec, const TraceDumpType traceType);
 std::string RenameCacheFile(const std::string& cacheFile);
-bool SetFileInfo(const bool isFileExist, const std::string outPath, const uint64_t& firstPageTimestamp,
-    const uint64_t& lastPageTimestamp, TraceFileInfo& traceFileInfo);
+bool SetFileInfo(const bool isFileExist, const std::string outPath, const TimestampRange& timestampRange,
+    TraceFileInfo& traceFileInfo, const std::string& outputPath = "");
 
 bool TraverseFiles(const std::string &dirPath, bool recursion,
     const std::function<void(const char*, const dirent*)>& handler);

@@ -75,7 +75,7 @@ TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups);
  * return TraceErrorCode::SUCCESS if any trace is captured between the designated interval
  * return TraceErrorCode::OUT_OF_TIME otherwise.
 */
-TraceRetInfo DumpTrace(uint32_t maxDuration = 0, uint64_t utTraceEndTime = 0);
+TraceRetInfo DumpTrace(uint32_t maxDuration = 0, uint64_t utTraceEndTime = 0, const std::string& outputPath = "");
 
 /**
  * Reading trace data once from ftrace ringbuffer in the kernel.
@@ -99,7 +99,7 @@ TraceRetInfo DumpTraceAsync(uint32_t maxDuration = 0, uint64_t utTraceEndTime = 
  * Enable sub threads to periodically drop disk trace data.
  * End the periodic disk drop task until the next call to RecordTraceOff().
 */
-TraceErrorCode RecordTraceOn();
+TraceErrorCode RecordTraceOn(const std::string& outputPath = "");
 
 /**
  * End the periodic disk drop task.
