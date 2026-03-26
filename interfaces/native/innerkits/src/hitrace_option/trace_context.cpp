@@ -68,7 +68,7 @@ bool GetSetEventPid(std::set<std::string>& set)
     });
 }
 
-bool ParseTGids(const char* lineContent, std::pair<std::string, std::string>& result)
+bool ParseTGid(const char* lineContent, std::pair<std::string, std::string>& result)
 {
     if (!ParseNumberStr(lineContent, result.first)) {
         return false;
@@ -148,6 +148,7 @@ bool TraceFilterContext::AddFilterPids(const std::vector<std::string> &filterPid
         HILOG_ERROR(LOG_CORE, "AppendToFile: set_event_pid %{public}s failed %{public}d", initContent.c_str(), errno);
         return false;
     }
+    HILOG_INFO(LOG_CORE, "success add content %{public}s to set_event_pid", initContent.c_str());
     std::vector<std::string> tids;
     for (auto& pid : filterPids) {
         const std::string dirPath = "/proc/" + pid + "/task/";
@@ -164,11 +165,13 @@ bool TraceFilterContext::AddFilterPids(const std::vector<std::string> &filterPid
             if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
                 continue;
             }
+            originTGids_[entry->d_name] = pid;
             if (write(fileLock.Fd(), entry->d_name, strlen(entry->d_name)) < 0) {
                 HILOG_ERROR(LOG_CORE, "AppendToFile: set_event_pid %{public}s failed %{public}d", entry->d_name, errno);
                 return false;
             }
         }
+        HILOG_INFO(LOG_CORE, "success add tids of %{public}s to set_event_pid", pid.c_str());
     }
     return true;
 }
@@ -209,26 +212,31 @@ void TraceFilterContext::FilterTGidsContent()
     const auto standInTidStr = std::to_string(standInTid_);
     TraverseFileLineByLine(traceRootPath + "saved_tgids",
         [this, &set, &standInTidStr](const char* lineContent, size_t lineNum) {
-            std::pair<std::string, std::string> tgids;
-            if (!ParseTGids(lineContent, tgids)) {
+            std::pair<std::string, std::string> tGid;
+            if (!ParseTGid(lineContent, tGid)) {
                 return true;
             }
-            if (set.find(tgids.first) != set.end()) {
-                if (tgids.first != standInTidStr) {
-                    filterPids_.insert(tgids.second);
+            if (set.find(tGid.first) != set.end()) {
+                if (tGid.first == standInTidStr) {
+                    return true;
                 }
+                auto originTGid = originTGids_.find(tGid.first);
+                if (originTGid != originTGids_.end() && originTGid->second != tGid.second) {
+                    return true;
+                }
+                filterPids_.insert(tGid.second);
             }
             return true;
         });
     TraverseFileLineByLine(traceRootPath + "saved_tgids",
         [this, &standInTidStr](const char* lineContent, size_t lineNum) {
-            std::pair<std::string, std::string> tgids;
-            if (!ParseTGids(lineContent, tgids)) {
+            std::pair<std::string, std::string> tGid;
+            if (!ParseTGid(lineContent, tGid)) {
                 return true;
             }
-            if (filterPids_.find(tgids.second) != filterPids_.end()) {
-                if (tgids.first != standInTidStr) {
-                    filterTGidsContent_.emplace_back(tgids);
+            if (filterPids_.find(tGid.second) != filterPids_.end()) {
+                if (tGid.first != standInTidStr) {
+                    filterTGidsContent_.emplace_back(tGid);
                 }
             }
             return true;

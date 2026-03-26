@@ -17,6 +17,7 @@
 #define HITRACE_TRACE_FILTER_CONTEXT_H
 #include <condition_variable>
 #include <functional>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -42,6 +43,7 @@ private:
     void FilterTGidsContent();
     void FilterSavedCmdLine();
     std::vector<std::string> filterCmdLines_;
+    std::map<std::string, std::string> originTGids_;
     std::vector<std::pair<std::string, std::string>> filterTGidsContent_;
     std::set<std::string> filterPids_;
     pid_t initPid_ = -1;
