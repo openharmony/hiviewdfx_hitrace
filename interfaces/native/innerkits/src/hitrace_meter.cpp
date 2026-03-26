@@ -293,9 +293,9 @@ inline void AddUInt64HexValueToBuffer(char*& dst, const char* end, uint64_t valu
     const auto endPointer = buff + maxLength;
     auto startPointer = buff + maxLength - 1;
     while (value > 0) {
-        constexpr int32_t kHexDigitMask = 0xf;
+        constexpr uint32_t kHexDigitMask = 0xf;
         *startPointer-- = NUM_TO_CHAR_MAPS[value & kHexDigitMask];
-        constexpr int32_t kHexDigitBitWidth = 4;
+        constexpr uint32_t kHexDigitBitWidth = 4;
         value >>= kHexDigitBitWidth;
     }
     AddStringToBuffer(dst, end, startPointer + 1, endPointer - startPointer - 1);
@@ -307,12 +307,12 @@ inline void AddUInt32DecValueToBuffer(char*& dst, const char* end, uint32_t valu
         AddCharToBuffer(dst, end, '0');
         return;
     }
-    constexpr auto maxLength = 10;
+    constexpr uint32_t maxLength = 10;
     char buff[maxLength];
     const auto endPointer = buff + maxLength;
     auto startPointer = buff + maxLength - 1;
     while (value > 0) {
-        constexpr int32_t kDecimalBase = 10;
+        constexpr uint32_t kDecimalBase = 10;
         *(startPointer--) = NUM_TO_CHAR_MAPS[value % kDecimalBase];
         value /= kDecimalBase;
     }
@@ -331,13 +331,13 @@ inline void AddInt64DecValue(char*& dst, const char* end, int64_t value)
             value = -value;
         }
     }
-    constexpr auto maxLength = 20;
+    constexpr uint32_t maxLength = 20;
     char buff[maxLength];
     const auto endPointer = buff + maxLength;
     auto startPointer = buff + maxLength - 1;
     auto unsignedValue = static_cast<uint64_t>(value);
     while (unsignedValue > 0) {
-        constexpr int32_t kDecimalBase = 10;
+        constexpr uint32_t kDecimalBase = 10;
         *(startPointer--) = NUM_TO_CHAR_MAPS[unsignedValue % kDecimalBase];
         unsignedValue /= kDecimalBase;
     }
