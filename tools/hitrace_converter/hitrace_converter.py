@@ -627,22 +627,45 @@ class SegmentWrapper(FieldOperator):
             ]
         )
         self.fields = fields
+        self.parsed_segments = []  # 记录所有已解析的段信息
         pass
 
     def accept(self, parser: TraceFileParserInterface, segment=None) -> bool:
         segment = segment or []
         while True:
+            data_offset = parser.trace_file.cur_post
             data = parser.get_segment_data(self.field_size)
             values = parser.parse_simple_field(self.format, data)
             if len(values) == 0:
                 break
             segment_type = values[SegmentWrapper.ITEM_SEGMENT_TYPE]
             segment_size = values[SegmentWrapper.ITEM_SEGMENT_SIZE]
+            
+            # 记录当前段信息
+            current_segment_info = {
+                'type': segment_type,
+                'size': segment_size,
+                'offset': data_offset
+            }
+            if self.parsed_segments.__len__() <= 255:
+                self.parsed_segments.append(current_segment_info)
+            else:
+                print(f"All parsed segments before exception:")
+                for i, seg_info in enumerate(self.parsed_segments):
+                    print(f"  [{i}] type={seg_info['type']:x}, size={seg_info['size']:x}, offset={seg_info['offset']:x}")
+                raise ValueError("Unsupported data file, please check the file content.")
             conext = parser.get_context()
-
             segment = self.get_segment(segment_type, conext.get_param(TraceParseContext.CONTEXT_CPU_NUM))
             segment_data = parser.get_segment_data(segment_size)
-            segment.accept(parser, segment_data)
+            try:
+                if not segment.accept(parser, segment_data):
+                    print(f"failed parse segment type={current_segment_info['type']:x}, "
+                          f"size={current_segment_info['size']:x} at offset={current_segment_info['offset']:x}")
+            except Exception as e:
+                print(f"All parsed segments before exception:")
+                for i, seg_info in enumerate(self.parsed_segments):
+                    print(f"  [{i}] type={seg_info['type']:x}, size={seg_info['size']:x}, offset={seg_info['offset']:x}")
+                raise
             pass
         return True
 
