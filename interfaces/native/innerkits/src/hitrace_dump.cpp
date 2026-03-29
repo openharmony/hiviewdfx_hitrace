@@ -77,6 +77,7 @@ struct TraceParams {
     int fileLimit;
     int fileSize;
     int appPid;
+    int64_t totalSize;
 };
 
 const int SAVED_CMDLINES_SIZE = 3072; // 3M
@@ -512,8 +513,8 @@ void ProcessRecordTask(const std::string& outputPath)
         g_currentTraceParams.fileLimit,
         g_currentTraceParams.fileSize,
         0,
-        std::numeric_limits<uint64_t>::max()
-
+        std::numeric_limits<uint64_t>::max(),
+        g_currentTraceParams.totalSize
     };
     TraceDumpExecutor::GetInstance().StartDumpTraceLoop(param, outputPath);
 }
@@ -1386,6 +1387,7 @@ TraceErrorCode OpenTrace(const TraceArgs& traceArgs)
         .clockType = traceArgs.clockType,
         .isOverWrite = traceArgs.isOverWrite ? "1" : "0",
         .fileSize = traceArgs.fileSizeLimit,
+        .totalSize = traceArgs.totalSize
     };
     TraceErrorCode ret = HandleTraceOpen(traceParams, allTags, tagGroupTable, traceFormats);
     if (ret != TraceErrorCode::SUCCESS) {

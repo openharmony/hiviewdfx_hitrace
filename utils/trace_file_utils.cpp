@@ -281,7 +281,7 @@ bool IsWritable(const std::string& fileName)
         fileName.find(".\\") != std::string::npos) {
             return false;
     }
-    return fileName.find(TRACE_WRITABLE_PATH) == 0;
+    return (fileName == (TRACE_WRITABLE_PATH)) || fileName.find((TRACE_WRITABLE_PATH + '/')) == 0;
 }
 
 bool IsWritableDir(const std::string& fileName)
