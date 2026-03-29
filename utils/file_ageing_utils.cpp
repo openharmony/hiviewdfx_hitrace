@@ -246,7 +246,8 @@ namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
 
-void FileAgeingUtils::HandleAgeing(std::vector<TraceFileInfo>& fileList, const TraceDumpType traceType)
+void FileAgeingUtils::HandleAgeing(std::vector<TraceFileInfo>& fileList, const TraceDumpType traceType,
+                                   int64_t setTotalSize)
 {
     std::shared_ptr<FileAgeingChecker> checkerFilenumber = FileAgeingChecker::CreateFileChecker(traceType,
         CheckType::FILENUMBER);
@@ -256,6 +257,11 @@ void FileAgeingUtils::HandleAgeing(std::vector<TraceFileInfo>& fileList, const T
         } else if (traceType == TraceDumpType::TRACE_SNAPSHOT) {
             HandleAgeingSnapShort(fileList, traceType, CheckType::FILENUMBER);
         }
+    }
+    if (traceType == TraceDumpType::TRACE_RECORDING && setTotalSize != 0) {
+        FileSizeChecker checkerSetTotalSize(setTotalSize);
+        HandleAgeingImpl(fileList, traceType, checkerSetTotalSize);
+        return;
     }
     std::shared_ptr<FileAgeingChecker> checkerFilesize = FileAgeingChecker::CreateFileChecker(traceType,
         CheckType::FILESIZE);

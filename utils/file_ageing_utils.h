@@ -33,7 +33,8 @@ enum CheckType {
 
 class FileAgeingUtils {
 public:
-    static void HandleAgeing(std::vector<TraceFileInfo>& fileList, const TraceDumpType traceType);
+    static void HandleAgeing(std::vector<TraceFileInfo>& fileList, const TraceDumpType traceType,
+                            int64_t setTotalSize = 0);
 
 private:
     FileAgeingUtils();
