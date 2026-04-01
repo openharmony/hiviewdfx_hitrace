@@ -245,13 +245,13 @@ void TraceInit(const std::map<std::string, TraceTag>& allTags)
     // close all user tags
     SetProperty(TRACE_TAG_ENABLE_FLAGS, std::to_string(0));
 
+    // close tracing_on
+    SetTraceNodeStatus(TRACING_ON_NODE, false);
+
     // set buffer_size_kb 1
     if (!WriteStrToFile("buffer_size_kb", "1")) {
         HILOG_ERROR(LOG_CORE, "TraceInit: WriteStrToFile fail");
     }
-
-    // close tracing_on
-    SetTraceNodeStatus(TRACING_ON_NODE, false);
 }
 
 // Open specific trace node
