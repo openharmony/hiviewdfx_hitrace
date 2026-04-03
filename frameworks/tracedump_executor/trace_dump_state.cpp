@@ -17,11 +17,22 @@
 
 #include <chrono>
 #include <thread>
+#include "hilog/log.h"
 
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
 namespace {
+
+#ifdef LOG_DOMAIN
+#undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD002D33
+#endif
+#ifdef LOG_TAG
+#undef LOG_TAG
+#define LOG_TAG "TraceDumpState"
+#endif
+
 constexpr int WAIT_TIMEOUT_MS = 5000;
 }
 
@@ -32,23 +43,36 @@ TraceDumpState::~TraceDumpState() {}
 bool TraceDumpState::StartLoopDump()
 {
     DumpState expected = DumpState::IDLE;
-    return state_.compare_exchange_strong(expected, DumpState::RUNNING,
-        std::memory_order_acq_rel, std::memory_order_acquire);
+    if (state_.compare_exchange_strong(expected, DumpState::RUNNING,
+        std::memory_order_acq_rel, std::memory_order_acquire)) {
+        HILOG_INFO(LOG_CORE, "success changed state_ from %{public}d to %{public}d",
+            static_cast<int>(DumpState::IDLE), static_cast<int>(DumpState::RUNNING));
+        return true;
+    }
+    return false;
 }
 
 void TraceDumpState::EndLoopDumpSelf()
 {
-    std::unique_lock<std::mutex> lock(conditionMutex_);
-    state_.store(DumpState::IDLE, std::memory_order_release);
-    stateCondition_.notify_all();
+    auto before = state_.load(std::memory_order_acquire);
+    {
+        std::unique_lock<std::mutex> lock(conditionMutex_);
+        state_.store(DumpState::IDLE, std::memory_order_release);
+        stateCondition_.notify_all();
+    }
+    HILOG_INFO(LOG_CORE, "success changed state_ from %{public}d to %{public}d",
+        static_cast<int>(before), static_cast<int>(DumpState::IDLE));
 }
 
 void TraceDumpState::EndLoopDump()
 {
-    if (state_.load(std::memory_order_acquire) == DumpState::IDLE) {
+    auto before = state_.load(std::memory_order_acquire);
+    if (before == DumpState::IDLE) {
         return;
     }
     state_.store(DumpState::STOPPING, std::memory_order_release);
+    HILOG_INFO(LOG_CORE, "success changed state_ from %{public}d to %{public}d",
+        static_cast<int>(before), static_cast<int>(DumpState::STOPPING));
     std::unique_lock<std::mutex> lock(conditionMutex_);
     stateCondition_.wait_for(lock, std::chrono::milliseconds(WAIT_TIMEOUT_MS),
         [this] { return state_.load(std::memory_order_acquire) == DumpState::IDLE; });
@@ -63,15 +87,25 @@ bool TraceDumpState::IsLoopDumpRunning() const
 bool TraceDumpState::InterruptCache()
 {
     DumpState expected = DumpState::RUNNING;
-    return state_.compare_exchange_strong(expected, DumpState::INTERRUPT,
-        std::memory_order_acq_rel, std::memory_order_acquire);
+    if (state_.compare_exchange_strong(expected, DumpState::INTERRUPT,
+        std::memory_order_acq_rel, std::memory_order_acquire)) {
+        HILOG_INFO(LOG_CORE, "success changed state_ from %{public}d to %{public}d",
+            static_cast<int>(DumpState::RUNNING), static_cast<int>(DumpState::INTERRUPT));
+        return true;
+    }
+    return false;
 }
 
 bool TraceDumpState::ContinueCache()
 {
     DumpState expected = DumpState::INTERRUPT;
-    return state_.compare_exchange_strong(expected, DumpState::RUNNING,
-        std::memory_order_acq_rel, std::memory_order_acquire);
+    if (state_.compare_exchange_strong(expected, DumpState::RUNNING,
+        std::memory_order_acq_rel, std::memory_order_acquire)) {
+        HILOG_INFO(LOG_CORE, "success changed state_ from %{public}d to %{public}d",
+            static_cast<int>(DumpState::INTERRUPT), static_cast<int>(DumpState::RUNNING));
+        return true;
+    }
+    return false;
 }
 
 bool TraceDumpState::IsInterruptCache() const
