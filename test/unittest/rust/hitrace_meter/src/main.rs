@@ -17,34 +17,33 @@
 extern crate hitrace_meter_rust;
 
 use std::io::Error;
-use std::sync::OnceLock;
+use std::sync::Once;
+use std::thread;
+use std::time::Duration;
+
 const HITRACE_TAG_OHOS : u64 = 1 << 30;
 const HITRACE_TASK_ID : i32 = 666;
 mod trace_test;
 
-fn before_all() -> bool {
-    static TRACE_PATH_LOCK: OnceLock<Option<bool>> = OnceLock::new();
-    let ret = TRACE_PATH_LOCK.get_or_init(|| {
-        println!("before_all {}", HITRACE_TAG_OHOS);
+fn before_each() -> bool {
+    static TRACE_PATH_LOCK: std::sync::Once = Once::new();
+    let init_function = || {
         if let Err(err) = trace_test::set_trace_tag(HITRACE_TAG_OHOS) {
             println!("failed set trace tag for {}", err);
-            return Some(false);
         }
-        if let Err(err) = trace_test::switch_trace_on(true) {
-            println!("failed enable trace for {}", err);
-            return Some(false);
-        }
-        if let Err(err) = trace_test::clear_trace_buf() {
-            println!("failed clear trace buffer for {}", err);
-        }
-        Some(true)
-    });
-    ret.is_some() && ret.unwrap()
+    };
+    TRACE_PATH_LOCK.call_once(init_function);
+    if let Err(err) = trace_test::set_event_pid() {
+        println!("failed set trace tag for {}", err);
+    }
+    thread::sleep(Duration::from_millis(100));
+    true
 }
 
 fn test_body01() -> Result<bool, Error> {
     hitrace_meter_rust::start_trace(HITRACE_TAG_OHOS, "hitrace_meter_rust_unit_test_001");
     hitrace_meter_rust::finish_trace(HITRACE_TAG_OHOS);
+    thread::sleep(Duration::from_millis(100));
     let start_record = trace_test::create_trace_record(&trace_test::TraceInfo {
         trace_type:'B',
         name: String::from("hitrace_meter_rust_unit_test_001"),
@@ -65,6 +64,7 @@ fn test_body02() -> Result<bool, Error> {
         "hitrace_meter_rust_unit_test_002", HITRACE_TASK_ID);
     hitrace_meter_rust::finish_trace_async(HITRACE_TAG_OHOS,
         "hitrace_meter_rust_unit_test_002", HITRACE_TASK_ID);
+    thread::sleep(Duration::from_millis(100));
     let start_record = trace_test::create_trace_record(&trace_test::TraceInfo {
         trace_type:'S',
         name: String::from("hitrace_meter_rust_unit_test_002"),
@@ -85,6 +85,7 @@ fn test_body02() -> Result<bool, Error> {
 fn test_body03() -> Result<bool, Error> {
     const COUNT: i64 = 2;
     hitrace_meter_rust::count_trace(HITRACE_TAG_OHOS, "hitrace_meter_rust_unit_test_003", COUNT);
+    thread::sleep(Duration::from_millis(100));
     let count_record = trace_test::create_trace_record(&trace_test::TraceInfo {
         trace_type:'C',
         name: String::from("hitrace_meter_rust_unit_test_003"),
@@ -96,7 +97,7 @@ fn test_body03() -> Result<bool, Error> {
 
 #[test]
 fn hitrace_meter_rust_unit_test01() {
-    assert!(before_all());
+    before_each();
     match test_body01() {
         Ok(ret) => {
             assert!(ret)
@@ -110,7 +111,7 @@ fn hitrace_meter_rust_unit_test01() {
 
 #[test]
 fn hitrace_meter_rust_unit_test02() {
-    assert!(before_all());
+    before_each();
     match test_body02() {
         Ok(ret) => {
             assert!(ret)
@@ -124,7 +125,7 @@ fn hitrace_meter_rust_unit_test02() {
 
 #[test]
 fn hitrace_meter_rust_unit_test03() {
-    assert!(before_all());
+    before_each();
     match test_body03() {
         Ok(ret) => {
             assert!(ret)

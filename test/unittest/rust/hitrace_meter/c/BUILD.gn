@@ -11,21 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//base/hiviewdfx/hitrace/hitrace.gni")
-import("//build/test.gni")
+import("//build/ohos.gni")
 
-module_output_path = "hitrace/hitrace"
-
-ohos_rust_unittest("rust_meter_test") {
-  module_out_path = module_output_path
-
-  sources = [
-    "src/main.rs",
-    "src/trace_test.rs"
-  ]
-
-  deps = [
-    "$hitrace_interfaces_path/rust/innerkits/hitrace_meter:hitrace_meter_rust",
-    "c:hitrace_meter_rust_test",
-  ]
+ohos_static_library("hitrace_meter_rust_test") {
+  sources = [ "trace_test_util.cpp" ]
 }
