@@ -604,6 +604,7 @@ bool ITraceCpuRawContent::WriteTracePipeRawData(const std::string& srcPath, cons
         return false;
     }
     ssize_t writeLen = 0;
+    ssize_t readLen = 0;
     int pageChkFailedTime = 0;
     bool printFirstPageTime = false; // update first page time in every WriteTracePipeRawData calling.
     bool shouldContinue = true;
@@ -612,6 +613,7 @@ bool ITraceCpuRawContent::WriteTracePipeRawData(const std::string& srcPath, cons
         int bytes = 0;
         bool endFlag = false;
         ReadTracePipeRawLoop(rawTraceFd.GetFd(), bytes, endFlag, pageChkFailedTime, printFirstPageTime);
+        readLen += bytes;
         DoWriteTraceData(g_buffer, bytes, writeLen);
         if (IsWriteFileOverflow(g_outputFileSize, writeLen,
             request_.fileSize != 0 ? request_.fileSize : DEFAULT_FILE_SIZE * KB_PER_MB)) {
@@ -622,10 +624,8 @@ bool ITraceCpuRawContent::WriteTracePipeRawData(const std::string& srcPath, cons
         }
     }
     UpdateTraceContentHeader(rawtraceHdr, static_cast<uint32_t>(writeLen));
-    if (writeLen > 0) {
-        dumpStatus_ = TraceErrorCode::SUCCESS;
-    } else if (dumpStatus_ == TraceErrorCode::UNSET) {
-        dumpStatus_ = TraceErrorCode::OUT_OF_TIME;
+    if (readLen > 0) {
+        dumpStatus_ = writeLen > 0 ? TraceErrorCode::SUCCESS : TraceErrorCode::WRITE_TRACE_INFO_ERROR;
     }
     HILOG_INFO(LOG_CORE, "WriteTracePipeRawData end, path: %{public}s, byte: %{public}zd. g_writeFileLimit: %{public}d",
         srcPath.c_str(), writeLen, g_writeFileLimit);
@@ -641,6 +641,7 @@ void ITraceCpuRawContent::ReadTracePipeRawLoop(const int srcFd,
             endFlag = true;
             HILOG_DEBUG(LOG_CORE, "ReadTracePipeRawLoop: read raw trace done, size(%{public}zd), err(%{public}s).",
                 readBytes, strerror(errno));
+            dumpStatus_ = TraceErrorCode::SUCCESS;
             break;
         }
         uint64_t pageTraceTime = 0;
@@ -653,6 +654,7 @@ void ITraceCpuRawContent::ReadTracePipeRawLoop(const int srcFd,
         if (pageValid < 0) {
             endFlag = true;
             bytes += (printFirstPageTime ? readBytes : 0);
+            dumpStatus_ = TraceErrorCode::OUT_OF_TIME;
             break;
         } else if (pageValid == 0) {
             continue;
@@ -740,6 +742,7 @@ bool ITraceCpuRawRead::CopyTracePipeRawLoop(const int srcFd, const int cpu, ssiz
         if (readBytes <= 0) {
             HILOG_DEBUG(LOG_CORE, "CopyTracePipeRawLoop: read raw trace done, size(%{public}zd), err(%{public}s).",
                 readBytes, strerror(errno));
+            isStopRead = true;
             break;
         }
         uint64_t pageTraceTime = 0;
@@ -753,6 +756,7 @@ bool ITraceCpuRawRead::CopyTracePipeRawLoop(const int srcFd, const int cpu, ssiz
             isStopRead = true;
             blockReadSz += (printFirstPageTime ? readBytes : 0);
             buffer->Append(pageBuffer, readBytes);
+            dumpStatus_ = TraceErrorCode::OUT_OF_TIME;
             break;
         } else if (pageValid == 0) {
             continue;
@@ -783,14 +787,9 @@ bool ITraceCpuRawRead::CacheTracePipeRawData(const std::string& srcPath, const i
     ssize_t writeLen = 0;
     int pageChkFailedTime = 0;
     bool printFirstPageTime = false; // attention: update first page time in every WriteTracePipeRawData calling.
-    bool isStopRead = false;
-    do {
-        isStopRead = CopyTracePipeRawLoop(rawTraceFd.GetFd(), cpuIdx, writeLen, pageChkFailedTime, printFirstPageTime);
-    } while (!isStopRead);
+    while (!CopyTracePipeRawLoop(rawTraceFd.GetFd(), cpuIdx, writeLen, pageChkFailedTime, printFirstPageTime)) {}
     if (writeLen > 0) {
         dumpStatus_ = TraceErrorCode::SUCCESS;
-    } else if (dumpStatus_ == TraceErrorCode::UNSET) {
-        dumpStatus_ = TraceErrorCode::OUT_OF_TIME;
     }
     HILOG_INFO(LOG_CORE, "CacheTracePipeRawData end, path: %{public}s, byte: %{public}zd", srcPath.c_str(), writeLen);
     return true;
