@@ -245,10 +245,6 @@ bool RecordTraceDumpStrategy::DoCore(std::shared_ptr<ITraceSourceFactory> traceS
             ret.code = traceContentPtr.cpuRaw->GetDumpStatus();
             return false;
         }
-        if (traceContentPtr.cpuRaw->IsOverFlow()) {
-            HILOG_INFO(LOG_CORE, "RecordTraceDumpStrategy: write trace content overflow.");
-            break;
-        }
         auto traceFile = traceContentPtr.cpuRaw->GetTraceFilePath();
         ret.code = traceContentPtr.cpuRaw->GetDumpStatus();
         ret.traceStartTime = traceContentPtr.cpuRaw->GetFirstPageTimeStamp();
@@ -256,6 +252,10 @@ bool RecordTraceDumpStrategy::DoCore(std::shared_ptr<ITraceSourceFactory> traceS
         if (strncpy_s(ret.outputFile, TRACE_FILE_LEN, traceFile.c_str(), TRACE_FILE_LEN - 1) != 0) {
             HILOG_ERROR(LOG_CORE, "RecordTraceDumpStrategy: strncpy_s failed.");
             return false;
+        }
+        if (traceContentPtr.cpuRaw->IsOverFlow()) {
+            HILOG_INFO(LOG_CORE, "RecordTraceDumpStrategy: write trace content overflow.");
+            break;
         }
     }
     return true;
