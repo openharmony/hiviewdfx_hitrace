@@ -32,7 +32,6 @@
     "ram": "~320KB",
     "deps": {
       "components": [
-        "ace_ets2bundle",
         "bounds_checking_function",
         "cJSON",
         "c_utils",
