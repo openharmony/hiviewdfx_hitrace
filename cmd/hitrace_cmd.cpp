@@ -14,6 +14,7 @@
  */
 
 #include <cinttypes>
+#include <cstdint>
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
@@ -43,8 +44,11 @@
 #include "parameters.h"
 #include "securec.h"
 #include "smart_fd.h"
+#include "trace_file_utils.h"
 #include "trace_collector_client.h"
 #include "trace_json_parser.h"
+#include "hitrace_dump.h"
+#include "cJSON.h"
 
 using namespace OHOS::HiviewDFX::Hitrace;
 
@@ -87,6 +91,7 @@ enum RunningState {
     /* Set system parameter */
     SET_TRACE_LEVEL = 33,    // --trace_level level
     GET_TRACE_LEVEL = 34,    // --trace_level
+    CONFIG_BOOT_TRACE = 35,  // --boot_trace
 };
 }
 
@@ -106,6 +111,9 @@ static bool HandleDumpSnapshot();
 static bool HandleCloseSnapshot();
 static bool SetTraceLevel();
 static bool GetTraceLevel();
+static bool HandleBootTraceConfig();
+static bool HandleOptBootTrace(const RunningState& setValue);
+static bool HandleOptRepeat(const RunningState& setValue);
 
 static bool HandleOptBuffersize(const RunningState& setValue);
 static bool HandleOptTraceclock(const RunningState& setValue);
@@ -116,6 +124,10 @@ static bool HandleOptRecord(const RunningState& setValue);
 static bool HandleOptFilesize(const RunningState& setValue);
 static bool HandleOptTotalsize(const RunningState& setValue);
 static bool HandleOptTracelevel(const RunningState& setValue);
+static bool HandleOptBootFilePrefix(const RunningState& setValue);
+static bool HandleOptBootIncrement(const RunningState& setValue);
+static bool IsBootTraceActiveFlagOn();
+static void ClearBootTraceActiveFlagIfNeeded(bool isActive);
 static bool SetRunningState(const RunningState& setValue);
 
 namespace {
@@ -133,6 +145,25 @@ struct TraceArgs {
 
     int duration = 0;
     bool isCompress = false;
+    // --repeat for boot_trace, range [1, 100]
+    int remainingCount = 1;
+    std::string bootFilePrefix; // prefix for boot trace file name
+    // --overwrite for boot_trace: overwrite previous file each time, default off
+    bool bootTraceOverwrite = false;
+    // --increment for boot_trace: append _<n> to output stem; cfg increment_index -1 = off
+    bool bootTraceIncrement = false;
+};
+
+struct BootTraceConfig {
+    int durationSec = 0;
+    int bufferSizeKb = 0;
+    int fileSizeKb = 0;
+    int incrementIndex = -1; // -1 disabled; >=0 suffix index for output filename
+    std::vector<std::string> kernelTags;
+    std::vector<std::string> userTags;
+    std::string clockType;
+    std::string filePrefix;
+    bool overwrite = false;
 };
 
 struct TraceSysEventParams {
@@ -173,6 +204,7 @@ const std::map<RunningState, std::string> STATE_INFO = {
     { SHOW_LIST_CATEGORY, "SHOW_LIST_CATEGORY" },
     { SET_TRACE_LEVEL, "SET_TRACE_LEVEL"},
     { GET_TRACE_LEVEL, "GET_TRACE_LEVEL"},
+    { CONFIG_BOOT_TRACE, "CONFIG_BOOT_TRACE"},
 };
 
 constexpr struct option LONG_OPTIONS[] = {
@@ -197,6 +229,10 @@ constexpr struct option LONG_OPTIONS[] = {
     { "total_size",          required_argument, nullptr, 0 },
     { "trace_level",         required_argument, nullptr, 0 },
     { "get_level",           no_argument,       nullptr, 0 },
+    { "boot_trace",          no_argument,       nullptr, 0 },
+    { "repeat",              required_argument, nullptr, 0 },
+    { "file_prefix",         required_argument, nullptr, 0 },
+    { "increment",           no_argument,       nullptr, 0 },
     { nullptr,               0,                 nullptr, 0 },
 };
 
@@ -213,7 +249,8 @@ const std::unordered_map<RunningState, TaskFunc> TASK_TABLE = {
     {SNAPSHOT_DUMP, HandleDumpSnapshot},
     {SNAPSHOT_STOP, HandleCloseSnapshot},
     {SET_TRACE_LEVEL, SetTraceLevel},
-    {GET_TRACE_LEVEL, GetTraceLevel}
+    {GET_TRACE_LEVEL, GetTraceLevel},
+    {CONFIG_BOOT_TRACE, HandleBootTraceConfig}
 };
 
 const std::unordered_map<std::string, CommandFunc> COMMAND_TABLE = {
@@ -237,7 +274,11 @@ const std::unordered_map<std::string, CommandFunc> COMMAND_TABLE = {
     {"file_size", HandleOptFilesize},
     {"trace_level", HandleOptTracelevel},
     {"get_level",  SetRunningState},
-    {"total_size", HandleOptTotalsize}
+    {"total_size", HandleOptTotalsize},
+    {"boot_trace", HandleOptBootTrace},
+    {"repeat", HandleOptRepeat},
+    {"file_prefix", HandleOptBootFilePrefix},
+    {"increment", HandleOptBootIncrement}
 };
 
 std::unordered_map<std::string, RunningState> OPT_MAP = {
@@ -261,7 +302,11 @@ std::unordered_map<std::string, RunningState> OPT_MAP = {
     {"file_size", STATE_NULL},
     {"total_size", STATE_NULL},
     {"trace_level", SET_TRACE_LEVEL},
-    {"get_level",  GET_TRACE_LEVEL}
+    {"get_level",  GET_TRACE_LEVEL},
+    {"boot_trace", CONFIG_BOOT_TRACE},
+    {"repeat", CONFIG_BOOT_TRACE},
+    {"file_prefix", CONFIG_BOOT_TRACE},
+    {"increment", CONFIG_BOOT_TRACE}
 };
 
 const std::set<std::string> CLOCK_TYPE = {
@@ -287,13 +332,40 @@ const int MAX_FILE_SIZE = 512000; // 500 MB
 const int MAX_FILE_SIZE_MULTIPLIER = 10;
 static const std::string TRACE_WRITABLE_PATH = "/data/local/tmp";
 
+constexpr int BOOT_TRACE_DEFAULT_DURATION = 30; // 30 seconds
+constexpr int BOOT_TRACE_REPEAT_MIN = 1;
+constexpr int BOOT_TRACE_REPEAT_MAX = 100;
+constexpr int BOOT_TRACE_EXIT_OK = 0;
+constexpr int BOOT_TRACE_EXIT_DUPLICATE = 1;
+constexpr int BOOT_TRACE_EXIT_CONFIG_ERROR = 2;
+/** persist.hitrace.boot_trace.count: 0 = off; 1~100 = remaining boot trace count. */
+constexpr const char* BOOT_TRACE_DEFAULT_PREFIX = "boot_trace";
+constexpr int MIN_ARGS_FOR_BOOT_TRACE_SUBCOMMAND = 2;
 std::string g_traceRootPath;
 std::shared_ptr<OHOS::HiviewDFX::UCollectClient::TraceCollector> g_traceCollector;
 TraceArgs g_traceArgs;
 TraceSysEventParams g_traceSysEventParams;
 bool g_needSysEvent = false;
 RunningState g_runningState = STATE_NULL;
+
+/* When boot_trace long opt is rejected for non-root euid, avoid duplicate "parsing args failed" line. */
+bool g_suppressParsingArgsFailedLog = false;
 }
+
+/** Same log as InitAndCheckArgs when HandleOpt fails; also used when boot-trace is denied (e.g. image). */
+static constexpr const char K_PARSING_ARGS_FAILED_LOG[] = "error: parsing args failed, exit.";
+static constexpr const char K_BOOT_TRACE_UNRECOGNIZED_SUBCMD[] = "error: unrecognized command 'boot-trace'.";
+static constexpr const char K_BOOT_TRACE_UNRECOGNIZED_LONGOPT[] = "error: unrecognized option '--boot_trace'.";
+#ifdef HITRACE_UNITTEST
+static bool g_bootTraceForceRootForTest = true;
+#endif
+
+#ifdef HITRACE_UNITTEST
+void SetBootTraceForceRootForTest(bool force)
+{
+    g_bootTraceForceRootForTest = force;
+}
+#endif
 
 #ifdef HITRACE_UNITTEST
 void Reset()
@@ -308,6 +380,8 @@ void Reset()
     g_runningState = STATE_NULL;
     g_traceSysEventParams = {};
     g_traceArgs = {};
+    g_bootTraceForceRootForTest = true;
+    g_suppressParsingArgsFailedLog = false;
 }
 #endif
 
@@ -328,6 +402,43 @@ static void ConsoleLog(const std::string& logInfo)
     localtime_r(&currentTime, &timeInfo);
     strftime(timeStr, bufferSize, "%Y/%m/%d %H:%M:%S", &timeInfo);
     std::cout << timeStr << " " << logInfo << std::endl;
+}
+
+static bool IsBootTraceEuidRoot()
+{
+#ifdef HITRACE_UNITTEST
+    /* force=false: simulate non-root for negative-path tests (e.g. HitraceCMDTest045). */
+    if (!g_bootTraceForceRootForTest) {
+        return false;
+    }
+#endif
+    /* boot_trace / boot-trace: require root euid (init child runs as root). */
+    return geteuid() == 0;
+}
+
+/*
+ * Boot trace reads/writes cfg under /data/local/tmp; only allow on debuggable images (const.debuggable),
+ * so user builds cannot capture trace from a manually planted cfg.
+ */
+static bool IsBootTraceAllowedByConstDebuggable()
+{
+#ifdef HITRACE_UNITTEST
+    return true;
+#else
+    return IsRootVersion();
+#endif
+}
+
+static int DenyBootTraceAsUnparsedArgs()
+{
+    ConsoleLog(K_PARSING_ARGS_FAILED_LOG);
+    return -1;
+}
+
+static int DenyBootTraceNonRootEuidSubcommand()
+{
+    ConsoleLog(K_BOOT_TRACE_UNRECOGNIZED_SUBCMD);
+    return -1;
 }
 
 static std::string GetStateInfo(const RunningState state)
@@ -487,6 +598,45 @@ inline bool StrToNum(const std::string& sString, T &tX)
     return (iStream >> tX) && iStream.eof();
 }
 
+static bool HandleOptBootTrace(const RunningState& setValue)
+{
+    if (!IsBootTraceEuidRoot()) {
+        g_suppressParsingArgsFailedLog = true;
+        ConsoleLog(K_BOOT_TRACE_UNRECOGNIZED_LONGOPT);
+        return false;
+    }
+    return SetRunningState(setValue);
+}
+
+static bool HandleOptRepeat(const RunningState& setValue)
+{
+    if (optarg == nullptr) {
+        return false;
+    }
+    int val = 0;
+    if (!StrToNum(optarg, val)) {
+        ConsoleLog("error: repeat is illegal input. eg: \"--repeat 5\".");
+        return false;
+    }
+    if (val < BOOT_TRACE_REPEAT_MIN || val > BOOT_TRACE_REPEAT_MAX) {
+        ConsoleLog("error: --repeat must be from 1 to 100. eg: \"--repeat 5\".");
+        return false;
+    }
+    g_traceArgs.remainingCount = val;
+    return true;
+}
+
+static bool HandleOptBootIncrement(const RunningState& setValue)
+{
+    (void)setValue;
+    if (g_runningState != CONFIG_BOOT_TRACE) {
+        ConsoleLog("error: --increment only supports --boot_trace.");
+        return false;
+    }
+    g_traceArgs.bootTraceIncrement = true;
+    return true;
+}
+
 static bool SetRunningState(const RunningState& setValue)
 {
     if (g_runningState != STATE_NULL) {
@@ -496,6 +646,620 @@ static bool SetRunningState(const RunningState& setValue)
     }
     g_runningState = setValue;
     return true;
+}
+
+static bool EnsureDirExists(const std::string& dirPath)
+{
+    struct stat st {};
+    if (stat(dirPath.c_str(), &st) == 0) {
+        if (S_ISDIR(st.st_mode)) {
+            return true;
+        }
+        ConsoleLog("error: " + dirPath + " is not a directory.");
+        return false;
+    }
+    if (mkdir(dirPath.c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) != 0 && errno != EEXIST) {
+        ConsoleLog("error: cannot create directory " + dirPath + ", errno: " + std::to_string(errno));
+        return false;
+    }
+    return true;
+}
+
+static bool IsBootTraceActiveFlagOn()
+{
+    // TRACE_BOOT_ACTIVE_FLAG is a non-persist flag indicating boot-trace capturing window.
+    return GetPropertyInner(TRACE_BOOT_ACTIVE_FLAG, "0") == "1";
+}
+
+static void ClearBootTraceActiveFlagIfNeeded(bool isActive)
+{
+    if (!isActive) {
+        return;
+    }
+    if (!SetProperty(TRACE_BOOT_ACTIVE_FLAG, "0")) {
+        ConsoleLog("warning: failed to clear " + std::string(TRACE_BOOT_ACTIVE_FLAG) + " after boot-trace.");
+    }
+}
+
+static std::string BuildKernelSectionJson(const std::vector<std::string>& kernelTags, int bufferSizeKb,
+    const std::string& clockType)
+{
+    std::ostringstream oss;
+    oss << "  \"kernel\": {\n";
+    oss << "    \"enabled\": " << (kernelTags.empty() ? "false" : "true") << ",\n";
+    oss << "    \"tags\": [";
+    for (size_t i = 0; i < kernelTags.size(); ++i) {
+        if (i > 0) {
+            oss << ", ";
+        }
+        oss << "\"" << kernelTags[i] << "\"";
+    }
+    oss << "],\n";
+    oss << "    \"buffer_size_kb\": " << bufferSizeKb << ",\n";
+    oss << "    \"clock\": \"" << clockType << "\"\n";
+    oss << "  },\n";
+    return oss.str();
+}
+
+static std::string BuildUserSpaceSectionJson(const std::vector<std::string>& userTags)
+{
+    std::ostringstream oss;
+    oss << "  \"userspace\": {\n";
+    oss << "    \"enabled\": " << (userTags.empty() ? "false" : "true") << ",\n";
+    oss << "    \"tags\": [";
+    for (size_t i = 0; i < userTags.size(); ++i) {
+        if (i > 0) {
+            oss << ", ";
+        }
+        oss << "\"" << userTags[i] << "\"";
+    }
+    oss << "]\n";
+    oss << "  }\n";
+    return oss.str();
+}
+
+static std::string JoinBootTraceTagsForDisplay(const std::vector<std::string>& tags)
+{
+    std::ostringstream oss;
+    for (size_t i = 0; i < tags.size(); ++i) {
+        if (i > 0) {
+            oss << ' ';
+        }
+        oss << tags[i];
+    }
+    return oss.str();
+}
+
+static void PrintBootTraceConfiguredArgs()
+{
+    if (!g_traceArgs.tagsVec.empty()) {
+        ConsoleLog("tags: " + JoinBootTraceTagsForDisplay(g_traceArgs.tagsVec));
+    }
+    if (g_traceArgs.bufferSize > 0) {
+        ConsoleLog("buffer_size: " + std::to_string(g_traceArgs.bufferSize));
+    }
+    if (g_traceArgs.duration > 0) {
+        ConsoleLog("time: " + std::to_string(g_traceArgs.duration));
+    }
+    if (g_traceArgs.fileSize > 0) {
+        ConsoleLog("file_size: " + std::to_string(g_traceArgs.fileSize));
+    }
+    if (g_traceArgs.remainingCount != 1) {
+        ConsoleLog("repeat: " + std::to_string(g_traceArgs.remainingCount));
+    }
+    if (!g_traceArgs.bootFilePrefix.empty()) {
+        ConsoleLog("file_prefix: " + g_traceArgs.bootFilePrefix);
+    }
+    if (g_traceArgs.bootTraceOverwrite) {
+        ConsoleLog("overwrite: true");
+    }
+    if (g_traceArgs.bootTraceIncrement) {
+        ConsoleLog("increment: true");
+    }
+}
+
+static std::string BuildBootTraceOutputPathForPrefix(const std::string& filePrefix, int incrementIndex)
+{
+    const std::string stem = std::string(BOOT_TRACE_CONFIG_DIR) + filePrefix + "_default";
+    if (incrementIndex >= 0) {
+        return stem + "_" + std::to_string(incrementIndex) + ".sys";
+    }
+    return stem + ".sys";
+}
+
+static std::string BuildBootTraceConfigJson(const BootTraceConfig& config)
+{
+    std::ostringstream oss;
+    oss << "{\n";
+    oss << "  \"version\": 1,\n";
+    oss << "  \"description\": \"Boot-time trace configuration\",\n";
+    oss << "  \"duration_sec\": " << config.durationSec << ",\n";
+    oss << "  \"output\": \"" << BuildBootTraceOutputPathForPrefix(config.filePrefix, config.incrementIndex) << "\",\n";
+    oss << "  \"file_size_kb\": " << config.fileSizeKb << ",\n";
+    oss << "  \"file_prefix\": \"" << config.filePrefix << "\",\n";
+    oss << "  \"overwrite\": " << (config.overwrite ? "true" : "false") << ",\n";
+    oss << "  \"increment_index\": " << config.incrementIndex << ",\n";
+
+    oss << BuildKernelSectionJson(config.kernelTags, config.bufferSizeKb, config.clockType);
+    oss << BuildUserSpaceSectionJson(config.userTags);
+    oss << "}\n";
+    return oss.str();
+}
+
+static bool ValidateBootTraceConfig(const std::string& configPath, cJSON* root)
+{
+    if (!cJSON_IsObject(root)) {
+        ConsoleLog("error: boot_trace config is not a JSON object in " + configPath);
+        return false;
+    }
+    cJSON* durationNode = cJSON_GetObjectItem(root, "duration_sec");
+    if (!cJSON_IsNumber(durationNode) || durationNode->valueint <= 0) {
+        ConsoleLog("error: duration_sec is missing or invalid in " + configPath);
+        return false;
+    }
+    return true;
+}
+
+struct BootTraceCaptureConfig {
+    int durationSec = 0;
+    std::string outputPath;
+    std::vector<std::string> tags;
+    uint32_t bufferSizeKb = 0;
+    std::string clockType = "boot";
+    bool overwrite = true;
+    uint32_t fileSizeLimitKb = 0;
+    int incrementIndex = -1;
+};
+
+static void AppendBootTraceSectionTags(cJSON* root, const char* section, std::vector<std::string>& out)
+{
+    cJSON* sec = cJSON_GetObjectItem(root, section);
+    if (!cJSON_IsObject(sec)) {
+        return;
+    }
+    cJSON* en = cJSON_GetObjectItem(sec, "enabled");
+    if (cJSON_IsBool(en) && !cJSON_IsTrue(en)) {
+        return;
+    }
+    cJSON* arr = cJSON_GetObjectItem(sec, "tags");
+    if (!cJSON_IsArray(arr)) {
+        return;
+    }
+    for (cJSON* t = arr->child; t != nullptr; t = t->next) {
+        if (!cJSON_IsString(t) || t->valuestring == nullptr || t->valuestring[0] == '\0') {
+            continue;
+        }
+        out.emplace_back(t->valuestring);
+    }
+}
+
+static std::string ResolveBootTraceFilePrefixFromJson(cJSON* root)
+{
+    std::string prefix = BOOT_TRACE_DEFAULT_PREFIX;
+    cJSON* prefixNode = cJSON_GetObjectItem(root, "file_prefix");
+    if (cJSON_IsString(prefixNode) && prefixNode->valuestring != nullptr && prefixNode->valuestring[0] != '\0') {
+        prefix = prefixNode->valuestring;
+    }
+    return prefix;
+}
+
+static int ResolveBootTraceIncrementIndexFromJson(cJSON* root)
+{
+    cJSON* incNode = cJSON_GetObjectItem(root, "increment_index");
+    if (cJSON_IsNumber(incNode)) {
+        return incNode->valueint;
+    }
+    return -1;
+}
+
+static std::string ResolveBootTraceCaptureOutputPath(cJSON* root, const std::string& prefix, int incrementIndex)
+{
+    if (incrementIndex >= 0) {
+        return BuildBootTraceOutputPathForPrefix(prefix, incrementIndex);
+    }
+    cJSON* outNode = cJSON_GetObjectItem(root, "output");
+    if (cJSON_IsString(outNode) && outNode->valuestring != nullptr && outNode->valuestring[0] != '\0') {
+        return outNode->valuestring;
+    }
+    return BuildBootTraceOutputPathForPrefix(prefix, -1);
+}
+
+static bool ValidateBootTraceCaptureTags(const std::string& configPath, cJSON* root, BootTraceCaptureConfig& cfg)
+{
+    cfg.tags.clear();
+    AppendBootTraceSectionTags(root, "kernel", cfg.tags);
+    AppendBootTraceSectionTags(root, "userspace", cfg.tags);
+    if (cfg.tags.empty()) {
+        ConsoleLog("error: boot_trace config has no tags under kernel/userspace in " + configPath);
+        return false;
+    }
+    const auto& allTagInfos = TraceJsonParser::Instance().GetAllTagInfos();
+    for (const auto& tag : cfg.tags) {
+        if (allTagInfos.find(tag) == allTagInfos.end()) {
+            ConsoleLog("error: boot_trace unsupported tag \"" + tag + "\" in " + configPath);
+            return false;
+        }
+    }
+    return true;
+}
+
+static void ApplyBootTraceKernelCaptureOptions(cJSON* root, BootTraceCaptureConfig& cfg)
+{
+    cJSON* kernel = cJSON_GetObjectItem(root, "kernel");
+    if (!cJSON_IsObject(kernel)) {
+        return;
+    }
+    cJSON* buf = cJSON_GetObjectItem(kernel, "buffer_size_kb");
+    if (cJSON_IsNumber(buf) && buf->valueint > 0) {
+        cfg.bufferSizeKb = static_cast<uint32_t>(buf->valueint);
+    }
+    cJSON* clk = cJSON_GetObjectItem(kernel, "clock");
+    if (cJSON_IsString(clk) && clk->valuestring != nullptr && clk->valuestring[0] != '\0') {
+        cfg.clockType = clk->valuestring;
+    }
+}
+
+static void ApplyBootTraceFileCaptureOptions(cJSON* root, BootTraceCaptureConfig& cfg)
+{
+    cJSON* ow = cJSON_GetObjectItem(root, "overwrite");
+    if (cJSON_IsBool(ow)) {
+        cfg.overwrite = cJSON_IsTrue(ow);
+    }
+    cJSON* fs = cJSON_GetObjectItem(root, "file_size_kb");
+    if (cJSON_IsNumber(fs) && fs->valueint > 0) {
+        cfg.fileSizeLimitKb = static_cast<uint32_t>(fs->valueint);
+    }
+}
+
+static bool FillBootTraceCaptureConfig(const std::string& configPath, cJSON* root, BootTraceCaptureConfig& cfg)
+{
+    cJSON* durationNode = cJSON_GetObjectItem(root, "duration_sec");
+    cfg.durationSec = durationNode->valueint;
+
+    std::string prefix = ResolveBootTraceFilePrefixFromJson(root);
+    cfg.incrementIndex = ResolveBootTraceIncrementIndexFromJson(root);
+    cfg.outputPath = ResolveBootTraceCaptureOutputPath(root, prefix, cfg.incrementIndex);
+
+    if (!ValidateBootTraceCaptureTags(configPath, root, cfg)) {
+        return false;
+    }
+    ApplyBootTraceKernelCaptureOptions(root, cfg);
+    ApplyBootTraceFileCaptureOptions(root, cfg);
+    return true;
+}
+
+static int ExecuteBootTraceCapture(const BootTraceCaptureConfig& cfg)
+{
+    using DumpTraceArgs = ::OHOS::HiviewDFX::Hitrace::TraceArgs;
+    DumpTraceArgs args;
+    args.tags = cfg.tags;
+    args.bufferSize = cfg.bufferSizeKb;
+    args.clockType = cfg.clockType;
+    args.isOverWrite = cfg.overwrite;
+    args.fileSizeLimit = cfg.fileSizeLimitKb;
+    TraceErrorCode openRet = OpenTrace(args);
+    if (openRet != TraceErrorCode::SUCCESS) {
+        ConsoleLog("error: boot_trace OpenTrace failed, errorCode(" + std::to_string(static_cast<int>(openRet)) + ")");
+        return -1;
+    }
+
+    ConsoleLog("boot_trace: capturing, duration_sec=" + std::to_string(cfg.durationSec) + ", output=" + cfg.outputPath);
+    if (cfg.durationSec > 0) {
+        sleep(static_cast<unsigned int>(cfg.durationSec));
+    }
+
+    uint32_t dumpWindow = 0;
+    if (cfg.durationSec > 0) {
+        dumpWindow = static_cast<uint32_t>(cfg.durationSec);
+    }
+    TraceRetInfo dumpRet = DumpTrace(dumpWindow, 0, cfg.outputPath);
+    if (dumpRet.errorCode != TraceErrorCode::SUCCESS) {
+        ConsoleLog("error: boot_trace DumpTrace failed, errorCode(" +
+            std::to_string(static_cast<int>(dumpRet.errorCode)) + ")");
+        (void)CloseTrace();
+        return -1;
+    }
+    for (const auto& f : dumpRet.outputFiles) {
+        ConsoleLog("boot_trace: wrote " + f);
+    }
+
+    TraceErrorCode closeRet = CloseTrace();
+    if (closeRet != TraceErrorCode::SUCCESS) {
+        ConsoleLog("warning: boot_trace CloseTrace errorCode(" + std::to_string(static_cast<int>(closeRet)) + ")");
+        return -1;
+    }
+    return 0;
+}
+
+static bool LoadBootTraceCaptureConfig(const std::string& configPath, BootTraceCaptureConfig& cfg)
+{
+    struct stat st {};
+    if (stat(configPath.c_str(), &st) != 0) {
+        ConsoleLog("boot trace config not found: " + configPath);
+        return false;
+    }
+    std::ifstream in(configPath, std::ios::in);
+    if (!in.is_open()) {
+        ConsoleLog("error: open " + configPath + " failed.");
+        return false;
+    }
+    std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    in.close();
+    if (content.empty()) {
+        ConsoleLog("error: " + configPath + " is empty.");
+        return false;
+    }
+
+    cJSON* root = cJSON_Parse(content.c_str());
+    if (root == nullptr) {
+        ConsoleLog("error: parse " + configPath + " failed.");
+        return false;
+    }
+    if (!ValidateBootTraceConfig(configPath, root)) {
+        cJSON_Delete(root);
+        return false;
+    }
+    if (!FillBootTraceCaptureConfig(configPath, root, cfg)) {
+        cJSON_Delete(root);
+        return false;
+    }
+    cJSON_Delete(root);
+    return true;
+}
+
+static cJSON* LoadBootTraceConfigJsonForUpdate(const std::string& configPath)
+{
+    std::ifstream in(configPath, std::ios::in);
+    if (!in.is_open()) {
+        ConsoleLog("warning: open " + configPath + " failed, can not record result.");
+        return nullptr;
+    }
+    std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    in.close();
+    if (content.empty()) {
+        ConsoleLog("warning: " + configPath + " is empty, can not record result.");
+        return nullptr;
+    }
+
+    cJSON* root = cJSON_Parse(content.c_str());
+    if (!cJSON_IsObject(root)) {
+        ConsoleLog("warning: parse " + configPath + " failed, can not record result.");
+        if (root != nullptr) {
+            cJSON_Delete(root);
+        }
+        return nullptr;
+    }
+    return root;
+}
+
+static bool WriteBootTraceConfigJson(const std::string& configPath, cJSON* root)
+{
+    char* rendered = cJSON_Print(root);
+    if (rendered == nullptr) {
+        ConsoleLog("warning: serialize " + configPath + " failed, can not record result.");
+        return false;
+    }
+    std::ofstream out(configPath, std::ios::out | std::ios::trunc);
+    if (!out.is_open()) {
+        ConsoleLog("warning: open " + configPath + " for write failed, can not record result.");
+        cJSON_free(rendered);
+        return false;
+    }
+    out << rendered;
+    cJSON_free(rendered);
+    if (out.fail()) {
+        out.close();
+        ConsoleLog("warning: write result to " + configPath + " failed.");
+        return false;
+    }
+    out.close();
+    return true;
+}
+
+static void ApplyBootTraceIncrementBump(cJSON* root)
+{
+    cJSON* incNode = cJSON_GetObjectItem(root, "increment_index");
+    if (!cJSON_IsNumber(incNode) || incNode->valueint < 0) {
+        return;
+    }
+    const int newIdx = incNode->valueint + 1;
+    cJSON_DeleteItemFromObject(root, "increment_index");
+    (void)cJSON_AddItemToObject(root, "increment_index", cJSON_CreateNumber(newIdx));
+
+    std::string prefix = BOOT_TRACE_DEFAULT_PREFIX;
+    cJSON* fp = cJSON_GetObjectItem(root, "file_prefix");
+    if (cJSON_IsString(fp) && fp->valuestring != nullptr && fp->valuestring[0] != '\0') {
+        prefix = fp->valuestring;
+    }
+    const std::string newOut = BuildBootTraceOutputPathForPrefix(prefix, newIdx);
+    cJSON_DeleteItemFromObject(root, "output");
+    (void)cJSON_AddItemToObject(root, "output", cJSON_CreateString(newOut.c_str()));
+}
+
+static bool SaveBootTraceResultToConfig(const std::string& configPath, int resultCode)
+{
+    cJSON* root = LoadBootTraceConfigJsonForUpdate(configPath);
+    if (root == nullptr) {
+        return false;
+    }
+    cJSON_DeleteItemFromObject(root, "result");
+    cJSON* resultNode = cJSON_CreateNumber(resultCode);
+    if (resultNode == nullptr || !cJSON_AddItemToObject(root, "result", resultNode)) {
+        if (resultNode != nullptr) {
+            cJSON_Delete(resultNode);
+        }
+        cJSON_Delete(root);
+        ConsoleLog("warning: update result field failed in " + configPath);
+        return false;
+    }
+    if (resultCode == BOOT_TRACE_EXIT_OK) {
+        ApplyBootTraceIncrementBump(root);
+    }
+    bool isSuccess = WriteBootTraceConfigJson(configPath, root);
+    cJSON_Delete(root);
+    return isSuccess;
+}
+
+static int RunBootTraceControl()
+{
+    const std::string configPath = std::string(BOOT_TRACE_CONFIG_DIR) + BOOT_TRACE_CONFIG_FILE;
+    /*
+     * debug.hitrace.boot_trace.active is owned by this process: set to 1 when entering capture,
+     * clear when done. If already 1, another boot-trace instance holds the window — exit without work.
+     * Init no longer sets active before fork+execl; hitrace sets it here so manual launch also works.
+     */
+    if (IsBootTraceActiveFlagOn()) {
+        ConsoleLog("boot_trace: duplicate launch ignored (debug.hitrace.boot_trace.active already 1)");
+        (void)SaveBootTraceResultToConfig(configPath, BOOT_TRACE_EXIT_DUPLICATE);
+        return BOOT_TRACE_EXIT_DUPLICATE;
+    }
+
+    if (!SetProperty(TRACE_BOOT_ACTIVE_FLAG, "1")) {
+        ConsoleLog("error: failed to set " + std::string(TRACE_BOOT_ACTIVE_FLAG) + " to 1.");
+        (void)SaveBootTraceResultToConfig(configPath, BOOT_TRACE_EXIT_CONFIG_ERROR);
+        return BOOT_TRACE_EXIT_CONFIG_ERROR;
+    }
+
+    struct BootTraceSessionGuard {
+        bool on;
+        explicit BootTraceSessionGuard(bool active) : on(active) {}
+        ~BootTraceSessionGuard()
+        {
+            ClearBootTraceActiveFlagIfNeeded(on);
+        }
+    } sessionGuard(true);
+
+    int resultCode = BOOT_TRACE_EXIT_CONFIG_ERROR;
+    BootTraceCaptureConfig cfg;
+    if (!LoadBootTraceCaptureConfig(configPath, cfg)) {
+        (void)SaveBootTraceResultToConfig(configPath, resultCode);
+        return resultCode;
+    }
+    ConsoleLog("boot_trace: active set; running capture.");
+    if (ExecuteBootTraceCapture(cfg) == 0) {
+        resultCode = BOOT_TRACE_EXIT_OK;
+        ConsoleLog("boot_trace finished.");
+    } else {
+        ConsoleLog("error: boot_trace capture failed.");
+    }
+    (void)SaveBootTraceResultToConfig(configPath, resultCode);
+    return resultCode;
+}
+
+static bool HandleBootTraceOff()
+{
+    if (!SetProperty(BOOT_TRACE_COUNT_PARAM, "0")) {
+        ConsoleLog("error: failed to set " + std::string(BOOT_TRACE_COUNT_PARAM) + " to 0.");
+        return false;
+    }
+    /* Spec: off only clears repeat counter; do not unlink under /data/local/tmp (avoid broad delete MAC). */
+    ConsoleLog("boot_trace off success.");
+    return true;
+}
+
+static bool ValidateBootTraceTags(std::vector<std::string>& kernelTags,
+    std::vector<std::string>& userTags)
+{
+    if (g_traceArgs.tagsVec.empty()) {
+        ConsoleLog("error: boot_trace requires at least one tag.");
+        return false;
+    }
+
+    int remainingCount = g_traceArgs.remainingCount;
+    if (remainingCount < BOOT_TRACE_REPEAT_MIN || remainingCount > BOOT_TRACE_REPEAT_MAX) {
+        ConsoleLog("error: --repeat must be from 1 to 100. eg: \"--repeat 5\".");
+        return false;
+    }
+
+    const auto& allTagInfos = TraceJsonParser::Instance().GetAllTagInfos();
+    for (const auto& tag : g_traceArgs.tagsVec) {
+        auto it = allTagInfos.find(tag);
+        if (it == allTagInfos.end()) {
+            std::string errorInfo = "error: " + tag + " is not support category on this device.";
+            ConsoleLog(errorInfo);
+            return false;
+        }
+        if (it->second.type == TraceType::KERNEL) {
+            kernelTags.emplace_back(tag);
+        } else {
+            userTags.emplace_back(tag);
+        }
+    }
+    return true;
+}
+
+static bool BuildAndWriteBootTraceConfig(const std::vector<std::string>& kernelTags,
+    const std::vector<std::string>& userTags)
+{
+    int duration = (g_traceArgs.duration > 0) ? g_traceArgs.duration : BOOT_TRACE_DEFAULT_DURATION;
+    int bufferSizeKb = (g_traceArgs.bufferSize > 0) ? g_traceArgs.bufferSize :
+        static_cast<int>(DEFAULT_BUFFER_SIZE);
+    int fileSizeKb = (g_traceArgs.fileSize >= MIN_FILE_SIZE && g_traceArgs.fileSize <= MAX_FILE_SIZE) ?
+        g_traceArgs.fileSize : DEFAULT_FILE_SIZE;
+    std::string clockType = g_traceArgs.clockType.empty() ? "boot" : g_traceArgs.clockType;
+    std::string filePrefix = g_traceArgs.bootFilePrefix.empty() ?
+        BOOT_TRACE_DEFAULT_PREFIX : g_traceArgs.bootFilePrefix;
+
+    int remainingCount = g_traceArgs.remainingCount;
+    std::string configDir = BOOT_TRACE_CONFIG_DIR;
+    if (!EnsureDirExists(configDir)) {
+        return false;
+    }
+
+    std::string configPath = configDir + std::string(BOOT_TRACE_CONFIG_FILE);
+    std::ofstream out(configPath, std::ios::out | std::ios::trunc);
+    if (!out.is_open()) {
+        ConsoleLog("error: open " + configPath + " failed.");
+        return false;
+    }
+
+    BootTraceConfig config;
+    config.durationSec = duration;
+    config.bufferSizeKb = bufferSizeKb;
+    config.fileSizeKb = fileSizeKb;
+    config.kernelTags = kernelTags;
+    config.userTags = userTags;
+    config.clockType = clockType;
+    config.filePrefix = filePrefix;
+    config.overwrite = g_traceArgs.bootTraceOverwrite;
+    config.incrementIndex = g_traceArgs.bootTraceIncrement ? 0 : -1;
+
+    std::string configJson = BuildBootTraceConfigJson(config);
+    out << configJson;
+    if (out.fail()) {
+        ConsoleLog("error: can not write " + configPath);
+        out.close();
+        return false;
+    }
+    out.close();
+
+    if (!SetProperty(BOOT_TRACE_COUNT_PARAM, std::to_string(remainingCount))) {
+        ConsoleLog("error: failed to set " + std::string(BOOT_TRACE_COUNT_PARAM));
+        return false;
+    }
+
+    PrintBootTraceConfiguredArgs();
+    ConsoleLog("boot_trace configuration success.");
+    return true;
+}
+
+static bool HandleBootTraceConfig()
+{
+    if (!IsBootTraceAllowedByConstDebuggable()) {
+        ConsoleLog(K_PARSING_ARGS_FAILED_LOG);
+        return false;
+    }
+    // handle "hitrace --boot_trace off"
+    if (g_traceArgs.tagsVec.size() == 1 && g_traceArgs.tagsVec[0] == "off") {
+        return HandleBootTraceOff();
+    }
+
+    std::vector<std::string> kernelTags;
+    std::vector<std::string> userTags;
+    if (!ValidateBootTraceTags(kernelTags, userTags)) {
+        return false;
+    }
+    return BuildAndWriteBootTraceConfig(kernelTags, userTags);
 }
 
 static bool CheckOutputFile(const char* path)
@@ -577,7 +1341,11 @@ static bool HandleOptTime(const RunningState& setValue)
 
 static bool HandleOptOverwrite(const RunningState& setValue)
 {
-    g_traceArgs.overwrite = false;
+    if (g_runningState == CONFIG_BOOT_TRACE) {
+        g_traceArgs.bootTraceOverwrite = true;  // --overwrite: each boot trace overwrites previous
+    } else {
+        g_traceArgs.overwrite = false;  // recording mode: buffer not overwrite when full
+    }
     return true;
 }
 
@@ -646,6 +1414,20 @@ static bool HandleOptOutput(const RunningState& setValue)
 {
     bool isTrue = CheckOutputFile(optarg);
     return isTrue;
+}
+
+static bool HandleOptBootFilePrefix(const RunningState& setValue)
+{
+    if (setValue != CONFIG_BOOT_TRACE) {
+        ConsoleLog("error: --file_prefix only supports --boot_trace.");
+        return false;
+    }
+    if (optarg == nullptr || strlen(optarg) == 0) {
+        ConsoleLog("error: file_prefix must not be empty.");
+        return false;
+    }
+    g_traceArgs.bootFilePrefix = optarg;
+    return true;
 }
 
 static bool ParseLongOpt(const std::string& cmd, int optionIndex)
@@ -731,9 +1513,23 @@ static bool ParseOpt(int opt, char** argv, int optIndex)
 
 static bool AddTagItems(int argc, char** argv)
 {
+    // special case: "hitrace --boot_trace off"
+    if (g_runningState == CONFIG_BOOT_TRACE && argc - optind == 1 &&
+        std::string(argv[optind]) == "off") {
+        g_traceArgs.tagsVec.clear();
+        g_traceArgs.tags.clear();
+        g_traceArgs.tagsVec.emplace_back("off");
+        return true;
+    }
+
     auto traceTags = TraceJsonParser::Instance().GetAllTagInfos();
+    const auto &tagGroups = TraceJsonParser::Instance().GetTagGroups();
     for (int i = optind; i < argc; i++) {
         std::string tag = std::string(argv[i]);
+        if (g_runningState == CONFIG_BOOT_TRACE && tagGroups.find(tag) != tagGroups.end()) {
+            ConsoleLog("error: tag group is not supported in boot_trace. please use concrete tags.");
+            return false;
+        }
         if (traceTags.find(tag) == traceTags.end()) {
             std::string errorInfo = "error: " + tag + " is not support category on this device.";
             ConsoleLog(errorInfo);
@@ -765,7 +1561,6 @@ static bool HandleOpt(int argc, char** argv)
         }
         isTrue = ParseOpt(opt, argv, optionIndex);
     }
-
     return isTrue;
 }
 
@@ -847,7 +1642,7 @@ static void DumpCompressedTrace(int traceFd, int outFd)
     }
 }
 
-static void DumpTrace()
+static void DumpKernelTraceToOutput()
 {
     std::string tracePath = g_traceRootPath + TRACE_NODE;
     std::string traceSpecPath = CanonicalizeSpecPath(tracePath.c_str());
@@ -918,7 +1713,6 @@ static void ReloadTraceArgs(std::vector<std::string>& tagsVec, HiviewTraceParam&
         hiviewTraceParam.clockType = g_traceArgs.clockType;
         args += (" clockType:" + g_traceArgs.clockType);
     }
-
     if (g_traceArgs.overwrite) {
         args += " overwrite:";
         args += "1";
@@ -927,7 +1721,6 @@ static void ReloadTraceArgs(std::vector<std::string>& tagsVec, HiviewTraceParam&
         args += "0";
     }
     hiviewTraceParam.isOverWrite = g_traceArgs.overwrite;
-
     if (g_traceArgs.fileSize > 0) {
         if (g_runningState == RECORDING_SHORT_RAW || g_runningState == RECORDING_LONG_BEGIN_RECORD) {
             hiviewTraceParam.fileSizeLimit = static_cast<uint32_t>(g_traceArgs.fileSize);
@@ -1017,12 +1810,11 @@ static bool HandleRecordingShortText()
 
     MarkClockSync(g_traceRootPath);
     StopTrace();
-
     if (g_traceArgs.output.size() > 0) {
         ConsoleLog("capture done, start to read trace.");
     }
     g_traceSysEventParams.opt = "DumpTextTrace";
-    DumpTrace();
+    DumpKernelTraceToOutput();
 
     auto closeRet = g_traceCollector->Close();
     if (closeRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
@@ -1068,7 +1860,7 @@ static bool HandleRecordingLongDump()
     }
     MarkClockSync(g_traceRootPath);
     ConsoleLog("start to read trace.");
-    DumpTrace();
+    DumpKernelTraceToOutput();
     return true;
 }
 
@@ -1084,7 +1876,7 @@ static bool HandleRecordingLongFinish()
     MarkClockSync(g_traceRootPath);
     StopTrace();
     ConsoleLog("start to read trace.");
-    DumpTrace();
+    DumpKernelTraceToOutput();
     auto closeRet = g_traceCollector->Close();
     if (closeRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: Trace Close failed, errorCode(" + std::to_string(closeRet.retCode) +")");
@@ -1104,29 +1896,6 @@ static bool HandleRecordingLongFinishNodump()
     }
 
     return true;
-}
-
-static bool IsWritable(const std::string& fileName)
-{
-    if (fileName.find("../") != std::string::npos ||
-        fileName.find("..\\") != std::string::npos ||
-        fileName.find("./") != std::string::npos ||
-        fileName.find(".\\") != std::string::npos) {
-            return false;
-    }
-    return (fileName == (TRACE_WRITABLE_PATH)) || fileName.find((TRACE_WRITABLE_PATH + '/')) == 0;
-;
-}
-
-static bool IsWritableDir(const std::string& fileName)
-{
-    if (!IsWritable(fileName)) {
-        return false;
-    }
-    if (fileName == TRACE_WRITABLE_PATH || fileName == TRACE_WRITABLE_PATH + '/') {
-        return true;
-    }
-    return false;
 }
 
 static bool HandleRecordingLongBeginRecord()
@@ -1297,8 +2066,12 @@ static bool InitAndCheckArgs(int argc, char**argv)
         return false;
     }
 
+    g_suppressParsingArgsFailedLog = false;
     if (!HandleOpt(argc, argv)) {
-        ConsoleLog("error: parsing args failed, exit.");
+        if (!g_suppressParsingArgsFailedLog) {
+            ConsoleLog(K_PARSING_ARGS_FAILED_LOG);
+        }
+        g_suppressParsingArgsFailedLog = false;
         return false;
     }
 
@@ -1325,6 +2098,16 @@ int HiTraceCMDTestMain(int argc, char **argv)
 int main(int argc, char **argv)
 #endif
 {
+    if (argc >= MIN_ARGS_FOR_BOOT_TRACE_SUBCOMMAND && strcmp(argv[1], "boot-trace") == 0) {
+        if (!IsBootTraceEuidRoot()) {
+            return DenyBootTraceNonRootEuidSubcommand();
+        }
+        if (!IsBootTraceAllowedByConstDebuggable()) {
+            return DenyBootTraceAsUnparsedArgs();
+        }
+        return RunBootTraceControl();
+    }
+
     if (!InitAndCheckArgs(argc, argv)) {
         return -1;
     }

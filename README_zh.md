@@ -46,6 +46,8 @@ HiTrace实现机制：
 
 系统通用的通信机制\(IPC, EventHandler\)已支持HiTrace机制， 对业务自定义通信机制需要适配HiTrace机制。
 
+命令行 **`hitrace --boot_trace` / `hitrace boot-trace`** 的端到端行为与参数规格见仓内 **[`docs/hitrace_cmd/boot-trace.md`](docs/hitrace_cmd/boot-trace.md)**（与 `cmd/hitrace_cmd.cpp`、`startup_init` 当前实现对齐）。
+
 ## 说明<a name="section1312121216216"></a>
 
 ### 接口说明<a name="section1551164914237"></a>

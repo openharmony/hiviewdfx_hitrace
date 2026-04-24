@@ -842,6 +842,10 @@ bool TraceCpuRawWriteLinux::WriteTraceContent()
         if (cpuIdx != prevCpu) {
             writeLen = 0;
             if (!DoWriteTraceContentHeader(rawHeader, CONTENT_TYPE_CPU_RAW + cpuIdx)) {
+                HILOG_ERROR(LOG_CORE,
+                    "TraceCpuRawWriteLinux DoWriteTraceContentHeader failed cpuIdx=%{public}d path=%{public}s "
+                    "errno=%{public}d",
+                    cpuIdx, traceFilePath_.c_str(), errno);
                 return false;
             }
         }
@@ -862,6 +866,9 @@ bool TraceCpuRawWriteHM::WriteTraceContent()
     }
     struct TraceFileContentHeader rawHeader;
     if (!DoWriteTraceContentHeader(rawHeader, CONTENT_TYPE_CPU_RAW)) {
+        HILOG_ERROR(LOG_CORE,
+            "TraceCpuRawWriteHM DoWriteTraceContentHeader failed path=%{public}s errno=%{public}d",
+            traceFilePath_.c_str(), errno);
         return false;
     }
     ssize_t writeLen = 0;

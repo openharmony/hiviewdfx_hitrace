@@ -16,3 +16,5 @@ debug.hitrace.app_pid=-1
 persist.hitrace.level.threshold=1
 debug.hitrace.telemetry.app=0
 persist.hiviewdfx.napitraceid.enabled=false
+debug.hitrace.boot_trace.active=0
+persist.hitrace.boot_trace.count=0

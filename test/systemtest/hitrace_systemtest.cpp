@@ -533,8 +533,8 @@ HWTEST_F(HitraceSystemTest, CacheModeTest001, TestSize.Level1)
     EXPECT_GE(fileList.size(), 2); // cache_trace_ file count > 2
     uint64_t totalDuartion = 0;
     for (auto i = 0; i < fileList.size(); i++) {
-        GTEST_LOG_(INFO) << "file: " << fileList[i].filename.c_str() << ", size: " << fileList[i].fileSize
-            << ", duration:" << fileList[i].duration;
+        GTEST_LOG_(INFO) << "file: " << fileList[i].filename.c_str() << ", size: " <<
+            fileList[i].fileSize << ", duration:" << fileList[i].duration;
         EXPECT_LE(fileList[i].fileSize, 154 * BYTE_PER_MB); // 154: single cache trace file max size limit(MB)
         totalDuartion += fileList[i].duration;
         EXPECT_TRUE(IsFileIncludeAllKeyWords(fileList[i].filename, {"name: sched_wakeup"}));
@@ -570,16 +570,16 @@ HWTEST_F(HitraceSystemTest, CacheModeTest002, TestSize.Level1)
     uint64_t totalDuartion = 0;
     EXPECT_GE(cacheFileList.size(), 2); // cache_trace_ file count > 2
     for (auto i = 0; i < cacheFileList.size(); i++) {
-        GTEST_LOG_(INFO) << "file: " << cacheFileList[i].filename.c_str() << ", size: " << cacheFileList[i].fileSize
-            << ", duration:" << cacheFileList[i].duration;
+        GTEST_LOG_(INFO) << "file: " << cacheFileList[i].filename.c_str() << ", size: " <<
+            cacheFileList[i].fileSize << ", duration:" << cacheFileList[i].duration;
         EXPECT_LE(cacheFileList[i].fileSize, 154 * BYTE_PER_MB); // 154: single cache trace file max size limit(MB)
         totalDuartion += cacheFileList[i].duration;
         EXPECT_TRUE(IsFileIncludeAllKeyWords(cacheFileList[i].filename, {"name: sched_wakeup"}));
     }
     EXPECT_GE(traceFileList.size(), 1); // cache_trace_ file count > 1
     for (auto i = 0; i < traceFileList.size(); i++) {
-        GTEST_LOG_(INFO) << "file: " << traceFileList[i].filename.c_str() << ", size: " << traceFileList[i].fileSize
-            << ", duration:" << traceFileList[i].duration;
+        GTEST_LOG_(INFO) << "file: " << traceFileList[i].filename.c_str() << ", size: " <<
+            traceFileList[i].fileSize << ", duration:" << traceFileList[i].duration;
         totalDuartion += traceFileList[i].duration;
         EXPECT_TRUE(IsFileIncludeAllKeyWords(traceFileList[i].filename, {"name: sched_wakeup"}));
     }

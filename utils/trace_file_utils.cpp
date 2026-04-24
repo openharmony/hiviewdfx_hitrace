@@ -52,6 +52,34 @@ static const char* const TRACE_SNAPSHOT_PREFIX = "trace_";
 static const char* const TRACE_RECORDING_PREFIX = "record_trace_";
 static const char* const TRACE_CACHE_PREFIX = "cache_trace_";
 static const std::string TRACE_WRITABLE_PATH = "/data/local/tmp";
+
+std::string TraceFileDefaultDirBase()
+{
+    std::string d(TRACE_FILE_DEFAULT_DIR);
+    while (!d.empty() && d.back() == '/') {
+        d.pop_back();
+    }
+    return d;
+}
+
+bool IsUnderOfficialTraceDir(const std::string& fileName)
+{
+    const std::string official(TRACE_FILE_DEFAULT_DIR);
+    if (!official.empty() && fileName.size() >= official.size() &&
+        fileName.compare(0, official.size(), official) == 0) {
+        return true;
+    }
+    const std::string base = TraceFileDefaultDirBase();
+    if (base.empty()) {
+        return false;
+    }
+    if (fileName == base) {
+        return true;
+    }
+    const std::string prefix = base + "/";
+    return fileName.size() >= prefix.size() && fileName.compare(0, prefix.size(), prefix) == 0;
+}
+
 std::map<TraceDumpType, std::string> tracePrefixMap = {
     {TraceDumpType::TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
     {TraceDumpType::TRACE_RECORDING, TRACE_RECORDING_PREFIX},
@@ -281,7 +309,10 @@ bool IsWritable(const std::string& fileName)
         fileName.find(".\\") != std::string::npos) {
             return false;
     }
-    return (fileName == (TRACE_WRITABLE_PATH)) || fileName.find((TRACE_WRITABLE_PATH + '/')) == 0;
+    if ((fileName == TRACE_WRITABLE_PATH) || fileName.find((TRACE_WRITABLE_PATH + '/')) == 0) {
+        return true;
+    }
+    return IsUnderOfficialTraceDir(fileName);
 }
 
 bool IsWritableDir(const std::string& fileName)
@@ -292,7 +323,11 @@ bool IsWritableDir(const std::string& fileName)
     if (fileName == TRACE_WRITABLE_PATH || fileName == TRACE_WRITABLE_PATH + '/') {
         return true;
     }
-    return false;
+    if (fileName == std::string(TRACE_FILE_DEFAULT_DIR)) {
+        return true;
+    }
+    const std::string base = TraceFileDefaultDirBase();
+    return !base.empty() && fileName == base;
 }
 
 std::string GenerateTraceFileName(TraceDumpType traceType, const std::string& outputPath)

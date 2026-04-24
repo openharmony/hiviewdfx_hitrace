@@ -81,6 +81,8 @@ HWTEST_F(HitraceAsyncWriteTimeoutTest, AsyncWriteTimeoutTest001, TestSize.Level2
     for (auto file : ret.outputFiles) {
         GTEST_LOG_(INFO) << "interface return file : " << file;
     }
+    // Allow trace data to accumulate before the next async snapshot.
+    std::this_thread::sleep_for(std::chrono::seconds(2));
     ret = DumpTraceAsync(0, 0, INT64_MAX, func);
     EXPECT_EQ(static_cast<int>(ret.errorCode), TraceErrorCode::SUCCESS);
     GTEST_LOG_(INFO) << "interface return file size : " << ret.fileSize;
