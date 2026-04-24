@@ -23,7 +23,14 @@
 
 #include "trace_json_parser.h"
 
+#include "common_define.h"
+
 namespace {
+inline std::string HitTraceDir()
+{
+    return std::string(TRACE_FILE_DEFAULT_DIR);
+}
+
 class FileNumberChecker;
 
 void CreateFile(const std::string& filename)
@@ -33,7 +40,7 @@ void CreateFile(const std::string& filename)
 
 void ClearFile()
 {
-    const std::filesystem::path dirPath = "/data/log/hitrace";
+    const std::filesystem::path dirPath(HitTraceDir());
     if (std::filesystem::exists(dirPath)) {
         for (const auto& entry : std::filesystem::directory_iterator(dirPath)) {
             std::filesystem::remove_all(entry.path());
@@ -143,11 +150,11 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_001, TestSize.Level1)
     std::vector<std::string> otherFiles;
     for (uint32_t i = 0; i < 5; i++) {
         TraceFileInfo info;
-        info.filename = "/data/log/hitrace/record_trace_" + std::to_string(i) + ".a";
+        info.filename = HitTraceDir() + "record_trace_" + std::to_string(i) + ".a";
         CreateFile(info.filename);
         vec.push_back(info);
 
-        std::string otherFile = "/data/log/hitrace/record_trace_" + std::to_string(i) + ".b";
+        std::string otherFile = HitTraceDir() + "record_trace_" + std::to_string(i) + ".b";
         CreateFile(otherFile);
         otherFiles.push_back(otherFile);
     }
@@ -157,8 +164,8 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_001, TestSize.Level1)
     for (const auto& filename : otherFiles) {
         EXPECT_FALSE(std::filesystem::exists(filename));
     }
-    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/record_trace_0.a"));
-    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/record_trace_0.b"));
+    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "record_trace_0.a"));
+    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "record_trace_0.b"));
 
     ASSERT_EQ(vec.size(), 3);
     for (const auto& info : vec) {
@@ -180,12 +187,12 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_002, TestSize.Level1)
     std::vector<std::string> otherFiles;
     for (uint32_t i = 0; i < 7; i++) {
         TraceFileInfo info;
-        info.filename = "/data/log/hitrace/record_trace_" + std::to_string(i) + ".a";
+        info.filename = HitTraceDir() + "record_trace_" + std::to_string(i) + ".a";
         CreateFile(info.filename);
         info.fileSize = 100 * 1024;
         vec.push_back(info);
 
-        std::string otherFile = "/data/log/hitrace/record_trace_" + std::to_string(i) + ".b";
+        std::string otherFile = HitTraceDir() + "record_trace_" + std::to_string(i) + ".b";
         CreateFile(otherFile);
         otherFiles.push_back(otherFile);
     }
@@ -195,8 +202,8 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_002, TestSize.Level1)
     for (const auto& filename : otherFiles) {
         EXPECT_FALSE(std::filesystem::exists(filename));
     }
-    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/record_trace_0.a"));
-    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/record_trace_0.b"));
+    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "record_trace_0.a"));
+    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "record_trace_0.b"));
 
     ASSERT_EQ(vec.size(), 6);
     for (const auto& info : vec) {
@@ -218,11 +225,11 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_003, TestSize.Level1)
     std::vector<std::string> otherFiles;
     for (uint32_t i = 0; i < 5; i++) {
         TraceFileInfo info;
-        info.filename = "/data/log/hitrace/trace_" + std::to_string(i) + ".a";
+        info.filename = HitTraceDir() + "trace_" + std::to_string(i) + ".a";
         CreateFile(info.filename);
         vec.push_back(info);
 
-        std::string otherFile = "/data/log/hitrace/trace_" + std::to_string(i) + ".b";
+        std::string otherFile = HitTraceDir() + "trace_" + std::to_string(i) + ".b";
         CreateFile(otherFile);
         otherFiles.push_back(otherFile);
     }
@@ -232,8 +239,8 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_003, TestSize.Level1)
     for (const auto& filename : otherFiles) {
         EXPECT_FALSE(std::filesystem::exists(filename));
     }
-    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_0.a"));
-    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_0.b"));
+    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_0.a"));
+    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_0.b"));
 
     ASSERT_EQ(vec.size(), 3);
     for (const auto& info : vec) {
@@ -255,16 +262,16 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_004, TestSize.Level1)
     std::vector<std::string> otherFiles;
     for (uint32_t i = 0; i < 5; i++) {
         TraceFileInfo info;
-        info.filename = "/data/log/hitrace/trace_" + std::to_string(i) + ".a";
+        info.filename = HitTraceDir() + "trace_" + std::to_string(i) + ".a";
         CreateFile(info.filename);
         vec.push_back(info);
 
-        std::string otherFile = "/data/log/hitrace/trace_" + std::to_string(i) + ".b";
+        std::string otherFile = HitTraceDir() + "trace_" + std::to_string(i) + ".b";
         CreateFile(otherFile);
         otherFiles.push_back(otherFile);
     }
     std::string value = "1";
-    int ret = TEMP_FAILURE_RETRY(setxattr("/data/log/hitrace/trace_0.a", ATTR_NAME_LINK,
+    int ret = TEMP_FAILURE_RETRY(setxattr((HitTraceDir() + "trace_0.a").c_str(), ATTR_NAME_LINK,
         value.c_str(), value.size(), 0));
     EXPECT_TRUE(ret != -1);
 
@@ -273,9 +280,9 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_004, TestSize.Level1)
     for (const auto& filename : otherFiles) {
         EXPECT_FALSE(std::filesystem::exists(filename));
     }
-    EXPECT_TRUE(std::filesystem::exists("/data/log/hitrace/trace_0.a"));
-    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_1.a"));
-    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_2.a"));
+    EXPECT_TRUE(std::filesystem::exists(HitTraceDir() + "trace_0.a"));
+    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_1.a"));
+    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_2.a"));
 
     ASSERT_EQ(vec.size(), 3);
     for (const auto& info : vec) {
@@ -299,7 +306,7 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_005, TestSize.Level1)
     std::vector<std::string> otherFiles;
     for (uint32_t i = 0; i <= 22; i++) {
         TraceFileInfo& info = vec.emplace_back();
-        info.filename = "/data/log/hitrace/trace_" + std::to_string(i) + ".a";
+        info.filename = HitTraceDir() + "trace_" + std::to_string(i) + ".a";
         CreateFile(info.filename);
         if (i <= DEFAULT_LINK_NUM) {
             std::string value = "1";
@@ -309,15 +316,15 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_005, TestSize.Level1)
         } else {
             info.fileSize = 100 * 1024;
         }
-        auto& otherFile = otherFiles.emplace_back("/data/log/hitrace/trace_" + std::to_string(i) + ".b");
+        auto& otherFile = otherFiles.emplace_back(HitTraceDir() + "trace_" + std::to_string(i) + ".b");
         CreateFile(otherFile);
     }
     FileAgeingUtils::HandleAgeing(vec, TraceDumpType::TRACE_SNAPSHOT);
     for (const auto& filename : otherFiles) {
         EXPECT_FALSE(std::filesystem::exists(filename));
     }
-    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_0.a"));
-    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_17.a"));
+    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_0.a"));
+    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_17.a"));
     ASSERT_EQ(vec.size(), fileNumberLimit);
     for (const auto& info : vec) {
         EXPECT_TRUE(std::filesystem::exists(info.filename));
@@ -338,12 +345,12 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_006, TestSize.Level1)
     std::vector<std::string> otherFiles;
     for (uint32_t i = 0; i < 7; i++) {
         TraceFileInfo info;
-        info.filename = "/data/log/hitrace/trace_" + std::to_string(i) + ".a";
+        info.filename = HitTraceDir() + "trace_" + std::to_string(i) + ".a";
         CreateFile(info.filename);
         info.fileSize = 100 * 1024;
         vec.push_back(info);
 
-        std::string otherFile = "/data/log/hitrace/trace_" + std::to_string(i) + ".b";
+        std::string otherFile = HitTraceDir() + "trace_" + std::to_string(i) + ".b";
         CreateFile(otherFile);
         otherFiles.push_back(otherFile);
     }
@@ -353,8 +360,8 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_006, TestSize.Level1)
     for (const auto& filename : otherFiles) {
         EXPECT_FALSE(std::filesystem::exists(filename));
     }
-    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_0.a"));
-    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_1.a"));
+    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_0.a"));
+    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_1.a"));
 
     ASSERT_EQ(vec.size(), 5);
     for (const auto& info : vec) {
@@ -377,18 +384,18 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_007, TestSize.Level1)
     std::vector<std::string> otherFiles;
     for (uint32_t i = 0; i < 8; i++) {
         TraceFileInfo info;
-        info.filename = "/data/log/hitrace/trace_" + std::to_string(i) + ".a";
+        info.filename = HitTraceDir() + "trace_" + std::to_string(i) + ".a";
         CreateFile(info.filename);
         info.fileSize = 100 * 1024;
         vec.push_back(info);
 
-        std::string otherFile = "/data/log/hitrace/trace_" + std::to_string(i) + ".b";
+        std::string otherFile = HitTraceDir() + "trace_" + std::to_string(i) + ".b";
         CreateFile(otherFile);
         otherFiles.push_back(otherFile);
     }
 
     std::string value = "1";
-    int ret = TEMP_FAILURE_RETRY(setxattr("/data/log/hitrace/trace_0.a", ATTR_NAME_LINK,
+    int ret = TEMP_FAILURE_RETRY(setxattr((HitTraceDir() + "trace_0.a").c_str(), ATTR_NAME_LINK,
         value.c_str(), value.size(), 0));
     EXPECT_TRUE(ret != -1);
 
@@ -397,9 +404,9 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_007, TestSize.Level1)
     for (const auto& filename : otherFiles) {
         EXPECT_FALSE(std::filesystem::exists(filename));
     }
-    EXPECT_TRUE(std::filesystem::exists("/data/log/hitrace/trace_0.a"));
-    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_1.a"));
-    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_2.a"));
+    EXPECT_TRUE(std::filesystem::exists(HitTraceDir() + "trace_0.a"));
+    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_1.a"));
+    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_2.a"));
 
     ASSERT_EQ(vec.size(), 6);
     for (const auto& info : vec) {
@@ -421,7 +428,7 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_008, TestSize.Level1)
     std::vector<std::string> otherFiles;
     for (uint32_t i = 0; i < 22; i++) {
         TraceFileInfo& info = vec.emplace_back();
-        info.filename = "/data/log/hitrace/trace_" + std::to_string(i) + ".a";
+        info.filename = HitTraceDir() + "trace_" + std::to_string(i) + ".a";
         CreateFile(info.filename);
         info.fileSize = 100 * 1024;
         if (i <= DEFAULT_LINK_NUM) {
@@ -429,7 +436,7 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_008, TestSize.Level1)
             int ret = TEMP_FAILURE_RETRY(
                 setxattr(info.filename.c_str(), ATTR_NAME_LINK, value.c_str(), value.size(), 0));
             EXPECT_NE(ret, -1);
-            auto& otherFile = otherFiles.emplace_back("/data/log/hitrace/trace_" + std::to_string(i) + ".b");
+            auto& otherFile = otherFiles.emplace_back(HitTraceDir() + "trace_" + std::to_string(i) + ".b");
             CreateFile(otherFile);
         }
     }
@@ -437,9 +444,9 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_008, TestSize.Level1)
     for (const auto& filename : otherFiles) {
         EXPECT_FALSE(std::filesystem::exists(filename));
     }
-    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_0.a"));
-    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_17.a"));
-    EXPECT_FALSE(std::filesystem::exists("/data/log/hitrace/trace_18.a"));
+    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_0.a"));
+    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_17.a"));
+    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_18.a"));
 
     ASSERT_EQ(vec.size(), 19);
     for (const auto& info : vec) {

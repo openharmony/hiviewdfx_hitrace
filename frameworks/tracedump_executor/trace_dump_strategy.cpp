@@ -15,6 +15,7 @@
 
 #include "trace_dump_strategy.h"
 
+#include <cinttypes>
 #include <securec.h>
 #include <unistd.h>
 
@@ -101,6 +102,9 @@ bool ITraceDumpStrategy::ProcessTraceDumpIteration(std::shared_ptr<ITraceSourceF
 {
     TraceContentPtr traceContentPtr;
     if (!InitializeTraceContent(traceSourceFactory, request, traceContentPtr)) {
+        HILOG_ERROR(LOG_CORE,
+            "InitializeTraceContent failed, dumpType=%{public}u taskId=%{public}" PRIu64,
+            static_cast<unsigned>(request.type), request.taskId);
         ret = {TraceErrorCode::WRITE_TRACE_INFO_ERROR, "", 0, 0, 0};
         return false;
     }
@@ -320,6 +324,9 @@ bool AsyncTraceWriteStrategy::DoCore(std::shared_ptr<ITraceSourceFactory> traceS
 {
     auto cpuRawWrite = traceSourceFactory->GetTraceCpuRawWrite(request.taskId);
     if (!cpuRawWrite->WriteTraceContent()) {
+        HILOG_ERROR(LOG_CORE,
+            "AsyncTraceWriteStrategy::DoCore WriteTraceContent failed, taskId=%{public}" PRIu64 " path=%{public}s",
+            request.taskId, cpuRawWrite->GetTraceFilePath().c_str());
         ret.code = TraceErrorCode::WRITE_TRACE_INFO_ERROR;
         return false;
     }
