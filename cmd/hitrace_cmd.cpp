@@ -1140,13 +1140,13 @@ static bool HandleRecordingLongBeginRecord()
         .totalSize = 0
     };
     ReloadTraceArgs(tags, hiviewTraceParam);
+    if (g_traceArgs.output.size() > 0 && !IsWritableDir(g_traceArgs.output)) {
+        ConsoleLog("error: illegal path");
+        return false;
+    }
     auto openRet = g_traceCollector->OpenTrace(tags, hiviewTraceParam, {});
     if (openRet.retCode != OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
         ConsoleLog("error: OpenRecording failed, errorCode(" + std::to_string(openRet.retCode) +")");
-        return false;
-    }
-    if (g_traceArgs.output.size() > 0 && !IsWritableDir(g_traceArgs.output)) {
-        ConsoleLog("error: illegal path");
         return false;
     }
     auto recOnRet = g_traceCollector->RecordingOn(g_traceArgs.output);
