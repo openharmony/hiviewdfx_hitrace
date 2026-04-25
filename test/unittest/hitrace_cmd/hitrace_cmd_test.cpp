@@ -14,6 +14,7 @@
  */
 
 #include <cerrno>
+#include <cctype>
 #include <fstream>
 #include <gtest/gtest.h>
 #include <iostream>
@@ -34,6 +35,22 @@ using namespace OHOS::HiviewDFX::Hitrace;
 namespace OHOS {
 namespace HiviewDFX {
 namespace HitraceTest {
+namespace {
+std::pair<std::vector<std::vector<char>>, std::vector<char*>> BuildWritableArgv(const std::vector<std::string>& args)
+{
+    std::vector<std::vector<char>> storage;
+    std::vector<char*> argv;
+    storage.reserve(args.size());
+    argv.reserve(args.size());
+    for (const auto& arg : args) {
+        storage.emplace_back(arg.begin(), arg.end());
+        storage.back().push_back('\0');
+        argv.push_back(storage.back().data());
+    }
+    return {std::move(storage), std::move(argv)};
+}
+}
+
 class HitraceCMDTest : public testing::Test {
 public:
     static void SetUpTestCase(void)
@@ -87,11 +104,8 @@ public:
         while (ss >> arg) {
             args.push_back(arg);
         }
-        std::vector<char*> argv;
-        for (auto& arg : args) {
-            argv.push_back(const_cast<char*>(arg.c_str()));
-        }
-
+        auto argvBuffer = BuildWritableArgv(args);
+        std::vector<char*>& argv = argvBuffer.second;
         (void)HiTraceCMDTestMain(static_cast<int>(args.size()), argv.data());
         Reset();
     }
@@ -134,10 +148,8 @@ public:
         while (ss >> arg) {
             args.push_back(arg);
         }
-        std::vector<char*> argv;
-        for (auto& a : args) {
-            argv.push_back(const_cast<char*>(a.c_str()));
-        }
+        auto argvBuffer = BuildWritableArgv(args);
+        std::vector<char*>& argv = argvBuffer.second;
         int ret = HiTraceCMDTestMain(static_cast<int>(args.size()), argv.data());
         Reset();
         return ret;
@@ -182,6 +194,18 @@ std::string ReadBootTraceConfig()
         return "";
     }
     return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+}
+
+std::string CompactJsonStringForAssert(const std::string& content)
+{
+    std::string compact;
+    compact.reserve(content.size());
+    for (unsigned char ch : content) {
+        if (!std::isspace(ch)) {
+            compact.push_back(static_cast<char>(ch));
+        }
+    }
+    return compact;
 }
 
 bool WriteBootTraceConfig(const std::string& content)
@@ -1126,7 +1150,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest032, TestSize.Level1)
     ASSERT_TRUE(SetPropertyInner(TRACE_BOOT_ACTIVE_FLAG, "1"));
     code = RunCmdWithExitCode("hitrace boot-trace");
     output = GetOutput();
-    EXPECT_EQ(code, 0) << "active 1: duplicate launch, no config read";
+    EXPECT_EQ(code, 1) << "active 1: duplicate launch should return duplicate code";
     EXPECT_NE(output.find("duplicate launch ignored"), std::string::npos) << output;
     ASSERT_TRUE(SetPropertyInner(TRACE_BOOT_ACTIVE_FLAG, "0"));
 }
@@ -1469,8 +1493,9 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest049, TestSize.Level1)
     EXPECT_NE(output.find("output=/data/local/tmp/boot_trace_default_0.sys"), std::string::npos) << output;
 
     std::string content = ReadBootTraceConfig();
-    EXPECT_NE(content.find("\"increment_index\": 1"), std::string::npos) << content;
-    EXPECT_NE(content.find("\"output\": \"/data/local/tmp/boot_trace_default_1.sys\""), std::string::npos) << content;
+    std::string compact = CompactJsonStringForAssert(content);
+    EXPECT_NE(compact.find("\"increment_index\":1"), std::string::npos) << content;
+    EXPECT_NE(compact.find("\"output\":\"/data/local/tmp/boot_trace_default_1.sys\""), std::string::npos) << content;
 
     RemoveBootTraceOutput("boot_trace_default_0.sys");
     RemoveBootTraceConfig();
@@ -1550,8 +1575,8 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest052, TestSize.Level1)
     EXPECT_NE(output.find("duplicate launch ignored"), std::string::npos) << output;
 
     std::string content = ReadBootTraceConfig();
-    EXPECT_NE(content.find("\"increment_index\": 0"), std::string::npos) << content;
-    EXPECT_NE(content.find("\"output\": \"/data/local/tmp/boot_trace_default_0.sys\""), std::string::npos) << content;
+    std::string compact = CompactJsonStringForAssert(content);
+    EXPECT_NE(compact.find("\"increment_index\":0"), std::string::npos) << content;
 
     ASSERT_TRUE(SetPropertyInner(TRACE_BOOT_ACTIVE_FLAG, "0"));
     RemoveBootTraceConfig();
@@ -1577,15 +1602,19 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest053, TestSize.Level1)
     int code1 = RunCmdWithExitCode("hitrace boot-trace");
     EXPECT_EQ(code1, 0) << GetOutput();
     std::string after1 = ReadBootTraceConfig();
-    EXPECT_NE(after1.find("\"increment_index\": 1"), std::string::npos) << after1;
-    EXPECT_NE(after1.find("\"output\": \"/data/local/tmp/boot_trace_default_1.sys\""), std::string::npos) << after1;
+    std::string after1Compact = CompactJsonStringForAssert(after1);
+    EXPECT_NE(after1Compact.find("\"increment_index\":1"), std::string::npos) << after1;
+    EXPECT_NE(
+        after1Compact.find("\"output\":\"/data/local/tmp/boot_trace_default_1.sys\""), std::string::npos) << after1;
 
     ASSERT_TRUE(SetPropertyInner(TRACE_BOOT_ACTIVE_FLAG, "0"));
     int code2 = RunCmdWithExitCode("hitrace boot-trace");
     EXPECT_EQ(code2, 0) << GetOutput();
     std::string after2 = ReadBootTraceConfig();
-    EXPECT_NE(after2.find("\"increment_index\": 2"), std::string::npos) << after2;
-    EXPECT_NE(after2.find("\"output\": \"/data/local/tmp/boot_trace_default_2.sys\""), std::string::npos) << after2;
+    std::string after2Compact = CompactJsonStringForAssert(after2);
+    EXPECT_NE(after2Compact.find("\"increment_index\":2"), std::string::npos) << after2;
+    EXPECT_NE(
+        after2Compact.find("\"output\":\"/data/local/tmp/boot_trace_default_2.sys\""), std::string::npos) << after2;
 
     RemoveBootTraceOutput("boot_trace_default_0.sys");
     RemoveBootTraceOutput("boot_trace_default_1.sys");
@@ -1612,7 +1641,8 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest054, TestSize.Level1)
     int code = RunCmdWithExitCode("hitrace boot-trace");
     EXPECT_NE(code, 0) << "expect non-zero when config tags are unsupported";
     std::string content = ReadBootTraceConfig();
-    EXPECT_NE(content.find("\"increment_index\": 3"), std::string::npos) << content;
+    std::string compact = CompactJsonStringForAssert(content);
+    EXPECT_NE(compact.find("\"increment_index\":3"), std::string::npos) << content;
 
     RemoveBootTraceConfig();
     ASSERT_TRUE(SetPropertyInner(TRACE_BOOT_ACTIVE_FLAG, "0"));
@@ -1663,10 +1693,8 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest045, TestSize.Level1)
     SetBootTraceForceRootForTest(false);
 
     std::vector<std::string> argsBootTrace = { "hitrace", "--boot_trace", "sched" };
-    std::vector<char*> argvBoot;
-    for (auto& a : argsBootTrace) {
-        argvBoot.push_back(const_cast<char*>(a.c_str()));
-    }
+    auto argvBootBuffer = BuildWritableArgv(argsBootTrace);
+    std::vector<char*>& argvBoot = argvBootBuffer.second;
     int codeCfg = HiTraceCMDTestMain(static_cast<int>(argvBoot.size()), argvBoot.data());
     std::string outCfg = GetOutput();
     Reset();
@@ -1675,10 +1703,8 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest045, TestSize.Level1)
 
     SetBootTraceForceRootForTest(false);
     std::vector<std::string> argsSub = { "hitrace", "boot-trace" };
-    std::vector<char*> argvSub;
-    for (auto& a : argsSub) {
-        argvSub.push_back(const_cast<char*>(a.c_str()));
-    }
+    auto argvSubBuffer = BuildWritableArgv(argsSub);
+    std::vector<char*>& argvSub = argvSubBuffer.second;
     int codeSub = HiTraceCMDTestMain(static_cast<int>(argvSub.size()), argvSub.data());
     std::string outSub = GetOutput();
     Reset();
@@ -1687,10 +1713,8 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest045, TestSize.Level1)
 
     SetBootTraceForceRootForTest(false);
     std::vector<std::string> argsBootAbbr = { "hitrace", "--boot", "sched" };
-    std::vector<char*> argvAbbr;
-    for (auto& a : argsBootAbbr) {
-        argvAbbr.push_back(const_cast<char*>(a.c_str()));
-    }
+    auto argvAbbrBuffer = BuildWritableArgv(argsBootAbbr);
+    std::vector<char*>& argvAbbr = argvAbbrBuffer.second;
     int codeAbbr = HiTraceCMDTestMain(static_cast<int>(argvAbbr.size()), argvAbbr.data());
     std::string outAbbr = GetOutput();
     Reset();
@@ -1711,10 +1735,8 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest046, TestSize.Level1)
 
     RemoveBootTraceConfig();
     std::vector<std::string> args = { "hitrace", "--boot", "sched" };
-    std::vector<char*> argv;
-    for (auto& a : args) {
-        argv.push_back(const_cast<char*>(a.c_str()));
-    }
+    auto argvBuffer = BuildWritableArgv(args);
+    std::vector<char*>& argv = argvBuffer.second;
     int code = HiTraceCMDTestMain(static_cast<int>(argv.size()), argv.data());
     std::string out = GetOutput();
     Reset();
