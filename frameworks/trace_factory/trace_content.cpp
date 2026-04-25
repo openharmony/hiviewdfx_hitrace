@@ -15,6 +15,8 @@
 
 #include "trace_content.h"
 
+#include <cstdlib>
+#include <cstring>
 #include <dirent.h>
 #include <fcntl.h>
 #include <fstream>
@@ -45,6 +47,7 @@ constexpr int KB_PER_MB = 1024;
 constexpr int JUDGE_FILE_EXIST = 10;  // Check whether the trace file exists every 10 times.
 constexpr int BUFFER_SIZE = 256 * PAGE_SIZE; // 1M
 constexpr uint8_t HM_FILE_RAW_TRACE = 1;
+constexpr const char* BOOT_TRACE_INLINE_EVENT_FMT_ENV = "HITRACE_BOOT_INLINE_EVENT_FMT";
 
 /**
  * @note async trace dump mode is performed in parallel with other modes,
@@ -70,6 +73,12 @@ static void PreWriteAllTraceEventsFormat(const int fd, const std::string& tracef
             WriteEventFile(srcPath, fd);
         }
     }
+}
+
+static bool IsBootTraceInlineEventFmtEnabled()
+{
+    const char* env = std::getenv(BOOT_TRACE_INLINE_EVENT_FMT_ENV);
+    return (env != nullptr) && (strcmp(env, "1") == 0);
 }
 
 static int IsCurrentTracePageValid(const uint64_t pageTraceTime, const uint64_t traceStartTime,
@@ -464,6 +473,11 @@ TraceEventFmtContent::TraceEventFmtContent(const int fd,
                                            const bool ishm)
     : ITraceContent(fd, tracefsPath, traceFilePath, ishm)
 {
+    inlineEventFmt_ = IsBootTraceInlineEventFmtEnabled();
+    if (inlineEventFmt_) {
+        HILOG_INFO(LOG_CORE, "TraceEventFmtContent: inline mode enabled, skip saved_events_format file.");
+        return;
+    }
     const std::string savedEventsFormatPath = std::string(TRACE_FILE_DEFAULT_DIR) +
         std::string(TRACE_SAVED_EVENTS_FORMAT);
     bool hasPreWrotten = true;
@@ -487,7 +501,52 @@ TraceEventFmtContent::TraceEventFmtContent(const int fd,
 
 bool TraceEventFmtContent::WriteTraceContent()
 {
+    if (inlineEventFmt_) {
+        return WriteTraceContentInline();
+    }
     return WriteTraceData(CONTENT_TYPE_EVENTS_FORMAT);
+}
+
+bool TraceEventFmtContent::WriteTraceContentInline()
+{
+    if (!IsFileExist()) {
+        HILOG_ERROR(LOG_CORE, "WriteTraceContentInline: trace file (%{public}s) not found.", traceFilePath_.c_str());
+        return false;
+    }
+    TraceFileContentHeader contentHeader;
+    if (!DoWriteTraceContentHeader(contentHeader, CONTENT_TYPE_EVENTS_FORMAT)) {
+        return false;
+    }
+    const TraceJsonParser& traceJsonParser = TraceJsonParser::Instance();
+    const std::map<std::string, TraceTag>& allTags = traceJsonParser.GetAllTagInfos();
+    std::vector<std::string> traceFormats = traceJsonParser.GetBaseFmtPath();
+    for (auto& tag : allTags) {
+        for (auto& fmt : tag.second.formatPath) {
+            traceFormats.emplace_back(fmt);
+        }
+    }
+    ssize_t writeLen = 0;
+    for (auto& traceFmt : traceFormats) {
+        std::string srcPath = tracefsPath_ + traceFmt;
+        if (access(srcPath.c_str(), R_OK) == -1) {
+            continue;
+        }
+        off_t before = lseek(traceFileFd_, 0, SEEK_CUR);
+        if (before == -1) {
+            HILOG_ERROR(LOG_CORE, "WriteTraceContentInline: lseek before write failed, errno(%{public}d)", errno);
+            return false;
+        }
+        WriteEventFile(srcPath, traceFileFd_);
+        off_t after = lseek(traceFileFd_, 0, SEEK_CUR);
+        if (after == -1 || after < before) {
+            HILOG_ERROR(LOG_CORE, "WriteTraceContentInline: lseek after write failed, errno(%{public}d)", errno);
+            return false;
+        }
+        writeLen += static_cast<ssize_t>(after - before);
+    }
+    UpdateTraceContentHeader(contentHeader, static_cast<uint32_t>(writeLen));
+    HILOG_INFO(LOG_CORE, "WriteTraceContentInline: event format bytes %{public}zd", writeLen);
+    return true;
 }
 
 TraceCmdLinesContent::TraceCmdLinesContent(const int fd,

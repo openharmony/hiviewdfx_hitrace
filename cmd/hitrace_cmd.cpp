@@ -356,6 +356,7 @@ bool g_suppressParsingArgsFailedLog = false;
 static constexpr const char K_PARSING_ARGS_FAILED_LOG[] = "error: parsing args failed, exit.";
 static constexpr const char K_BOOT_TRACE_UNRECOGNIZED_SUBCMD[] = "error: unrecognized command 'boot-trace'.";
 static constexpr const char K_BOOT_TRACE_UNRECOGNIZED_LONGOPT[] = "error: unrecognized option '--boot_trace'.";
+static constexpr const char K_BOOT_TRACE_INLINE_EVENT_FMT_ENV[] = "HITRACE_BOOT_INLINE_EVENT_FMT";
 #ifdef HITRACE_UNITTEST
 static bool g_bootTraceForceRootForTest = true;
 #endif
@@ -778,6 +779,7 @@ static std::string BuildBootTraceConfigJson(const BootTraceConfig& config)
     oss << "  \"file_size_kb\": " << config.fileSizeKb << ",\n";
     oss << "  \"file_prefix\": \"" << config.filePrefix << "\",\n";
     oss << "  \"overwrite\": " << (config.overwrite ? "true" : "false") << ",\n";
+    oss << "  \"inline_event_format\": true,\n";
     oss << "  \"increment_index\": " << config.incrementIndex << ",\n";
 
     oss << BuildKernelSectionJson(config.kernelTags, config.bufferSizeKb, config.clockType);
@@ -809,6 +811,7 @@ struct BootTraceCaptureConfig {
     bool overwrite = true;
     uint32_t fileSizeLimitKb = 0;
     int incrementIndex = -1;
+    bool inlineEventFormat = false;
 };
 
 static void AppendBootTraceSectionTags(cJSON* root, const char* section, std::vector<std::string>& out)
@@ -909,6 +912,10 @@ static void ApplyBootTraceFileCaptureOptions(cJSON* root, BootTraceCaptureConfig
     if (cJSON_IsNumber(fs) && fs->valueint > 0) {
         cfg.fileSizeLimitKb = static_cast<uint32_t>(fs->valueint);
     }
+    cJSON* inlineFmt = cJSON_GetObjectItem(root, "inline_event_format");
+    if (cJSON_IsBool(inlineFmt)) {
+        cfg.inlineEventFormat = cJSON_IsTrue(inlineFmt);
+    }
 }
 
 static bool FillBootTraceCaptureConfig(const std::string& configPath, cJSON* root, BootTraceCaptureConfig& cfg)
@@ -930,6 +937,11 @@ static bool FillBootTraceCaptureConfig(const std::string& configPath, cJSON* roo
 
 static int ExecuteBootTraceCapture(const BootTraceCaptureConfig& cfg)
 {
+    if (cfg.inlineEventFormat) {
+        setenv(K_BOOT_TRACE_INLINE_EVENT_FMT_ENV, "1", 1);
+    } else {
+        unsetenv(K_BOOT_TRACE_INLINE_EVENT_FMT_ENV);
+    }
     using DumpTraceArgs = ::OHOS::HiviewDFX::Hitrace::TraceArgs;
     DumpTraceArgs args;
     args.tags = cfg.tags;
@@ -990,7 +1002,9 @@ static bool LoadBootTraceCaptureConfig(const std::string& configPath, BootTraceC
         return false;
     }
 
-    cJSON* root = cJSON_Parse(content.c_str());
+    std::vector<char> contentBuffer(content.begin(), content.end());
+    contentBuffer.push_back('\0');
+    cJSON* root = cJSON_Parse(contentBuffer.data());
     if (root == nullptr) {
         ConsoleLog("error: parse " + configPath + " failed.");
         return false;
@@ -1021,7 +1035,9 @@ static cJSON* LoadBootTraceConfigJsonForUpdate(const std::string& configPath)
         return nullptr;
     }
 
-    cJSON* root = cJSON_Parse(content.c_str());
+    std::vector<char> contentBuffer(content.begin(), content.end());
+    contentBuffer.push_back('\0');
+    cJSON* root = cJSON_Parse(contentBuffer.data());
     if (!cJSON_IsObject(root)) {
         ConsoleLog("warning: parse " + configPath + " failed, can not record result.");
         if (root != nullptr) {
@@ -1561,6 +1577,7 @@ static bool HandleOpt(int argc, char** argv)
         }
         isTrue = ParseOpt(opt, argv, optionIndex);
     }
+
     return isTrue;
 }
 
@@ -1713,6 +1730,7 @@ static void ReloadTraceArgs(std::vector<std::string>& tagsVec, HiviewTraceParam&
         hiviewTraceParam.clockType = g_traceArgs.clockType;
         args += (" clockType:" + g_traceArgs.clockType);
     }
+
     if (g_traceArgs.overwrite) {
         args += " overwrite:";
         args += "1";
@@ -1721,6 +1739,7 @@ static void ReloadTraceArgs(std::vector<std::string>& tagsVec, HiviewTraceParam&
         args += "0";
     }
     hiviewTraceParam.isOverWrite = g_traceArgs.overwrite;
+
     if (g_traceArgs.fileSize > 0) {
         if (g_runningState == RECORDING_SHORT_RAW || g_runningState == RECORDING_LONG_BEGIN_RECORD) {
             hiviewTraceParam.fileSizeLimit = static_cast<uint32_t>(g_traceArgs.fileSize);
