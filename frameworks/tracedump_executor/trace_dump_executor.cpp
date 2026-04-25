@@ -86,7 +86,7 @@ bool TraceDumpExecutor::StartDumpTraceLoop(const TraceDumpParam& param, const st
         std::lock_guard<std::mutex> lck(traceFileMutex_);
         loopTraceFiles_.clear();
         GetTraceFilesInDir(loopTraceFiles_, param.type);
-        FileAgeingUtils::HandleAgeing(loopTraceFiles_, param.type);
+        FileAgeingUtils::HandleAgeing(loopTraceFiles_, param.type, param.cacheTotalFileSizeLmt);
     }
 
     if (param.fileSize == 0 && g_isRootVer) {
@@ -107,7 +107,7 @@ bool TraceDumpExecutor::StartDumpTraceLoop(const TraceDumpParam& param, const st
     while (TraceDumpState::GetInstance().IsLoopDumpRunning()) {
         {
             std::lock_guard<std::mutex> lck(traceFileMutex_);
-            FileAgeingUtils::HandleAgeing(loopTraceFiles_, param.type);
+            FileAgeingUtils::HandleAgeing(loopTraceFiles_, param.type, param.cacheTotalFileSizeLmt);
         }
         std::string traceFile = GenerateTraceFileName(param.type, outputPath);
         if (DoDumpTraceLoop(param, traceFile, true)) {
