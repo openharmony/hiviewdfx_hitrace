@@ -114,6 +114,7 @@ static bool HandleOptOutput(const RunningState& setValue);
 static bool HandleOptOverwrite(const RunningState& setValue);
 static bool HandleOptRecord(const RunningState& setValue);
 static bool HandleOptFilesize(const RunningState& setValue);
+static bool HandleOptTotalsize(const RunningState& setValue);
 static bool HandleOptTracelevel(const RunningState& setValue);
 static bool SetRunningState(const RunningState& setValue);
 
@@ -126,6 +127,7 @@ struct TraceArgs {
     std::string level;
     int bufferSize = 0;
     int fileSize = 0;
+    int64_t totalSize = 0;
     bool overwrite = true;
     std::string output;
 
@@ -192,6 +194,7 @@ constexpr struct option LONG_OPTIONS[] = {
     { "dump_bgsrv",          no_argument,       nullptr, 0 },
     { "stop_bgsrv",          no_argument,       nullptr, 0 },
     { "file_size",           required_argument, nullptr, 0 },
+    { "total_size",          required_argument, nullptr, 0 },
     { "trace_level",         required_argument, nullptr, 0 },
     { "get_level",           no_argument,       nullptr, 0 },
     { nullptr,               0,                 nullptr, 0 },
@@ -233,7 +236,8 @@ const std::unordered_map<std::string, CommandFunc> COMMAND_TABLE = {
     {"raw", SetRunningState},
     {"file_size", HandleOptFilesize},
     {"trace_level", HandleOptTracelevel},
-    {"get_level",  SetRunningState}
+    {"get_level",  SetRunningState},
+    {"total_size", HandleOptTotalsize}
 };
 
 std::unordered_map<std::string, RunningState> OPT_MAP = {
@@ -255,6 +259,7 @@ std::unordered_map<std::string, RunningState> OPT_MAP = {
     {"text",  RECORDING_SHORT_TEXT},
     {"raw", RECORDING_SHORT_RAW},
     {"file_size", STATE_NULL},
+    {"total_size", STATE_NULL},
     {"trace_level", SET_TRACE_LEVEL},
     {"get_level",  GET_TRACE_LEVEL}
 };
@@ -279,6 +284,7 @@ constexpr unsigned int MAX_OUTPUT_LEN = 255;
 const int PAGE_SIZE_KB = 4; // 4 KB
 const int MIN_FILE_SIZE = 51200; // 50 MB
 const int MAX_FILE_SIZE = 512000; // 500 MB
+const int MAX_FILE_SIZE_MULTIPLIER = 10;
 static const std::string TRACE_WRITABLE_PATH = "/data/local/tmp";
 
 std::string g_traceRootPath;
@@ -414,6 +420,8 @@ static void ShowHelp(const std::string& cmd)
            "  --stop_bgsrv           Disable trace_service in snapshot mode.\n"
            "  --file_size            Sets the size of the raw trace (KB). The default file size is 102400 KB.\n"
            "                         Only effective in raw trace mode\n"
+           "  --total_size           Sets the total size of all traces (KB). The default total size is 2048*1024 KB.\n"
+           "                         Only effective in raw trace mode.\n"
            "  --trace_level level    Set the system parameter \"persist.hitrace.level.threshold\", which can control\n"
            "                         the level threshold of tracing. Valid values for \"level\" include\n"
            "                         D or Debug, I or Info, C or Critical, M or Commercial.\n"
@@ -496,7 +504,7 @@ static bool CheckOutputFile(const char* path)
     size_t len = strnlen(path, MAX_OUTPUT_LEN);
     if (len == MAX_OUTPUT_LEN || len < 1 ||
         (stat(path, &buf) == 0 && (buf.st_mode & S_IFDIR) && g_runningState != RECORDING_LONG_BEGIN_RECORD &&
-            g_runningState != RECORDING_LONG_DUMP)) {
+            g_runningState != SNAPSHOT_DUMP)) {
         ConsoleLog("error: output file is illegal");
         return false;
     }
@@ -603,6 +611,24 @@ static bool HandleOptFilesize(const RunningState& setValue)
         isTrue = false;
     }
     g_traceArgs.fileSize = fileSizeKB;
+    return isTrue;
+}
+
+static bool HandleOptTotalsize(const RunningState& setValue)
+{
+    if (optarg == nullptr) {
+        return false;
+    }
+    bool isTrue = true;
+    int totalSizeKB = 0;
+    if (!StrToNum(optarg, totalSizeKB)) {
+        ConsoleLog("error: total size is illegal input. eg: \"--total_size 1024000\".");
+        isTrue = false;
+    } else if (totalSizeKB < MAX_FILE_SIZE || totalSizeKB > MAX_FILE_SIZE_MULTIPLIER * MAX_FILE_SIZE) {
+        ConsoleLog("error: total size must be from 500 MB to 5000 MB. eg: \"--total_size 1024000\".");
+        isTrue = false;
+    }
+    g_traceArgs.totalSize = totalSizeKB;
     return isTrue;
 }
 
@@ -911,7 +937,15 @@ static void ReloadTraceArgs(std::vector<std::string>& tagsVec, HiviewTraceParam&
                 std::to_string(g_traceArgs.fileSize) + " is invalid.");
         }
     }
-
+    if (g_traceArgs.totalSize > 0) {
+        if (g_runningState == RECORDING_LONG_BEGIN_RECORD) {
+            hiviewTraceParam.totalSize = static_cast<uint64_t>(g_traceArgs.totalSize);
+            args += (" totalSize:" + std::to_string(g_traceArgs.totalSize));
+        } else {
+            ConsoleLog("warning: The current state does not support specifying the total size, total size: " +
+                std::to_string(g_traceArgs.totalSize) + " is invalid.");
+        }
+    }
     if (g_runningState != RECORDING_SHORT_TEXT) {
         ConsoleLog("args: " + args);
     }
@@ -1006,7 +1040,8 @@ static bool HandleRecordingLongBegin()
         .bufferSize = 0,
         .clockType = "boot",
         .isOverWrite = true,
-        .fileSizeLimit = 0
+        .fileSizeLimit = 0,
+        .totalSize = 0
     };
     ReloadTraceArgs(tags, hiviewTraceParam);
     if (g_traceArgs.output.size() > 0) {
@@ -1079,7 +1114,8 @@ static bool IsWritable(const std::string& fileName)
         fileName.find(".\\") != std::string::npos) {
             return false;
     }
-    return fileName.find(TRACE_WRITABLE_PATH) == 0;
+    return (fileName == (TRACE_WRITABLE_PATH)) || fileName.find((TRACE_WRITABLE_PATH + '/')) == 0;
+;
 }
 
 static bool IsWritableDir(const std::string& fileName)
@@ -1100,7 +1136,8 @@ static bool HandleRecordingLongBeginRecord()
         .bufferSize = 0,
         .clockType = "boot",
         .isOverWrite = true,
-        .fileSizeLimit = 0
+        .fileSizeLimit = 0,
+        .totalSize = 0
     };
     ReloadTraceArgs(tags, hiviewTraceParam);
     auto openRet = g_traceCollector->OpenTrace(tags, hiviewTraceParam, {});
@@ -1262,6 +1299,11 @@ static bool InitAndCheckArgs(int argc, char**argv)
 
     if (!HandleOpt(argc, argv)) {
         ConsoleLog("error: parsing args failed, exit.");
+        return false;
+    }
+
+    if (g_traceArgs.totalSize != 0 && !IsWritableDir(g_traceArgs.output)) {
+        ConsoleLog("error: can't set totalsize when output path is't /data/local/tmp, exit.");
         return false;
     }
 

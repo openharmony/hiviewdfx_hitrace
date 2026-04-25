@@ -35,6 +35,7 @@ struct TraceArgs {
     uint32_t bufferSize = 0;
     uint32_t fileSizeLimit = 0;
     int32_t appPid = 0;
+    int64_t totalSize = 0;
     std::vector<int32_t> filterPids {};
 };
 
