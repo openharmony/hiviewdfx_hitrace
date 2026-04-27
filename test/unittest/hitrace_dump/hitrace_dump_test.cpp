@@ -309,7 +309,7 @@ static void CreateFile(const std::string& filename)
 
 static void ClearFile()
 {
-    const std::filesystem::path dirPath = "/data/log/hitrace";
+    const std::filesystem::path dirPath(TRACE_FILE_DEFAULT_DIR);
     if (std::filesystem::exists(dirPath)) {
         for (const auto& entry : std::filesystem::directory_iterator(dirPath)) {
             std::filesystem::remove_all(entry.path());
@@ -603,8 +603,8 @@ HWTEST_F(HitraceDumpTest, DumpTraceTest_007, TestSize.Level0)
     sleep(TWO_SEC);
     uint64_t traceEndTime = static_cast<uint64_t>(std::time(nullptr));
     TraceRetInfo ret = DumpTrace(UINT32_MAX, traceEndTime);
-    ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_MAX_DURATION) << "errorCode: "
-        << static_cast<int>(ret.errorCode);
+    ASSERT_TRUE(ret.errorCode == TraceErrorCode::INVALID_MAX_DURATION) << "errorCode: " <<
+        static_cast<int>(ret.errorCode);
     ASSERT_TRUE(ret.outputFiles.empty());
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
@@ -845,7 +845,7 @@ HWTEST_F(HitraceDumpTest, DumpForServiceMode_004, TestSize.Level0)
 {
     const std::vector<std::string> tagGroups = {"scene_performance"};
     ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
-    ASSERT_TRUE(access(TRACE_FILE_DEFAULT_DIR, F_OK) == 0) << "/data/log/hitrace not exists.";
+    ASSERT_TRUE(access(TRACE_FILE_DEFAULT_DIR, F_OK) == 0) << "trace default dir not exists.";
 
     SetSysInitParamTags(123);
     ASSERT_TRUE(SetCheckParam() == false);
@@ -948,8 +948,8 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_002, TestSize.Level0)
     TraceRetInfo ret = RecordTraceOff();
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
 
-    ASSERT_TRUE(TraverseFiles(ret.outputFiles, filePathName))
-        << "unspport set outputfile, default generate file in /data/log/hitrace.";
+    ASSERT_TRUE(TraverseFiles(ret.outputFiles, filePathName)) <<
+        "unspport set outputfile, default generate file under TRACE_FILE_DEFAULT_DIR.";
 
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
@@ -1419,7 +1419,7 @@ HWTEST_F(HitraceDumpTest, DumpTraceAsyncTest005, TestSize.Level2)
 HWTEST_F(HitraceDumpTest, AddSymlinkXattr001, TestSize.Level2)
 {
     ClearFile();
-    std::string fileName = "/data/log/hitrace/tracetest001.txt";
+    std::string fileName = std::string(TRACE_FILE_DEFAULT_DIR) + "tracetest001.txt";
     EXPECT_FALSE(AddSymlinkXattr(fileName));
     CreateFile(fileName);
     EXPECT_TRUE(AddSymlinkXattr(fileName));
@@ -1437,7 +1437,7 @@ HWTEST_F(HitraceDumpTest, AddSymlinkXattr001, TestSize.Level2)
 HWTEST_F(HitraceDumpTest, AddSymlinkXattr002, TestSize.Level2)
 {
     ClearFile();
-    std::string fileName = "/data/log/hitrace/tracetest002.txt";
+    std::string fileName = std::string(TRACE_FILE_DEFAULT_DIR) + "tracetest002.txt";
     CreateFile(fileName);
 
     EXPECT_TRUE(AddSymlinkXattr(fileName));
@@ -1477,7 +1477,7 @@ HWTEST_F(HitraceDumpTest, AddSymlinkXattr002, TestSize.Level2)
 HWTEST_F(HitraceDumpTest, RemoveSymlinkXattr001, TestSize.Level2)
 {
     ClearFile();
-    std::string fileName = "/data/log/hitrace/tracetest003.txt";
+    std::string fileName = std::string(TRACE_FILE_DEFAULT_DIR) + "tracetest003.txt";
     EXPECT_FALSE(RemoveSymlinkXattr(fileName));
     CreateFile(fileName);
     EXPECT_FALSE(RemoveSymlinkXattr(fileName));
@@ -1495,7 +1495,7 @@ HWTEST_F(HitraceDumpTest, RemoveSymlinkXattr001, TestSize.Level2)
 HWTEST_F(HitraceDumpTest, RemoveSymlinkXattr002, TestSize.Level2)
 {
     ClearFile();
-    std::string fileName = "/data/log/hitrace/tracetest004.txt";
+    std::string fileName = std::string(TRACE_FILE_DEFAULT_DIR) + "tracetest004.txt";
     CreateFile(fileName);
     EXPECT_TRUE(AddSymlinkXattr(fileName));
     EXPECT_TRUE(AddSymlinkXattr(fileName));

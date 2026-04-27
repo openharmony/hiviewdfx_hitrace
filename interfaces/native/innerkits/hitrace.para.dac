@@ -16,3 +16,5 @@ debug.hitrace.app_pid = root:shell:0775
 persist.hitrace.level.threshold = root:shell:0775
 debug.hitrace.telemetry.app = root:shell:0775
 persist.hiviewdfx.napitraceid.enabled = root:shell:0775
+debug.hitrace.boot_trace.active = root:shell:0775
+persist.hitrace.boot_trace.count = root:shell:0775

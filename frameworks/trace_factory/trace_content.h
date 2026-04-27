@@ -132,6 +132,9 @@ public:
     TraceEventFmtContent(const int fd, const std::string& tracefsPath, const std::string& traceFilePath,
         const bool ishm);
     bool WriteTraceContent() override;
+private:
+    bool WriteTraceContentInline();
+    bool inlineEventFmt_ = false;
 };
 
 class TraceCmdLinesContent : public ITraceContent {

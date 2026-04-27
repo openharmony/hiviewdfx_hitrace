@@ -57,6 +57,8 @@ enum TraceErrorCode : uint8_t {
     TRACE_TASK_SUBMIT_ERROR = 13,
     TRACE_TASK_DUMP_TIMEOUT = 14,
     UNKNOWN_TRACE_DUMP_TYPE = 15,
+    /** debug.hitrace.boot_trace.active is on and caller is not root (uid 0). */
+    BOOT_TRACE_ACTIVE = 16,
     UNSET = 255,
 };
 

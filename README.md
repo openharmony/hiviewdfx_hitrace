@@ -45,6 +45,8 @@ HiTrace is the lightweight implementation based on the distributed call chain of
 
 HiTrace is already supported by the IPC and EventHandler communication mechanisms. If you are using a custom communication mechanism, adaptation is required to use HiTrace.
 
+For **`hitrace --boot_trace` / `hitrace boot-trace`** end-to-end behavior and CLI parameters, see **[`docs/hitrace_cmd/boot-trace.md`](docs/hitrace_cmd/boot-trace.md)** (kept in sync with `cmd/hitrace_cmd.cpp` and `startup_init`).
+
 ## Usage<a name="section1312121216216"></a>
 
 ### Available APIs<a name="section1551164914237"></a>
