@@ -18,5 +18,6 @@
 
 int HiTraceCMDTestMain(int argc, char **argv);
 void Reset();
+void SetBootTraceForceRootForTest(bool force);
 
 #endif // HITRACE_CMD_H

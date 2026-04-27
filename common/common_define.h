@@ -34,6 +34,8 @@ constexpr int DEFAULT_FILE_SIZE = 100 * 1024;
 static const char* const TRACE_TAG_ENABLE_FLAGS = "debug.hitrace.tags.enableflags";
 static const char* const TRACE_KEY_APP_PID = "debug.hitrace.app_pid";
 static const char* const TRACE_LEVEL_THRESHOLD = "persist.hitrace.level.threshold";
+// 标记 boot-trace 是否正在进行的临时参数（非 persist）
+static const char* const TRACE_BOOT_ACTIVE_FLAG = "debug.hitrace.boot_trace.active";
 
 static const char* const DEBUGFS_TRACING_DIR = "/sys/kernel/debug/tracing/";
 static const char* const TRACEFS_DIR = "/sys/kernel/tracing/";
@@ -43,6 +45,10 @@ static const char* const TRACE_NODE = "trace";
 static const char* const TRACE_BUFFER_SIZE_NODE = "buffer_size_kb";
 
 static const char* const TRACE_FILE_DEFAULT_DIR = "/data/log/hitrace/";
+/** Boot trace cfg + default *.sys output; kept separate from TRACE_FILE_DEFAULT_DIR. */
+static const char* const BOOT_TRACE_CONFIG_DIR = "/data/local/tmp/";
+static const char* const BOOT_TRACE_CONFIG_FILE = "boot_trace.cfg";
+static const char* const BOOT_TRACE_COUNT_PARAM = "persist.hitrace.boot_trace.count";
 static const char* const TRACE_SAVED_EVENTS_FORMAT = "saved_events_format";
 static const char* const CACHE_FILE_PREFIX = "cache_";
 #endif // HITRACE_COMMON_DEFINE_H

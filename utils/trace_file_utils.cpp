@@ -52,6 +52,7 @@ static const char* const TRACE_SNAPSHOT_PREFIX = "trace_";
 static const char* const TRACE_RECORDING_PREFIX = "record_trace_";
 static const char* const TRACE_CACHE_PREFIX = "cache_trace_";
 static const std::string TRACE_WRITABLE_PATH = "/data/local/tmp";
+
 std::map<TraceDumpType, std::string> tracePrefixMap = {
     {TraceDumpType::TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
     {TraceDumpType::TRACE_RECORDING, TRACE_RECORDING_PREFIX},
