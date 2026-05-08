@@ -1609,12 +1609,9 @@ TraceRetInfo DumpTrace(uint32_t maxDuration, uint64_t utTraceEndTime, const std:
         ret.mode = g_traceMode;
         return ret;
     }
-    if (!outputPath.empty()) {
-        std::string traceFile = GenerateTraceFileName(TraceDumpType::TRACE_RECORDING, outputPath);
-        if (traceFile.empty()) {
-            ret.errorCode = FILE_ERROR;
-            return ret;
-        }
+    if (!outputPath.empty() && !IsWritable(outputPath)) {
+        ret.errorCode = FILE_ERROR;
+        return ret;
     }
     ret.mode = g_traceMode;
     if (!CheckTraceDumpStatus(maxDuration, utTraceEndTime, ret)) {
@@ -1714,11 +1711,8 @@ TraceErrorCode RecordTraceOn(const std::string& outputPath)
         HILOG_ERROR(LOG_CORE, "RecordTraceOn: record trace is dumping now.");
         return WRONG_TRACE_MODE;
     }
-    if (!outputPath.empty()) {
-        std::string traceFile = GenerateTraceFileName(TraceDumpType::TRACE_RECORDING, outputPath);
-        if (traceFile.empty()) {
-            return FILE_ERROR;
-        }
+    if (!outputPath.empty() && !IsWritable(outputPath)) {
+        return FILE_ERROR;
     }
     auto it = [outputPath]() {
         ProcessRecordTask(outputPath);
