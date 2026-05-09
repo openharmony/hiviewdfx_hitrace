@@ -301,13 +301,11 @@ std::string GenerateTraceFileName(TraceDumpType traceType, const std::string& ou
     if (outputPath.empty()) {
         return TRACE_FILE_DEFAULT_DIR + GenerateTraceFileNameInner(traceType);
     }
-    if (IsWritable(outputPath) && !IsWritableDir(outputPath)) {
+    if (IsWritable(outputPath)) {
+        if (IsWritableDir(outputPath)) {
+            return outputPath + (outputPath.back() == '/' ? "" : "/") + GenerateTraceFileNameInner(traceType);
+        }
         return outputPath;
-    } else if (IsWritableDir(outputPath)) {
-            std::string fileName = outputPath.back() == '/'
-                                        ? outputPath + GenerateTraceFileNameInner(traceType)
-                                        : outputPath + '/' + GenerateTraceFileNameInner(traceType);
-            return fileName;
     }
     return "";
 }
