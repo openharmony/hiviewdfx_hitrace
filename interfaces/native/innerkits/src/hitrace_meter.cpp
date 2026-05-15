@@ -650,7 +650,7 @@ char* GetTraceBuffer(int size)
 
 void SetCommStr()
 {
-    int size = g_appTracePrefix.size();
+    int size = static_cast<int>(g_appTracePrefix.size());
     if (size >= COMM_STR_MAX) {
         g_appTracePrefix = g_appTracePrefix.substr(size - COMM_STR_MAX, size);
     } else {
@@ -717,12 +717,14 @@ int SetAppTraceBuffer(char* buf, const int len, const TraceMarker& traceMarker)
             additionalParams = std::string("|") + std::string(traceMarker.customArgs);
         }
         bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: B|%d|H:%s|%c%s%s\n",
-            g_appTracePrefix.c_str(), cpu, static_cast<long>(ts.tv_sec), static_cast<long>(ts.tv_nsec / NS_TO_MS),
-            traceMarker.pid, traceMarker.name, g_traceLevel[traceMarker.level], bitStr, additionalParams.c_str());
+            g_appTracePrefix.c_str(), cpu, static_cast<unsigned long>(ts.tv_sec),
+            static_cast<unsigned long>(ts.tv_nsec / NS_TO_MS), traceMarker.pid, traceMarker.name,
+            g_traceLevel[traceMarker.level], bitStr, additionalParams.c_str());
     } else if (traceMarker.type == MARKER_END) {
         bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: E|%d|%c%s\n",
-            g_appTracePrefix.c_str(), cpu, static_cast<long>(ts.tv_sec), static_cast<long>(ts.tv_nsec / NS_TO_MS),
-            traceMarker.pid, g_traceLevel[traceMarker.level], bitStr);
+            g_appTracePrefix.c_str(), cpu, static_cast<unsigned long>(ts.tv_sec),
+            static_cast<unsigned long>(ts.tv_nsec / NS_TO_MS), traceMarker.pid,
+            g_traceLevel[traceMarker.level], bitStr);
     } else if (traceMarker.type == MARKER_ASYNC_BEGIN) {
         if (*(traceMarker.customArgs) != '\0') {
             additionalParams = std::string("|") + std::string(traceMarker.customCategory) + std::string("|") +
@@ -732,13 +734,13 @@ int SetAppTraceBuffer(char* buf, const int len, const TraceMarker& traceMarker)
         }
         bytes = snprintf_s(buf, len, len - 1,
             "  %s [%03d] .... %lu.%06lu: tracing_mark_write: S|%d|H:%s|%lld|%c%s%s\n", g_appTracePrefix.c_str(),
-            cpu, static_cast<long>(ts.tv_sec), static_cast<long>(ts.tv_nsec / NS_TO_MS), traceMarker.pid,
+            cpu, static_cast<unsigned long>(ts.tv_sec), static_cast<long>(ts.tv_nsec / NS_TO_MS), traceMarker.pid,
             traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitStr, additionalParams.c_str());
     } else {
         bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: %c|%d|H:%s|%lld|%c%s\n",
-            g_appTracePrefix.c_str(), cpu, static_cast<long>(ts.tv_sec), static_cast<long>(ts.tv_nsec / NS_TO_MS),
-            g_markTypes[traceMarker.type], traceMarker.pid, traceMarker.name, traceMarker.value,
-            g_traceLevel[traceMarker.level], bitStr);
+            g_appTracePrefix.c_str(), cpu, static_cast<unsigned long>(ts.tv_sec),
+            static_cast<unsigned long>(ts.tv_nsec / NS_TO_MS), g_markTypes[traceMarker.type], traceMarker.pid,
+            traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitStr);
     }
     return bytes;
 }
