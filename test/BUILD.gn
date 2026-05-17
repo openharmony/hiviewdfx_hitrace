@@ -26,7 +26,6 @@ group("hitrace_unittest") {
     "unittest:HitraceAgeingTest",
     "unittest:HitraceAsyncReadTimeoutTest",
     "unittest:HitraceAsyncWriteTimeoutTest",
-    "unittest:HitraceCMDTest",
     "unittest:HitraceCTest",
     "unittest:HitraceChainNDKTest",
     "unittest:HitraceCppTest",
@@ -43,7 +42,10 @@ group("hitrace_unittest") {
     "unittest/rust/hitracechain:rust_hitracechain_test",
   ]
   if (support_jsapi) {
-    deps += [ "unittest/common/napi:unittest" ]
+    deps += [
+      "unittest/common/napi:unittest",
+      "unittest:HitraceCMDTest",
+    ]
   }
 }
 
