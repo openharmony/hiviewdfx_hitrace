@@ -486,58 +486,60 @@ ohos_unittest("HitraceOptionTest") {
   }
 }
 
-ohos_unittest("HitraceCMDTest") {
-  module_out_path = module_output_path
-  resource_config_file = "resource/ohos_test.xml"
+if (support_jsapi) {
+  ohos_unittest("HitraceCMDTest") {
+    module_out_path = module_output_path
+    resource_config_file = "resource/ohos_test.xml"
 
-  configs = [
-    ":module_private_config",
-    "$hitrace_common_path/build:coverage_flags",
-  ]
+    configs = [
+      ":module_private_config",
+      "$hitrace_common_path/build:coverage_flags",
+    ]
 
-  cflags = [ "-DHITRACE_UNITTEST" ]
-  ldflags = [ "-Wl,-rpath=\$ORIGIN/" ]
+    cflags = [ "-DHITRACE_UNITTEST" ]
+    ldflags = [ "-Wl,-rpath=\$ORIGIN/" ]
 
-  include_dirs = [
-    "$hitrace_cmd_path",
-    "$hitrace_common_path",
-    "$hitrace_frameworks_path/include",
-    "$hitrace_interfaces_path/native/innerkits/include",
-    "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
-    "$hitrace_utils_path",
-  ]
+    include_dirs = [
+      "$hitrace_cmd_path",
+      "$hitrace_common_path",
+      "$hitrace_frameworks_path/include",
+      "$hitrace_interfaces_path/native/innerkits/include",
+      "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
+      "$hitrace_utils_path",
+    ]
 
-  sources = [
-    "$hitrace_cmd_path/hitrace_cmd.cpp",
-    "hitrace_cmd/hitrace_cmd_test.cpp",
-  ]
+    sources = [
+      "$hitrace_cmd_path/hitrace_cmd.cpp",
+      "hitrace_cmd/hitrace_cmd_test.cpp",
+    ]
 
-  deps = [
-    "$hitrace_config_path:hitrace_tags",
-    "$hitrace_interfaces_path/native/innerkits:hitrace_dump",
-    "$hitrace_utils_path:hitrace_common_utils",
-    "$hitrace_utils_path:hitrace_file_utils",
-    "$hitrace_utils_path:hitrace_json_parser",
-  ]
+    deps = [
+      "$hitrace_config_path:hitrace_tags",
+      "$hitrace_interfaces_path/native/innerkits:hitrace_dump",
+      "$hitrace_utils_path:hitrace_common_utils",
+      "$hitrace_utils_path:hitrace_file_utils",
+      "$hitrace_utils_path:hitrace_json_parser",
+    ]
 
-  external_deps = [
-    "bounds_checking_function:libsec_shared",
-    "cJSON:cjson",
-    "c_utils:utils",
-    "googletest:gtest_main",
-    "hisysevent:libhisysevent",
-    "init:libbegetutil",
-    "zlib:libz",
-  ]
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "cJSON:cjson",
+      "c_utils:utils",
+      "googletest:gtest_main",
+      "hisysevent:libhisysevent",
+      "init:libbegetutil",
+      "zlib:libz",
+    ]
 
-  if (defined(ohos_lite)) {
-    external_deps += [ "hilog_lite:hilog_lite" ]
-  } else {
-    external_deps += [ "hilog:libhilog" ]
-  }
+    if (defined(ohos_lite)) {
+      external_deps += [ "hilog_lite:hilog_lite" ]
+    } else {
+      external_deps += [ "hilog:libhilog" ]
+    }
 
-  if (device_company != "qemu" && hitrace_support_executable_file) {
-    external_deps += [ "hiview:libucollection_client" ]
+    if (device_company != "qemu" && hitrace_support_executable_file) {
+      external_deps += [ "hiview:libucollection_client" ]
+    }
   }
 }
 
