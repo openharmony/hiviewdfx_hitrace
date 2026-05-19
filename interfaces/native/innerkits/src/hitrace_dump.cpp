@@ -1399,7 +1399,7 @@ static TraceErrorCode PrepareOpenTraceByArgs(const TraceArgs& traceArgs,
     allTags = &parser.GetAllTagInfos();
     tagGroupTable = &parser.GetTagGroups();
     traceFormats = parser.GetBaseFmtPath();
-    defaultBufferSize = parser.GetSnapshotDefaultBufferSizeKb();
+    defaultBufferSize = static_cast<uint32_t>(parser.GetSnapshotDefaultBufferSizeKb());
     if (allTags->empty() || tagGroupTable->empty() || !CheckTags(traceArgs.tags, *allTags)) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: ParseTagInfo TAG_ERROR.");
         return TraceErrorCode::TAG_ERROR;
