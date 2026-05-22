@@ -22,6 +22,7 @@ ohos_executable("hitrace") {
     "$hitrace_frameworks_path/include",
     "$hitrace_interfaces_path/native/innerkits/include",
     "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace_option",
     "$hitrace_utils_path",
   ]
 
@@ -30,6 +31,7 @@ ohos_executable("hitrace") {
   deps = [
     "$hitrace_config_path:hitrace_tags",
     "$hitrace_interfaces_path/native/innerkits:hitrace_dump",
+    "$hitrace_interfaces_path/native/innerkits:libhitrace_option",
     "$hitrace_utils_path:hitrace_common_utils",
     "$hitrace_utils_path:hitrace_file_utils",
     "$hitrace_utils_path:hitrace_json_parser",

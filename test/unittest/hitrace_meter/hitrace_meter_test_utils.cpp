@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include "common_define.h"
 #include "hitrace_meter_test_utils.h"
+#include "hitrace_option_util.h"
 #include "securec.h"
 
 namespace OHOS {
@@ -35,7 +36,6 @@ namespace HitraceTest {
 
 constexpr int HITRACEID_LEN = 64;
 const char g_traceLevel[4] = {'D', 'I', 'C', 'M'};
-static std::string g_traceRootPath;
 static char g_pid[6];
 const std::string SEPARATOR = "|";
 
@@ -46,11 +46,7 @@ bool Init(const char (&pid)[6])
         HILOG_ERROR(LOG_CORE, "pid[%{public}s] strcpy_s fail ret: %{public}d.", pid, ret);
         return false;
     }
-    if (access((std::string(DEBUGFS_TRACING_DIR) + std::string(TRACE_MARKER_NODE)).c_str(), F_OK) != -1) {
-        g_traceRootPath = DEBUGFS_TRACING_DIR;
-    } else if (access((std::string(TRACEFS_DIR) + std::string(TRACE_MARKER_NODE)).c_str(), F_OK) != -1) {
-        g_traceRootPath = TRACEFS_DIR;
-    } else {
+    if (Hitrace::GetTraceRootPath().empty()) {
         HILOG_ERROR(LOG_CORE, "Error: Finding trace folder failed");
         return false;
     }
@@ -59,12 +55,12 @@ bool Init(const char (&pid)[6])
 
 bool CleanTrace()
 {
-    if (g_traceRootPath.empty()) {
+    if (Hitrace::GetTraceRootPath().empty()) {
         HILOG_ERROR(LOG_CORE, "Error: trace path not found.");
         return false;
     }
     std::ofstream ofs;
-    ofs.open(g_traceRootPath + TRACE_NODE, std::ofstream::out);
+    ofs.open(Hitrace::GetTraceRootPath() + TRACE_NODE, std::ofstream::out);
     if (!ofs.is_open()) {
         HILOG_ERROR(LOG_CORE, "Error: opening trace path failed.");
         return false;
@@ -76,13 +72,14 @@ bool CleanTrace()
 
 static bool WriteStringToFile(const std::string& filename, const std::string& str)
 {
-    if (access((g_traceRootPath + filename).c_str(), W_OK) == 0) {
-        if (g_traceRootPath == "") {
+    std::string traceRootPath = Hitrace::GetTraceRootPath();
+    if (access((traceRootPath + filename).c_str(), W_OK) == 0) {
+        if (traceRootPath.empty()) {
             HILOG_ERROR(LOG_CORE, "Error: trace path not found.");
             return false;
         }
         std::ofstream out;
-        out.open(g_traceRootPath + filename, std::ios::out);
+        out.open(traceRootPath + filename, std::ios::out);
         out << str;
         out.close();
         return true;
@@ -126,7 +123,7 @@ static std::stringstream ReadFile(const std::string& filename)
 std::vector<std::string> ReadTrace(std::string filename)
 {
     if (filename == "") {
-        filename = g_traceRootPath + TRACE_NODE;
+        filename = Hitrace::GetTraceRootPath() + TRACE_NODE;
     }
     std::vector<std::string> list;
     if (access(filename.c_str(), F_OK) != -1) {

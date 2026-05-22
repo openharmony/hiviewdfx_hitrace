@@ -22,6 +22,7 @@
 #include "common_define.h"
 #include "common_utils.h"
 #include "hitrace_event_listener.h"
+#include "hitrace_option_util.h"
 #include "hisysevent_manager.h"
 
 using namespace OHOS::HiviewDFX;
@@ -30,7 +31,6 @@ using namespace std;
 
 namespace OHOS {
 namespace HiviewDFX {
-static std::string g_traceRootPath;
 const int TRACING_ON_CLOSED = 2003;
 
 class HitraceEventTest : public testing::Test {
@@ -43,11 +43,7 @@ public:
 
 void HitraceEventTest::SetUpTestCase()
 {
-    if (access((std::string(DEBUGFS_TRACING_DIR) + std::string(TRACE_MARKER_NODE)).c_str(), F_OK) != -1) {
-        g_traceRootPath = DEBUGFS_TRACING_DIR;
-    } else if (access((std::string(TRACEFS_DIR) + std::string(TRACE_MARKER_NODE)).c_str(), F_OK) != -1) {
-        g_traceRootPath = TRACEFS_DIR;
-    } else {
+    if (Hitrace::GetTraceRootPath().empty()) {
         GTEST_LOG_(INFO) << "Error: Finding trace folder failed";
     }
 }

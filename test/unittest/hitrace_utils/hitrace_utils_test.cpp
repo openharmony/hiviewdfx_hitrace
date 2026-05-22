@@ -23,6 +23,7 @@
 
 #include "common_define.h"
 #include "common_utils.h"
+#include "hitrace_option_util.h"
 #include "smart_fd.h"
 #include "trace_file_utils.h"
 #include "trace_json_parser.h"
@@ -46,15 +47,9 @@ public:
     void TearDown() {}
 };
 
-std::string g_traceRootPath;
-
 void HitraceUtilsTest::SetUpTestCase()
 {
-    if (access((std::string(DEBUGFS_TRACING_DIR) + std::string(TRACE_MARKER_NODE)).c_str(), F_OK) != -1) {
-        g_traceRootPath = DEBUGFS_TRACING_DIR;
-    } else if (access((std::string(TRACEFS_DIR) + std::string(TRACE_MARKER_NODE)).c_str(), F_OK) != -1) {
-        g_traceRootPath = TRACEFS_DIR;
-    } else {
+    if (Hitrace::GetTraceRootPath().empty()) {
         GTEST_LOG_(ERROR) << "Error: Finding trace folder failed.";
     }
 }
@@ -91,7 +86,7 @@ HWTEST_F(HitraceUtilsTest, CommonUtilsTest001, TestSize.Level2)
 */
 HWTEST_F(HitraceUtilsTest, CommonUtilsTest002, TestSize.Level2)
 {
-    ASSERT_TRUE(MarkClockSync(g_traceRootPath));
+    ASSERT_TRUE(MarkClockSync(Hitrace::GetTraceRootPath()));
 }
 
 /**

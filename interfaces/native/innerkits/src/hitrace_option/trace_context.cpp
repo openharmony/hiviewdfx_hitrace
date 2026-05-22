@@ -55,7 +55,7 @@ bool ParseNumberStr(const char* lineContent, std::string& result)
 
 bool GetSetEventPid(std::set<std::string>& set)
 {
-    const std::string& traceRootPath = GetTraceRootPath();
+    const std::string& traceRootPath = Hitrace::GetTraceRootPath();
     if (traceRootPath.empty()) {
         return false;
     }
@@ -139,7 +139,7 @@ bool TraceFilterContext::AddFilterPids(const std::vector<std::string> &filterPid
     if (filterPids.empty()) {
         return false;
     }
-    FileLock fileLock(GetTraceRootPath() + SET_EVENT_PID, O_RDWR);
+    FileLock fileLock(Hitrace::GetTraceRootPath() + SET_EVENT_PID, O_RDWR);
     std::string initContent = std::to_string(standInTid_);
     for (const auto& tid : filterPids) {
         initContent += (" " + tid);
@@ -179,7 +179,7 @@ bool TraceFilterContext::AddFilterPids(const std::vector<std::string> &filterPid
 void TraceFilterContext::FilterSavedCmdLine()
 {
     filterCmdLines_.clear();
-    const std::string& traceRootPath = GetTraceRootPath();
+    const std::string& traceRootPath = Hitrace::GetTraceRootPath();
     if (traceRootPath.empty()) {
         return;
     }
@@ -204,7 +204,7 @@ void TraceFilterContext::FilterTGidsContent()
 {
     filterTGidsContent_.clear();
     filterPids_.clear();
-    const std::string& traceRootPath = GetTraceRootPath();
+    const std::string& traceRootPath = Hitrace::GetTraceRootPath();
     std::set<std::string> set;
     if (traceRootPath.empty() || !GetSetEventPid(set)) {
         return;

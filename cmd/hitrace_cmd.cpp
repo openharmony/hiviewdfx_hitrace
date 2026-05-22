@@ -38,6 +38,7 @@
 
 #include "common_define.h"
 #include "common_utils.h"
+#include "hitrace_option_util.h"
 #include "hilog/log.h"
 #include "hisysevent_c.h"
 #include "hitrace_meter.h"
@@ -341,7 +342,6 @@ constexpr int BOOT_TRACE_EXIT_CONFIG_ERROR = 2;
 /** persist.hitrace.boot_trace.count: 0 = off; 1~100 = remaining boot trace count. */
 constexpr const char* BOOT_TRACE_DEFAULT_PREFIX = "boot_trace";
 constexpr int MIN_ARGS_FOR_BOOT_TRACE_SUBCOMMAND = 2;
-std::string g_traceRootPath;
 std::shared_ptr<OHOS::HiviewDFX::UCollectClient::TraceCollector> g_traceCollector;
 TraceArgs g_traceArgs;
 TraceSysEventParams g_traceSysEventParams;
@@ -375,7 +375,6 @@ void Reset()
     opterr = 1;
     optopt = 0;
     optarg = nullptr;
-    g_traceRootPath = "";
     g_traceCollector = nullptr;
     g_needSysEvent = false;
     g_runningState = STATE_NULL;
@@ -455,7 +454,7 @@ static bool WriteStrToFile(const std::string& filename, const std::string& str)
 {
     std::ofstream out;
     std::string inSpecPath =
-        OHOS::HiviewDFX::Hitrace::CanonicalizeSpecPath((g_traceRootPath + filename).c_str());
+        OHOS::HiviewDFX::Hitrace::CanonicalizeSpecPath((GetTraceRootPath() + filename).c_str());
     out.open(inSpecPath, std::ios::out);
     if (out.fail()) {
         ConsoleLog("error: open " + inSpecPath + " failed.");
@@ -1661,7 +1660,7 @@ static void DumpCompressedTrace(int traceFd, int outFd)
 
 static void DumpKernelTraceToOutput()
 {
-    std::string tracePath = g_traceRootPath + TRACE_NODE;
+    std::string tracePath = GetTraceRootPath() + TRACE_NODE;
     std::string traceSpecPath = CanonicalizeSpecPath(tracePath.c_str());
     auto traceFd = OHOS::HiviewDFX::SmartFd(open(traceSpecPath.c_str(), O_RDONLY));
     if (!traceFd) {
@@ -1827,7 +1826,7 @@ static bool HandleRecordingShortText()
     ConsoleLog("start capture, please wait " + std::to_string(g_traceArgs.duration) + "s ...");
     sleep(g_traceArgs.duration);
 
-    MarkClockSync(g_traceRootPath);
+    MarkClockSync(GetTraceRootPath());
     StopTrace();
     if (g_traceArgs.output.size() > 0) {
         ConsoleLog("capture done, start to read trace.");
@@ -1871,13 +1870,13 @@ static bool HandleRecordingLongBegin()
 static bool HandleRecordingLongDump()
 {
     g_traceSysEventParams.opt = "DumpTextTrace";
-    if (!IsTracingOn(g_traceRootPath)) {
+    if (!IsTracingOn(GetTraceRootPath())) {
         g_traceSysEventParams.errorCode = TRACING_ON_CLOSED;
         g_traceSysEventParams.errorMessage = "Warning: tracing on is closed, no trace can be read.";
         ConsoleLog("Warning: tracing on is closed, no trace can be read.");
         return false;
     }
-    MarkClockSync(g_traceRootPath);
+    MarkClockSync(GetTraceRootPath());
     ConsoleLog("start to read trace.");
     DumpKernelTraceToOutput();
     return true;
@@ -1886,13 +1885,13 @@ static bool HandleRecordingLongDump()
 static bool HandleRecordingLongFinish()
 {
     g_traceSysEventParams.opt = "DumpTextTrace";
-    if (!IsTracingOn(g_traceRootPath)) {
+    if (!IsTracingOn(GetTraceRootPath())) {
         g_traceSysEventParams.errorCode = TRACING_ON_CLOSED;
         g_traceSysEventParams.errorMessage = "Warning: tracing on is closed, no trace can be read.";
         ConsoleLog("Warning: tracing on is closed, no trace can be read.");
         return false;
     }
-    MarkClockSync(g_traceRootPath);
+    MarkClockSync(GetTraceRootPath());
     StopTrace();
     ConsoleLog("start to read trace.");
     DumpKernelTraceToOutput();
@@ -2080,7 +2079,7 @@ static bool InitAndCheckArgs(int argc, char**argv)
     (void)signal(SIGKILL, InterruptExit);
     (void)signal(SIGINT, InterruptExit);
 
-    if (!IsTraceMounted(g_traceRootPath)) {
+    if (GetTraceRootPath().empty()) {
         ConsoleLog("error: trace isn't mounted, exit.");
         return false;
     }

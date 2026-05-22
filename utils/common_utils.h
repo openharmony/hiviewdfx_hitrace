@@ -44,8 +44,6 @@ bool IsDeveloperMode();
 
 bool IsRootVersion();
 
-bool IsTraceMounted(std::string& traceRootPath);
-
 std::string GetFilePath(const std::string& fileName, const std::string& traceRootPath);
 
 std::string ReadFileInner(const std::string& filename);
