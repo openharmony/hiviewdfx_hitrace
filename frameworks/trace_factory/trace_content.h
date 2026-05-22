@@ -64,7 +64,7 @@ struct PageHeader {
 
 class ITraceContent {
 public:
-    ITraceContent(const int fd, const std::string& tracefsPath, const std::string& traceFilePath, const bool ishm);
+    ITraceContent(const int fd, const std::string& traceFilePath, const bool ishm);
     virtual ~ITraceContent() = default;
     virtual bool WriteTraceContent() = 0;
     bool WriteTraceData(const uint8_t contentType);
@@ -73,7 +73,7 @@ public:
     void UpdateTraceContentHeader(TraceFileContentHeader& contentHeader, const uint32_t writeLen);
     bool IsFileExist();
     bool CheckPage(uint8_t* page);
-    std::string GetTraceFilePath() const { return traceFilePath_; }
+    const std::string& GetTraceFilePath() const { return traceFilePath_; }
     static int GetCurrentFileSize();
     static void ResetCurrentFileSize();
     void WriteProcessLists(ssize_t& writeLen);
@@ -85,32 +85,29 @@ protected:
     virtual ssize_t WriteTraceDataContent();
     int traceFileFd_ = -1;
     SmartFd traceSourceFd_;
-    std::string tracefsPath_;
     std::string traceFilePath_;
     bool isHm_;
 };
 
 class ITraceFileHdrContent : public ITraceContent {
 public:
-    ITraceFileHdrContent(const int fd,
-        const std::string& tracefsPath, const std::string& traceFilePath, const bool ishm)
-        : ITraceContent(fd, tracefsPath, traceFilePath, ishm) {}
+    ITraceFileHdrContent(const int fd, const std::string& traceFilePath, const bool ishm)
+        : ITraceContent(fd, traceFilePath, ishm) {}
     bool WriteTraceContent() override = 0;
     bool InitTraceFileHdr(TraceFileHeader& fileHdr);
 };
 
 class TraceFileHdrLinux : public ITraceFileHdrContent {
 public:
-    TraceFileHdrLinux(const int fd, const std::string& tracefsPath, const std::string& traceFilePath)
-        : ITraceFileHdrContent(fd, tracefsPath, traceFilePath, false) {}
+    TraceFileHdrLinux(const int fd, const std::string& traceFilePath)
+        : ITraceFileHdrContent(fd, traceFilePath, false) {}
     bool WriteTraceContent() override;
 };
 
 class TraceBaseInfoContent : public ITraceContent {
 public:
-    TraceBaseInfoContent(const int fd,
-        const std::string& tracefsPath, const std::string& traceFilePath, const bool ishm)
-        : ITraceContent(fd, tracefsPath, traceFilePath, ishm) {}
+    TraceBaseInfoContent(const int fd, const std::string& traceFilePath, const bool ishm)
+        : ITraceContent(fd, traceFilePath, ishm) {}
     bool WriteTraceContent() override;
 
 private:
@@ -122,14 +119,14 @@ private:
 
 class TraceFileHdrHM : public ITraceFileHdrContent {
 public:
-    TraceFileHdrHM(const int fd, const std::string& tracefsPath, const std::string& traceFilePath)
-        : ITraceFileHdrContent(fd, tracefsPath, traceFilePath, true) {}
+    TraceFileHdrHM(const int fd, const std::string& traceFilePath)
+        : ITraceFileHdrContent(fd, traceFilePath, true) {}
     bool WriteTraceContent() override;
 };
 
 class TraceEventFmtContent : public ITraceContent {
 public:
-    TraceEventFmtContent(const int fd, const std::string& tracefsPath, const std::string& traceFilePath,
+    TraceEventFmtContent(const int fd, const std::string& traceFilePath,
         const bool ishm);
     bool WriteTraceContent() override;
 private:
@@ -139,7 +136,7 @@ private:
 
 class TraceCmdLinesContent : public ITraceContent {
 public:
-    TraceCmdLinesContent(const int fd, const std::string& tracefsPath, const std::string& traceFilePath,
+    TraceCmdLinesContent(const int fd, const std::string& traceFilePath,
         const bool ishm);
     bool WriteTraceContent() override;
 protected:
@@ -148,7 +145,7 @@ protected:
 
 class TraceTgidsContent : public ITraceContent {
 public:
-    TraceTgidsContent(const int fd, const std::string& tracefsPath, const std::string& traceFilePath,
+    TraceTgidsContent(const int fd, const std::string& traceFilePath,
         const bool ishm);
     bool WriteTraceContent() override;
 protected:
@@ -157,9 +154,9 @@ protected:
 
 class ITraceCpuRawContent : public ITraceContent {
 public:
-    ITraceCpuRawContent(const int fd, const std::string& tracefsPath, const std::string& traceFilePath,
+    ITraceCpuRawContent(const int fd, const std::string& traceFilePath,
         const bool ishm, const TraceDumpRequest& request)
-        : ITraceContent(fd, tracefsPath, traceFilePath, ishm), request_(request) {}
+        : ITraceContent(fd, traceFilePath, ishm), request_(request) {}
     bool WriteTraceContent() override = 0;
 
     bool WriteTracePipeRawData(const std::string& srcPath, const int cpuIdx);
@@ -182,24 +179,22 @@ protected:
 
 class TraceCpuRawLinux : public ITraceCpuRawContent {
 public:
-    TraceCpuRawLinux(const int fd,
-        const std::string& tracefsPath, const std::string& traceFilePath, const TraceDumpRequest& request)
-        : ITraceCpuRawContent(fd, tracefsPath, traceFilePath, false, request) {}
+    TraceCpuRawLinux(const int fd, const std::string& traceFilePath, const TraceDumpRequest& request)
+        : ITraceCpuRawContent(fd, traceFilePath, false, request) {}
     bool WriteTraceContent() override;
 };
 
 class TraceCpuRawHM : public ITraceCpuRawContent {
 public:
-    TraceCpuRawHM(const int fd,
-        const std::string& tracefsPath, const std::string& traceFilePath, const TraceDumpRequest& request)
-        : ITraceCpuRawContent(fd, tracefsPath, traceFilePath, true, request) {}
+    TraceCpuRawHM(const int fd, const std::string& traceFilePath, const TraceDumpRequest& request)
+        : ITraceCpuRawContent(fd, traceFilePath, true, request) {}
     bool WriteTraceContent() override;
 };
 
 class ITraceCpuRawRead : public ITraceContent {
 public:
-    ITraceCpuRawRead(const std::string& tracefsPath, const bool ishm, const TraceDumpRequest& request)
-        : ITraceContent(-1, tracefsPath, "", ishm), request_(request) {}
+    ITraceCpuRawRead(const bool ishm, const TraceDumpRequest& request)
+        : ITraceContent(-1, "", ishm), request_(request) {}
     bool WriteTraceContent() override = 0;
 
     bool CacheTracePipeRawData(const std::string& srcPath, const int cpuIdx);
@@ -219,22 +214,20 @@ protected:
 
 class TraceCpuRawReadLinux : public ITraceCpuRawRead {
 public:
-    TraceCpuRawReadLinux(const std::string& tracefsPath, const TraceDumpRequest& request)
-        : ITraceCpuRawRead(tracefsPath, false, request) {}
+    explicit TraceCpuRawReadLinux(const TraceDumpRequest& request) : ITraceCpuRawRead(false, request) {}
     bool WriteTraceContent() override;
 };
 
 class TraceCpuRawReadHM : public ITraceCpuRawRead {
 public:
-    TraceCpuRawReadHM(const std::string& tracefsPath, const TraceDumpRequest& request)
-        : ITraceCpuRawRead(tracefsPath, true, request) {}
+    explicit TraceCpuRawReadHM(const TraceDumpRequest& request) : ITraceCpuRawRead(true, request) {}
     bool WriteTraceContent() override;
 };
 
 class ITraceCpuRawWrite : public ITraceContent {
 public:
     ITraceCpuRawWrite(const int fd, const std::string& traceFilePath, const uint64_t taskId, const bool ishm)
-        : ITraceContent(fd, "", traceFilePath, ishm), taskId_(taskId) {}
+        : ITraceContent(fd, traceFilePath, ishm), taskId_(taskId) {}
     bool WriteTraceContent() override = 0;
 
 protected:
@@ -257,43 +250,41 @@ public:
 
 class ITraceHeaderPageContent : public ITraceContent {
 public:
-    ITraceHeaderPageContent(const int fd,
-        const std::string& tracefsPath, const std::string& traceFilePath, const bool ishm)
-        : ITraceContent(fd, tracefsPath, traceFilePath, ishm) {}
+    ITraceHeaderPageContent(const int fd, const std::string& traceFilePath, const bool ishm)
+        : ITraceContent(fd, traceFilePath, ishm) {}
     bool WriteTraceContent() override = 0;
 };
 
 class TraceHeaderPageLinux : public ITraceHeaderPageContent {
 public:
-    TraceHeaderPageLinux(const int fd, const std::string& tracefsPath, const std::string& traceFilePath);
+    TraceHeaderPageLinux(const int fd, const std::string& traceFilePath);
     bool WriteTraceContent() override;
 };
 
 class TraceHeaderPageHM : public ITraceHeaderPageContent {
 public:
-    TraceHeaderPageHM(const int fd, const std::string& tracefsPath, const std::string& traceFilePath)
-        : ITraceHeaderPageContent(fd, tracefsPath, traceFilePath, true) {}
+    TraceHeaderPageHM(const int fd, const std::string& traceFilePath)
+        : ITraceHeaderPageContent(fd, traceFilePath, true) {}
     bool WriteTraceContent() override;
 };
 
 class ITracePrintkFmtContent : public ITraceContent {
 public:
-    ITracePrintkFmtContent(const int fd,
-        const std::string& tracefsPath, const std::string& traceFilePath, const bool ishm)
-        : ITraceContent(fd, tracefsPath, traceFilePath, ishm) {}
+    ITracePrintkFmtContent(const int fd, const std::string& traceFilePath, const bool ishm)
+        : ITraceContent(fd, traceFilePath, ishm) {}
     bool WriteTraceContent() override = 0;
 };
 
 class TracePrintkFmtLinux : public ITracePrintkFmtContent {
 public:
-    TracePrintkFmtLinux(const int fd, const std::string& tracefsPath, const std::string& traceFilePath);
+    TracePrintkFmtLinux(const int fd, const std::string& traceFilePath);
     bool WriteTraceContent() override;
 };
 
 class TracePrintkFmtHM : public ITracePrintkFmtContent {
 public:
-    TracePrintkFmtHM(const int fd, const std::string& tracefsPath, const std::string& traceFilePath)
-        : ITracePrintkFmtContent(fd, tracefsPath, traceFilePath, true) {}
+    TracePrintkFmtHM(const int fd, const std::string& traceFilePath)
+        : ITracePrintkFmtContent(fd, traceFilePath, true) {}
     bool WriteTraceContent() override;
 };
 } // namespace Hitrace

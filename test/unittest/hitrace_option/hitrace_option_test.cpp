@@ -22,6 +22,8 @@
 #include <cstring>
 #include <gtest/gtest.h>
 
+#include "hitrace_option_util.h"
+
 using namespace testing::ext;
 using namespace OHOS::HiviewDFX::Hitrace;
 
@@ -39,35 +41,25 @@ namespace HitraceTest {
 #endif
 
 const std::string TELEMETRY_APP_PARAM = "debug.hitrace.telemetry.app";
-const std::string SET_EVENT_PID = "/sys/kernel/tracing/set_event_pid";
-const std::string DEBUG_SET_EVENT_PID = "/sys/kernel/debug/tracing/set_event_pid";
-const std::string NO_FILTER_EVENT = "/sys/kernel/tracing/no_filter_events";
-const std::string DEBUG_NO_FILTER_EVENT = "/sys/kernel/debug/tracing/no_filter_events";
+const std::string SET_EVENT_PID = "set_event_pid";
+const std::string NO_FILTER_EVENT = "no_filter_events";
 
 bool WriteStrToFile(const std::string& filename, const std::string& str);
 
 class HitraceOptionTest : public testing::Test {
 public:
-    static void SetUpTestCase();
-    static void TearDownTestCase();
     void SetUp();
     void TearDown();
 };
 
-void HitraceOptionTest::SetUpTestCase() { }
-
-void HitraceOptionTest::TearDownTestCase() { }
-
 void HitraceOptionTest::SetUp()
 {
-    WriteStrToFile(SET_EVENT_PID, "");
-    WriteStrToFile(DEBUG_SET_EVENT_PID, "");
+    WriteStrToFile(GetTraceRootPath() + SET_EVENT_PID, "");
 }
 
 void HitraceOptionTest::TearDown()
 {
-    WriteStrToFile(SET_EVENT_PID, "");
-    WriteStrToFile(DEBUG_SET_EVENT_PID, "");
+    WriteStrToFile(GetTraceRootPath() + SET_EVENT_PID, "");
 }
 
 bool WriteStrToFile(const std::string& filename, const std::string& str)
@@ -156,37 +148,31 @@ HWTEST_F(HitraceOptionTest, SetTelemetryAppNameTest_002, TestSize.Level1)
 HWTEST_F(HitraceOptionTest, AddFilterPid_001, TestSize.Level1)
 {
     WriteStrToFile(SET_EVENT_PID, "");
-    ASSERT_EQ(ReadFile(SET_EVENT_PID), "");
-    ASSERT_EQ(ReadFile(DEBUG_SET_EVENT_PID), "");
+    ASSERT_EQ(ReadFile(GetTraceRootPath() + SET_EVENT_PID), "");
 
     EXPECT_EQ(AddFilterPid(1), HITRACE_NO_ERROR);
-    EXPECT_TRUE(ContainsPid(SET_EVENT_PID, 1));
-    EXPECT_TRUE(ContainsPid(DEBUG_SET_EVENT_PID, 1));
+    EXPECT_TRUE(ContainsPid(GetTraceRootPath() + SET_EVENT_PID, 1));
 
     pid_t pid = getpid();
     EXPECT_EQ(AddFilterPid(pid), HITRACE_NO_ERROR);
-    EXPECT_TRUE(ContainsPid(SET_EVENT_PID, 1));
-    EXPECT_TRUE(ContainsPid(DEBUG_SET_EVENT_PID, 1));
-    EXPECT_TRUE(ContainsPid(SET_EVENT_PID, pid));
-    EXPECT_TRUE(ContainsPid(DEBUG_SET_EVENT_PID, pid));
+    EXPECT_TRUE(ContainsPid(GetTraceRootPath() + SET_EVENT_PID, 1));
+    EXPECT_TRUE(ContainsPid(GetTraceRootPath() + SET_EVENT_PID, pid));
 }
 
 HWTEST_F(HitraceOptionTest, FilterAppTrace_001, TestSize.Level1)
 {
     ASSERT_TRUE(OHOS::system::SetParameter(TELEMETRY_APP_PARAM, ""));
     ASSERT_EQ(OHOS::system::GetParameter(TELEMETRY_APP_PARAM, "null"), "");
-    WriteStrToFile(SET_EVENT_PID, "");
-    ASSERT_EQ(ReadFile(SET_EVENT_PID), "");
-    ASSERT_EQ(ReadFile(DEBUG_SET_EVENT_PID), "");
+    WriteStrToFile(GetTraceRootPath() + SET_EVENT_PID, "");
+    ASSERT_EQ(ReadFile(GetTraceRootPath() + SET_EVENT_PID), "");
 
     FilterAppTrace("com.test.app", 1);
-    EXPECT_EQ(ReadFile(SET_EVENT_PID), "");
+    EXPECT_EQ(ReadFile(GetTraceRootPath() + SET_EVENT_PID), "");
 
     ASSERT_TRUE(OHOS::system::SetParameter(TELEMETRY_APP_PARAM, "com.test.app"));
     ASSERT_EQ(OHOS::system::GetParameter(TELEMETRY_APP_PARAM, ""), "com.test.app");
     FilterAppTrace("com.test.app", 1);
-    EXPECT_TRUE(ContainsPid(SET_EVENT_PID, 1));
-    EXPECT_TRUE(ContainsPid(DEBUG_SET_EVENT_PID, 1));
+    EXPECT_TRUE(ContainsPid(GetTraceRootPath() + SET_EVENT_PID, 1));
 }
 
 HWTEST_F(HitraceOptionTest, FilterAppTrace_002, TestSize.Level1)
@@ -197,15 +183,15 @@ HWTEST_F(HitraceOptionTest, FilterAppTrace_002, TestSize.Level1)
     SetFilterAppName(appNames);
     EXPECT_EQ(OHOS::system::GetParameter(TELEMETRY_APP_PARAM, ""),
         std::string(testApp1) + "\t" + std::string(testApp2));
-    WriteStrToFile(SET_EVENT_PID, "");
+    WriteStrToFile(GetTraceRootPath() + SET_EVENT_PID, "");
     FilterAppTrace("com.test.app", 1);
-    EXPECT_FALSE(ContainsPid(SET_EVENT_PID, 1));
+    EXPECT_FALSE(ContainsPid(GetTraceRootPath() + SET_EVENT_PID, 1));
     constexpr auto testApp3 = "com.test.app";
     appNames.emplace_back(testApp3);
-    WriteStrToFile(SET_EVENT_PID, "");
+    WriteStrToFile(GetTraceRootPath() + SET_EVENT_PID, "");
     SetFilterAppName(appNames);
     FilterAppTrace("com.test.app", 1);
-    EXPECT_TRUE(ContainsPid(SET_EVENT_PID, 1));
+    EXPECT_TRUE(ContainsPid(GetTraceRootPath() + SET_EVENT_PID, 1));
 }
 
 HWTEST_F(HitraceOptionTest, AddNoFilterEvents001, TestSize.Level1)
@@ -214,8 +200,7 @@ HWTEST_F(HitraceOptionTest, AddNoFilterEvents001, TestSize.Level1)
         std::vector<std::string> events = {"binder:binder_transaction"};
         int32_t ret = AddNoFilterEvents(events);
         EXPECT_EQ(ret, HITRACE_NO_ERROR);
-        EXPECT_TRUE(ContainsEvents(NO_FILTER_EVENT, "binder:binder_transaction"));
-        EXPECT_TRUE(ContainsEvents(DEBUG_NO_FILTER_EVENT, "binder:binder_transaction"));
+        EXPECT_TRUE(ContainsEvents(GetTraceRootPath() + NO_FILTER_EVENT, "binder:binder_transaction"));
         ret = ClearNoFilterEvents();
         EXPECT_EQ(ret, HITRACE_NO_ERROR);
     }
@@ -227,14 +212,11 @@ HWTEST_F(HitraceOptionTest, AddNoFilterEvents002, TestSize.Level1)
         std::vector<std::string> events = {"binder:binder_transaction", "binder:binder_transaction_received"};
         int32_t ret = AddNoFilterEvents(events);
         EXPECT_EQ(ret, HITRACE_NO_ERROR);
-        EXPECT_TRUE(ContainsEvents(NO_FILTER_EVENT, "binder:binder_transaction"));
-        EXPECT_TRUE(ContainsEvents(DEBUG_NO_FILTER_EVENT, "binder:binder_transaction"));
-        EXPECT_TRUE(ContainsEvents(NO_FILTER_EVENT, "binder:binder_transaction_received"));
-        EXPECT_TRUE(ContainsEvents(DEBUG_NO_FILTER_EVENT, "binder:binder_transaction_received"));
+        EXPECT_TRUE(ContainsEvents(GetTraceRootPath() + NO_FILTER_EVENT, "binder:binder_transaction"));
+        EXPECT_TRUE(ContainsEvents(GetTraceRootPath() + NO_FILTER_EVENT, "binder:binder_transaction_received"));
         ret = ClearNoFilterEvents();
         EXPECT_EQ(ret, HITRACE_NO_ERROR);
-        EXPECT_EQ(ReadFile(NO_FILTER_EVENT), "");
-        EXPECT_EQ(ReadFile(DEBUG_NO_FILTER_EVENT), "");
+        EXPECT_EQ(ReadFile(GetTraceRootPath() + NO_FILTER_EVENT), "");
     }
 }
 
