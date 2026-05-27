@@ -32,7 +32,7 @@ constexpr auto SET_EVENT_PID = "set_event_pid";
 
 class HitraceOptionUtilTest : public testing::Test {
 protected:
-    const std::string& traceRootPath_ = GetTraceRootPath();
+    const std::string& traceRootPath_ = Hitrace::GetTraceRootPath();
 };
 
 HWTEST_F(HitraceOptionUtilTest, HitraceOptionUtilTest001, TestSize.Level1)

@@ -79,7 +79,6 @@ private:
         std::vector<TraceDumpTask>& completedTasks);
     void ProcessNewTask(std::shared_ptr<HitraceDumpPipe>& dumpPipe, int& sleepCnt);
 
-    std::string tracefsDir_ = "";
     std::vector<TraceFileInfo> loopTraceFiles_ = {};
     std::vector<TraceFileInfo> cacheTraceFiles_ = {};
     std::vector<TraceDumpTask> traceDumpTaskVec_ = {};

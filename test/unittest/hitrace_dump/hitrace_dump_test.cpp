@@ -35,6 +35,7 @@
 #include "common_utils.h"
 #include "dynamic_buffer.h"
 #include "hitrace_define.h"
+#include "hitrace_option_util.h"
 #include "hilog/log.h"
 #include "parameters.h"
 #include "securec.h"
@@ -1239,14 +1240,13 @@ HWTEST_F(HitraceDumpTest, ParammeterCheck_001, TestSize.Level0)
 
 HWTEST_F(HitraceDumpTest, SetTraceStatus_001, TestSize.Level0)
 {
-    std::string traceRootPath = "";
-    ASSERT_TRUE(IsTraceMounted(traceRootPath));
+    ASSERT_TRUE(!GetTraceRootPath().empty());
 
     EXPECT_EQ(SetTraceStatus(true), TraceErrorCode::SUCCESS);
-    EXPECT_EQ(IsTracingOn(traceRootPath), true);
+    EXPECT_EQ(IsTracingOn(GetTraceRootPath()), true);
 
     EXPECT_EQ(SetTraceStatus(false), TraceErrorCode::SUCCESS);
-    EXPECT_EQ(IsTracingOn(traceRootPath), false);
+    EXPECT_EQ(IsTracingOn(GetTraceRootPath()), false);
 }
 
 /**
@@ -1573,9 +1573,8 @@ HWTEST_F(HitraceDumpTest, OpenTraceTest002, TestSize.Level1)
     };
     ASSERT_TRUE(OpenTrace(traceArgs) == TraceErrorCode::SUCCESS);
 
-    std::string traceRootPath = "";
-    ASSERT_TRUE(IsTraceMounted(traceRootPath));
-    std::string curBufferSizeStr = ReadFile("buffer_size_kb", traceRootPath);
+    ASSERT_TRUE(!GetTraceRootPath().empty());
+    std::string curBufferSizeStr = ReadFile("buffer_size_kb", GetTraceRootPath());
     curBufferSizeStr = curBufferSizeStr.substr(0, curBufferSizeStr.find("\n"));
     TraceJsonParser& parser = TraceJsonParser::Instance();
     int defaultBufferSize = parser.GetSnapshotDefaultBufferSizeKb();
@@ -1663,10 +1662,10 @@ HWTEST_F(HitraceDumpTest, OpenTraceTest004, TestSize.Level1)
 HWTEST_F(HitraceDumpTest, DynamicBufferTest001, TestSize.Level2)
 {
     const int cpuNums = GetCpuProcessors();
-    std::string tracePath;
-    DynamicBuffer emptyTracePath(tracePath, cpuNums);
+    DynamicBuffer emptyTracePath("", cpuNums);
     ASSERT_EQ(emptyTracePath.CalculateBufferSize().size(), 0lu);
-    bool isTraceMounted = IsTraceMounted(tracePath);
+    const std::string& tracePath = GetTraceRootPath();
+    bool isTraceMounted = !tracePath.empty();
     DynamicBuffer dynamicBuffer(tracePath, cpuNums);
     if (isTraceMounted && !IsHmKernel()) {
         ASSERT_EQ(dynamicBuffer.CalculateBufferSize().size(), static_cast<uint64_t>(cpuNums));

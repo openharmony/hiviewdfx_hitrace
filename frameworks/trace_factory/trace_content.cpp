@@ -26,6 +26,7 @@
 
 #include "common_define.h"
 #include "common_utils.h"
+#include "hitrace_option_util.h"
 #include "securec.h"
 #include "trace_file_utils.h"
 #include "trace_json_parser.h"
@@ -57,7 +58,7 @@ thread_local int g_writeFileLimit = 0;
 thread_local int g_outputFileSize = 0;
 thread_local uint8_t g_buffer[BUFFER_SIZE] = { 0 };
 
-static void PreWriteAllTraceEventsFormat(const int fd, const std::string& tracefsPath)
+static void PreWriteAllTraceEventsFormat(const int fd)
 {
     const TraceJsonParser& traceJsonParser = TraceJsonParser::Instance();
     const std::map<std::string, TraceTag>& allTags = traceJsonParser.GetAllTagInfos();
@@ -68,7 +69,7 @@ static void PreWriteAllTraceEventsFormat(const int fd, const std::string& tracef
         }
     }
     for (auto& traceFmt : traceFormats) {
-        std::string srcPath = tracefsPath + traceFmt;
+        std::string srcPath = GetTraceRootPath() + traceFmt;
         if (access(srcPath.c_str(), R_OK) != -1) {
             WriteEventFile(srcPath, fd);
         }
@@ -109,10 +110,9 @@ static void UpdateFirstLastPageTimeStamp(const uint64_t pageTraceTime, bool& pri
 }
 
 ITraceContent::ITraceContent(const int fd,
-                             const std::string& tracefsPath,
                              const std::string& traceFilePath,
                              const bool ishm)
-    : traceFileFd_(fd), tracefsPath_(tracefsPath), traceFilePath_(traceFilePath), isHm_(ishm) {}
+    : traceFileFd_(fd), traceFilePath_(traceFilePath), isHm_(ishm) {}
 
 bool ITraceContent::WriteTraceData(const uint8_t contentType)
 {
@@ -468,10 +468,9 @@ ssize_t TraceBaseInfoContent::WriteBootTimeMs()
 }
 
 TraceEventFmtContent::TraceEventFmtContent(const int fd,
-                                           const std::string& tracefsPath,
                                            const std::string& traceFilePath,
                                            const bool ishm)
-    : ITraceContent(fd, tracefsPath, traceFilePath, ishm)
+    : ITraceContent(fd, traceFilePath, ishm)
 {
     inlineEventFmt_ = IsBootTraceInlineEventFmtEnabled();
     if (inlineEventFmt_) {
@@ -492,7 +491,7 @@ TraceEventFmtContent::TraceEventFmtContent(const int fd,
         HILOG_ERROR(LOG_CORE, "TraceEventFmtContent: open %{public}s failed.", savedEventsFormatPath.c_str());
     }
     if (!hasPreWrotten && traceSourceFd_) {
-        PreWriteAllTraceEventsFormat(traceSourceFd_.GetFd(), tracefsPath_);
+        PreWriteAllTraceEventsFormat(traceSourceFd_.GetFd());
         if (lseek(traceSourceFd_.GetFd(), 0, SEEK_SET) == -1) {
             HILOG_ERROR(LOG_CORE, "TraceEventFmtContent: lseek to start pos failed, errno(%{public}d)", errno);
         }
@@ -527,7 +526,7 @@ bool TraceEventFmtContent::WriteTraceContentInline()
     }
     ssize_t writeLen = 0;
     for (auto& traceFmt : traceFormats) {
-        std::string srcPath = tracefsPath_ + traceFmt;
+        std::string srcPath = GetTraceRootPath() + traceFmt;
         if (access(srcPath.c_str(), R_OK) == -1) {
             continue;
         }
@@ -550,16 +549,15 @@ bool TraceEventFmtContent::WriteTraceContentInline()
 }
 
 TraceCmdLinesContent::TraceCmdLinesContent(const int fd,
-                                           const std::string& tracefsPath,
                                            const std::string& traceFilePath,
                                            const bool ishm)
-    : ITraceContent(fd, tracefsPath, traceFilePath, ishm)
+    : ITraceContent(fd, traceFilePath, ishm)
 {
     auto filterContext = TraceContextManager::GetInstance().GetTraceFilterContext();
     if (filterContext != nullptr) {
         return;
     }
-    const std::string cmdlinesPath = tracefsPath_ + "saved_cmdlines";
+    const std::string cmdlinesPath = GetTraceRootPath() + "saved_cmdlines";
     traceSourceFd_ = SmartFd(open(cmdlinesPath.c_str(), O_RDONLY | O_NONBLOCK));
     if (!traceSourceFd_) {
         HILOG_ERROR(LOG_CORE, "TraceCmdLinesContent: open %{public}s failed.", cmdlinesPath.c_str());
@@ -604,15 +602,15 @@ ssize_t TraceCmdLinesContent::WriteTraceDataContent()
     return writeLen;
 }
 
-TraceTgidsContent::TraceTgidsContent(const int fd, const std::string& tracefsPath, const std::string& traceFilePath,
+TraceTgidsContent::TraceTgidsContent(const int fd, const std::string& traceFilePath,
                                      const bool ishm)
-    : ITraceContent(fd, tracefsPath, traceFilePath, ishm)
+    : ITraceContent(fd, traceFilePath, ishm)
 {
     auto filterContext = TraceContextManager::GetInstance().GetTraceFilterContext();
     if (filterContext != nullptr) {
         return;
     }
-    const std::string tgidsPath = tracefsPath_ + "saved_tgids";
+    const std::string tgidsPath = GetTraceRootPath() + "saved_tgids";
     traceSourceFd_ = SmartFd(open(tgidsPath.c_str(), O_RDONLY | O_NONBLOCK));
     if (!traceSourceFd_) {
         HILOG_ERROR(LOG_CORE, "TraceTgidsContent: open %{public}s failed.", tgidsPath.c_str());
@@ -666,20 +664,16 @@ bool ITraceCpuRawContent::WriteTracePipeRawData(const std::string& srcPath, cons
     ssize_t readLen = 0;
     int pageChkFailedTime = 0;
     bool printFirstPageTime = false; // update first page time in every WriteTracePipeRawData calling.
-    bool shouldContinue = true;
-
-    while (shouldContinue) {
+    bool endFlag = false;
+    while (!endFlag) {
         int bytes = 0;
-        bool endFlag = false;
         ReadTracePipeRawLoop(rawTraceFd.GetFd(), bytes, endFlag, pageChkFailedTime, printFirstPageTime);
         readLen += bytes;
         DoWriteTraceData(g_buffer, bytes, writeLen);
         if (IsWriteFileOverflow(g_outputFileSize, writeLen,
             request_.fileSize != 0 ? request_.fileSize : DEFAULT_FILE_SIZE * KB_PER_MB)) {
             isOverFlow_ = true;
-            shouldContinue = false;
-        } else if (endFlag) {
-            shouldContinue = false;
+            break;
         }
     }
     UpdateTraceContentHeader(rawtraceHdr, static_cast<uint32_t>(writeLen));
@@ -759,7 +753,7 @@ bool TraceCpuRawLinux::WriteTraceContent()
 {
     int cpuNums = GetCpuProcessors();
     for (int cpuIdx = 0; cpuIdx < cpuNums; cpuIdx++) {
-        std::string srcPath = tracefsPath_ + "per_cpu/cpu" + std::to_string(cpuIdx) + "/trace_pipe_raw";
+        std::string srcPath = GetTraceRootPath() + "per_cpu/cpu" + std::to_string(cpuIdx) + "/trace_pipe_raw";
         if (!WriteTracePipeRawData(srcPath, cpuIdx)) {
             return false;
         }
@@ -773,7 +767,7 @@ bool TraceCpuRawLinux::WriteTraceContent()
 
 bool TraceCpuRawHM::WriteTraceContent()
 {
-    std::string srcPath = tracefsPath_ + "/trace_pipe_raw";
+    std::string srcPath = GetTraceRootPath() + "trace_pipe_raw";
     if (!WriteTracePipeRawData(srcPath, 0)) { // 0 : hongmeng kernel only has one cpu trace raw pipe
         return false;
     }
@@ -858,7 +852,7 @@ bool TraceCpuRawReadLinux::WriteTraceContent()
 {
     int cpuNums = GetCpuProcessors();
     for (int cpuIdx = 0; cpuIdx < cpuNums; cpuIdx++) {
-        std::string srcPath = tracefsPath_ + "per_cpu/cpu" + std::to_string(cpuIdx) + "/trace_pipe_raw";
+        std::string srcPath = GetTraceRootPath() + "per_cpu/cpu" + std::to_string(cpuIdx) + "/trace_pipe_raw";
         if (!CacheTracePipeRawData(srcPath, cpuIdx)) {
             return false;
         }
@@ -873,7 +867,7 @@ bool TraceCpuRawReadLinux::WriteTraceContent()
 
 bool TraceCpuRawReadHM::WriteTraceContent()
 {
-    std::string srcPath = tracefsPath_ + "/trace_pipe_raw";
+    std::string srcPath = GetTraceRootPath() + "trace_pipe_raw";
     if (!CacheTracePipeRawData(srcPath, 0)) { // 0 : hongmeng kernel only has one cpu trace raw pipe
         return false;
     }
@@ -940,11 +934,10 @@ bool TraceCpuRawWriteHM::WriteTraceContent()
     return true;
 }
 
-TraceHeaderPageLinux::TraceHeaderPageLinux(const int fd,
-                                           const std::string& tracefsPath, const std::string& traceFilePath)
-    : ITraceHeaderPageContent(fd, tracefsPath, traceFilePath, false)
+TraceHeaderPageLinux::TraceHeaderPageLinux(const int fd, const std::string& traceFilePath)
+    : ITraceHeaderPageContent(fd, traceFilePath, false)
 {
-    const std::string headerPagePath = tracefsPath_ + "events/header_page";
+    const std::string headerPagePath = GetTraceRootPath() + "events/header_page";
     traceSourceFd_ = SmartFd(open(headerPagePath.c_str(), O_RDONLY | O_NONBLOCK));
     if (!traceSourceFd_) {
         HILOG_ERROR(LOG_CORE, "TraceHeaderPageLinux: open %{public}s failed.", headerPagePath.c_str());
@@ -961,11 +954,10 @@ bool TraceHeaderPageHM::WriteTraceContent()
     return true;
 }
 
-TracePrintkFmtLinux::TracePrintkFmtLinux(const int fd,
-                                         const std::string& tracefsPath, const std::string& traceFilePath)
-    : ITracePrintkFmtContent(fd, tracefsPath, traceFilePath, false)
+TracePrintkFmtLinux::TracePrintkFmtLinux(const int fd, const std::string& traceFilePath)
+    : ITracePrintkFmtContent(fd, traceFilePath, false)
 {
-    const std::string printkFormatPath = tracefsPath_ + "printk_formats";
+    const std::string printkFormatPath = GetTraceRootPath() + "printk_formats";
     traceSourceFd_ = SmartFd(open(printkFormatPath.c_str(), O_RDONLY | O_NONBLOCK));
     if (!traceSourceFd_) {
         HILOG_ERROR(LOG_CORE, "TracePrintkFmtLinux: open %{public}s failed.", printkFormatPath.c_str());
