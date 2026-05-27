@@ -19,6 +19,7 @@
 #include <atomic>
 #include <cinttypes>
 #include <csignal>
+#include <cstring>
 #include <fstream>
 #include <map>
 #include <memory>
@@ -44,6 +45,7 @@
 #include "hitrace_meter.h"
 #include "hitrace_util.h"
 #include "hitrace_option/hitrace_option.h"
+#include "hitrace_option/hitrace_option_util.h"
 #include "hilog/log.h"
 #include "parameters.h"
 #include "securec.h"
@@ -79,8 +81,7 @@ struct TraceParams {
     int64_t totalSize;
 };
 
-const int SAVED_CMDLINES_SIZE = 3072; // 3M
-const int BYTE_PER_MB = 1024 * 1024;
+constexpr int SAVED_CMDLINES_SIZE = 3072; // 3M
 constexpr int32_t MAX_RATIO_UNIT = 1000;
 constexpr uint32_t DURATION_TOLERANCE = 100;
 constexpr int32_t DEFAULT_FULL_TRACE_LENGTH = 30;
@@ -94,7 +95,6 @@ std::atomic<pid_t> g_asyncWaitTid(-1);
 std::mutex g_traceMutex;
 uint64_t g_sysInitParamTags = 0;
 uint8_t g_traceMode = TraceMode::CLOSE;
-std::string g_traceRootPath;
 uint64_t g_totalFileSizeLimit = 0;
 uint64_t g_sliceMaxDuration = 0;
 uint64_t g_traceStartTime = 0;
@@ -111,8 +111,6 @@ TraceParams g_currentTraceParams = {};
 std::mutex g_traceRetAndCallbackMutex;
 std::map<uint64_t, std::function<void(TraceRetInfo)>> g_callbacks;
 std::map<uint64_t, TraceRetInfo> g_traceRetInfos;
-
-const std::string TELEMETRY_APP_PARAM = "debug.hitrace.telemetry.app";
 
 bool IsTraceOpen()
 {
@@ -159,7 +157,7 @@ bool CheckTags(const std::vector<std::string>& tags, const std::map<std::string,
 bool CheckTagGroup(const std::vector<std::string>& tagGroups,
                    const std::map<std::string, std::vector<std::string>>& tagGroupTable)
 {
-    for (auto groupName : tagGroups) {
+    for (const auto& groupName : tagGroups) {
         if (tagGroupTable.find(groupName) == tagGroupTable.end()) {
             HILOG_ERROR(LOG_CORE, "CheckTagGroup: %{public}s is not provided.", groupName.c_str());
             return false;
@@ -189,12 +187,13 @@ bool WriteStrToFileInner(const std::string& filename, const std::string& str)
 
 bool WriteStrToFile(const std::string& filename, const std::string& str)
 {
-    if (access((g_traceRootPath + filename).c_str(), W_OK) < 0) {
+    auto targetFilePath = GetTraceRootPath() + filename;
+    if (access(targetFilePath.c_str(), W_OK) < 0) {
         HILOG_WARN(LOG_CORE, "WriteStrToFile: Failed to access %{public}s, errno(%{public}d).",
-            (g_traceRootPath + filename).c_str(), errno);
+            targetFilePath.c_str(), errno);
         return false;
     }
-    return WriteStrToFileInner(g_traceRootPath + filename, str);
+    return WriteStrToFileInner(targetFilePath, str);
 }
 
 bool SetTraceNodeStatus(const std::string &path, bool enabled)
@@ -204,8 +203,7 @@ bool SetTraceNodeStatus(const std::string &path, bool enabled)
 
 void TruncateFile(const std::string& path)
 {
-    auto fd = SmartFd(creat((g_traceRootPath + path).c_str(), 0));
-    if (!fd) {
+    if (!SmartFd(creat((GetTraceRootPath() + path).c_str(), 0))) {
         HILOG_ERROR(LOG_CORE, "TruncateFile: clear old trace failed.");
     }
 }
@@ -223,7 +221,8 @@ bool SetProperty(const std::string& property, const std::string& value)
 
 void ClearFilterParam()
 {
-    if (!OHOS::system::SetParameter(TELEMETRY_APP_PARAM, "")) {
+    constexpr auto telemetryAppParam = "debug.hitrace.telemetry.app";
+    if (!OHOS::system::SetParameter(telemetryAppParam, "")) {
         HILOG_ERROR(LOG_CORE, "ClearFilterParam: clear param fail");
     }
     TraceContextManager::GetInstance().ReleaseContext();
@@ -233,12 +232,12 @@ void ClearFilterParam()
 void TraceInit(const std::map<std::string, TraceTag>& allTags)
 {
     // close all ftrace events
-    for (auto it = allTags.begin(); it != allTags.end(); it++) {
-        if (it->second.type != 1) {
+    for (const auto& allTag : allTags) {
+        if (allTag.second.type != 1) {
             continue;
         }
-        for (size_t i = 0; i < it->second.enablePath.size(); i++) {
-            if (!SetTraceNodeStatus(it->second.enablePath[i], false)) {
+        for (const auto& nodePath : allTag.second.enablePath) {
+            if (!SetTraceNodeStatus(nodePath, false)) {
                 HILOG_ERROR(LOG_CORE, "TraceInit: SetTraceNodeStatus fail");
             }
         }
@@ -263,7 +262,7 @@ void SetAllTags(const TraceParams& traceParams, const std::map<std::string, Trac
     std::set<std::string> readyEnableTagList;
     bool isSchedltExisting = false;
     bool isSchedExisting = false;
-    for (std::string tagName : traceParams.tags) {
+    for (const std::string& tagName : traceParams.tags) {
         if (tagName == "schedlt") {
             isSchedltExisting = true;
         } else if (tagName == "sched") {
@@ -273,24 +272,24 @@ void SetAllTags(const TraceParams& traceParams, const std::map<std::string, Trac
     }
     if (isSchedltExisting && !isSchedExisting) {
         // If the saved_cmdlines_size of the device is equal to 10240, then the device supports schedlt
-        if (ReadFile("saved_cmdlines_size", g_traceRootPath).find("10240") == std::string::npos) {
+        if (ReadFile("saved_cmdlines_size", GetTraceRootPath()).find("10240") == std::string::npos) {
             HILOG_WARN(LOG_CORE, "SetAllTags: Not support schedlt, try to open sched.");
             readyEnableTagList.insert("sched");
         }
     }
 
-    for (std::string groupName : traceParams.tagGroups) {
+    for (const std::string& groupName : traceParams.tagGroups) {
         auto iter = tagGroupTable.find(groupName);
         if (iter == tagGroupTable.end()) {
             continue;
         }
-        for (std::string tag : iter->second) {
+        for (const std::string& tag : iter->second) {
             readyEnableTagList.insert(tag);
         }
     }
 
     uint64_t enabledUserTags = 0;
-    for (std::string tagName : readyEnableTagList) {
+    for (const std::string& tagName : readyEnableTagList) {
         auto iter = allTags.find(tagName);
         if (iter == allTags.end()) {
             HILOG_ERROR(LOG_CORE, "SetAllTags: tag[%{public}s] is invalid.", tagName.c_str());
@@ -323,7 +322,7 @@ void SetClock(const std::string& clockType)
         if (clockType.empty()) {
             break;
         }
-        std::string allClocks = ReadFile(traceClockPath, g_traceRootPath);
+        std::string allClocks = ReadFile(traceClockPath, GetTraceRootPath());
         auto findTypes =  SearchWordsByKeyWord(allClocks, clockType);
         if (findTypes.empty()) {
             break;
@@ -348,7 +347,7 @@ void SetClock(const std::string& clockType)
     }
 }
 
-static bool SetTraceSetting(const TraceParams& traceParams, const std::map<std::string, TraceTag>& allTags,
+bool SetTraceSetting(const TraceParams& traceParams, const std::map<std::string, TraceTag>& allTags,
     const std::map<std::string, std::vector<std::string>>& tagGroupTable, std::vector<std::string>& tagFmts)
 {
     if (!traceParams.filterPids.empty()) {
@@ -443,18 +442,18 @@ int32_t GetTraceFileFromVec(const uint64_t& inputTraceStartTime, const uint64_t&
     int32_t coverDuration = 0;
     uint64_t utTargetStartTimeMs = inputTraceStartTime * S_TO_MS;
     uint64_t utTargetEndTimeMs = inputTraceEndTime * S_TO_MS;
-    for (auto it = fileVec.begin(); it != fileVec.end(); it++) {
-        if (access(it->filename.c_str(), F_OK) != 0) {
-            HILOG_WARN(LOG_CORE, "GetTraceFileFromVec: %{public}s is not exist.", it->filename.c_str());
+    for (const auto& it : fileVec) {
+        if (access(it.filename.c_str(), F_OK) != 0) {
+            HILOG_WARN(LOG_CORE, "GetTraceFileFromVec: %{public}s is not exist.", it.filename.c_str());
             continue;
         }
         HILOG_INFO(LOG_CORE, "GetTraceFileFromVec: %{public}s, [%{public}" PRIu64 ", %{public}" PRIu64 "].",
-            it->filename.c_str(), it->traceStartTime, it->traceEndTime);
-        if (((it->traceEndTime >= utTargetStartTimeMs && it->traceStartTime <= utTargetEndTimeMs)) &&
-            (it->traceEndTime - it->traceStartTime < 2000 * S_TO_MS)) { // 2000 : max trace duration 2000s
-            targetFiles.push_back(*it);
-            coverDuration += static_cast<int32_t>(std::min(it->traceEndTime, utTargetEndTimeMs + DURATION_TOLERANCE) -
-                std::max(it->traceStartTime, utTargetStartTimeMs - DURATION_TOLERANCE));
+            it.filename.c_str(), it.traceStartTime, it.traceEndTime);
+        if (((it.traceEndTime >= utTargetStartTimeMs && it.traceStartTime <= utTargetEndTimeMs)) &&
+            (it.traceEndTime - it.traceStartTime < 2000 * S_TO_MS)) { // 2000 : max trace duration 2000s
+            targetFiles.push_back(it);
+            coverDuration += static_cast<int32_t>(std::min(it.traceEndTime, utTargetEndTimeMs + DURATION_TOLERANCE) -
+                std::max(it.traceStartTime, utTargetStartTimeMs - DURATION_TOLERANCE));
         }
     }
     return coverDuration;
@@ -518,22 +517,20 @@ void ProcessRecordTask(const std::string& outputPath)
     TraceDumpExecutor::GetInstance().StartDumpTraceLoop(param, outputPath);
 }
 
-void SetProcessName(std::string& processName)
+void SetProcessName(const std::string& processName)
 {
-    if (processName.size() <= 0) {
+    if (processName.empty()) {
         return;
     }
-
-    const int maxNameLen = 16;
-    std::string setName;
+    constexpr unsigned maxNameLen = 16;
     if (processName.size() > maxNameLen) {
-        setName = processName.substr(0, maxNameLen);
-    } else {
-        setName = processName;
+        const auto targetProcess = processName.substr(0, maxNameLen);
+        prctl(PR_SET_NAME, targetProcess.c_str(), nullptr, nullptr, nullptr);
+        HILOG_INFO(LOG_CORE, "New process: %{public}s.", targetProcess.c_str());
+        return;
     }
-
-    prctl(PR_SET_NAME, setName.c_str(), nullptr, nullptr, nullptr);
-    HILOG_INFO(LOG_CORE, "New process: %{public}s.", setName.c_str());
+    prctl(PR_SET_NAME, processName.c_str(), nullptr, nullptr, nullptr);
+    HILOG_INFO(LOG_CORE, "New process: %{public}s.", processName.c_str());
 }
 
 void TimeoutSignalHandler(int signum)
@@ -568,21 +565,21 @@ void LogStackTrace(const pid_t pid)
 
 void WaitForChildProcess(const pid_t pid)
 {
-    const int maxWaitTime = 5000;
-    const int checkInterval = 100;
+    constexpr int maxWaitTime = 5000;
     int waitedTime = 0;
     while (waitedTime < maxWaitTime) {
         pid_t result = TEMP_FAILURE_RETRY(waitpid(pid, nullptr, WNOHANG));
         if (result > 0) {
             HILOG_INFO(LOG_CORE, "Child process %d exited successfully.", pid);
             break;
-        } else if (result == 0) {
-            usleep(checkInterval * 1000); // 1000 : 1ms
-            waitedTime += checkInterval;
-        } else {
+        }
+        if (result < 0) {
             HILOG_ERROR(LOG_CORE, "waitpid failed: %s", strerror(errno));
             break;
         }
+        constexpr int checkInterval = 100;
+        usleep(checkInterval * 1000); // 1000 : 1ms
+        waitedTime += checkInterval;
     }
     if (waitedTime >= maxWaitTime) {
         HILOG_ERROR(LOG_CORE, "Child process %d did not exit within timeout.", pid);
@@ -704,7 +701,7 @@ TraceErrorCode ProcessDumpSync(TraceRetInfo& traceRetInfo, const std::string& ou
         return TraceErrorCode::FILE_ERROR;
     }
 
-    int pipefd[2];
+    int pipefd[2]{-1};
     if (pipe(pipefd) == -1) {
         HILOG_ERROR(LOG_CORE, "ProcessDumpSync: pipe creation error.");
         return TraceErrorCode::PIPE_CREATE_ERROR;
@@ -957,12 +954,11 @@ bool CheckParam()
     if (currentTags == g_sysInitParamTags) {
         return true;
     }
-
     if (currentTags == 0) {
         HILOG_ERROR(LOG_CORE, "allowed tags are cleared, should restart.");
-        return false;
+    } else {
+        HILOG_ERROR(LOG_CORE, "trace is being used, should restart.");
     }
-    HILOG_ERROR(LOG_CORE, "trace is being used, should restart.");
     return false;
 }
 
@@ -971,10 +967,7 @@ bool CheckParam()
 */
 bool CheckServiceRunning()
 {
-    if (CheckParam() && IsTracingOn(g_traceRootPath)) {
-        return true;
-    }
-    return false;
+    return CheckParam() && IsTracingOn(GetTraceRootPath());
 }
 
 bool CpuBufferBalanceTask(const std::string& traceRootPath)
@@ -1011,8 +1004,8 @@ void StartCpuBufferBalanceService()
     }
     constexpr int intervalTimeInSecond = 15;
     const auto threadName = "CpuBufferBalancer";
-    g_cpuBufferBalanceService->StartSubThread([traceRootPath = g_traceRootPath] {
-            return CpuBufferBalanceTask(traceRootPath);
+    g_cpuBufferBalanceService->StartSubThread([] {
+            return CpuBufferBalanceTask(GetTraceRootPath());
         }, intervalTimeInSecond, threadName);
 }
 
@@ -1027,7 +1020,7 @@ bool PreWriteEventsFormat(const std::vector<std::string>& eventFormats)
         return false;
     }
     for (auto& format : eventFormats) {
-        std::string srcPath = g_traceRootPath + format;
+        const std::string srcPath = GetTraceRootPath() + format;
         if (access(srcPath.c_str(), R_OK) != -1) {
             WriteEventFile(srcPath, fd.GetFd());
         }
@@ -1057,7 +1050,7 @@ TraceErrorCode HandleDefaultTraceOpen(const std::vector<std::string>& tagGroups)
     const std::map<std::string, std::vector<std::string>>& tagGroupTable = traceJsonParser.GetTagGroups();
     std::vector<std::string> tagFmts = traceJsonParser.GetBaseFmtPath();
 
-    if (tagGroups.size() == 0 || !CheckTagGroup(tagGroups, tagGroupTable)) {
+    if (tagGroups.empty() || !CheckTagGroup(tagGroups, tagGroupTable)) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: TAG_ERROR.");
         return TAG_ERROR;
     }
@@ -1075,7 +1068,7 @@ void RemoveUnSpace(std::string str, std::string& args)
 {
     int maxCircleTimes = 30;
     int curTimes = 0;
-    const size_t symbolAndSpaceLen = 2;
+    constexpr size_t symbolAndSpaceLen = 2;
     std::string strSpace = str + " ";
     while (curTimes < maxCircleTimes) {
         curTimes++;
@@ -1131,7 +1124,7 @@ bool ParseArgs(std::string args, TraceParams& traceParams, const std::map<std::s
     RemoveUnSpace(":", args);
     RemoveUnSpace(",", args);
     std::vector<std::string> argList = Split(args, ' ');
-    for (std::string item : argList) {
+    for (const auto& item : argList) {
         size_t pos = item.find(":");
         if (pos == std::string::npos) {
             HILOG_ERROR(LOG_CORE, "trace command line without colon appears: %{public}s, continue.", item.c_str());
@@ -1186,10 +1179,11 @@ void WriteCpuFreqTrace()
 
 void SetTotalFileSizeLimitAndSliceMaxDuration(const uint64_t& totalFileSize, const uint64_t& sliceMaxDuration)
 {
+    constexpr uint64_t bytePerMb = 1024 * 1024;
     if (totalFileSize == 0) {
-        g_totalFileSizeLimit = DEFAULT_TOTAL_CACHE_FILE_SIZE * BYTE_PER_MB;
+        g_totalFileSizeLimit = DEFAULT_TOTAL_CACHE_FILE_SIZE * bytePerMb;
     } else {
-        g_totalFileSizeLimit = totalFileSize * BYTE_PER_MB;
+        g_totalFileSizeLimit = totalFileSize * bytePerMb;
     }
     if (sliceMaxDuration == 0) {
         g_sliceMaxDuration = DEFAULT_TRACE_SLICE_DURATION;
@@ -1246,7 +1240,7 @@ static TraceErrorCode ResetTracePipelineLocked()
     g_cpuBufferBalanceService = nullptr;
     OHOS::system::SetParameter(TRACE_KEY_APP_PID, "-1");
     const std::map<std::string, TraceTag>& allTags = TraceJsonParser::Instance().GetAllTagInfos();
-    if (allTags.size() == 0) {
+    if (allTags.empty()) {
         HILOG_ERROR(LOG_CORE, "ResetTracePipelineLocked: ParseTagInfo TAG_ERROR.");
         return TAG_ERROR;
     }
@@ -1307,7 +1301,7 @@ TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups)
             static_cast<uint32_t>(g_traceMode));
         return WRONG_TRACE_MODE;
     }
-    if (!IsTraceMounted(g_traceRootPath)) {
+    if (GetTraceRootPath().empty()) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: TRACE_NOT_SUPPORTED.");
         return TRACE_NOT_SUPPORTED;
     }
@@ -1315,15 +1309,14 @@ TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups)
     if (IsHmKernel()) {
         TraceJsonParser& traceJsonParser = TraceJsonParser::Instance();
         const std::map<std::string, TraceTag>& allTags = traceJsonParser.GetAllTagInfos();
-        if (allTags.size() == 0) {
+        if (allTags.empty()) {
             HILOG_ERROR(LOG_CORE, "OpenTrace: ParseTagInfo TAG_ERROR.");
             return TAG_ERROR;
         }
         auto iter = allTags.find("binder");
         if (iter != allTags.end()) {
-            const std::vector<std::string> enablePath = iter->second.enablePath;
-            auto noFilterEvents = GetNoFilterEvents(enablePath);
-            if (noFilterEvents.size() > 0) {
+            auto noFilterEvents = GetNoFilterEvents(iter->second.enablePath);
+            if (!noFilterEvents.empty()) {
                 AddNoFilterEvents(noFilterEvents);
             }
         }
@@ -1347,15 +1340,15 @@ TraceErrorCode OpenTrace(const std::vector<std::string>& tagGroups)
 
 static void OpenTraceLog(const TraceParams& traceParams)
 {
-    std::string tags = "";
-    for (auto tag : traceParams.tags) {
+    std::string tags;
+    for (const auto& tag : traceParams.tags) {
         if (!tags.empty()) {
             tags += ", ";
         }
         tags += tag;
     }
-    std::string filterPids = "";
-    for (auto filterPid : traceParams.filterPids) {
+    std::string filterPids;
+    for (const auto& filterPid : traceParams.filterPids) {
         if (!filterPids.empty()) {
             filterPids += ", ";
         }
@@ -1374,7 +1367,7 @@ static void SetNoFilterEvents(const std::map<std::string, TraceTag>& allTags)
         if (iter != allTags.end()) {
             const std::vector<std::string> enablePath = iter->second.enablePath;
             auto noFilterEvents = GetNoFilterEvents(enablePath);
-            if (noFilterEvents.size() > 0) {
+            if (!noFilterEvents.empty()) {
                 AddNoFilterEvents(noFilterEvents);
             }
         }
@@ -1384,7 +1377,7 @@ static void SetNoFilterEvents(const std::map<std::string, TraceTag>& allTags)
 static std::vector<std::string> TransformFilterPids(const std::vector<int32_t>& filterPids)
 {
     std::vector<std::string> ret {};
-    std::transform(filterPids.begin(), filterPids.end(), std::back_inserter(ret), [](int32_t pid) {
+    std::transform(filterPids.begin(), filterPids.end(), std::back_inserter(ret), [](const int32_t pid) {
         return std::to_string(pid);
     });
     return ret;
@@ -1470,7 +1463,7 @@ TraceErrorCode OpenTrace(const TraceArgs& traceArgs)
         HILOG_ERROR(LOG_CORE, "OpenTrace: WRONG_TRACE_MODE, current trace mode: %{public}u.", g_traceMode);
         return TraceErrorCode::WRONG_TRACE_MODE;
     }
-    if (!IsTraceMounted(g_traceRootPath)) {
+    if (GetTraceRootPath().empty()) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: TRACE_NOT_SUPPORTED.");
         return TraceErrorCode::TRACE_NOT_SUPPORTED;
     }
@@ -1511,7 +1504,7 @@ TraceErrorCode OpenTrace(const std::string& args)
         return WRONG_TRACE_MODE;
     }
 
-    if (!IsTraceMounted(g_traceRootPath)) {
+    if (GetTraceRootPath().empty()) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: TRACE_NOT_SUPPORTED.");
         return TRACE_NOT_SUPPORTED;
     }
@@ -1521,7 +1514,7 @@ TraceErrorCode OpenTrace(const std::string& args)
     const std::map<std::string, std::vector<std::string>>& tagGroupTable = traceJsonParser.GetTagGroups();
     std::vector<std::string> traceFormats = traceJsonParser.GetBaseFmtPath();
 
-    if (allTags.size() == 0 || tagGroupTable.size() == 0) {
+    if (allTags.empty() || tagGroupTable.empty()) {
         HILOG_ERROR(LOG_CORE, "OpenTrace: ParseTagInfo TAG_ERROR.");
         return TAG_ERROR;
     }
@@ -1536,7 +1529,7 @@ TraceErrorCode OpenTrace(const std::string& args)
         if (iter != allTags.end()) {
             const std::vector<std::string> enablePath = iter->second.enablePath;
             auto noFilterEvents = GetNoFilterEvents(enablePath);
-            if (noFilterEvents.size() > 0) {
+            if (!noFilterEvents.empty()) {
                 AddNoFilterEvents(noFilterEvents);
             }
         }
@@ -1774,11 +1767,9 @@ TraceErrorCode SetTraceStatus(bool enable)
     if (BootTraceArbShouldReturnLocked(false, &bootGate)) {
         return bootGate;
     }
-    if (g_traceRootPath.empty()) {
-        if (!IsTraceMounted(g_traceRootPath)) {
-            HILOG_ERROR(LOG_CORE, "SetTraceStatus: TRACE_NOT_SUPPORTED.");
-            return TRACE_NOT_SUPPORTED;
-        }
+    if (GetTraceRootPath().empty()) {
+        HILOG_ERROR(LOG_CORE, "SetTraceStatus: TRACE_NOT_SUPPORTED.");
+        return TRACE_NOT_SUPPORTED;
     }
 
     if (!SetTraceNodeStatus(TRACING_ON_NODE, enable)) {
@@ -1800,8 +1791,8 @@ bool AddSymlinkXattr(const std::string& fileName)
     char valueStr[DEFAULT_XATTR_VALUE_SIZE];
     ssize_t len = TEMP_FAILURE_RETRY(getxattr(realFilePath, ATTR_NAME_LINK, valueStr, sizeof(valueStr)));
     if (len == -1) {
-        std::string value = "1";
-        if (TEMP_FAILURE_RETRY(setxattr(realFilePath, ATTR_NAME_LINK, value.c_str(), value.size(), 0)) == -1) {
+        constexpr auto value = "1";
+        if (TEMP_FAILURE_RETRY(setxattr(realFilePath, ATTR_NAME_LINK, value, strlen(value), 0)) == -1) {
             HILOG_ERROR(LOG_CORE, "AddSymlinkXattr: setxattr failed errno %{public}d", errno);
             return false;
         }

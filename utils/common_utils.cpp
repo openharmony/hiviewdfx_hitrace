@@ -215,19 +215,6 @@ bool IsRootVersion()
     return OHOS::system::GetBoolParameter("const.debuggable", false);
 }
 
-bool IsTraceMounted(std::string& traceRootPath)
-{
-    if (access((std::string(DEBUGFS_TRACING_DIR) + std::string(TRACE_MARKER_NODE)).c_str(), F_OK) != -1) {
-        traceRootPath = DEBUGFS_TRACING_DIR;
-        return true;
-    }
-    if (access((std::string(TRACEFS_DIR) + std::string(TRACE_MARKER_NODE)).c_str(), F_OK) != -1) {
-        traceRootPath = TRACEFS_DIR;
-        return true;
-    }
-    return false;
-}
-
 std::string GetFilePath(const std::string& fileName, const std::string& traceRootPath)
 {
     return traceRootPath + fileName;

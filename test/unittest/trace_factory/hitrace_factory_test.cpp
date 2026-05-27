@@ -62,7 +62,7 @@ static off_t GetFileSize(const std::string& file)
 HWTEST_F(HitraceFactoryTest, TraceSourceTest001, TestSize.Level2)
 {
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory =
-        std::make_shared<TraceSourceLinuxFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        std::make_shared<TraceSourceLinuxFactory>(TEST_TRACE_TEMP_FILE);
     ASSERT_TRUE(traceSourceFactory != nullptr);
     auto traceFileHdr = traceSourceFactory->GetTraceFileHeader();
     ASSERT_TRUE(traceFileHdr != nullptr);
@@ -81,7 +81,7 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest001, TestSize.Level2)
 HWTEST_F(HitraceFactoryTest, TraceSourceTest002, TestSize.Level2)
 {
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory =
-        std::make_shared<TraceSourceHMFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        std::make_shared<TraceSourceHMFactory>(TEST_TRACE_TEMP_FILE);
     ASSERT_TRUE(traceSourceFactory != nullptr);
     auto traceFileHdr = traceSourceFactory->GetTraceFileHeader();
     ASSERT_TRUE(traceFileHdr != nullptr);
@@ -100,7 +100,7 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest002, TestSize.Level2)
 HWTEST_F(HitraceFactoryTest, TraceSourceTest003, TestSize.Level2)
 {
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory =
-        std::make_shared<TraceSourceLinuxFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        std::make_shared<TraceSourceLinuxFactory>(TEST_TRACE_TEMP_FILE);
     ASSERT_TRUE(traceSourceFactory != nullptr);
     auto traceHdrPage = traceSourceFactory->GetTraceHeaderPage();
     ASSERT_TRUE(traceHdrPage != nullptr);
@@ -123,7 +123,7 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest003, TestSize.Level2)
 HWTEST_F(HitraceFactoryTest, TraceSourceTest004, TestSize.Level2)
 {
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory =
-        std::make_shared<TraceSourceHMFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        std::make_shared<TraceSourceHMFactory>(TEST_TRACE_TEMP_FILE);
     ASSERT_TRUE(traceSourceFactory != nullptr);
     auto traceHdrPage = traceSourceFactory->GetTraceHeaderPage();
     ASSERT_TRUE(traceHdrPage != nullptr);
@@ -144,7 +144,7 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest004, TestSize.Level2)
 HWTEST_F(HitraceFactoryTest, TraceSourceTest005, TestSize.Level2)
 {
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory =
-        std::make_shared<TraceSourceLinuxFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        std::make_shared<TraceSourceLinuxFactory>(TEST_TRACE_TEMP_FILE);
     ASSERT_TRUE(traceSourceFactory != nullptr);
     auto tracePrintkFmt = traceSourceFactory->GetTracePrintkFmt();
     ASSERT_TRUE(tracePrintkFmt != nullptr);
@@ -163,7 +163,7 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest005, TestSize.Level2)
 HWTEST_F(HitraceFactoryTest, TraceSourceTest006, TestSize.Level2)
 {
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory =
-        std::make_shared<TraceSourceHMFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        std::make_shared<TraceSourceHMFactory>(TEST_TRACE_TEMP_FILE);
     ASSERT_TRUE(traceSourceFactory != nullptr);
     auto tracePrintkFmt = traceSourceFactory->GetTracePrintkFmt();
     ASSERT_TRUE(tracePrintkFmt != nullptr);
@@ -184,7 +184,7 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest006, TestSize.Level2)
 HWTEST_F(HitraceFactoryTest, TraceSourceTest007, TestSize.Level2)
 {
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory =
-        std::make_shared<TraceSourceLinuxFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        std::make_shared<TraceSourceLinuxFactory>(TEST_TRACE_TEMP_FILE);
     ASSERT_TRUE(traceSourceFactory != nullptr);
     auto traceEventFmts = traceSourceFactory->GetTraceEventFmt();
     ASSERT_TRUE(traceEventFmts != nullptr);
@@ -204,7 +204,7 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest007, TestSize.Level2)
 HWTEST_F(HitraceFactoryTest, TraceSourceTest008, TestSize.Level2)
 {
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory =
-        std::make_shared<TraceSourceHMFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        std::make_shared<TraceSourceHMFactory>(TEST_TRACE_TEMP_FILE);
     ASSERT_TRUE(traceSourceFactory != nullptr);
     auto traceEventFmts = traceSourceFactory->GetTraceEventFmt();
     ASSERT_TRUE(traceEventFmts != nullptr);
@@ -229,7 +229,7 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest009, TestSize.Level2)
     }
     ASSERT_FALSE(access("/data/log/hitrace/saved_events_format", F_OK) == 0);
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory =
-        std::make_shared<TraceSourceHMFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        std::make_shared<TraceSourceHMFactory>(TEST_TRACE_TEMP_FILE);
     ASSERT_TRUE(traceSourceFactory != nullptr);
     auto traceEventFmts = traceSourceFactory->GetTraceEventFmt();
     ASSERT_TRUE(traceEventFmts != nullptr);
@@ -249,7 +249,7 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest009, TestSize.Level2)
 HWTEST_F(HitraceFactoryTest, TraceSourceTest010, TestSize.Level2)
 {
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory =
-        std::make_shared<TraceSourceLinuxFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        std::make_shared<TraceSourceLinuxFactory>(TEST_TRACE_TEMP_FILE);
     ASSERT_TRUE(traceSourceFactory != nullptr);
     auto traceCmdLines = traceSourceFactory->GetTraceCmdLines();
     ASSERT_TRUE(traceCmdLines != nullptr);
@@ -268,7 +268,7 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest010, TestSize.Level2)
 HWTEST_F(HitraceFactoryTest, TraceSourceTest011, TestSize.Level2)
 {
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory =
-        std::make_shared<TraceSourceHMFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        std::make_shared<TraceSourceHMFactory>(TEST_TRACE_TEMP_FILE);
     ASSERT_TRUE(traceSourceFactory != nullptr);
     auto traceCmdLines = traceSourceFactory->GetTraceCmdLines();
     ASSERT_TRUE(traceCmdLines != nullptr);
@@ -287,7 +287,7 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest011, TestSize.Level2)
 HWTEST_F(HitraceFactoryTest, TraceSourceTest012, TestSize.Level2)
 {
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory =
-        std::make_shared<TraceSourceLinuxFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        std::make_shared<TraceSourceLinuxFactory>(TEST_TRACE_TEMP_FILE);
     ASSERT_TRUE(traceSourceFactory != nullptr);
     auto traceTgids = traceSourceFactory->GetTraceTgids();
     ASSERT_TRUE(traceTgids != nullptr);
@@ -306,7 +306,7 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest012, TestSize.Level2)
 HWTEST_F(HitraceFactoryTest, TraceSourceTest013, TestSize.Level2)
 {
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory =
-        std::make_shared<TraceSourceHMFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        std::make_shared<TraceSourceHMFactory>(TEST_TRACE_TEMP_FILE);
     ASSERT_TRUE(traceSourceFactory != nullptr);
     auto traceTgids = traceSourceFactory->GetTraceTgids();
     ASSERT_TRUE(traceTgids != nullptr);
@@ -329,9 +329,9 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest014, TestSize.Level2)
     ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory = nullptr;
     if (IsHmKernel()) {
-        traceSourceFactory = std::make_shared<TraceSourceHMFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        traceSourceFactory = std::make_shared<TraceSourceHMFactory>(TEST_TRACE_TEMP_FILE);
     } else {
-        traceSourceFactory = std::make_shared<TraceSourceLinuxFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        traceSourceFactory = std::make_shared<TraceSourceLinuxFactory>(TEST_TRACE_TEMP_FILE);
     }
     ASSERT_TRUE(traceSourceFactory != nullptr);
     TraceDumpRequest request = {
@@ -363,9 +363,9 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest015, TestSize.Level2)
     ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory = nullptr;
     if (IsHmKernel()) {
-        traceSourceFactory = std::make_shared<TraceSourceHMFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        traceSourceFactory = std::make_shared<TraceSourceHMFactory>(TEST_TRACE_TEMP_FILE);
     } else {
-        traceSourceFactory = std::make_shared<TraceSourceLinuxFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        traceSourceFactory = std::make_shared<TraceSourceLinuxFactory>(TEST_TRACE_TEMP_FILE);
     }
     ASSERT_TRUE(traceSourceFactory != nullptr);
     auto traceFileHdr = traceSourceFactory->GetTraceFileHeader();
@@ -408,7 +408,7 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest015, TestSize.Level2)
 HWTEST_F(HitraceFactoryTest, TraceSourceTest016, TestSize.Level2)
 {
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory =
-        std::make_shared<TraceSourceLinuxFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        std::make_shared<TraceSourceLinuxFactory>(TEST_TRACE_TEMP_FILE);
     ASSERT_TRUE(traceSourceFactory != nullptr);
     ASSERT_EQ(traceSourceFactory->GetTraceFilePath(), TEST_TRACE_TEMP_FILE);
     const std::string newTestFile = "/data/local/tmp/new_test_file";
@@ -430,7 +430,7 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest016, TestSize.Level2)
 HWTEST_F(HitraceFactoryTest, TraceSourceTest017, TestSize.Level2)
 {
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory =
-        std::make_shared<TraceSourceLinuxFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        std::make_shared<TraceSourceLinuxFactory>(TEST_TRACE_TEMP_FILE);
     ASSERT_TRUE(traceSourceFactory != nullptr);
     auto baseInfo = traceSourceFactory->GetTraceBaseInfo();
     ASSERT_TRUE(baseInfo != nullptr);
@@ -449,7 +449,7 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest017, TestSize.Level2)
 HWTEST_F(HitraceFactoryTest, TraceSourceTest018, TestSize.Level2)
 {
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory =
-        std::make_shared<TraceSourceHMFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        std::make_shared<TraceSourceHMFactory>(TEST_TRACE_TEMP_FILE);
     ASSERT_TRUE(traceSourceFactory != nullptr);
     auto baseInfo = traceSourceFactory->GetTraceBaseInfo();
     ASSERT_TRUE(baseInfo != nullptr);
@@ -473,9 +473,9 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest019, TestSize.Level2)
     sleep(1);
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory = nullptr;
     if (IsHmKernel()) {
-        traceSourceFactory = std::make_shared<TraceSourceHMFactory>(TRACEFS_DIR, "");
+        traceSourceFactory = std::make_shared<TraceSourceHMFactory>("");
     } else {
-        traceSourceFactory = std::make_shared<TraceSourceLinuxFactory>(TRACEFS_DIR, "");
+        traceSourceFactory = std::make_shared<TraceSourceLinuxFactory>("");
     }
     EXPECT_TRUE(traceSourceFactory != nullptr);
     TraceDumpRequest request = { .taskId = 1 };
@@ -501,11 +501,11 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest020, TestSize.Level2)
     std::shared_ptr<ITraceSourceFactory> traceSourceRead = nullptr;
     std::shared_ptr<ITraceSourceFactory> traceSourceWrite = nullptr;
     if (IsHmKernel()) {
-        traceSourceRead = std::make_shared<TraceSourceHMFactory>(TRACEFS_DIR, "");
-        traceSourceWrite = std::make_shared<TraceSourceHMFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        traceSourceRead = std::make_shared<TraceSourceHMFactory>("");
+        traceSourceWrite = std::make_shared<TraceSourceHMFactory>(TEST_TRACE_TEMP_FILE);
     } else {
-        traceSourceRead = std::make_shared<TraceSourceLinuxFactory>(TRACEFS_DIR, "");
-        traceSourceWrite = std::make_shared<TraceSourceLinuxFactory>(TRACEFS_DIR, TEST_TRACE_TEMP_FILE);
+        traceSourceRead = std::make_shared<TraceSourceLinuxFactory>("");
+        traceSourceWrite = std::make_shared<TraceSourceLinuxFactory>(TEST_TRACE_TEMP_FILE);
     }
     EXPECT_TRUE(traceSourceRead != nullptr);
     EXPECT_TRUE(traceSourceWrite != nullptr);

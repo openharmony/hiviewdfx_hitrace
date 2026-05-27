@@ -22,6 +22,7 @@
 #include "common_define.h"
 #include "common_utils.h"
 #include "file_ageing_utils.h"
+#include "hitrace_option_util.h"
 #include "hilog/log.h"
 #include "trace_dump_state.h"
 #include "trace_file_utils.h"
@@ -67,7 +68,7 @@ std::vector<std::string> FilterLoopTraceResult(const std::vector<TraceFileInfo>&
 
 TraceDumpExecutor::TraceDumpExecutor()
 {
-    if (!IsTraceMounted(tracefsDir_)) {
+    if (Hitrace::GetTraceRootPath().empty()) {
         HILOG_ERROR(LOG_CORE, "TraceDumpExecutor: Trace is not mounted.");
     }
 }
@@ -151,7 +152,7 @@ void TraceDumpExecutor::StopCacheTraceLoop()
 
 TraceDumpRet TraceDumpExecutor::DumpTrace(const TraceDumpParam& param, const std::string& outputPath)
 {
-    MarkClockSync(tracefsDir_);
+    MarkClockSync(Hitrace::GetTraceRootPath());
     std::string traceFile = GenerateTraceFileName(param.type, outputPath);
     return DumpTraceInner(param, traceFile);
 }
@@ -425,11 +426,11 @@ TraceDumpRet TraceDumpExecutor::ExecuteDumpTrace(std::shared_ptr<ITraceSourceFac
 
 bool TraceDumpExecutor::DoDumpTraceLoop(const TraceDumpParam& param, std::string& traceFile, bool isLimited)
 {
-    if (tracefsDir_.empty()) {
+    if (Hitrace::GetTraceRootPath().empty()) {
         HILOG_ERROR(LOG_CORE, "DumpTrace : Trace fs path is empty.");
         return false;
     }
-    MarkClockSync(tracefsDir_);
+    MarkClockSync(Hitrace::GetTraceRootPath());
     int fileSizeThreshold = param.type == TraceDumpType::TRACE_CACHE ?
         DEFAULT_CACHE_FILE_SIZE * BYTE_PER_KB : DEFAULT_FILE_SIZE * BYTE_PER_KB;
     if (param.fileSize != 0) {
@@ -437,9 +438,9 @@ bool TraceDumpExecutor::DoDumpTraceLoop(const TraceDumpParam& param, std::string
     }
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory = nullptr;
     if (IsHmKernel()) {
-        traceSourceFactory = std::make_shared<TraceSourceHMFactory>(tracefsDir_, traceFile);
+        traceSourceFactory = std::make_shared<TraceSourceHMFactory>(traceFile);
     } else {
-        traceSourceFactory = std::make_shared<TraceSourceLinuxFactory>(tracefsDir_, traceFile);
+        traceSourceFactory = std::make_shared<TraceSourceLinuxFactory>(traceFile);
     }
 
     std::lock_guard<std::mutex> lck(traceFileMutex_);
@@ -479,14 +480,14 @@ bool TraceDumpExecutor::DoDumpTraceLoop(const TraceDumpParam& param, std::string
 TraceDumpRet TraceDumpExecutor::DumpTraceInner(const TraceDumpParam& param, const std::string& traceFile)
 {
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory = nullptr;
-    if (tracefsDir_.empty()) {
+    if (Hitrace::GetTraceRootPath().empty()) {
         HILOG_ERROR(LOG_CORE, "DumpTrace : Trace fs path is empty.");
         return { TraceErrorCode::TRACE_NOT_SUPPORTED, "", 0, 0, 0 };
     }
     if (IsHmKernel()) {
-        traceSourceFactory = std::make_shared<TraceSourceHMFactory>(tracefsDir_, traceFile);
+        traceSourceFactory = std::make_shared<TraceSourceHMFactory>(traceFile);
     } else {
-        traceSourceFactory = std::make_shared<TraceSourceLinuxFactory>(tracefsDir_, traceFile);
+        traceSourceFactory = std::make_shared<TraceSourceLinuxFactory>(traceFile);
     }
 
     TraceDumpRequest request = {
@@ -500,15 +501,15 @@ TraceDumpRet TraceDumpExecutor::DumpTraceInner(const TraceDumpParam& param, cons
 bool TraceDumpExecutor::DoReadRawTrace(TraceDumpTask& task)
 {
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory = nullptr;
-    if (tracefsDir_.empty()) {
+    if (Hitrace::GetTraceRootPath().empty()) {
         HILOG_ERROR(LOG_CORE, "DoReadRawTrace : Trace fs path is empty.");
         task.code = TraceErrorCode::TRACE_NOT_SUPPORTED;
         return false;
     }
     if (IsHmKernel()) {
-        traceSourceFactory = std::make_shared<TraceSourceHMFactory>(tracefsDir_, "");
+        traceSourceFactory = std::make_shared<TraceSourceHMFactory>("");
     } else {
-        traceSourceFactory = std::make_shared<TraceSourceLinuxFactory>(tracefsDir_, "");
+        traceSourceFactory = std::make_shared<TraceSourceLinuxFactory>("");
     }
 
     TraceDumpRequest request = {
@@ -540,15 +541,15 @@ bool TraceDumpExecutor::DoReadRawTrace(TraceDumpTask& task)
 bool TraceDumpExecutor::DoWriteRawTrace(TraceDumpTask& task)
 {
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory = nullptr;
-    if (tracefsDir_.empty()) {
+    if (Hitrace::GetTraceRootPath().empty()) {
         HILOG_ERROR(LOG_CORE, "DoWriteRawTrace : Trace fs path is empty.");
         task.code = TraceErrorCode::TRACE_NOT_SUPPORTED;
         return false;
     }
     if (IsHmKernel()) {
-        traceSourceFactory = std::make_shared<TraceSourceHMFactory>(tracefsDir_, task.outputFile);
+        traceSourceFactory = std::make_shared<TraceSourceHMFactory>(task.outputFile);
     } else {
-        traceSourceFactory = std::make_shared<TraceSourceLinuxFactory>(tracefsDir_, task.outputFile);
+        traceSourceFactory = std::make_shared<TraceSourceLinuxFactory>(task.outputFile);
     }
 
     TraceDumpRequest request = {

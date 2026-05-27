@@ -102,12 +102,15 @@ config("HitraceMeterTest_config") {
     "hitrace_meter",
     "$hitrace_common_path",
     "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace_option",
     "$hitrace_utils_path",
   ]
 }
 
 ohos_unittest("HitraceMeterTest") {
   module_out_path = module_output_path
+
+  include_dirs = [ "$hitrace_interfaces_path/native/innerkits/include/hitrace_option" ]
 
   sources = [
     "$hitrace_interfaces_path/native/innerkits/src/hitrace_meter.cpp",
@@ -124,6 +127,7 @@ ohos_unittest("HitraceMeterTest") {
 
   deps = [
     "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
+    "$hitrace_interfaces_path/native/innerkits:libhitrace_option",
     "$hitrace_interfaces_path/native/innerkits:libhitracechain",
     "$hitrace_utils_path:hitrace_common_utils",
   ]
@@ -148,6 +152,7 @@ config("HitraceMeterNDKTest_config") {
     "$hitrace_common_path",
     "$hitrace_frameworks_path/include",
     "$hitrace_interfaces_path/native/innerkits/include",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace_option",
     "$hitrace_interfaces_path/native/kits/include/hitrace",
     "$hitrace_utils_path",
   ]
@@ -155,7 +160,7 @@ config("HitraceMeterNDKTest_config") {
 
 ohos_unittest("HitraceMeterNDKTest") {
   module_out_path = module_output_path
-
+  include_dirs = [ "$hitrace_interfaces_path/native/innerkits/include/hitrace_option" ]
   sources = [
     "$hitrace_frameworks_path/hitrace_ndk/hitrace_chain_ndk.c",
     "$hitrace_frameworks_path/hitrace_ndk/hitrace_meter_ndk.c",
@@ -176,6 +181,7 @@ ohos_unittest("HitraceMeterNDKTest") {
   deps = [
     "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
     "$hitrace_interfaces_path/native/innerkits:libhitracechain",
+    "$hitrace_interfaces_path/native/innerkits:libhitrace_option",
     "$hitrace_utils_path:hitrace_common_utils",
   ]
 
@@ -343,6 +349,7 @@ ohos_unittest("HitraceUtilsTest") {
   include_dirs = [
     "$hitrace_common_path",
     "$hitrace_utils_path",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace_option",
   ]
 
   sources = [
@@ -359,6 +366,7 @@ ohos_unittest("HitraceUtilsTest") {
     "$hitrace_utils_path:hitrace_common_utils",
     "$hitrace_utils_path:hitrace_file_utils",
     "$hitrace_utils_path:hitrace_json_parser",
+    "$hitrace_interfaces_path/native/innerkits:libhitrace_option",
   ]
 
   external_deps = [
@@ -378,6 +386,7 @@ ohos_unittest("HitraceEventTest") {
 
   include_dirs = [
     "$hitrace_common_path",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace_option",
     "$hitrace_utils_path",
   ]
 
@@ -391,6 +400,7 @@ ohos_unittest("HitraceEventTest") {
   deps = [
     "$hitrace_utils_path:hitrace_common_utils",
     "$hitrace_utils_path:hitrace_file_utils",
+    "$hitrace_interfaces_path/native/innerkits:libhitrace_option",
   ]
 
   external_deps = [
@@ -408,13 +418,14 @@ config("HitraceMeterFfiTest_config") {
     "$hitrace_common_path",
     "$hitrace_interfaces_path/cj/kits/ffi/include",
     "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace_option",
     "$hitrace_utils_path",
   ]
 }
 
 ohos_unittest("HitraceMeterFfiTest") {
   module_out_path = module_output_path
-
+  include_dirs = [ "$hitrace_interfaces_path/native/innerkits/include/hitrace_option" ]
   sources = [
     "$hitrace_interfaces_path/cj/kits/ffi/src/hitracechain_ffi.cpp",
     "$hitrace_interfaces_path/cj/kits/ffi/src/hitracechain_impl.cpp",
@@ -435,6 +446,7 @@ ohos_unittest("HitraceMeterFfiTest") {
   deps = [
     "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
     "$hitrace_interfaces_path/native/innerkits:libhitracechain",
+    "$hitrace_interfaces_path/native/innerkits:libhitrace_option",
     "$hitrace_utils_path:hitrace_common_utils",
   ]
 
@@ -504,6 +516,7 @@ ohos_unittest("HitraceCMDTest") {
     "$hitrace_frameworks_path/include",
     "$hitrace_interfaces_path/native/innerkits/include",
     "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace_option",
     "$hitrace_utils_path",
   ]
 
@@ -515,6 +528,7 @@ ohos_unittest("HitraceCMDTest") {
   deps = [
     "$hitrace_config_path:hitrace_tags",
     "$hitrace_interfaces_path/native/innerkits:hitrace_dump",
+    "$hitrace_interfaces_path/native/innerkits:libhitrace_option",
     "$hitrace_utils_path:hitrace_common_utils",
     "$hitrace_utils_path:hitrace_file_utils",
     "$hitrace_utils_path:hitrace_json_parser",

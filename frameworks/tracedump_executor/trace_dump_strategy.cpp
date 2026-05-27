@@ -228,7 +228,7 @@ bool SnapshotTraceDumpStrategy::DoCore(std::shared_ptr<ITraceSourceFactory> trac
         ret.code = traceContentPtr.cpuRaw->GetDumpStatus();
         return false;
     }
-    auto traceFile = traceContentPtr.cpuRaw->GetTraceFilePath();
+    const auto& traceFile = traceContentPtr.cpuRaw->GetTraceFilePath();
     ret.code = traceContentPtr.cpuRaw->GetDumpStatus();
     ret.traceStartTime = traceContentPtr.cpuRaw->GetFirstPageTimeStamp();
     ret.traceEndTime = traceContentPtr.cpuRaw->GetLastPageTimeStamp();
@@ -249,7 +249,7 @@ bool RecordTraceDumpStrategy::DoCore(std::shared_ptr<ITraceSourceFactory> traceS
             ret.code = traceContentPtr.cpuRaw->GetDumpStatus();
             return false;
         }
-        auto traceFile = traceContentPtr.cpuRaw->GetTraceFilePath();
+        const auto& traceFile = traceContentPtr.cpuRaw->GetTraceFilePath();
         ret.code = traceContentPtr.cpuRaw->GetDumpStatus();
         ret.traceStartTime = traceContentPtr.cpuRaw->GetFirstPageTimeStamp();
         ret.traceEndTime = traceContentPtr.cpuRaw->GetLastPageTimeStamp();
@@ -280,7 +280,7 @@ bool CacheTraceDumpStrategy::DoCore(std::shared_ptr<ITraceSourceFactory> traceSo
         clock_gettime(CLOCK_BOOTTIME, &bts);
         uint64_t endTime = static_cast<uint64_t>(bts.tv_sec * S_TO_NS + bts.tv_nsec);
         uint64_t timeDiff = (endTime - startTime) / S_TO_NS;
-        auto traceFile = traceContentPtr.cpuRaw->GetTraceFilePath();
+        const auto& traceFile = traceContentPtr.cpuRaw->GetTraceFilePath();
         ret.code = traceContentPtr.cpuRaw->GetDumpStatus();
         ret.traceStartTime = traceContentPtr.cpuRaw->GetFirstPageTimeStamp();
         ret.traceEndTime = traceContentPtr.cpuRaw->GetLastPageTimeStamp();
