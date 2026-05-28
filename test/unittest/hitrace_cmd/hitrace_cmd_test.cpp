@@ -139,6 +139,16 @@ public:
         return output;
     }
 
+    std::string RunCmdAndGetStdout(const std::string& cmd)
+    {
+        testing::internal::CaptureStdout();
+        RunCmd(cmd);
+        std::string output = testing::internal::GetCapturedStdout();
+        GTEST_LOG_(INFO) << "command: " << cmd;
+        GTEST_LOG_(INFO) << "stdout: " << output;
+        return output;
+    }
+
     /** Run command and return exit code (for boot-trace subcommand validation). */
     static int RunCmdWithExitCode(const std::string& cmd)
     {
@@ -537,6 +547,60 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest011, TestSize.Level1)
 }
 
 /**
+ * @tc.name: HitraceCMDTest056
+ * @tc.desc: test boot trace help visibility follows root version
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceCMDTest, HitraceCMDTest056, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HitraceCMDTest056: start.";
+
+    std::string output = RunCmdAndGetStdout("hitrace -h");
+    EXPECT_NE(output.find("--boot_trace"), std::string::npos) << output;
+    EXPECT_NE(output.find("--repeat"), std::string::npos) << output;
+    EXPECT_NE(output.find("--file_prefix"), std::string::npos) << output;
+    EXPECT_NE(output.find("--increment"), std::string::npos) << output;
+    EXPECT_NE(output.find("  --boot_trace           Configure boot trace capture"), std::string::npos) << output;
+    EXPECT_NE(output.find("  --file_prefix prefix   Set the boot trace output file prefix"), std::string::npos) <<
+        output;
+    EXPECT_NE(output.find("  --repeat N             Set boot trace capture count"), std::string::npos) << output;
+    EXPECT_NE(output.find("  --increment            Append an incrementing index"), std::string::npos) << output;
+    const std::string supportText =
+        "It supports concrete categories with -b/--buffer_size, -t/--time,\n"
+        "                         --file_prefix, --repeat and --increment.";
+    EXPECT_NE(output.find(supportText), std::string::npos) << output;
+    EXPECT_EQ(output.find("--file_size, --trace_clock, --overwrite"), std::string::npos) << output;
+    size_t filePrefixPos = output.find("  --file_prefix prefix");
+    size_t repeatPos = output.find("  --repeat N");
+    size_t incrementPos = output.find("  --increment");
+    EXPECT_NE(filePrefixPos, std::string::npos) << output;
+    EXPECT_NE(repeatPos, std::string::npos) << output;
+    EXPECT_NE(incrementPos, std::string::npos) << output;
+    EXPECT_LT(filePrefixPos, repeatPos) << output;
+    EXPECT_LT(repeatPos, incrementPos) << output;
+    EXPECT_NE(output.find("Only supports\n                         --boot_trace."), std::string::npos) << output;
+    EXPECT_EQ(output.find("boot-trace"), std::string::npos) << output;
+
+    SetBootTraceForceRootForTest(false);
+    output = RunCmdAndGetStdout("hitrace -h");
+    EXPECT_EQ(output.find("--boot_trace"), std::string::npos) << output;
+    EXPECT_EQ(output.find("--repeat"), std::string::npos) << output;
+    EXPECT_EQ(output.find("--file_prefix"), std::string::npos) << output;
+    EXPECT_EQ(output.find("--increment"), std::string::npos) << output;
+    EXPECT_EQ(output.find("boot-trace"), std::string::npos) << output;
+
+    SetBootTraceRootVersionForTest(false);
+    output = RunCmdAndGetStdout("hitrace -h");
+    EXPECT_EQ(output.find("--boot_trace"), std::string::npos) << output;
+    EXPECT_EQ(output.find("--repeat"), std::string::npos) << output;
+    EXPECT_EQ(output.find("--file_prefix"), std::string::npos) << output;
+    EXPECT_EQ(output.find("--increment"), std::string::npos) << output;
+    EXPECT_EQ(output.find("boot-trace"), std::string::npos) << output;
+
+    GTEST_LOG_(INFO) << "HitraceCMDTest056: end.";
+}
+
+/**
  * @tc.name: HitraceCMDTest012
  * @tc.desc: test the normal input --list_categories
  * @tc.type: FUNC
@@ -738,7 +802,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest020, TestSize.Level1)
     std::string content = ReadBootTraceConfig();
     ASSERT_FALSE(content.empty());
     EXPECT_NE(content.find("\"duration_sec\": 30"), std::string::npos);
-    EXPECT_NE(content.find("\"output\": \"/data/local/tmp/bootA_default.sys\""), std::string::npos);
+    EXPECT_NE(content.find("\"output\": \"/data/local/tmp/bootA.sys\""), std::string::npos);
     EXPECT_NE(content.find("\"file_size_kb\": 102400"), std::string::npos);
     EXPECT_EQ(content.find("\"max_file_count\""), std::string::npos);
     EXPECT_NE(content.find("\"increment_index\": -1"), std::string::npos);
@@ -1278,7 +1342,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest039, TestSize.Level1)
 {
     SkipBootTracePrivilegedTestsUnlessRoot();
     RemoveBootTraceConfig();
-    RemoveBootTraceOutput("boot_trace_default.sys");
+    RemoveBootTraceOutput("boot_trace.sys");
     ASSERT_TRUE(SetPropertyInner(TRACE_BOOT_ACTIVE_FLAG, "0"));
     ASSERT_TRUE(WriteBootTraceConfig(K_BOOT_TRACE_UT_CONFIG_MINIMAL));
     int code = RunCmdWithExitCode("hitrace boot-trace");
@@ -1287,9 +1351,9 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest039, TestSize.Level1)
     EXPECT_NE(output.find("boot_trace finished"), std::string::npos) << output;
     std::string content = ReadBootTraceConfig();
     ASSERT_FALSE(content.empty()) << "config should still exist";
-    std::string traceContent = ReadFileContent(std::string(BOOT_TRACE_CONFIG_DIR) + "boot_trace_default.sys");
+    std::string traceContent = ReadFileContent(std::string(BOOT_TRACE_CONFIG_DIR) + "boot_trace.sys");
     EXPECT_FALSE(traceContent.empty()) << "boot-trace should dump non-empty output file";
-    RemoveBootTraceOutput("boot_trace_default.sys");
+    RemoveBootTraceOutput("boot_trace.sys");
     ASSERT_TRUE(SetPropertyInner(TRACE_BOOT_ACTIVE_FLAG, "0"));
 }
 
@@ -1422,14 +1486,14 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest044, TestSize.Level1)
 
 /**
  * @tc.name: HitraceCMDTest047
- * @tc.desc: boot-trace with active 0 and valid cfg runs capture (manual launch path)
+ * @tc.desc: boot-trace with active 0 and valid cfg runs capture (init launch path)
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceCMDTest, HitraceCMDTest047, TestSize.Level1)
 {
     SkipBootTracePrivilegedTestsUnlessRoot();
     RemoveBootTraceConfig();
-    RemoveBootTraceOutput("boot_trace_default.sys");
+    RemoveBootTraceOutput("boot_trace.sys");
     ASSERT_TRUE(WriteBootTraceConfig(K_BOOT_TRACE_UT_CONFIG_MINIMAL));
     ASSERT_TRUE(SetPropertyInner(TRACE_BOOT_ACTIVE_FLAG, "0"));
 
@@ -1439,7 +1503,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest047, TestSize.Level1)
     EXPECT_NE(output.find("boot_trace finished"), std::string::npos) << output;
     ASSERT_FALSE(ReadBootTraceConfig().empty()) << "config kept after capture";
 
-    RemoveBootTraceOutput("boot_trace_default.sys");
+    RemoveBootTraceOutput("boot_trace.sys");
     RemoveBootTraceConfig();
 }
 
@@ -1466,7 +1530,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest048, TestSize.Level1)
     std::string content = ReadBootTraceConfig();
     ASSERT_FALSE(content.empty());
     EXPECT_NE(content.find("\"increment_index\": 0"), std::string::npos) << content;
-    EXPECT_NE(content.find("\"output\": \"/data/local/tmp/boot_trace_default_0.sys\""), std::string::npos) << content;
+    EXPECT_NE(content.find("\"output\": \"/data/local/tmp/boot_trace_0.sys\""), std::string::npos) << content;
 
     RemoveBootTraceConfig();
     GTEST_LOG_(INFO) << "HitraceCMDTest048: end.";
@@ -1483,21 +1547,21 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest049, TestSize.Level1)
     GTEST_LOG_(INFO) << "HitraceCMDTest049: start.";
 
     RemoveBootTraceConfig();
-    RemoveBootTraceOutput("boot_trace_default_0.sys");
+    RemoveBootTraceOutput("boot_trace_0.sys");
     ASSERT_TRUE(WriteBootTraceConfig(K_BOOT_TRACE_UT_CONFIG_INCREMENT0));
     ASSERT_TRUE(SetPropertyInner(TRACE_BOOT_ACTIVE_FLAG, "0"));
 
     int code = RunCmdWithExitCode("hitrace boot-trace");
     std::string output = GetOutput();
     EXPECT_EQ(code, 0) << output;
-    EXPECT_NE(output.find("output=/data/local/tmp/boot_trace_default_0.sys"), std::string::npos) << output;
+    EXPECT_NE(output.find("output=/data/local/tmp/boot_trace_0.sys"), std::string::npos) << output;
 
     std::string content = ReadBootTraceConfig();
     std::string compact = CompactJsonStringForAssert(content);
     EXPECT_NE(compact.find("\"increment_index\":1"), std::string::npos) << content;
-    EXPECT_NE(compact.find("\"output\":\"/data/local/tmp/boot_trace_default_1.sys\""), std::string::npos) << content;
+    EXPECT_NE(compact.find("\"output\":\"/data/local/tmp/boot_trace_1.sys\""), std::string::npos) << content;
 
-    RemoveBootTraceOutput("boot_trace_default_0.sys");
+    RemoveBootTraceOutput("boot_trace_0.sys");
     RemoveBootTraceConfig();
     ASSERT_TRUE(SetPropertyInner(TRACE_BOOT_ACTIVE_FLAG, "0"));
     GTEST_LOG_(INFO) << "HitraceCMDTest049: end.";
@@ -1549,7 +1613,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest051, TestSize.Level1)
     ASSERT_FALSE(content.empty());
     EXPECT_NE(content.find("\"file_prefix\": \"mypre\""), std::string::npos) << content;
     EXPECT_NE(content.find("\"increment_index\": 0"), std::string::npos) << content;
-    EXPECT_NE(content.find("\"output\": \"/data/local/tmp/mypre_default_0.sys\""), std::string::npos) << content;
+    EXPECT_NE(content.find("\"output\": \"/data/local/tmp/mypre_0.sys\""), std::string::npos) << content;
 
     RemoveBootTraceConfig();
     GTEST_LOG_(INFO) << "HitraceCMDTest051: end.";
@@ -1594,8 +1658,8 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest053, TestSize.Level1)
     GTEST_LOG_(INFO) << "HitraceCMDTest053: start.";
 
     RemoveBootTraceConfig();
-    RemoveBootTraceOutput("boot_trace_default_0.sys");
-    RemoveBootTraceOutput("boot_trace_default_1.sys");
+    RemoveBootTraceOutput("boot_trace_0.sys");
+    RemoveBootTraceOutput("boot_trace_1.sys");
     ASSERT_TRUE(WriteBootTraceConfig(K_BOOT_TRACE_UT_CONFIG_INCREMENT0));
     ASSERT_TRUE(SetPropertyInner(TRACE_BOOT_ACTIVE_FLAG, "0"));
 
@@ -1605,7 +1669,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest053, TestSize.Level1)
     std::string after1Compact = CompactJsonStringForAssert(after1);
     EXPECT_NE(after1Compact.find("\"increment_index\":1"), std::string::npos) << after1;
     EXPECT_NE(
-        after1Compact.find("\"output\":\"/data/local/tmp/boot_trace_default_1.sys\""), std::string::npos) << after1;
+        after1Compact.find("\"output\":\"/data/local/tmp/boot_trace_1.sys\""), std::string::npos) << after1;
 
     ASSERT_TRUE(SetPropertyInner(TRACE_BOOT_ACTIVE_FLAG, "0"));
     int code2 = RunCmdWithExitCode("hitrace boot-trace");
@@ -1614,11 +1678,11 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest053, TestSize.Level1)
     std::string after2Compact = CompactJsonStringForAssert(after2);
     EXPECT_NE(after2Compact.find("\"increment_index\":2"), std::string::npos) << after2;
     EXPECT_NE(
-        after2Compact.find("\"output\":\"/data/local/tmp/boot_trace_default_2.sys\""), std::string::npos) << after2;
+        after2Compact.find("\"output\":\"/data/local/tmp/boot_trace_2.sys\""), std::string::npos) << after2;
 
-    RemoveBootTraceOutput("boot_trace_default_0.sys");
-    RemoveBootTraceOutput("boot_trace_default_1.sys");
-    RemoveBootTraceOutput("boot_trace_default_2.sys");
+    RemoveBootTraceOutput("boot_trace_0.sys");
+    RemoveBootTraceOutput("boot_trace_1.sys");
+    RemoveBootTraceOutput("boot_trace_2.sys");
     RemoveBootTraceConfig();
     ASSERT_TRUE(SetPropertyInner(TRACE_BOOT_ACTIVE_FLAG, "0"));
     GTEST_LOG_(INFO) << "HitraceCMDTest053: end.";
@@ -1651,7 +1715,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest054, TestSize.Level1)
 
 /**
  * @tc.name: HitraceCMDTest055
- * @tc.desc: configuring without --increment after --increment resets increment_index to -1 and default.sys output
+ * @tc.desc: configuring without --increment after --increment resets increment_index to -1 and prefix.sys output
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceCMDTest, HitraceCMDTest055, TestSize.Level1)
@@ -1676,7 +1740,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest055, TestSize.Level1)
     std::string incOff = ReadBootTraceConfig();
     ASSERT_FALSE(incOff.empty());
     EXPECT_NE(incOff.find("\"increment_index\": -1"), std::string::npos) << incOff;
-    EXPECT_NE(incOff.find("\"output\": \"/data/local/tmp/boot_trace_default.sys\""), std::string::npos) << incOff;
+    EXPECT_NE(incOff.find("\"output\": \"/data/local/tmp/boot_trace.sys\""), std::string::npos) << incOff;
 
     RemoveBootTraceConfig();
     GTEST_LOG_(INFO) << "HitraceCMDTest055: end.";
@@ -1684,8 +1748,8 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest055, TestSize.Level1)
 
 /**
  * @tc.name: HitraceCMDTest045
- * @tc.desc: --boot_trace, --boot (prefix of boot_trace), and boot-trace require root;
- *           non-root sees unrecognized messages
+ * @tc.desc: --boot_trace and --boot require root; boot-trace requires init launch;
+ *           denied paths see unrecognized messages
  * @tc.type: FUNC
  */
 HWTEST_F(HitraceCMDTest, HitraceCMDTest045, TestSize.Level1)
@@ -1711,6 +1775,17 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest045, TestSize.Level1)
     EXPECT_EQ(codeSub, -1) << "expect exit -1 for boot-trace when not root";
     EXPECT_NE(outSub.find("error: unrecognized command 'boot-trace'."), std::string::npos) << outSub;
 
+    SetBootTraceForceRootForTest(true);
+    SetBootTraceForceInitParentForTest(false);
+    std::vector<std::string> argsManualSub = { "hitrace", "boot-trace" };
+    auto argvManualSubBuffer = BuildWritableArgv(argsManualSub);
+    std::vector<char*>& argvManualSub = argvManualSubBuffer.second;
+    int codeManualSub = HiTraceCMDTestMain(static_cast<int>(argvManualSub.size()), argvManualSub.data());
+    std::string outManualSub = GetOutput();
+    Reset();
+    EXPECT_EQ(codeManualSub, -1) << "expect exit -1 for boot-trace when not launched by init";
+    EXPECT_NE(outManualSub.find("error: unrecognized command 'boot-trace'."), std::string::npos) << outManualSub;
+
     SetBootTraceForceRootForTest(false);
     std::vector<std::string> argsBootAbbr = { "hitrace", "--boot", "sched" };
     auto argvAbbrBuffer = BuildWritableArgv(argsBootAbbr);
@@ -1722,6 +1797,7 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest045, TestSize.Level1)
     EXPECT_NE(outAbbr.find("error: unrecognized option '--boot_trace'."), std::string::npos) << outAbbr;
 
     SetBootTraceForceRootForTest(true);
+    SetBootTraceForceInitParentForTest(true);
 }
 
 /**

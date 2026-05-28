@@ -21,9 +21,10 @@
    - **`const.debuggable` 为 `"1"`**（与 CLI 侧可抓形态对齐；非 debuggable 镜像上 init **不**拉起 boot_trace）。
    子进程在 `execl` 前将附加组设为 **`shell`**（与策略里 hitrace 域所需一致；具体 SELinux 约束见设计文档仓）。若 `fork`/`execl` 失败，init 会尝试将 **`debug.hitrace.boot_trace.active`** 写回 **`0`**（防止异常残留锁死窗口）。
 
-3. **执行阶段**（`hitrace boot-trace` 子进程，含 init 拉起与 shell 手工执行）  
+3. **执行阶段**（`hitrace boot-trace` 子进程，仅允许 init 拉起）
    **`main` 在 `InitAndCheckArgs` 之前**对 **`argv[1]=="boot-trace"`** 做早退分支（见 `cmd/hitrace_cmd.cpp`）：  
    - 若 **`geteuid() != 0`**：输出 **`error: unrecognized command 'boot-trace'.`**，退出 **-1**（**不**进入 `RunBootTraceControl`，**不**访问 `boot_trace.cfg`）。  
+   - 若父进程不是 **init**（生产实现为 **`getppid() != 1`**）：同样输出 **`error: unrecognized command 'boot-trace'.`**，退出 **-1**（root shell 手工执行也视为不识别命令）。
    - 若 **`const.debuggable`** 不为真（同上，**`IsRootVersion()`**）：输出 **`error: parsing args failed, exit.`**，退出 **-1**。  
    - 否则进入 **`RunBootTraceControl()`**：先读 **`debug.hitrace.boot_trace.active`**：若已为 **`"1"`**（并发/重复拉起），则输出 **`boot_trace: duplicate launch ignored (debug.hitrace.boot_trace.active already 1)`**，将 **`boot_trace.cfg` 内 `result` 字段** 更新为 **1**，进程以**退出码 1** 结束（**不**读配置、**不**再次置位 active）。否则 **置 `active=1`**，从 **`/data/local/tmp/boot_trace.cfg`** 读取并校验；按配置 **OpenTrace → 等待 duration → DumpTrace → CloseTrace**；在会话析构/护栏中把 **`active` 清回 `0`**。每次 `RunBootTraceControl` 结束前会尽量把**最后一次退出语义**写入 **`boot_trace.cfg` 的 `result` 整数字段**（与进程退出码一致：`0` 成功、`1` 重复拉起、`2` 配置/置位失败或抓取失败等，见 §3.6）。**persist 计数只**在 init 侧递减，**`hitrace boot-trace` 进程不修改** `persist.hitrace.boot_trace.count`。
 
@@ -46,7 +47,7 @@
 | 非持久 active | `debug.hitrace.boot_trace.active`（`"1"` 表示 boot-trace 窗口） |
 | init trace 互斥 | `persist.init.trace.enabled` 为 `"1"` 时不触发 boot_trace |
 | debuggable 门控 | `const.debuggable` 须为 `"1"`，init 才会拉起 boot_trace |
-| CLI 分发（`boot-trace`） | `argv[1]=="boot-trace"`：`main` 早退；**`geteuid()==0`** 且 **`const.debuggable`** 允许 → **`RunBootTraceControl()`**；否则见 §3.3.9 / §3.6-B |
+| CLI 分发（`boot-trace`） | `argv[1]=="boot-trace"`：`main` 早退；**`geteuid()==0`**、父进程为 **init(PID 1)** 且 **`const.debuggable`** 允许 → **`RunBootTraceControl()`**；否则见 §3.3.9 / §3.6-B |
 | CLI 分发（`--boot_trace`） | 走 **`InitAndCheckArgs` → `HandleOpt` → TASK_TABLE → `HandleBootTraceConfig`**；**`geteuid()==0`** 方可匹配 **`--boot_trace` / `--boot`**；**`const.debuggable`** 在 **`HandleBootTraceConfig`** 内再次校验 |
 | 长选项缩写 | 在 `getopt_long` 中，若 **`--boot`** 为 **`--boot_trace`** 的唯一前缀匹配，则与 **`--boot_trace`** 走同一 **`HandleOptBootTrace`** 路径；**`geteuid()!=0`** 时输出 **`error: unrecognized option '--boot_trace'.`**，退出 **-1**，且**不**追加 **`error: parsing args failed, exit.`** |
 
@@ -76,7 +77,7 @@
 | `--trace_clock` | 字符串 | 可选 | 时钟类型 |
 | `--repeat` | 数值 | 可选 | 开机抓取次数（1～100）；写入 **`persist.hitrace.boot_trace.count`** 为 repeat（即 1～100） |
 | `--overwrite` | 开关 | 可选 | 每次开机 trace 覆盖上一份，仅保留最后一份；**默认关闭**，即按文件名递增多份并存 |
-| `--increment` | 开关 | 可选 | 启用后每次抓取目标文件名为 **`…/{file_prefix}_default_{n}.sys`**，`n` 从 **0** 起每次成功抓取后 **+1** 并写回 cfg 的 **`increment_index`** 与 **`output`**；未指定时 **`increment_index` 为 -1** 表示关闭（见 §3.3.9）。**须写在 `--boot_trace` 之后**（与其它 boot_trace 专属长选项一致） |
+| `--increment` | 开关 | 可选 | 启用后每次抓取目标文件名为 **`…/{file_prefix}_{n}.sys`**，`n` 从 **0** 起每次成功抓取后 **+1** 并写回 cfg 的 **`increment_index`** 与 **`output`**；未指定时 **`increment_index` 为 -1** 表示关闭（见 §3.3.9）。**须写在 `--boot_trace` 之后**（与其它 boot_trace 专属长选项一致） |
 | `--file_prefix` | 字符串 | 可选 | 输出文件名前缀；仅允许与 **`--boot_trace`** 同用；默认 `boot_trace`；写入 cfg 的 `file_prefix` 并参与 `output` 路径 |
 
 #### 3.2.2 参数边界
@@ -146,18 +147,19 @@
 #### 3.3.9 Increment (`--increment`)
 
 - **可选开关**；仅在与 **`--boot_trace`** 同一条配置命令中使用，且 **`--boot_trace` 须先于 `--increment` 出现在 argv**（否则：`error: --increment only supports --boot_trace.`）。
-- **未指定 `--increment`**（默认）：写入 **`increment_index: -1`**，输出路径为 **`/data/local/tmp/{file_prefix}_default.sys`**（与既有行为一致）。
-- **指定 `--increment`**：每次执行 **`hitrace --boot_trace … --increment …`** 都会将 **`increment_index` 重置为 `0`**，并将 **`output`** 设为 **`/data/local/tmp/{file_prefix}_default_0.sys`**。
-- **`hitrace boot-trace` 抓取成功（退出码 0）后**：在同一份 **`boot_trace.cfg`** 内将 **`increment_index`** 递增至 **`原值 + 1`**，并同步更新 **`output`** 为下一抓取的 **`…_default_{新值}.sys`**，供下一次开机抓取使用；抓取失败、重复拉起、配置错误等**非成功路径不修改** `increment_index` / `output`。
-- 手工编辑 cfg 时：若 **`increment_index` ≥ 0**，执行 **`hitrace boot-trace`** 时落盘路径按 **`{BOOT_TRACE_CONFIG_DIR}{file_prefix}_default_{increment_index}.sys`** 解析（与 `output` 字段冗余时以 **`increment_index` + `file_prefix`** 为准）。
+- **未指定 `--increment`**（默认）：写入 **`increment_index: -1`**，输出路径为 **`/data/local/tmp/{file_prefix}.sys`**。
+- **指定 `--increment`**：每次执行 **`hitrace --boot_trace … --increment …`** 都会将 **`increment_index` 重置为 `0`**，并将 **`output`** 设为 **`/data/local/tmp/{file_prefix}_0.sys`**。
+- **`hitrace boot-trace` 抓取成功（退出码 0）后**：在同一份 **`boot_trace.cfg`** 内将 **`increment_index`** 递增至 **`原值 + 1`**，并同步更新 **`output`** 为下一抓取的 **`…_{新值}.sys`**，供下一次开机抓取使用；抓取失败、重复拉起、配置错误等**非成功路径不修改** `increment_index` / `output`。
+- 手工编辑 cfg 时：若 **`increment_index` ≥ 0**，init 拉起执行 **`hitrace boot-trace`** 时落盘路径按 **`{BOOT_TRACE_CONFIG_DIR}{file_prefix}_{increment_index}.sys`** 解析（与 `output` 字段冗余时以 **`increment_index` + `file_prefix`** 为准）。
 
-#### 3.3.10 权限、`euid` 与 `const.debuggable`（与 `cmd/hitrace_cmd.cpp` 一致）
+#### 3.3.10 权限、init 拉起与 `const.debuggable`（与 `cmd/hitrace_cmd.cpp` 一致）
 
-以下均为 **`hitrace_cmd.cpp`** 当前实现；与 **init 侧**是否 fork（另需 **`const.debuggable`** 等，见 §1 第 2 步）相互独立。
+以下均为 **`hitrace_cmd.cpp`** 当前实现；`boot-trace` 执行入口只有在 **init fork+exec** 后才进入抓取逻辑。
 
 | 入口 | 检查位置 | 条件 | 失败时控制台关键信息 | 进程退出码 |
 |------|-----------|------|----------------------|------------|
 | **`hitrace boot-trace`** | `main` 早退，`IsBootTraceEuidRoot()` | **`geteuid() == 0`** | `error: unrecognized command 'boot-trace'.` | **-1** |
+| **`hitrace boot-trace`** | `main` 早退，`IsBootTraceLaunchedByInit()` | 生产：**`getppid() == 1`**；单测：默认模拟 init 拉起 | `error: unrecognized command 'boot-trace'.` | **-1** |
 | **`hitrace boot-trace`** | `main` 早退，`IsBootTraceAllowedByConstDebuggable()` | 生产：**`const.debuggable`** 为 true（`IsRootVersion()`）；单测：恒为 true | `error: parsing args failed, exit.` | **-1** |
 | **`hitrace --boot_trace` / `--boot`** | `HandleOptBootTrace`，解析长选项时 | **`geteuid() == 0`** | `error: unrecognized option '--boot_trace'.` | **-1**（经 **`InitAndCheckArgs` → main**） |
 | **`--boot_trace` 配置任务** | `HandleBootTraceConfig` 首行 | **`const.debuggable`** 允许 | `error: parsing args failed, exit.` | **-1** |
@@ -165,9 +167,10 @@
 **说明**：
 
 - **`geteuid()`**：有效用户须为 **root**，init **`execl`** 子进程通常为 root；shell/应用直接执行且无 **SUID** 时多为非 root，命中 **unrecognized** 行。
+- **`getppid()`**：`hitrace boot-trace` 是 init 私有执行入口；即使 root shell 中已有合法 cfg，父进程不是 init(PID 1) 时也按 **unrecognized command** 返回。
 - **非 root 的 `unrecognized` 与「解析失败」**：非 root **不**打印第二行 **`error: parsing args failed, exit.`**（由 `g_suppressParsingArgsFailedLog` 抑制，避免与「无法识别选项」语义重复）。
 - **非 debuggable**：仍使用 **`error: parsing args failed, exit.`**（与部分非法参数退出表现相同），**不**使用 unrecognized 文案。
-- **单测编译 `HITRACE_UNITTEST`**：`IsBootTraceAllowedByConstDebuggable()` 恒 true；可用 **`SetBootTraceForceRootForTest(false)`** 配合 **`geteuid()`** 路径模拟非 root（见 **`HitraceCMDTest045`**）。
+- **单测编译 `HITRACE_UNITTEST`**：`IsBootTraceAllowedByConstDebuggable()` 恒 true；默认模拟 init 拉起；可用 **`SetBootTraceForceRootForTest(false)`** 模拟非 root，用 **`SetBootTraceForceInitParentForTest(false)`** 模拟 root 手工执行（见 **`HitraceCMDTest045`**）。
 
 ### 3.4 行为规格
 
@@ -195,7 +198,7 @@
 - **参数 / tag 校验失败**：输出对应 **`error: ...`** 日志，**不**写配置文件（或 **`off` 未改文件**），经通用 `main` 路径返回 **`-1`**（shell 中或显示为 **255**）。
 - **`geteuid()!=0` 使用 `--boot_trace` / `--boot`**：见 §3.3.9（**`unrecognized option`**，**-1**）。
 - **`const.debuggable` 不允许时执行 `--boot_trace` 配置**：**`HandleBootTraceConfig`** 首行失败，**`parsing args failed, exit.`**，**-1**。
-- **`hitrace boot-trace` 非 root / 非 debuggable**：见 §3.3.9 与 §3.6-B。
+- **`hitrace boot-trace` 非 root / 非 init 拉起 / 非 debuggable**：见 §3.3.9 与 §3.6-B。
 
 #### 3.4.4 与其它 running state 的关系
 
@@ -206,10 +209,10 @@
 
 - init 在 `INIT_POST_PERSIST_PARAM_LOAD` 阶段调用 `TryRunBootTraceByCount()`：除 count 与 active 外，还须 **`persist.init.trace.enabled` 不为 `"1"`**、**`const.debuggable` 为 `"1"`**（见 §1 第 2 步）。满足时 **先**减一写回 **count**，再 **fork+exec** `hitrace boot-trace`（**不在此处写 `active`**）。
 - 若 **`debug.hitrace.boot_trace.active` 已为 `"1"`**，init **不**消耗 count、**不**拉起。
-- **`hitrace boot-trace`**：若入口时 **`active=="1"`** → 视为重复拉起，打印 **`boot_trace: duplicate launch ignored (debug.hitrace.boot_trace.active already 1)`**，更新 cfg 中 **`result=1`**，进程 **退出码 1**（**不**读配置、**不**再次置位 active）；否则 **置 `active=1`**，读 `/data/local/tmp/boot_trace.cfg`，执行 `OpenTrace`、等待、`DumpTrace`、`CloseTrace`，结束时 **清 `active`**，并写 **`result`** 与 **退出码** 对齐（见 §3.6）。
+- **`hitrace boot-trace`**：仅 init 拉起且通过入口门控后执行；若入口时 **`active=="1"`** → 视为重复拉起，打印 **`boot_trace: duplicate launch ignored (debug.hitrace.boot_trace.active already 1)`**，更新 cfg 中 **`result=1`**，进程 **退出码 1**（**不**读配置、**不**再次置位 active）；否则 **置 `active=1`**，读 `/data/local/tmp/boot_trace.cfg`，执行 `OpenTrace`、等待、`DumpTrace`、`CloseTrace`，结束时 **清 `active`**，并写 **`result`** 与 **退出码** 对齐（见 §3.6）。
 - **成功退出（码 0）且 cfg 中 `increment_index` ≥ 0**：写回 **`result`** 的同时将 **`increment_index` 加一**并更新 **`output`** 为下一文件名（§3.3.9）；非成功退出**不**修改 **`increment_index` / `output`**。
-- **手工执行**：只要已有合法 **`boot_trace.cfg`**，可直接 **`hitrace boot-trace`**；仍须 **`geteuid()==0`** 且 **`const.debuggable`** 允许（与 init 拉起子进程一致），无需 init 预先写 `active`。
-- **单元测试**：`HitraceCMDTest` 中依赖 `--boot_trace` / `boot-trace` 特权路径的用例在 **`geteuid() != 0`** 时 **`GTEST_SKIP`**（计为通过）；**`HitraceCMDTest045`** 等显式验证非 root 行为：子命令 **`hitrace boot-trace`** 输出 **`error: unrecognized command 'boot-trace'.`**；**`--boot_trace` / `--boot`** 输出 **`error: unrecognized option '--boot_trace'.`**，退出码 **-1**。
+- **手工执行**：即使已有合法 **`boot_trace.cfg`**，root shell 直接执行 **`hitrace boot-trace`** 也输出 **`error: unrecognized command 'boot-trace'.`** 并返回 **-1**，**不**进入 `RunBootTraceControl`。
+- **单元测试**：`HitraceCMDTest` 中依赖 `--boot_trace` / `boot-trace` 特权路径的用例在 **`geteuid() != 0`** 时 **`GTEST_SKIP`**（计为通过）；`boot-trace` 正常执行路径默认模拟 init 拉起；**`HitraceCMDTest045`** 显式验证非 root 与非 init 拉起行为：子命令 **`hitrace boot-trace`** 输出 **`error: unrecognized command 'boot-trace'.`**；**`--boot_trace` / `--boot`** 输出 **`error: unrecognized option '--boot_trace'.`**，退出码 **-1**。
 
 #### 3.4.6 触发机制
 
@@ -224,7 +227,7 @@
 | `file_size_kb` | `--file_size` | 未指定或越界时 102400 |
 | `kernel.buffer_size_kb` | `-b` | 未指定或 0 时为 18432 |
 | `kernel.clock` | `--trace_clock` | 未指定或空时为 `boot` |
-| `output` | 固定规则 | **`increment_index` 为 -1**：**`/data/local/tmp/` + `file_prefix` + `_default.sys`**；**`increment_index` ≥ 0**：**`/data/local/tmp/` + `file_prefix` + `_default_` + 序号 + `.sys`**；成功抓取后由 **`hitrace boot-trace`** 更新为下一文件名 |
+| `output` | 固定规则 | **`increment_index` 为 -1**：**`/data/local/tmp/` + `file_prefix` + `.sys`**；**`increment_index` ≥ 0**：**`/data/local/tmp/` + `file_prefix` + `_` + 序号 + `.sys`**；成功抓取后由 **`hitrace boot-trace`** 更新为下一文件名 |
 | `file_prefix` | `--file_prefix` | 未指定时为 `boot_trace`；用于生成最终 trace 文件名前缀 |
 | `overwrite` | `--overwrite` | 未指定时为 false；为 true 时对应 tracefs 环形缓冲覆盖（见 §3.3.7） |
 | `increment_index` | `--increment` | **未指定 `--increment`**：每次 **`hitrace --boot_trace …`** 写入 **-1**；**指定 `--increment`**：每次配置写入 **0**（重置）；**`hitrace boot-trace` 成功**后 **+1** 并同步 **`output`** |
@@ -246,6 +249,7 @@
 | 退出码 | 含义 |
 |--------|------|
 | **-1** | **`geteuid()!=0`**：**`error: unrecognized command 'boot-trace'.`**（**不**进入 `RunBootTraceControl`） |
+| **-1** | 父进程不是 **init(PID 1)**：**`error: unrecognized command 'boot-trace'.`**（root 手工执行也**不**进入 `RunBootTraceControl`） |
 | **-1** | **`const.debuggable` 不允许**：**`error: parsing args failed, exit.`**（**不**进入 `RunBootTraceControl`） |
 | 0 | **`RunBootTraceControl`**：配置加载成功且 **OpenTrace → sleep → DumpTrace → CloseTrace** 全流程成功 |
 | 1 | **`RunBootTraceControl`**：**重复拉起**：进入时 **`debug.hitrace.boot_trace.active` 已为 `"1"`**；会写 **`result=1`** |
