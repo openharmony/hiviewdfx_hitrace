@@ -359,12 +359,24 @@ static constexpr const char K_BOOT_TRACE_UNRECOGNIZED_LONGOPT[] = "error: unreco
 static constexpr const char K_BOOT_TRACE_INLINE_EVENT_FMT_ENV[] = "HITRACE_BOOT_INLINE_EVENT_FMT";
 #ifdef HITRACE_UNITTEST
 static bool g_bootTraceForceRootForTest = true;
+static bool g_bootTraceForceInitParentForTest = true;
+static bool g_bootTraceRootVersionForTest = true;
 #endif
 
 #ifdef HITRACE_UNITTEST
 void SetBootTraceForceRootForTest(bool force)
 {
     g_bootTraceForceRootForTest = force;
+}
+
+void SetBootTraceForceInitParentForTest(bool force)
+{
+    g_bootTraceForceInitParentForTest = force;
+}
+
+void SetBootTraceRootVersionForTest(bool enabled)
+{
+    g_bootTraceRootVersionForTest = enabled;
 }
 #endif
 
@@ -381,6 +393,8 @@ void Reset()
     g_traceSysEventParams = {};
     g_traceArgs = {};
     g_bootTraceForceRootForTest = true;
+    g_bootTraceForceInitParentForTest = true;
+    g_bootTraceRootVersionForTest = true;
     g_suppressParsingArgsFailedLog = false;
 }
 #endif
@@ -416,6 +430,16 @@ static bool IsBootTraceEuidRoot()
     return geteuid() == 0;
 }
 
+static bool IsBootTraceLaunchedByInit()
+{
+#ifdef HITRACE_UNITTEST
+    return g_bootTraceForceInitParentForTest;
+#else
+    constexpr pid_t initProcessPid = 1;
+    return getppid() == initProcessPid;
+#endif
+}
+
 /*
  * Boot trace reads/writes cfg under /data/local/tmp; only allow on debuggable images (const.debuggable),
  * so user builds cannot capture trace from a manually planted cfg.
@@ -423,10 +447,15 @@ static bool IsBootTraceEuidRoot()
 static bool IsBootTraceAllowedByConstDebuggable()
 {
 #ifdef HITRACE_UNITTEST
-    return true;
+    return g_bootTraceRootVersionForTest;
 #else
     return IsRootVersion();
 #endif
+}
+
+static bool ShouldShowBootTraceHelp()
+{
+    return IsBootTraceEuidRoot() && IsBootTraceAllowedByConstDebuggable();
 }
 
 static int DenyBootTraceAsUnparsedArgs()
@@ -435,7 +464,7 @@ static int DenyBootTraceAsUnparsedArgs()
     return -1;
 }
 
-static int DenyBootTraceNonRootEuidSubcommand()
+static int DenyBootTraceUnrecognizedSubcommand()
 {
     ConsoleLog(K_BOOT_TRACE_UNRECOGNIZED_SUBCMD);
     return -1;
@@ -497,6 +526,17 @@ static void ShowListCategory()
     }
 }
 
+static void ShowBootTraceHelp()
+{
+    printf("  --boot_trace           Configure boot trace capture for next boot. Use \"off\" to disable.\n"
+           "                         It supports concrete categories with -b/--buffer_size, -t/--time,\n"
+           "                         --file_prefix, --repeat and --increment.\n"
+           "  --file_prefix prefix   Set the boot trace output file prefix. Only supports --boot_trace.\n"
+           "  --repeat N             Set boot trace capture count, from 1 to 100. Only supports --boot_trace.\n"
+           "  --increment            Append an incrementing index to boot trace output names. Only supports\n"
+           "                         --boot_trace.\n");
+}
+
 static void ShowHelp(const std::string& cmd)
 {
     g_traceSysEventParams.opt = "ShowHelp";
@@ -539,6 +579,9 @@ static void ShowHelp(const std::string& cmd)
            "  --get_level            Query the system parameter \"persist.hitrace.level.threshold\",\n"
            "                         which can control the level threshold of tracing.\n"
     );
+    if (ShouldShowBootTraceHelp()) {
+        ShowBootTraceHelp();
+    }
 }
 
 static bool CheckTraceLevel(const std::string& arg)
@@ -760,7 +803,7 @@ static void PrintBootTraceConfiguredArgs()
 
 static std::string BuildBootTraceOutputPathForPrefix(const std::string& filePrefix, int incrementIndex)
 {
-    const std::string stem = std::string(BOOT_TRACE_CONFIG_DIR) + filePrefix + "_default";
+    const std::string stem = std::string(BOOT_TRACE_CONFIG_DIR) + filePrefix;
     if (incrementIndex >= 0) {
         return stem + "_" + std::to_string(incrementIndex) + ".sys";
     }
@@ -1121,7 +1164,7 @@ static int RunBootTraceControl()
     /*
      * debug.hitrace.boot_trace.active is owned by this process: set to 1 when entering capture,
      * clear when done. If already 1, another boot-trace instance holds the window — exit without work.
-     * Init no longer sets active before fork+execl; hitrace sets it here so manual launch also works.
+     * Init no longer sets active before fork+execl; hitrace sets it after the init-only entry gate.
      */
     if (IsBootTraceActiveFlagOn()) {
         ConsoleLog("boot_trace: duplicate launch ignored (debug.hitrace.boot_trace.active already 1)");
@@ -2117,8 +2160,8 @@ int main(int argc, char **argv)
 #endif
 {
     if (argc >= MIN_ARGS_FOR_BOOT_TRACE_SUBCOMMAND && strcmp(argv[1], "boot-trace") == 0) {
-        if (!IsBootTraceEuidRoot()) {
-            return DenyBootTraceNonRootEuidSubcommand();
+        if (!IsBootTraceEuidRoot() || !IsBootTraceLaunchedByInit()) {
+            return DenyBootTraceUnrecognizedSubcommand();
         }
         if (!IsBootTraceAllowedByConstDebuggable()) {
             return DenyBootTraceAsUnparsedArgs();
