@@ -39,9 +39,9 @@ namespace Hitrace {
 #define LOG_TAG "HitraceUtils"
 #endif
 namespace {
-static const char* const HTIRACE_UTILS_JSON = "/system/etc/hiview/hitrace_utils.json";
-static const char* const PRODUCT_CONFIG_JSON = "/sys_prod/etc/hiview/hitrace/hitrace_param.json";
-const char* const MEM_TOTAL = "MemTotal";
+constexpr char HTIRACE_UTILS_JSON[] = "/system/etc/hiview/hitrace_utils.json";
+constexpr char PRODUCT_CONFIG_JSON[] = "/sys_prod/etc/hiview/hitrace/hitrace_param.json";
+constexpr char MEM_TOTAL[] = "MemTotal";
 
 constexpr int DEFAULT_SNAPSHOT_BUFFER_SIZE_KB = 12 * 1024;
 constexpr int HM_DEFAULT_SNAPSHOT_BUFFER_SIZE_KB = 144 * 1024;

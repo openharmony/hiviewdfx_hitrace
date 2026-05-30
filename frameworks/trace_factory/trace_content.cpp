@@ -48,7 +48,7 @@ constexpr int KB_PER_MB = 1024;
 constexpr int JUDGE_FILE_EXIST = 10;  // Check whether the trace file exists every 10 times.
 constexpr int BUFFER_SIZE = 256 * PAGE_SIZE; // 1M
 constexpr uint8_t HM_FILE_RAW_TRACE = 1;
-constexpr const char* BOOT_TRACE_INLINE_EVENT_FMT_ENV = "HITRACE_BOOT_INLINE_EVENT_FMT";
+constexpr char BOOT_TRACE_INLINE_EVENT_FMT_ENV[] = "HITRACE_BOOT_INLINE_EVENT_FMT";
 
 /**
  * @note async trace dump mode is performed in parallel with other modes,

@@ -39,10 +39,10 @@ namespace Hitrace {
 #define LOG_TAG "HitraceDumpPipe"
 #endif
 namespace {
-const char TRACE_TASK_SUBMIT_PIPE[] = "/data/log/hitrace/trace_task";
-const char TRACE_SYNC_RETURN_PIPE[] = "/data/log/hitrace/trace_sync_return";
-const char TRACE_ASYNC_RETURN_PIPE[] = "/data/log/hitrace/trace_async_return";
-const mode_t PIPE_FILE_MODE = 0666;
+constexpr char TRACE_TASK_SUBMIT_PIPE[] = "/data/log/hitrace/trace_task";
+constexpr char TRACE_SYNC_RETURN_PIPE[] = "/data/log/hitrace/trace_sync_return";
+constexpr char TRACE_ASYNC_RETURN_PIPE[] = "/data/log/hitrace/trace_async_return";
+constexpr mode_t PIPE_FILE_MODE = 0666;
 } // namespace
 
 HitraceDumpPipe::HitraceDumpPipe(bool isParent)

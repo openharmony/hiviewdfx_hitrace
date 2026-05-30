@@ -318,20 +318,19 @@ const std::set<std::string> CLOCK_TYPE = {
     "uptime"
 };
 
-const unsigned int CHUNK_SIZE = 65536;
+constexpr unsigned int CHUNK_SIZE = 65536;
 
 // support customization of some parameters
-const int KB_PER_MB = 1024;
-const int MIN_BUFFER_SIZE = 256;
-const int MAX_BUFFER_SIZE = 307200; // 300 MB
-const int HM_MAX_BUFFER_SIZE = 1024 * KB_PER_MB; // 1024 MB
+constexpr int KB_PER_MB = 1024;
+constexpr int MIN_BUFFER_SIZE = 256;
+constexpr int MAX_BUFFER_SIZE = 307200; // 300 MB
+constexpr int HM_MAX_BUFFER_SIZE = 1024 * KB_PER_MB; // 1024 MB
 constexpr uint32_t DEFAULT_BUFFER_SIZE = 18432; // 18 MB
 constexpr unsigned int MAX_OUTPUT_LEN = 255;
-const int PAGE_SIZE_KB = 4; // 4 KB
-const int MIN_FILE_SIZE = 51200; // 50 MB
-const int MAX_FILE_SIZE = 512000; // 500 MB
-const int MAX_FILE_SIZE_MULTIPLIER = 10;
-static const std::string TRACE_WRITABLE_PATH = "/data/local/tmp";
+constexpr int PAGE_SIZE_KB = 4; // 4 KB
+constexpr int MIN_FILE_SIZE = 51200; // 50 MB
+constexpr int MAX_FILE_SIZE = 512000; // 500 MB
+constexpr int MAX_FILE_SIZE_MULTIPLIER = 10;
 
 constexpr int BOOT_TRACE_DEFAULT_DURATION = 30; // 30 seconds
 constexpr int BOOT_TRACE_REPEAT_MIN = 1;
@@ -340,7 +339,7 @@ constexpr int BOOT_TRACE_EXIT_OK = 0;
 constexpr int BOOT_TRACE_EXIT_DUPLICATE = 1;
 constexpr int BOOT_TRACE_EXIT_CONFIG_ERROR = 2;
 /** persist.hitrace.boot_trace.count: 0 = off; 1~100 = remaining boot trace count. */
-constexpr const char* BOOT_TRACE_DEFAULT_PREFIX = "boot_trace";
+constexpr char BOOT_TRACE_DEFAULT_PREFIX[] = "boot_trace";
 constexpr int MIN_ARGS_FOR_BOOT_TRACE_SUBCOMMAND = 2;
 std::shared_ptr<OHOS::HiviewDFX::UCollectClient::TraceCollector> g_traceCollector;
 TraceArgs g_traceArgs;

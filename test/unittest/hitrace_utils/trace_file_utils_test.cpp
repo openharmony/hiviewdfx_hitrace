@@ -41,5 +41,35 @@ HWTEST_F(TraceFileUtilsTest, TraverseFiles01, TestSize.Level2)
             EXPECT_NE(item->d_name, nullptr);
         }));
 }
+
+/**
+ * @tc.name: IsWritable01
+ * @tc.desc: Test IsWritable(), enter an existing file path.
+ * @tc.type: FUNC
+*/
+HWTEST_F(TraceFileUtilsTest, IsWritable01, TestSize.Level2)
+{
+    ASSERT_TRUE(Hitrace::IsWritable("/data/local/tmp"));
+    ASSERT_TRUE(Hitrace::IsWritable("/data/local/tmp/test.txt"));
+    ASSERT_TRUE(Hitrace::IsWritable("/data/local/tmp/"));
+
+    ASSERT_FALSE(Hitrace::IsWritable("/system/bin/test.txt"));
+    ASSERT_FALSE(Hitrace::IsWritable("/data/local/tmp/../test.txt"));
+    ASSERT_FALSE(Hitrace::IsWritable("/data/local/tmp/./test.txt"));
+}
+
+/**
+ * @tc.name: IsWritableDir01
+ * @tc.desc: Test IsWritableDir(), enter an existing file path.
+ * @tc.type: FUNC
+*/
+HWTEST_F(TraceFileUtilsTest, IsWritableDir01, TestSize.Level2)
+{
+    ASSERT_TRUE(Hitrace::IsWritableDir("/data/local/tmp"));
+    ASSERT_TRUE(Hitrace::IsWritableDir("/data/local/tmp/"));
+
+    ASSERT_FALSE(Hitrace::IsWritableDir("/data/local/tmp/test.txt"));
+    ASSERT_FALSE(Hitrace::IsWritableDir("/system/bin"));
+}
 } // namespace HiviewDFX
 } // namespace OHOS
