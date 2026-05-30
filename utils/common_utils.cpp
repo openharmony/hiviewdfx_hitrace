@@ -44,8 +44,8 @@ namespace Hitrace {
 #define LOG_TAG "HitraceUtils"
 #endif
 namespace {
-static const char* const CPUFREQ_PREFIX = "/sys/devices/system/cpu/cpu";
-static const char* const CPUFREQ_AFTERFIX = "/cpufreq/scaling_cur_freq";
+constexpr const char CPUFREQ_PREFIX[] = "/sys/devices/system/cpu/cpu";
+constexpr const char CPUFREQ_AFTERFIX[] = "/cpufreq/scaling_cur_freq";
 constexpr int DECIMAL_SCALE = 10;
 constexpr int BUFFER_LEN = 32;
 constexpr int EXPECT_NUM = 2;
@@ -424,7 +424,7 @@ bool IsTraceFilePathLegal(const std::string& fileName, char *realFilePath, size_
     }
     realFilePath[bufLen - 1] = '\0';
     std::string pathStr(realFilePath);
-    static const size_t traceDirPathLen = strlen(TRACE_FILE_DEFAULT_DIR);
+    constexpr size_t traceDirPathLen = sizeof(TRACE_FILE_DEFAULT_DIR) - 1u;
     if (pathStr.substr(0, traceDirPathLen) != TRACE_FILE_DEFAULT_DIR) {
         HILOG_ERROR(LOG_CORE, "file not at hitrace dir");
         return false;

@@ -45,13 +45,13 @@ namespace Hitrace {
 #define LOG_TAG "HitraceUtils"
 #endif
 namespace {
-const int TIME_BUFFER_SIZE = 16;
-const int DEFAULT_TRACE_DURATION = 30;
-const int TIME_INIT = 1900;
-static const char* const TRACE_SNAPSHOT_PREFIX = "trace_";
-static const char* const TRACE_RECORDING_PREFIX = "record_trace_";
-static const char* const TRACE_CACHE_PREFIX = "cache_trace_";
-static const std::string TRACE_WRITABLE_PATH = "/data/local/tmp";
+constexpr int TIME_BUFFER_SIZE = 16;
+constexpr int DEFAULT_TRACE_DURATION = 30;
+constexpr int TIME_INIT = 1900;
+constexpr char TRACE_SNAPSHOT_PREFIX[] = "trace_";
+constexpr char TRACE_RECORDING_PREFIX[] = "record_trace_";
+constexpr char TRACE_CACHE_PREFIX[] = "cache_trace_";
+constexpr char TRACE_WRITABLE_PATH[] = "/data/local/tmp";
 
 std::map<TraceDumpType, std::string> tracePrefixMap = {
     {TraceDumpType::TRACE_SNAPSHOT, TRACE_SNAPSHOT_PREFIX},
@@ -276,24 +276,29 @@ bool RemoveFile(const std::string& fileName)
 
 bool IsWritable(const std::string& fileName)
 {
-    if (fileName.find("../") != std::string::npos ||
-        fileName.find("..\\") != std::string::npos ||
-        fileName.find("./") != std::string::npos ||
-        fileName.find(".\\") != std::string::npos) {
-            return false;
+    constexpr auto length = sizeof(TRACE_WRITABLE_PATH) - 1u;
+    if (strncmp(fileName.c_str(), TRACE_WRITABLE_PATH, length) != 0) {
+        return false;
     }
-    return (fileName == (TRACE_WRITABLE_PATH)) || fileName.find((TRACE_WRITABLE_PATH + '/')) == 0;
+    if (fileName.size() == length) {
+        return true;
+    }
+    if (fileName.at(length) != '/') {
+        return false;
+    }
+    return fileName.find("../", length) == std::string::npos &&
+        fileName.find("..\\", length) == std::string::npos &&
+        fileName.find("./", length) == std::string::npos &&
+        fileName.find(".\\", length) == std::string::npos;
 }
 
 bool IsWritableDir(const std::string& fileName)
 {
-    if (!IsWritable(fileName)) {
+    constexpr auto length = sizeof(TRACE_WRITABLE_PATH) - 1u;
+    if (strncmp(fileName.c_str(), TRACE_WRITABLE_PATH, length) != 0) {
         return false;
     }
-    if (fileName == TRACE_WRITABLE_PATH || fileName == TRACE_WRITABLE_PATH + '/') {
-        return true;
-    }
-    return false;
+    return fileName.size() == length || (fileName.size() == length  + 1u && fileName.at(length) == '/');
 }
 
 std::string GenerateTraceFileName(TraceDumpType traceType, const std::string& outputPath)
@@ -490,7 +495,7 @@ std::string RenameCacheFile(const std::string& cacheFile)
         return cacheFile;
     }
     std::string dirPath = cacheFile.substr(0, cacheFile.find_last_of("/") + 1);
-    static const size_t cacheFilePrefixLen = strlen(CACHE_FILE_PREFIX);
+    constexpr size_t cacheFilePrefixLen = sizeof(CACHE_FILE_PREFIX) - 1;
     std::string newFileName = fileName.substr(pos + cacheFilePrefixLen);
     std::string newFilePath = dirPath + newFileName;
     if (rename(cacheFile.c_str(), newFilePath.c_str()) != 0) {
