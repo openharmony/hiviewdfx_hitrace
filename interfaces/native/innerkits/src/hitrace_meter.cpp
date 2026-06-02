@@ -196,12 +196,10 @@ public:
 
     void Enqueue(std::function<void()>&& task)
     {
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            queue_.push(std::move(task));
-            if (!thread_.joinable()) {
-                thread_ = std::thread(&TaskQueue::ProcessTasks, this);
-            }
+        std::lock_guard<std::mutex> lock(mutex_);
+        queue_.push(std::move(task));
+        if (!thread_.joinable()) {
+            thread_ = std::thread(&TaskQueue::ProcessTasks, this);
         }
         condition_.notify_one();
     }
@@ -211,42 +209,31 @@ private:
 
     ~TaskQueue()
     {
-        stop_.store(true);
-        condition_.notify_one();
+        {
+            std::unique_lock<std::mutex> lock(mutex_);
+            stop_.store(true);
+            condition_.notify_one();
+        }
         if (thread_.joinable()) {
             thread_.join();
         }
     }
 
-    void ProcessRemainingTasks()
+    void ProcessTasks()
     {
         std::unique_lock<std::mutex> lock(mutex_);
-        while (!queue_.empty()) {
+        while (true) {
+            condition_.wait(lock, [this] { return !queue_.empty() || stop_.load(); });
+            if (queue_.empty()) {
+                HILOG_INFO(LOG_CORE, "ProcessTasks stop");
+                break;
+            }
             auto task = std::move(queue_.front());
             queue_.pop();
             lock.unlock();
             task();
             lock.lock();
         }
-    }
-
-    void ProcessTasks()
-    {
-        while (!stop_.load()) {
-            std::function<void()> task;
-            {
-                std::unique_lock<std::mutex> lock(mutex_);
-                condition_.wait(lock, [this] { return !queue_.empty() || stop_.load(); });
-                if (stop_.load()) {
-                    HILOG_INFO(LOG_CORE, "ProcessTasks stop");
-                    break;
-                }
-                task = std::move(queue_.front());
-                queue_.pop();
-            }
-            task();
-        }
-        ProcessRemainingTasks();
     }
 
     std::queue<std::function<void()>> queue_;
