@@ -245,6 +245,7 @@ ohos_shared_library("libhitrace_option") {
 
   innerapi_tags = [ "platformsdk" ]
 
+  version_script = "hitrace_option.map"
 
   install_images = [ "system" ]
 

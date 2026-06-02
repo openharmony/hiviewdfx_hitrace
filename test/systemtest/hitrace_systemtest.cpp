@@ -231,7 +231,7 @@ bool GetFileInfo(const TraceDumpType& traceType, const std::vector<std::string>&
     std::vector<FileWithInfo>& fileList)
 {
     struct stat fileStat;
-    static const size_t traceDirPathLen = strlen(TRACE_FILE_DEFAULT_DIR);
+    constexpr size_t traceDirPathLen = sizeof(TRACE_FILE_DEFAULT_DIR) - 1u;
     for (auto i = 0; i < outputFiles.size(); i++) {
         if (outputFiles[i].substr(traceDirPathLen, tracePrefixMap[traceType].size()) ==
             tracePrefixMap[traceType]) {

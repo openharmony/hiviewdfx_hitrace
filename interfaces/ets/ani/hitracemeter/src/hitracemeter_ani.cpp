@@ -31,9 +31,9 @@
 #endif
 
 using namespace OHOS::HiviewDFX;
-const char* const NAMESPACE_HITRACEMETER = "@ohos.hiTraceMeter.hiTraceMeter";
-const char* const FUNC_NAME_CTOR = "<ctor>";
-const char* const CLASS_NAME_BOOLEAN = "std.core.Boolean";
+constexpr char NAMESPACE_HITRACEMETER[] = "@ohos.hiTraceMeter.hiTraceMeter";
+constexpr char FUNC_NAME_CTOR[] = "<ctor>";
+constexpr char CLASS_NAME_BOOLEAN[] = "std.core.Boolean";
 
 struct CallbackContext {
     ani_ref callback {};

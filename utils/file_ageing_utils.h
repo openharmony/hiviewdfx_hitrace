@@ -25,7 +25,7 @@
 namespace OHOS {
 namespace HiviewDFX {
 namespace Hitrace {
-const char* const ATTR_NAME_LINK = "user.linknum";
+constexpr char ATTR_NAME_LINK[] = "user.linknum";
 enum CheckType {
     FILENUMBER = 0,
     FILESIZE
