@@ -41,7 +41,7 @@ enum ArgIndex {
     ARG_FIFTH = 4,
 };
 
-const char* const HITRACE_OUTPUT_LEVEL = "HiTraceOutputLevel";
+constexpr char HITRACE_OUTPUT_LEVEL[] = "HiTraceOutputLevel";
 
 #ifdef LOG_DOMAIN
 #undef LOG_DOMAIN

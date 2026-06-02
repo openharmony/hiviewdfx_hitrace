@@ -73,15 +73,14 @@ std::atomic<uint64_t> g_appTag(HITRACE_TAG_NOT_READY);
 std::atomic<int64_t> g_appTagMatchPid(-1);
 std::atomic<HiTraceOutputLevel> g_levelThreshold(HITRACE_LEVEL_MAX);
 
-static const char* const SANDBOX_PATH = "/data/storage/el2/log/";
-static const char* const PHYSICAL_PATH = "/data/app/el2/100/log/";
-static const char* const EMPTY = "";
+constexpr char SANDBOX_PATH[] = "/data/storage/el2/log/";
+constexpr char PHYSICAL_PATH[] = "/data/app/el2/100/log/";
+constexpr char EMPTY[] = "";
 
 constexpr int VAR_NAME_MAX_SIZE = 400;
 constexpr int NAME_NORMAL_LEN = 512;
 constexpr int RECORD_SIZE_MAX = 1024;
 
-static char g_appName[NAME_NORMAL_LEN + 1] = {0};
 static std::string g_appTracePrefix = "";
 constexpr int COMM_STR_MAX = 14;
 constexpr int PID_STR_MAX = 7;
@@ -109,12 +108,11 @@ constexpr int32_t INVALID_INDEX = -2;
 constexpr int32_t INDEX_NOT_REGISTERED = -1;
 constexpr int32_t SUCCESS_UNREGISTER = 0;
 
-static const char g_markTypes[5] = {'B', 'E', 'S', 'F', 'C'};
+constexpr char MARK_TYPES[] = "BESFC";
 enum MarkerType { MARKER_BEGIN, MARKER_END, MARKER_ASYNC_BEGIN, MARKER_ASYNC_END, MARKER_INT };
+constexpr char TRACE_LEVEL[] = "DICM";
 
-static const char g_traceLevel[4] = {'D', 'I', 'C', 'M'};
-
-const uint64_t VALID_TAGS = HITRACE_TAG_FFRT | HITRACE_TAG_COMMONLIBRARY | HITRACE_TAG_HDF | HITRACE_TAG_NET |
+constexpr uint64_t VALID_TAGS = HITRACE_TAG_FFRT | HITRACE_TAG_COMMONLIBRARY | HITRACE_TAG_HDF | HITRACE_TAG_NET |
     HITRACE_TAG_NWEB | HITRACE_TAG_DISTRIBUTED_AUDIO | HITRACE_TAG_FILEMANAGEMENT | HITRACE_TAG_OHOS |
     HITRACE_TAG_ABILITY_MANAGER | HITRACE_TAG_ZCAMERA | HITRACE_TAG_ZMEDIA | HITRACE_TAG_ZIMAGE | HITRACE_TAG_ZAUDIO |
     HITRACE_TAG_DISTRIBUTEDDATA | HITRACE_TAG_GRAPHIC_AGP | HITRACE_TAG_ACE | HITRACE_TAG_NOTIFICATION |
@@ -123,7 +121,7 @@ const uint64_t VALID_TAGS = HITRACE_TAG_FFRT | HITRACE_TAG_COMMONLIBRARY | HITRA
     HITRACE_TAG_GLOBAL_RESMGR | HITRACE_TAG_DEVICE_MANAGER | HITRACE_TAG_SAMGR | HITRACE_TAG_POWER |
     HITRACE_TAG_DISTRIBUTED_SCHEDULE | HITRACE_TAG_DISTRIBUTED_INPUT | HITRACE_TAG_BLUETOOTH | HITRACE_TAG_APP;
 
-static const char* const TRACE_TXT_HEADER_FORMAT = R"(# tracer: nop
+constexpr char TRACE_TXT_HEADER_FORMAT[] = R"(# tracer: nop
 #
 # entries-in-buffer/entries-written: %-21s   #P:%-3s
 #
@@ -259,7 +257,7 @@ private:
 };
 
 namespace StringUtil {
-constexpr auto NUM_TO_CHAR_MAPS = "0123456789abcdef";
+constexpr const char NUM_TO_CHAR_MAPS[] = "0123456789abcdef";
 
 inline void AddStringToBuffer(char*& dst, const char* end, const char* src, size_t strLength)
 {
@@ -532,8 +530,19 @@ bool GetProcData(const char* file, char* buffer, const size_t bufferSize)
         WriteOnceLog(LOG_ERROR, errLogStr, isWriteLog);
         return false;
     }
-
     return true;
+}
+
+const std::string& GetProcName()
+{
+    static const std::string procName = [] {
+        char appName[NAME_NORMAL_LEN + 1] = {0};
+        if (!GetProcData("/proc/self/cmdline", appName, NAME_NORMAL_LEN)) {
+            HILOG_ERROR(LOG_CORE, "get app name failed, %{public}d", errno);
+        }
+        return appName;
+    } ();
+    return procName;
 }
 
 int CheckAppTraceArgs(TraceFlag flag, uint64_t tags, uint64_t limitSize)
@@ -568,28 +577,25 @@ int SetAppFileName(std::string& destFileName, std::string& fileName)
             errno, strerror(errno));
         return RET_FAIL_MKDIR;
     }
-
-    if (!GetProcData("/proc/self/cmdline", g_appName, NAME_NORMAL_LEN)) {
+    const std::string& procName = GetProcName();
+    if (procName.empty()) {
         HILOG_ERROR(LOG_CORE, "get app name failed, %{public}d", errno);
         return RET_FAILD;
     }
-
     time_t now = time(nullptr);
     if (now == static_cast<time_t>(-1)) {
         HILOG_ERROR(LOG_CORE, "get time failed, %{public}d", errno);
         return RET_FAILD;
     }
-
     struct tm tmTime;
     if (localtime_r(&now, &tmTime) == nullptr) {
         HILOG_ERROR(LOG_CORE, "localtime_r failed, %{public}d", errno);
         return RET_FAILD;
     }
-
-    const int yearCount = 1900;
-    const int size = sizeof(g_appName) + 32;
-    char file[size] = {0};
-    auto ret = snprintf_s(file, sizeof(file), sizeof(file) - 1, "%s_%04d%02d%02d_%02d%02d%02d.trace", g_appName,
+    constexpr int yearCount = 1900;
+    constexpr int formatStrLen = 32;
+    char file[NAME_NORMAL_LEN + formatStrLen + 1] = {0};
+    auto ret = snprintf_s(file, sizeof(file), sizeof(file) - 1, "%s_%04d%02d%02d_%02d%02d%02d.trace", procName.c_str(),
         tmTime.tm_year + yearCount, tmTime.tm_mon + 1, tmTime.tm_mday, tmTime.tm_hour, tmTime.tm_min, tmTime.tm_sec);
     if (ret <= 0) {
         HILOG_ERROR(LOG_CORE, "Format file failed, %{public}d", errno);
@@ -597,7 +603,7 @@ int SetAppFileName(std::string& destFileName, std::string& fileName)
     }
 
     destFileName += std::string(file);
-    fileName = PHYSICAL_PATH + std::string(g_appName) + "/trace/" + std::string(file);
+    fileName = PHYSICAL_PATH + procName + "/trace/" + std::string(file);
     return RET_SUCC;
 }
 
@@ -660,13 +666,7 @@ void SetCommStr()
 
 void SetMainThreadInfo(const int pid)
 {
-    if (strlen(g_appName) == 0) {
-        if (!GetProcData("/proc/self/cmdline", g_appName, NAME_NORMAL_LEN)) {
-            HILOG_ERROR(LOG_CORE, "get app name failed, %{public}d", errno);
-        }
-    }
-
-    g_appTracePrefix = std::string(g_appName);
+    g_appTracePrefix = GetProcName();
     SetCommStr();
     std::string pidStr = std::to_string(pid);
     std::string pidFixStr = std::string(PID_STR_MAX - pidStr.length(), ' ');
@@ -719,12 +719,12 @@ int SetAppTraceBuffer(char* buf, const int len, const TraceMarker& traceMarker)
         bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: B|%d|H:%s|%c%s%s\n",
             g_appTracePrefix.c_str(), cpu, static_cast<unsigned long>(ts.tv_sec),
             static_cast<unsigned long>(ts.tv_nsec / NS_TO_MS), traceMarker.pid, traceMarker.name,
-            g_traceLevel[traceMarker.level], bitStr, additionalParams.c_str());
+            TRACE_LEVEL[traceMarker.level], bitStr, additionalParams.c_str());
     } else if (traceMarker.type == MARKER_END) {
         bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: E|%d|%c%s\n",
             g_appTracePrefix.c_str(), cpu, static_cast<unsigned long>(ts.tv_sec),
             static_cast<unsigned long>(ts.tv_nsec / NS_TO_MS), traceMarker.pid,
-            g_traceLevel[traceMarker.level], bitStr);
+            TRACE_LEVEL[traceMarker.level], bitStr);
     } else if (traceMarker.type == MARKER_ASYNC_BEGIN) {
         if (*(traceMarker.customArgs) != '\0') {
             additionalParams = std::string("|") + std::string(traceMarker.customCategory) + std::string("|") +
@@ -735,12 +735,12 @@ int SetAppTraceBuffer(char* buf, const int len, const TraceMarker& traceMarker)
         bytes = snprintf_s(buf, len, len - 1,
             "  %s [%03d] .... %lu.%06lu: tracing_mark_write: S|%d|H:%s|%lld|%c%s%s\n", g_appTracePrefix.c_str(),
             cpu, static_cast<unsigned long>(ts.tv_sec), static_cast<long>(ts.tv_nsec / NS_TO_MS), traceMarker.pid,
-            traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitStr, additionalParams.c_str());
+            traceMarker.name, traceMarker.value, TRACE_LEVEL[traceMarker.level], bitStr, additionalParams.c_str());
     } else {
         bytes = snprintf_s(buf, len, len - 1, "  %s [%03d] .... %lu.%06lu: tracing_mark_write: %c|%d|H:%s|%lld|%c%s\n",
             g_appTracePrefix.c_str(), cpu, static_cast<unsigned long>(ts.tv_sec),
-            static_cast<unsigned long>(ts.tv_nsec / NS_TO_MS), g_markTypes[traceMarker.type], traceMarker.pid,
-            traceMarker.name, traceMarker.value, g_traceLevel[traceMarker.level], bitStr);
+            static_cast<unsigned long>(ts.tv_nsec / NS_TO_MS), MARK_TYPES[traceMarker.type], traceMarker.pid,
+            traceMarker.name, traceMarker.value, TRACE_LEVEL[traceMarker.level], bitStr);
     }
     return bytes;
 }
@@ -857,7 +857,7 @@ int WriteSyncBeginRecord(TraceMarker& traceMarker, const char* bitStr,
     WriteHitraceId(traceMarker, dataOffset, dstBufferEnd);
     StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, traceMarker.name);
     StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
-    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, g_traceLevel[traceMarker.level]);
+    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, TRACE_LEVEL[traceMarker.level]);
     StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, bitStr);
     if (*(traceMarker.customArgs) != '\0') {
         StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
@@ -873,7 +873,7 @@ int WriteSyncEndRecord(TraceMarker& traceMarker, const char* bitStr,
     StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, "E|");
     StringUtil::AddUInt32DecValueToBuffer(dataOffset, dstBufferEnd, static_cast<uint32_t>(traceMarker.pid));
     StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
-    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, g_traceLevel[traceMarker.level]);
+    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, TRACE_LEVEL[traceMarker.level]);
     StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, bitStr);
     return static_cast<int>(dataOffset - dstBufferStart);
 }
@@ -890,7 +890,7 @@ int WriteAsyncBeginRecord(TraceMarker& traceMarker, const char* bitStr,
     StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
     StringUtil::AddInt64DecValue(dataOffset, dstBufferEnd, traceMarker.value);
     StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
-    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, g_traceLevel[traceMarker.level]);
+    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, TRACE_LEVEL[traceMarker.level]);
     StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, bitStr);
     if (*(traceMarker.customCategory) != '\0') {
         StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
@@ -912,7 +912,7 @@ int WriteOtherTypeRecord(TraceMarker& traceMarker, const char* bitStr,
     char* const dstBufferStart, const char* const dstBufferEnd)
 {
     auto dataOffset = dstBufferStart;
-    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, g_markTypes[traceMarker.type]);
+    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, MARK_TYPES[traceMarker.type]);
     StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
     StringUtil::AddUInt32DecValueToBuffer(dataOffset, dstBufferEnd, static_cast<uint32_t>(traceMarker.pid));
     StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, "|H:");
@@ -921,7 +921,7 @@ int WriteOtherTypeRecord(TraceMarker& traceMarker, const char* bitStr,
     StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
     StringUtil::AddInt64DecValue(dataOffset, dstBufferEnd, traceMarker.value);
     StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, '|');
-    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, g_traceLevel[traceMarker.level]);
+    StringUtil::AddCharToBuffer(dataOffset, dstBufferEnd, TRACE_LEVEL[traceMarker.level]);
     StringUtil::AddStringToBuffer(dataOffset, dstBufferEnd, bitStr);
     return static_cast<int>(dataOffset - dstBufferStart);
 }
@@ -1553,8 +1553,9 @@ int StartCaptureAppTrace(TraceFlag flag, uint64_t tags, uint64_t limitSize, std:
         }
     }
 
-    mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH; // 0644
-    g_appFd = SmartFd(open(destFileName.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC, mode));
+    constexpr mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH; // 0644
+    constexpr mode_t openFlag = O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC;
+    g_appFd = SmartFd(open(destFileName.c_str(), openFlag, mode));
     ret = CheckFd(g_appFd.GetFd());
     if (ret != RET_SUCC) {
         HILOG_ERROR(LOG_CORE, "open destFileName failed: %{public}d(%{public}s)", errno, strerror(errno));
