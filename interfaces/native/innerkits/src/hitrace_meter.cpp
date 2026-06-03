@@ -108,9 +108,9 @@ constexpr int32_t INVALID_INDEX = -2;
 constexpr int32_t INDEX_NOT_REGISTERED = -1;
 constexpr int32_t SUCCESS_UNREGISTER = 0;
 
-constexpr char MARK_TYPES[] = "BESFC";
+constexpr char MARK_TYPES[] = {'B', 'E', 'S', 'F', 'C'};
 enum MarkerType { MARKER_BEGIN, MARKER_END, MARKER_ASYNC_BEGIN, MARKER_ASYNC_END, MARKER_INT };
-constexpr char TRACE_LEVEL[] = "DICM";
+constexpr char TRACE_LEVEL[] = {'D', 'I', 'C', 'M'};
 
 constexpr uint64_t VALID_TAGS = HITRACE_TAG_FFRT | HITRACE_TAG_COMMONLIBRARY | HITRACE_TAG_HDF | HITRACE_TAG_NET |
     HITRACE_TAG_NWEB | HITRACE_TAG_DISTRIBUTED_AUDIO | HITRACE_TAG_FILEMANAGEMENT | HITRACE_TAG_OHOS |
@@ -257,7 +257,7 @@ private:
 };
 
 namespace StringUtil {
-constexpr const char NUM_TO_CHAR_MAPS[] = "0123456789abcdef";
+constexpr char NUM_TO_CHAR_MAPS[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
 inline void AddStringToBuffer(char*& dst, const char* end, const char* src, size_t strLength)
 {
@@ -540,7 +540,7 @@ const std::string& GetProcName()
         if (!GetProcData("/proc/self/cmdline", appName, NAME_NORMAL_LEN)) {
             HILOG_ERROR(LOG_CORE, "get app name failed, %{public}d", errno);
         }
-        return appName;
+        return std::string(appName);
     } ();
     return procName;
 }
