@@ -26,3 +26,10 @@ ohos_prebuilt_etc("hitrace.cfg") {
   subsystem_name = "hiviewdfx"
   part_name = "hitrace"
 }
+
+ohos_prebuilt_etc("hitrace_ext.cfg") {
+  source = "hitrace_ext.cfg"
+  relative_install_dir = "init"
+  subsystem_name = "hiviewdfx"
+  part_name = "hitrace"
+}

@@ -31,4 +31,7 @@ group("hitrace_all_target") {
     "$hitrace_interfaces_path/rust/innerkits/hitrace_meter:hitrace_meter_rust",
     "$hitrace_interfaces_path/rust/innerkits/hitracechain:hitracechain_rust",
   ]
+  if (hitrace_feature_support_usr_symlink) {
+    deps += [ "$hitrace_config_path:hitrace_ext.cfg", ]
+  }
 }
