@@ -15,6 +15,7 @@
 
 #include <cerrno>
 #include <cctype>
+#include <cstdio>
 #include <fstream>
 #include <gtest/gtest.h>
 #include <iostream>
@@ -48,6 +49,25 @@ std::pair<std::vector<std::vector<char>>, std::vector<char*>> BuildWritableArgv(
         argv.push_back(storage.back().data());
     }
     return {std::move(storage), std::move(argv)};
+}
+
+std::string ReadFdToString(int fd)
+{
+    std::string output;
+    constexpr size_t bufferSize = 1024;
+    char buffer[bufferSize] = {0};
+    while (true) {
+        ssize_t len = read(fd, buffer, sizeof(buffer));
+        if (len > 0) {
+            output.append(buffer, static_cast<size_t>(len));
+            continue;
+        }
+        if (len < 0 && errno == EINTR) {
+            continue;
+        }
+        break;
+    }
+    return output;
 }
 }
 
@@ -141,11 +161,45 @@ public:
 
     std::string RunCmdAndGetStdout(const std::string& cmd)
     {
-        testing::internal::CaptureStdout();
+        if (fflush(stdout) != 0) {
+            ADD_FAILURE() << "fflush stdout failed before redirect, errno=" << errno;
+            return "";
+        }
+        int pipeFd[2] = {-1, -1};
+        if (pipe(pipeFd) != 0) {
+            ADD_FAILURE() << "pipe stdout failed, errno=" << errno;
+            return "";
+        }
+        int savedStdout = dup(STDOUT_FILENO);
+        if (savedStdout < 0) {
+            close(pipeFd[0]);
+            close(pipeFd[1]);
+            ADD_FAILURE() << "dup stdout failed, errno=" << errno;
+            return "";
+        }
+        if (dup2(pipeFd[1], STDOUT_FILENO) < 0) {
+            close(savedStdout);
+            close(pipeFd[0]);
+            close(pipeFd[1]);
+            ADD_FAILURE() << "redirect stdout failed, errno=" << errno;
+            return "";
+        }
+        close(pipeFd[1]);
         RunCmd(cmd);
-        std::string output = testing::internal::GetCapturedStdout();
+        if (fflush(stdout) != 0) {
+            ADD_FAILURE() << "fflush stdout failed after run cmd, errno=" << errno;
+            return "";
+        }
+        if (dup2(savedStdout, STDOUT_FILENO) < 0) {
+            close(savedStdout);
+            close(pipeFd[0]);
+            ADD_FAILURE() << "restore stdout failed, errno=" << errno;
+            return "";
+        }
+        close(savedStdout);
+        std::string output = ReadFdToString(pipeFd[0]);
+        close(pipeFd[0]);
         GTEST_LOG_(INFO) << "command: " << cmd;
-        GTEST_LOG_(INFO) << "stdout: " << output;
         return output;
     }
 
@@ -544,60 +598,6 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest011, TestSize.Level1)
     ASSERT_TRUE(CheckTraceCommandOutput(cmd, keywords));
 
     GTEST_LOG_(INFO) << "HitraceCMDTest011: end.";
-}
-
-/**
- * @tc.name: HitraceCMDTest056
- * @tc.desc: test boot trace help visibility follows root version
- * @tc.type: FUNC
- */
-HWTEST_F(HitraceCMDTest, HitraceCMDTest056, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "HitraceCMDTest056: start.";
-
-    std::string output = RunCmdAndGetStdout("hitrace -h");
-    EXPECT_NE(output.find("--boot_trace"), std::string::npos) << output;
-    EXPECT_NE(output.find("--repeat"), std::string::npos) << output;
-    EXPECT_NE(output.find("--file_prefix"), std::string::npos) << output;
-    EXPECT_NE(output.find("--increment"), std::string::npos) << output;
-    EXPECT_NE(output.find("  --boot_trace           Configure boot trace capture"), std::string::npos) << output;
-    EXPECT_NE(output.find("  --file_prefix prefix   Set the boot trace output file prefix"), std::string::npos) <<
-        output;
-    EXPECT_NE(output.find("  --repeat N             Set boot trace capture count"), std::string::npos) << output;
-    EXPECT_NE(output.find("  --increment            Append an incrementing index"), std::string::npos) << output;
-    const std::string supportText =
-        "It supports concrete categories with -b/--buffer_size, -t/--time,\n"
-        "                         --file_prefix, --repeat and --increment.";
-    EXPECT_NE(output.find(supportText), std::string::npos) << output;
-    EXPECT_EQ(output.find("--file_size, --trace_clock, --overwrite"), std::string::npos) << output;
-    size_t filePrefixPos = output.find("  --file_prefix prefix");
-    size_t repeatPos = output.find("  --repeat N");
-    size_t incrementPos = output.find("  --increment");
-    EXPECT_NE(filePrefixPos, std::string::npos) << output;
-    EXPECT_NE(repeatPos, std::string::npos) << output;
-    EXPECT_NE(incrementPos, std::string::npos) << output;
-    EXPECT_LT(filePrefixPos, repeatPos) << output;
-    EXPECT_LT(repeatPos, incrementPos) << output;
-    EXPECT_NE(output.find("Only supports\n                         --boot_trace."), std::string::npos) << output;
-    EXPECT_EQ(output.find("boot-trace"), std::string::npos) << output;
-
-    SetBootTraceForceRootForTest(false);
-    output = RunCmdAndGetStdout("hitrace -h");
-    EXPECT_EQ(output.find("--boot_trace"), std::string::npos) << output;
-    EXPECT_EQ(output.find("--repeat"), std::string::npos) << output;
-    EXPECT_EQ(output.find("--file_prefix"), std::string::npos) << output;
-    EXPECT_EQ(output.find("--increment"), std::string::npos) << output;
-    EXPECT_EQ(output.find("boot-trace"), std::string::npos) << output;
-
-    SetBootTraceRootVersionForTest(false);
-    output = RunCmdAndGetStdout("hitrace -h");
-    EXPECT_EQ(output.find("--boot_trace"), std::string::npos) << output;
-    EXPECT_EQ(output.find("--repeat"), std::string::npos) << output;
-    EXPECT_EQ(output.find("--file_prefix"), std::string::npos) << output;
-    EXPECT_EQ(output.find("--increment"), std::string::npos) << output;
-    EXPECT_EQ(output.find("boot-trace"), std::string::npos) << output;
-
-    GTEST_LOG_(INFO) << "HitraceCMDTest056: end.";
 }
 
 /**
@@ -1485,6 +1485,62 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest044, TestSize.Level1)
 }
 
 /**
+ * @tc.name: HitraceCMDTest045
+ * @tc.desc: --boot_trace and --boot require root; boot-trace requires init launch;
+ *           denied paths see unrecognized messages
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceCMDTest, HitraceCMDTest045, TestSize.Level1)
+{
+    SetBootTraceForceRootForTest(false);
+
+    int codeCfg = RunCmdWithExitCode("hitrace --boot_trace sched");
+    std::string outCfg = GetOutput();
+    EXPECT_EQ(codeCfg, -1) << "expect exit -1 for --boot_trace when not root";
+    EXPECT_NE(outCfg.find("error: unrecognized option '--boot_trace'."), std::string::npos) << outCfg;
+
+    SetBootTraceForceRootForTest(false);
+    int codeSub = RunCmdWithExitCode("hitrace boot-trace");
+    std::string outSub = GetOutput();
+    EXPECT_EQ(codeSub, -1) << "expect exit -1 for boot-trace when not root";
+    EXPECT_NE(outSub.find("error: unrecognized command 'boot-trace'."), std::string::npos) << outSub;
+
+    SetBootTraceForceRootForTest(true);
+    SetBootTraceForceInitParentForTest(false);
+    int codeManualSub = RunCmdWithExitCode("hitrace boot-trace");
+    std::string outManualSub = GetOutput();
+    EXPECT_EQ(codeManualSub, -1) << "expect exit -1 for boot-trace when not launched by init";
+    EXPECT_NE(outManualSub.find("error: unrecognized command 'boot-trace'."), std::string::npos) << outManualSub;
+
+    SetBootTraceForceRootForTest(false);
+    int codeAbbr = RunCmdWithExitCode("hitrace --boot sched");
+    std::string outAbbr = GetOutput();
+    EXPECT_EQ(codeAbbr, -1) << "expect exit -1 for --boot when not root";
+    EXPECT_NE(outAbbr.find("error: unrecognized option '--boot_trace'."), std::string::npos) << outAbbr;
+
+    SetBootTraceForceRootForTest(true);
+    SetBootTraceForceInitParentForTest(true);
+}
+
+/**
+ * @tc.name: HitraceCMDTest046
+ * @tc.desc: under root, --boot matches --boot_trace via getopt_long unique-prefix (same as --boot_trace sched)
+ * @tc.type: FUNC
+ */
+HWTEST_F(HitraceCMDTest, HitraceCMDTest046, TestSize.Level1)
+{
+    SkipBootTracePrivilegedTestsUnlessRoot();
+
+    RemoveBootTraceConfig();
+    int code = RunCmdWithExitCode("hitrace --boot sched");
+    std::string out = GetOutput();
+    EXPECT_EQ(code, 0) << out;
+    EXPECT_NE(out.find("CONFIG_BOOT_TRACE"), std::string::npos) << out;
+    EXPECT_NE(out.find("boot_trace configuration success."), std::string::npos) << out;
+    RemoveBootTraceConfig();
+}
+
+/**
  * @tc.name: HitraceCMDTest047
  * @tc.desc: boot-trace with active 0 and valid cfg runs capture (init launch path)
  * @tc.type: FUNC
@@ -1747,80 +1803,59 @@ HWTEST_F(HitraceCMDTest, HitraceCMDTest055, TestSize.Level1)
 }
 
 /**
- * @tc.name: HitraceCMDTest045
- * @tc.desc: --boot_trace and --boot require root; boot-trace requires init launch;
- *           denied paths see unrecognized messages
+ * @tc.name: HitraceCMDTest056
+ * @tc.desc: test boot trace help visibility follows root version
  * @tc.type: FUNC
  */
-HWTEST_F(HitraceCMDTest, HitraceCMDTest045, TestSize.Level1)
+HWTEST_F(HitraceCMDTest, HitraceCMDTest056, TestSize.Level1)
 {
-    SetBootTraceForceRootForTest(false);
+    GTEST_LOG_(INFO) << "HitraceCMDTest056: start.";
 
-    std::vector<std::string> argsBootTrace = { "hitrace", "--boot_trace", "sched" };
-    auto argvBootBuffer = BuildWritableArgv(argsBootTrace);
-    std::vector<char*>& argvBoot = argvBootBuffer.second;
-    int codeCfg = HiTraceCMDTestMain(static_cast<int>(argvBoot.size()), argvBoot.data());
-    std::string outCfg = GetOutput();
-    Reset();
-    EXPECT_EQ(codeCfg, -1) << "expect exit -1 for --boot_trace when not root";
-    EXPECT_NE(outCfg.find("error: unrecognized option '--boot_trace'."), std::string::npos) << outCfg;
-
-    SetBootTraceForceRootForTest(false);
-    std::vector<std::string> argsSub = { "hitrace", "boot-trace" };
-    auto argvSubBuffer = BuildWritableArgv(argsSub);
-    std::vector<char*>& argvSub = argvSubBuffer.second;
-    int codeSub = HiTraceCMDTestMain(static_cast<int>(argvSub.size()), argvSub.data());
-    std::string outSub = GetOutput();
-    Reset();
-    EXPECT_EQ(codeSub, -1) << "expect exit -1 for boot-trace when not root";
-    EXPECT_NE(outSub.find("error: unrecognized command 'boot-trace'."), std::string::npos) << outSub;
-
-    SetBootTraceForceRootForTest(true);
-    SetBootTraceForceInitParentForTest(false);
-    std::vector<std::string> argsManualSub = { "hitrace", "boot-trace" };
-    auto argvManualSubBuffer = BuildWritableArgv(argsManualSub);
-    std::vector<char*>& argvManualSub = argvManualSubBuffer.second;
-    int codeManualSub = HiTraceCMDTestMain(static_cast<int>(argvManualSub.size()), argvManualSub.data());
-    std::string outManualSub = GetOutput();
-    Reset();
-    EXPECT_EQ(codeManualSub, -1) << "expect exit -1 for boot-trace when not launched by init";
-    EXPECT_NE(outManualSub.find("error: unrecognized command 'boot-trace'."), std::string::npos) << outManualSub;
+    std::string output = RunCmdAndGetStdout("hitrace -h");
+    ASSERT_NE(output.find("--boot_trace"), std::string::npos) << output;
+    ASSERT_NE(output.find("--repeat"), std::string::npos) << output;
+    ASSERT_NE(output.find("--file_prefix"), std::string::npos) << output;
+    ASSERT_NE(output.find("--increment"), std::string::npos) << output;
+    ASSERT_NE(output.find("  --boot_trace           Configure boot trace capture"), std::string::npos) << output;
+    ASSERT_NE(output.find("  --file_prefix prefix   Set the boot trace output file prefix"), std::string::npos) <<
+        output;
+    ASSERT_NE(output.find("  --repeat N             Set boot trace capture count"), std::string::npos) << output;
+    ASSERT_NE(output.find("  --increment            Append an incrementing index"), std::string::npos) << output;
+    const std::string supportText =
+        "It supports concrete categories with -b/--buffer_size, -t/--time,\n"
+        "                         --file_prefix, --repeat and --increment.";
+    ASSERT_NE(output.find(supportText), std::string::npos) << output;
+    ASSERT_EQ(output.find("--file_size, --trace_clock, --overwrite"), std::string::npos) << output;
+    size_t filePrefixPos = output.find("  --file_prefix prefix");
+    size_t repeatPos = output.find("  --repeat N");
+    size_t incrementPos = output.find("  --increment");
+    ASSERT_NE(filePrefixPos, std::string::npos) << output;
+    ASSERT_NE(repeatPos, std::string::npos) << output;
+    ASSERT_NE(incrementPos, std::string::npos) << output;
+    ASSERT_LT(filePrefixPos, repeatPos) << output;
+    ASSERT_LT(repeatPos, incrementPos) << output;
+    ASSERT_NE(output.find("Only supports\n                         --boot_trace."), std::string::npos) << output;
+    ASSERT_EQ(output.find("boot-trace"), std::string::npos) << output;
 
     SetBootTraceForceRootForTest(false);
-    std::vector<std::string> argsBootAbbr = { "hitrace", "--boot", "sched" };
-    auto argvAbbrBuffer = BuildWritableArgv(argsBootAbbr);
-    std::vector<char*>& argvAbbr = argvAbbrBuffer.second;
-    int codeAbbr = HiTraceCMDTestMain(static_cast<int>(argvAbbr.size()), argvAbbr.data());
-    std::string outAbbr = GetOutput();
-    Reset();
-    EXPECT_EQ(codeAbbr, -1) << "expect exit -1 for --boot when not root";
-    EXPECT_NE(outAbbr.find("error: unrecognized option '--boot_trace'."), std::string::npos) << outAbbr;
+    output = RunCmdAndGetStdout("hitrace -h");
+    ASSERT_EQ(output.find("--boot_trace"), std::string::npos) << output;
+    ASSERT_EQ(output.find("--repeat"), std::string::npos) << output;
+    ASSERT_EQ(output.find("--file_prefix"), std::string::npos) << output;
+    ASSERT_EQ(output.find("--increment"), std::string::npos) << output;
+    ASSERT_EQ(output.find("boot-trace"), std::string::npos) << output;
 
-    SetBootTraceForceRootForTest(true);
-    SetBootTraceForceInitParentForTest(true);
+    SetBootTraceRootVersionForTest(false);
+    output = RunCmdAndGetStdout("hitrace -h");
+    ASSERT_EQ(output.find("--boot_trace"), std::string::npos) << output;
+    ASSERT_EQ(output.find("--repeat"), std::string::npos) << output;
+    ASSERT_EQ(output.find("--file_prefix"), std::string::npos) << output;
+    ASSERT_EQ(output.find("--increment"), std::string::npos) << output;
+    ASSERT_EQ(output.find("boot-trace"), std::string::npos) << output;
+
+    GTEST_LOG_(INFO) << "HitraceCMDTest056: end.";
 }
 
-/**
- * @tc.name: HitraceCMDTest046
- * @tc.desc: under root, --boot matches --boot_trace via getopt_long unique-prefix (same as --boot_trace sched)
- * @tc.type: FUNC
- */
-HWTEST_F(HitraceCMDTest, HitraceCMDTest046, TestSize.Level1)
-{
-    SkipBootTracePrivilegedTestsUnlessRoot();
-
-    RemoveBootTraceConfig();
-    std::vector<std::string> args = { "hitrace", "--boot", "sched" };
-    auto argvBuffer = BuildWritableArgv(args);
-    std::vector<char*>& argv = argvBuffer.second;
-    int code = HiTraceCMDTestMain(static_cast<int>(argv.size()), argv.data());
-    std::string out = GetOutput();
-    Reset();
-    EXPECT_EQ(code, 0) << out;
-    EXPECT_NE(out.find("CONFIG_BOOT_TRACE"), std::string::npos) << out;
-    EXPECT_NE(out.find("boot_trace configuration success."), std::string::npos) << out;
-    RemoveBootTraceConfig();
-}
 }
 }
 }
