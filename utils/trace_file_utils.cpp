@@ -495,7 +495,7 @@ std::string RenameCacheFile(const std::string& cacheFile)
         return cacheFile;
     }
     std::string dirPath = cacheFile.substr(0, cacheFile.find_last_of("/") + 1);
-    constexpr size_t cacheFilePrefixLen = sizeof(CACHE_FILE_PREFIX) - 1;
+    const size_t cacheFilePrefixLen = strlen(CACHE_FILE_PREFIX);
     std::string newFileName = fileName.substr(pos + cacheFilePrefixLen);
     std::string newFilePath = dirPath + newFileName;
     if (rename(cacheFile.c_str(), newFilePath.c_str()) != 0) {
