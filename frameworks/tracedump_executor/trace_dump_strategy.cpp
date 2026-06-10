@@ -241,14 +241,18 @@ bool SnapshotTraceDumpStrategy::DoCore(std::shared_ptr<ITraceSourceFactory> trac
 bool RecordTraceDumpStrategy::DoCore(std::shared_ptr<ITraceSourceFactory> traceSourceFactory,
     const TraceDumpRequest& request, const TraceContentPtr& traceContentPtr, TraceDumpRet& ret)
 {
+    thread_local bool isOverFlow = false;
     while (TraceDumpState::GetInstance().IsLoopDumpRunning()) {
-        sleep(1); // sleep 1s to wait for trace data.
+        if (!isOverFlow) {
+            sleep(1); // sleep 1s to wait for trace data.
+        }
         auto updatedRequest = request;
         updatedRequest.traceEndTime = GetCurBootTime();
         if (!traceContentPtr.cpuRaw->WriteTraceContent()) {
             ret.code = traceContentPtr.cpuRaw->GetDumpStatus();
             return false;
         }
+        isOverFlow = traceContentPtr.cpuRaw->IsOverFlow();
         const auto& traceFile = traceContentPtr.cpuRaw->GetTraceFilePath();
         ret.code = traceContentPtr.cpuRaw->GetDumpStatus();
         ret.traceStartTime = traceContentPtr.cpuRaw->GetFirstPageTimeStamp();
@@ -257,7 +261,7 @@ bool RecordTraceDumpStrategy::DoCore(std::shared_ptr<ITraceSourceFactory> traceS
             HILOG_ERROR(LOG_CORE, "RecordTraceDumpStrategy: strncpy_s failed.");
             return false;
         }
-        if (traceContentPtr.cpuRaw->IsOverFlow()) {
+        if (isOverFlow) {
             HILOG_INFO(LOG_CORE, "RecordTraceDumpStrategy: write trace content overflow.");
             break;
         }
