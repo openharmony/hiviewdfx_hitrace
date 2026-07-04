@@ -13,15 +13,18 @@
  * limitations under the License.
  */
 
-#include <filesystem>
+#include <dirent.h>
 #include <fstream>
+#include <climits>
 #include <string>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <fcntl.h>
 #include <gtest/gtest.h>
 
 #include "trace_json_parser.h"
+#include "trace_file_utils.h"
 
 #include "common_define.h"
 
@@ -40,12 +43,19 @@ void CreateFile(const std::string& filename)
 
 void ClearFile()
 {
-    const std::filesystem::path dirPath(HitTraceDir());
-    if (std::filesystem::exists(dirPath)) {
-        for (const auto& entry : std::filesystem::directory_iterator(dirPath)) {
-            std::filesystem::remove_all(entry.path());
+    OHOS::HiviewDFX::Hitrace::TraverseFiles(HitTraceDir(), true, [](const char* dirPath, const dirent* entry) {
+        std::string filePath = std::string(dirPath) + "/" + std::string(entry->d_name);
+        int ret = remove(filePath.c_str());
+        if (ret != 0) {
+            GTEST_LOG_(ERROR) << "Error: Failed remove file " << filePath << " for reason" << strerror(errno);
         }
-    }
+    });
+}
+
+bool FileExists(const std::string& filePath)
+{
+    struct stat statBuf;
+    return stat(filePath.c_str(), &statBuf) == 0 && S_ISREG(statBuf.st_mode);
 }
 
 } // namespace
@@ -162,14 +172,14 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_001, TestSize.Level1)
     FileAgeingUtils::HandleAgeing(vec, TraceDumpType::TRACE_RECORDING);
 
     for (const auto& filename : otherFiles) {
-        EXPECT_FALSE(std::filesystem::exists(filename));
+        EXPECT_FALSE(FileExists(filename));
     }
-    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "record_trace_0.a"));
-    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "record_trace_0.b"));
+    EXPECT_FALSE(FileExists(HitTraceDir() + "record_trace_0.a"));
+    EXPECT_FALSE(FileExists(HitTraceDir() + "record_trace_0.b"));
 
     ASSERT_EQ(vec.size(), 3);
     for (const auto& info : vec) {
-        EXPECT_TRUE(std::filesystem::exists(info.filename));
+        EXPECT_TRUE(FileExists(info.filename));
     }
 }
 
@@ -200,14 +210,14 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_002, TestSize.Level1)
     FileAgeingUtils::HandleAgeing(vec, TraceDumpType::TRACE_RECORDING);
 
     for (const auto& filename : otherFiles) {
-        EXPECT_FALSE(std::filesystem::exists(filename));
+        EXPECT_FALSE(FileExists(filename));
     }
-    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "record_trace_0.a"));
-    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "record_trace_0.b"));
+    EXPECT_FALSE(FileExists(HitTraceDir() + "record_trace_0.a"));
+    EXPECT_FALSE(FileExists(HitTraceDir() + "record_trace_0.b"));
 
     ASSERT_EQ(vec.size(), 6);
     for (const auto& info : vec) {
-        EXPECT_TRUE(std::filesystem::exists(info.filename));
+        EXPECT_TRUE(FileExists(info.filename));
     }
 }
 
@@ -237,14 +247,14 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_003, TestSize.Level1)
     FileAgeingUtils::HandleAgeing(vec, TraceDumpType::TRACE_SNAPSHOT);
 
     for (const auto& filename : otherFiles) {
-        EXPECT_FALSE(std::filesystem::exists(filename));
+        EXPECT_FALSE(FileExists(filename));
     }
-    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_0.a"));
-    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_0.b"));
+    EXPECT_FALSE(FileExists(HitTraceDir() + "trace_0.a"));
+    EXPECT_FALSE(FileExists(HitTraceDir() + "trace_0.b"));
 
     ASSERT_EQ(vec.size(), 3);
     for (const auto& info : vec) {
-        EXPECT_TRUE(std::filesystem::exists(info.filename));
+        EXPECT_TRUE(FileExists(info.filename));
     }
 }
 
@@ -278,15 +288,15 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_004, TestSize.Level1)
     FileAgeingUtils::HandleAgeing(vec, TraceDumpType::TRACE_SNAPSHOT);
 
     for (const auto& filename : otherFiles) {
-        EXPECT_FALSE(std::filesystem::exists(filename));
+        EXPECT_FALSE(FileExists(filename));
     }
-    EXPECT_TRUE(std::filesystem::exists(HitTraceDir() + "trace_0.a"));
-    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_1.a"));
-    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_2.a"));
+    EXPECT_TRUE(FileExists(HitTraceDir() + "trace_0.a"));
+    EXPECT_FALSE(FileExists(HitTraceDir() + "trace_1.a"));
+    EXPECT_FALSE(FileExists(HitTraceDir() + "trace_2.a"));
 
     ASSERT_EQ(vec.size(), 3);
     for (const auto& info : vec) {
-        EXPECT_TRUE(std::filesystem::exists(info.filename));
+        EXPECT_TRUE(FileExists(info.filename));
     }
 }
 
@@ -321,13 +331,13 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_005, TestSize.Level1)
     }
     FileAgeingUtils::HandleAgeing(vec, TraceDumpType::TRACE_SNAPSHOT);
     for (const auto& filename : otherFiles) {
-        EXPECT_FALSE(std::filesystem::exists(filename));
+        EXPECT_FALSE(FileExists(filename));
     }
-    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_0.a"));
-    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_17.a"));
+    EXPECT_FALSE(FileExists(HitTraceDir() + "trace_0.a"));
+    EXPECT_FALSE(FileExists(HitTraceDir() + "trace_17.a"));
     ASSERT_EQ(vec.size(), fileNumberLimit);
     for (const auto& info : vec) {
-        EXPECT_TRUE(std::filesystem::exists(info.filename));
+        EXPECT_TRUE(FileExists(info.filename));
     }
 }
 
@@ -358,14 +368,14 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_006, TestSize.Level1)
     FileAgeingUtils::HandleAgeing(vec, TraceDumpType::TRACE_SNAPSHOT);
 
     for (const auto& filename : otherFiles) {
-        EXPECT_FALSE(std::filesystem::exists(filename));
+        EXPECT_FALSE(FileExists(filename));
     }
-    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_0.a"));
-    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_1.a"));
+    EXPECT_FALSE(FileExists(HitTraceDir() + "trace_0.a"));
+    EXPECT_FALSE(FileExists(HitTraceDir() + "trace_1.a"));
 
     ASSERT_EQ(vec.size(), 5);
     for (const auto& info : vec) {
-        EXPECT_TRUE(std::filesystem::exists(info.filename));
+        EXPECT_TRUE(FileExists(info.filename));
     }
 }
 
@@ -402,15 +412,15 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_007, TestSize.Level1)
     FileAgeingUtils::HandleAgeing(vec, TraceDumpType::TRACE_SNAPSHOT);
 
     for (const auto& filename : otherFiles) {
-        EXPECT_FALSE(std::filesystem::exists(filename));
+        EXPECT_FALSE(FileExists(filename));
     }
-    EXPECT_TRUE(std::filesystem::exists(HitTraceDir() + "trace_0.a"));
-    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_1.a"));
-    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_2.a"));
+    EXPECT_TRUE(FileExists(HitTraceDir() + "trace_0.a"));
+    EXPECT_FALSE(FileExists(HitTraceDir() + "trace_1.a"));
+    EXPECT_FALSE(FileExists(HitTraceDir() + "trace_2.a"));
 
     ASSERT_EQ(vec.size(), 6);
     for (const auto& info : vec) {
-        EXPECT_TRUE(std::filesystem::exists(info.filename));
+        EXPECT_TRUE(FileExists(info.filename));
     }
 }
 
@@ -442,15 +452,15 @@ HWTEST_F(HitraceAgeingTest, HandleAgeing_008, TestSize.Level1)
     }
     FileAgeingUtils::HandleAgeing(vec, TraceDumpType::TRACE_SNAPSHOT);
     for (const auto& filename : otherFiles) {
-        EXPECT_FALSE(std::filesystem::exists(filename));
+        EXPECT_FALSE(FileExists(filename));
     }
-    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_0.a"));
-    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_17.a"));
-    EXPECT_FALSE(std::filesystem::exists(HitTraceDir() + "trace_18.a"));
+    EXPECT_FALSE(FileExists(HitTraceDir() + "trace_0.a"));
+    EXPECT_FALSE(FileExists(HitTraceDir() + "trace_17.a"));
+    EXPECT_FALSE(FileExists(HitTraceDir() + "trace_18.a"));
 
     ASSERT_EQ(vec.size(), 19);
     for (const auto& info : vec) {
-        EXPECT_TRUE(std::filesystem::exists(info.filename));
+        EXPECT_TRUE(FileExists(info.filename));
     }
 }
 

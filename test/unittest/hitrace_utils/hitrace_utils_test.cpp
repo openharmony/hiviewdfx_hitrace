@@ -14,9 +14,10 @@
  */
 
 #include <fcntl.h>
-#include <filesystem>
+#include <dirent.h>
 #include <fstream>
 #include <gtest/gtest.h>
+#include <climits>
 #include <string>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -451,7 +452,13 @@ HWTEST_F(HitraceUtilsTest, GetRemainingSpace_001, TestSize.Level2)
 
 HWTEST_F(HitraceUtilsTest, GetTraceFileNamesInDir_001, TestSize.Level2)
 {
-    std::filesystem::remove_all(TRACE_FILE_DEFAULT_DIR);
+    TraverseFiles(TRACE_FILE_DEFAULT_DIR, true, [](const char* dirPath, const dirent* entry) {
+        std::string filePath = std::string(dirPath) + "/" + std::string(entry->d_name);
+        int ret = remove(filePath.c_str());
+        if (ret != 0) {
+            GTEST_LOG_(ERROR) << "Error: Failed remove file " << filePath << " for reason" << strerror(errno);
+        }
+    });
     std::set<std::string> fileSet = {};
     GetTraceFileNamesInDir(fileSet, TraceDumpType::TRACE_SNAPSHOT);
 
@@ -661,10 +668,8 @@ HWTEST_F(HitraceUtilsTest, IsTraceFilePathLegal001, TestSize.Level2)
     std::string errpathFile = "/data/local/tmp/trace.txt";
     std::ofstream file2(errpathFile);
     EXPECT_FALSE(IsTraceFilePathLegal(errpathFile, realFilePath, PATH_MAX));
-    const std::filesystem::path filePath= "/data/log/hitrace/trace.txt";
-    std::filesystem::remove(filePath);
-    const std::filesystem::path filePath2 = "/data/local/tmp/trace.txt";
-    std::filesystem::remove(filePath2);
+    remove(fileName.c_str());
+    remove(errpathFile.c_str());
     GTEST_LOG_(INFO) << "IsTraceFilePathLegal001: end.";
 }
 } // namespace
