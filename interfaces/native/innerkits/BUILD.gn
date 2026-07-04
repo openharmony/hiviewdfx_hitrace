@@ -118,6 +118,7 @@ config("hitrace_dump_config") {
 }
 
 ohos_shared_library("hitrace_dump") {
+  branch_protector_ret = "pac_ret"
   include_dirs = [
     "include",
     "$hitrace_common_path",
