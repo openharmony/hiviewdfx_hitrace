@@ -15,12 +15,12 @@
 #include "hitrace_dump.h"
 
 #include <dlfcn.h>
-#include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
 #include <iostream>
 #include <set>
 #include <string>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
 
@@ -260,40 +260,56 @@ bool GetFileInfo(const TraceDumpType& traceType, const std::vector<std::string>&
 std::vector<std::string> GetTraceFilesInDir(const TraceDumpType& traceType)
 {
     std::vector<std::string> fileVec;
-    for (const auto &entry : std::filesystem::directory_iterator(TRACE_FILE_DEFAULT_DIR)) {
-        if (!entry.is_regular_file()) {
-            continue;
+    TraverseFiles(TRACE_FILE_DEFAULT_DIR, false, [&fileVec, &traceType](const char* dirPath, const dirent* entry) {
+        if (entry->d_type != DT_REG) {
+            return;
         }
-        std::string fileName = entry.path().filename().string();
-        if (fileName.substr(0, tracePrefixMap[traceType].size()) == tracePrefixMap[traceType]) {
-            fileVec.push_back(TRACE_FILE_DEFAULT_DIR + fileName);
+        if (strncmp(entry->d_name, tracePrefixMap[traceType].c_str(), tracePrefixMap[traceType].size()) == 0) {
+            std::string filePath = std::string(dirPath) + "/" + std::string(entry->d_name);
+            fileVec.push_back(filePath);
         }
-    }
+    });
     return fileVec;
 }
 
 int32_t GetTraceMarkerFdNum()
 {
-    std::filesystem::path debugPath = std::filesystem::canonical("/sys/kernel/debug/tracing/trace_marker");
-    std::filesystem::path tracePath = std::filesystem::canonical("/sys/kernel/tracing/trace_marker");
+    char debugPath[PATH_MAX] = {0};
+    char tracePath[PATH_MAX] = {0};
 
+    if (realpath("/sys/kernel/debug/tracing/trace_marker", debugPath) == nullptr) {
+        debugPath[0] = '\0';
+    }
+    if (realpath("/sys/kernel/tracing/trace_marker", tracePath) == nullptr) {
+        tracePath[0] = '\0';
+    }
+    
     int32_t fds = 0;
-    for (const auto& entry : std::filesystem::directory_iterator("/proc/self/fd")) {
-        if (!std::filesystem::is_symlink(entry.path())) {
-            continue;
+    TraverseFiles("/proc/self/fd", false, [&fds, &debugPath, &tracePath](const char* dirPath, const dirent* entry) {
+        if (entry->d_type != DT_LNK) {
+            return;
         }
-
-        auto symlink_path = std::filesystem::read_symlink(entry.path());
-        if (!symlink_path.is_absolute()) {
-            continue;
+        std::string filePath = std::string(dirPath) + "/" + std::string(entry->d_name);
+        char linkPath[PATH_MAX];
+        ssize_t ret = readlink(filePath.c_str(), linkPath, PATH_MAX - 1);
+        if (ret == -1) {
+            perror("readlink");
+            return;
         }
-
-        auto resolved_path = std::filesystem::canonical(symlink_path);
-        if (resolved_path == debugPath || resolved_path == tracePath) {
+        linkPath[ret] = '\0';
+        if (linkPath[0] != '/') {
+            return;
+        }
+        char resolvedPath[PATH_MAX] = { 0 };
+        if (realpath(linkPath, resolvedPath) == nullptr) {
+            return;
+        }
+        
+        if ((debugPath[0] != '\0' && strcmp(debugPath, resolvedPath) == 0) ||
+            (tracePath[0] != '\0' && strcmp(tracePath, resolvedPath) == 0)) {
             fds++;
         }
-    }
-
+    });
     return fds;
 }
 
