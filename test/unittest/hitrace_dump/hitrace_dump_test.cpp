@@ -15,6 +15,7 @@
 
 #include "hitrace_dump.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <dirent.h>
 #include <fcntl.h>
@@ -95,17 +96,6 @@ struct alignas(ALIGNMENT_COEFFICIENT) TraceFileContentHeader {
     uint32_t length;
 };
 
-bool TraverseFiles(std::vector<std::string> files, std::string outputFileName)
-{
-    int i = 1;
-    bool isExists = false;
-    for (std::vector<std::string>::iterator iter = files.begin(); iter != files.end(); iter++) {
-        isExists |= (strcmp(iter->c_str(), outputFileName.c_str()) == 0);
-        HILOG_INFO(LOG_CORE, "ret.outputFile%{public}d: %{public}s", i++, iter->c_str());
-    }
-    return isExists;
-}
-
 int HasProcessWithName(const std::string& name)
 {
     std::array<char, BUFFER_SIZE> buffer;
@@ -138,18 +128,15 @@ std::vector<FileWithTime> GetTraceFilesInDir(const TraceDumpType& traceType)
 {
     struct stat fileStat;
     std::vector<FileWithTime> fileList;
-    for (const auto &entry : std::filesystem::directory_iterator(TRACE_FILE_DEFAULT_DIR)) {
-        if (!entry.is_regular_file()) {
-            continue;
-        }
-        std::string fileName = entry.path().filename().string();
-        if (fileName.substr(0, tracePrefixMap[traceType].size()) == tracePrefixMap[traceType]) {
-            if (stat((TRACE_FILE_DEFAULT_DIR + fileName).c_str(), &fileStat) == 0) {
-                fileList.push_back({TRACE_FILE_DEFAULT_DIR + fileName, fileStat.st_ctime,
-                    static_cast<uint64_t>(fileStat.st_size)});
+    TraverseFiles(TRACE_FILE_DEFAULT_DIR, false,
+        [&fileList, &traceType, &fileStat](const char* dirPath, const dirent* entry) {
+            if (strncmp(entry->d_name,  tracePrefixMap[traceType].c_str(), tracePrefixMap[traceType].size()) == 0) {
+                std::string filePath = std::string(dirPath) + "/" + std::string(entry->d_name);
+                if (stat(filePath.c_str(), &fileStat) == 0 && S_ISREG(fileStat.st_mode)) {
+                    fileList.push_back({filePath, fileStat.st_ctime, static_cast<uint64_t>(fileStat.st_size)});
+                }
             }
-        }
-    }
+        });
     std::sort(fileList.begin(), fileList.end(), [](const FileWithTime& a, const FileWithTime& b) {
         return a.ctime < b.ctime;
     });
@@ -310,12 +297,13 @@ static void CreateFile(const std::string& filename)
 
 static void ClearFile()
 {
-    const std::filesystem::path dirPath(TRACE_FILE_DEFAULT_DIR);
-    if (std::filesystem::exists(dirPath)) {
-        for (const auto& entry : std::filesystem::directory_iterator(dirPath)) {
-            std::filesystem::remove_all(entry.path());
+    TraverseFiles(TRACE_FILE_DEFAULT_DIR, true, [](const char* dirPath, const dirent* entry) {
+        std::string filePath = std::string(dirPath) + "/" + std::string(entry->d_name);
+        int ret = remove(filePath.c_str());
+        if (ret != 0) {
+            GTEST_LOG_(ERROR) << "Error: Failed remove file " << filePath << " for reason" << strerror(errno);
         }
-    }
+    });
 }
 
 class HitraceDumpTest : public testing::Test {
@@ -948,10 +936,8 @@ HWTEST_F(HitraceDumpTest, DumpForCmdMode_002, TestSize.Level0)
 
     TraceRetInfo ret = RecordTraceOff();
     ASSERT_TRUE(ret.errorCode == TraceErrorCode::SUCCESS);
-
-    ASSERT_TRUE(TraverseFiles(ret.outputFiles, filePathName)) <<
+    ASSERT_NE(std::find(ret.outputFiles.begin(), ret.outputFiles.end(), filePathName), ret.outputFiles.end()) <<
         "unspport set outputfile, default generate file under TRACE_FILE_DEFAULT_DIR.";
-
     ASSERT_TRUE(CloseTrace() == TraceErrorCode::SUCCESS);
 }
 
