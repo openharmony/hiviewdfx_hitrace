@@ -15,6 +15,7 @@ import("//base/hiviewdfx/hitrace/hitrace.gni")
 import("//build/ohos.gni")
 
 ohos_executable("hitrace") {
+  branch_protector_ret = "pac_ret"
   install_enable = true
   configs = [ "$hitrace_common_path/build:coverage_flags" ]
   include_dirs = [

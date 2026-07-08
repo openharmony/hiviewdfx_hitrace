@@ -15,6 +15,7 @@ import("//base/hiviewdfx/hitrace/hitrace.gni")
 import("//build/ohos.gni")
 
 ohos_shared_library("bytrace") {
+  branch_protector_ret = "pac_ret"
   sources = [ "bytrace_napi_common.cpp" ]
 
   deps = [ "$hitrace_interfaces_path/native/innerkits:hitrace_meter" ]
