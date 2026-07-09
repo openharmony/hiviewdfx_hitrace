@@ -15,6 +15,7 @@ import("//base/hiviewdfx/hitrace/hitrace.gni")
 import("//build/ohos.gni")
 
 ohos_executable("hitrace_example") {
+  branch_protector_ret = "pac_ret"
   sources = [ "hitrace_example.cpp" ]
   deps = [ "$hitrace_interfaces_path/native/innerkits:hitrace_meter" ]
 
@@ -29,6 +30,7 @@ ohos_executable("hitrace_example") {
 }
 
 ohos_rust_executable("hitrace_example_rust") {
+  branch_protector_ret = "pac_ret"
   sources = [ "rust/main.rs" ]
 
   deps = [
