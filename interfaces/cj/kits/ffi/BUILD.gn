@@ -15,6 +15,7 @@ import("//base/hiviewdfx/hitrace/hitrace.gni")
 import("//build/ohos.gni")
 
 ohos_shared_library("cj_hitracechain_ffi") {
+  branch_protector_ret = "pac_ret"
   include_dirs = [
     "include",
     "$hitrace_interfaces_path/native/innerkits/include/hitrace",
@@ -40,6 +41,7 @@ ohos_shared_library("cj_hitracechain_ffi") {
 }
 
 ohos_shared_library("cj_hitracemeter_ffi") {
+  branch_protector_ret = "pac_ret"
   include_dirs = [
     "include",
     "$hitrace_frameworks_path/include",
