@@ -43,6 +43,7 @@
         "hiview",
         "init",
         "napi",
+        "node",
         "zlib",
         "runtime_core"
       ]
