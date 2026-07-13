@@ -33,6 +33,7 @@ ohos_shared_library("hitracechain_napi") {
   external_deps = [
     "bounds_checking_function:libsec_shared",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]
@@ -58,6 +59,7 @@ ohos_shared_library("hitracemeter_napi") {
   external_deps = [
     "bounds_checking_function:libsec_shared",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
   if (defined(ohos_lite)) {
     external_deps += [ "hilog_lite:hilog_lite" ]
