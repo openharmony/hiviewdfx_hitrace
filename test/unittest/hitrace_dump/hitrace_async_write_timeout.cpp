@@ -65,7 +65,7 @@ namespace {
 HWTEST_F(HitraceAsyncWriteTimeoutTest, AsyncWriteTimeoutTest001, TestSize.Level2)
 {
     const std::vector<std::string> tagGroups = {"scene_performance"};
-    ASSERT_TRUE(OpenTrace(tagGroups) == TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(OpenTrace(tagGroups)), static_cast<int>(TraceErrorCode::SUCCESS));
 
     std::function<void(TraceRetInfo)> func = [](TraceRetInfo traceInfo) {
         off_t totalFileSz = 0;
@@ -76,7 +76,7 @@ HWTEST_F(HitraceAsyncWriteTimeoutTest, AsyncWriteTimeoutTest001, TestSize.Level2
         EXPECT_EQ(totalFileSz, traceInfo.fileSize);
     };
     auto ret = DumpTraceAsync(0, 0, INT64_MAX, func);
-    EXPECT_EQ(static_cast<int>(ret.errorCode), TraceErrorCode::SUCCESS);
+    EXPECT_EQ(static_cast<int>(ret.errorCode), static_cast<int>(TraceErrorCode::SUCCESS));
     GTEST_LOG_(INFO) << "interface return file size : " << ret.fileSize;
     for (auto file : ret.outputFiles) {
         GTEST_LOG_(INFO) << "interface return file : " << file;
@@ -84,14 +84,14 @@ HWTEST_F(HitraceAsyncWriteTimeoutTest, AsyncWriteTimeoutTest001, TestSize.Level2
     // Allow trace data to accumulate before the next async snapshot.
     std::this_thread::sleep_for(std::chrono::seconds(2));
     ret = DumpTraceAsync(0, 0, INT64_MAX, func);
-    EXPECT_EQ(static_cast<int>(ret.errorCode), TraceErrorCode::SUCCESS);
+    EXPECT_EQ(static_cast<int>(ret.errorCode), static_cast<int>(TraceErrorCode::SUCCESS));
     GTEST_LOG_(INFO) << "interface return file size : " << ret.fileSize;
     for (auto file : ret.outputFiles) {
         GTEST_LOG_(INFO) << "interface return file : " << file;
     }
     std::this_thread::sleep_for(std::chrono::seconds(15)); // 15 : wait 15 seconds to avoid crash in SIGPIPE
     // Close trace after async dump
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
 }
 } // namespace
 } // namespace Hitrace

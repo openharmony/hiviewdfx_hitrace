@@ -227,7 +227,7 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest009, TestSize.Level2)
         ASSERT_EQ(remove("/data/log/hitrace/saved_events_format"), 0);
         GTEST_LOG_(INFO) << "Delete saved_events_format file.";
     }
-    ASSERT_FALSE(access("/data/log/hitrace/saved_events_format", F_OK) == 0);
+    ASSERT_NE(access("/data/log/hitrace/saved_events_format", F_OK), 0);
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory =
         std::make_shared<TraceSourceHMFactory>(TEST_TRACE_TEMP_FILE);
     ASSERT_TRUE(traceSourceFactory != nullptr);
@@ -324,9 +324,9 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest013, TestSize.Level2)
  */
 HWTEST_F(HitraceFactoryTest, TraceSourceTest014, TestSize.Level2)
 {
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
     std::string appArgs = "tags:sched,binder,ohos bufferSize:102400 overwrite:1";
-    ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(OpenTrace(appArgs)), static_cast<int>(TraceErrorCode::SUCCESS));
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory = nullptr;
     if (IsHmKernel()) {
         traceSourceFactory = std::make_shared<TraceSourceHMFactory>(TEST_TRACE_TEMP_FILE);
@@ -341,11 +341,11 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest014, TestSize.Level2)
     auto traceCpuRaw = traceSourceFactory->GetTraceCpuRaw(request);
     ASSERT_TRUE(traceCpuRaw != nullptr);
     ASSERT_TRUE(traceCpuRaw->WriteTraceContent());
-    ASSERT_EQ(traceCpuRaw->GetDumpStatus(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(traceCpuRaw->GetDumpStatus()), static_cast<int>(TraceErrorCode::SUCCESS));
     ASSERT_LT(traceCpuRaw->GetFirstPageTimeStamp(), std::numeric_limits<uint64_t>::max());
     ASSERT_GT(traceCpuRaw->GetLastPageTimeStamp(), 0);
     ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), sizeof(TraceFileContentHeader));
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
     if (remove(TEST_TRACE_TEMP_FILE) != 0) {
         GTEST_LOG_(ERROR) << "Delete test trace file failed.";
     }
@@ -358,9 +358,9 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest014, TestSize.Level2)
  */
 HWTEST_F(HitraceFactoryTest, TraceSourceTest015, TestSize.Level2)
 {
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
     std::string appArgs = "tags:sched,binder,ohos bufferSize:102400 overwrite:1";
-    ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(OpenTrace(appArgs)), static_cast<int>(TraceErrorCode::SUCCESS));
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory = nullptr;
     if (IsHmKernel()) {
         traceSourceFactory = std::make_shared<TraceSourceHMFactory>(TEST_TRACE_TEMP_FILE);
@@ -394,7 +394,7 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest015, TestSize.Level2)
     ASSERT_TRUE(tracePrintkFmt != nullptr);
     ASSERT_TRUE(tracePrintkFmt->WriteTraceContent());
     ASSERT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
     if (remove(TEST_TRACE_TEMP_FILE) != 0) {
         GTEST_LOG_(ERROR) << "Delete test trace file failed.";
     }
@@ -467,9 +467,9 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest018, TestSize.Level2)
  */
 HWTEST_F(HitraceFactoryTest, TraceSourceTest019, TestSize.Level2)
 {
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
     std::string appArgs = "tags:sched,binder,ohos bufferSize:102400 overwrite:1";
-    EXPECT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
+    EXPECT_EQ(static_cast<int>(OpenTrace(appArgs)), static_cast<int>(TraceErrorCode::SUCCESS));
     sleep(1);
     std::shared_ptr<ITraceSourceFactory> traceSourceFactory = nullptr;
     if (IsHmKernel()) {
@@ -484,7 +484,7 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest019, TestSize.Level2)
     EXPECT_TRUE(traceCpuRawRead->WriteTraceContent());
     EXPECT_GT(TraceBufferManager::GetInstance().GetTaskTotalUsedBytes(1), 0);
     TraceBufferManager::GetInstance().ReleaseTaskBlocks(1);
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
 }
 
 /**
@@ -494,9 +494,9 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest019, TestSize.Level2)
  */
 HWTEST_F(HitraceFactoryTest, TraceSourceTest020, TestSize.Level2)
 {
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
     std::string appArgs = "tags:sched,binder,ohos bufferSize:102400 overwrite:1";
-    EXPECT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
+    EXPECT_EQ(static_cast<int>(OpenTrace(appArgs)), static_cast<int>(TraceErrorCode::SUCCESS));
     sleep(1);
     std::shared_ptr<ITraceSourceFactory> traceSourceRead = nullptr;
     std::shared_ptr<ITraceSourceFactory> traceSourceWrite = nullptr;
@@ -518,9 +518,9 @@ HWTEST_F(HitraceFactoryTest, TraceSourceTest020, TestSize.Level2)
     EXPECT_TRUE(traceCpuRawWrite != nullptr);
     EXPECT_TRUE(traceCpuRawWrite->WriteTraceContent());
     EXPECT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
-    EXPECT_EQ(traceCpuRawRead->GetDumpStatus(), TraceErrorCode::SUCCESS);
+    EXPECT_EQ(static_cast<int>(traceCpuRawRead->GetDumpStatus()), static_cast<int>(TraceErrorCode::SUCCESS));
     TraceBufferManager::GetInstance().ReleaseTaskBlocks(1);
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
     if (remove(TEST_TRACE_TEMP_FILE) != 0) {
         GTEST_LOG_(ERROR) << "Delete test trace file failed.";
     }
