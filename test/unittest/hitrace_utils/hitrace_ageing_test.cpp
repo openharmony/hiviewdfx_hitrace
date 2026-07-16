@@ -116,9 +116,9 @@ HWTEST_F(HitraceAgeingTest, FileNumberChecker_001, TestSize.Level1)
     static constexpr int64_t fileNumerCount = 2;
     FileNumberChecker checker(fileNumerCount);
     TraceFileInfo info;
-    EXPECT_EQ(checker.ShouldAgeing(info), false);
-    EXPECT_EQ(checker.ShouldAgeing(info), false);
-    EXPECT_EQ(checker.ShouldAgeing(info), true);
+    EXPECT_FALSE(checker.ShouldAgeing(info));
+    EXPECT_FALSE(checker.ShouldAgeing(info));
+    EXPECT_TRUE(checker.ShouldAgeing(info));
 }
 
 HWTEST_F(HitraceAgeingTest, FileSizeChecker_001, TestSize.Level1)
@@ -128,10 +128,10 @@ HWTEST_F(HitraceAgeingTest, FileSizeChecker_001, TestSize.Level1)
     FileSizeChecker checker(fileSizeMax);
     TraceFileInfo info;
     info.fileSize = fileSize;
-    EXPECT_EQ(checker.ShouldAgeing(info), false);
-    EXPECT_EQ(checker.ShouldAgeing(info), false);
-    EXPECT_EQ(checker.ShouldAgeing(info), false);
-    EXPECT_EQ(checker.ShouldAgeing(info), true);
+    EXPECT_FALSE(checker.ShouldAgeing(info));
+    EXPECT_FALSE(checker.ShouldAgeing(info));
+    EXPECT_FALSE(checker.ShouldAgeing(info));
+    EXPECT_TRUE(checker.ShouldAgeing(info));
 }
 
 HWTEST_F(HitraceAgeingTest, FileSizeChecker_002, TestSize.Level1)
@@ -141,9 +141,9 @@ HWTEST_F(HitraceAgeingTest, FileSizeChecker_002, TestSize.Level1)
     FileSizeChecker checker(fileSizeMax);
     TraceFileInfo info;
     info.fileSize = fileSize;
-    EXPECT_EQ(checker.ShouldAgeing(info), false);
-    EXPECT_EQ(checker.ShouldAgeing(info), false);
-    EXPECT_EQ(checker.ShouldAgeing(info), true);
+    EXPECT_FALSE(checker.ShouldAgeing(info));
+    EXPECT_FALSE(checker.ShouldAgeing(info));
+    EXPECT_TRUE(checker.ShouldAgeing(info));
 }
 
 /**
