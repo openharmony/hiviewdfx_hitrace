@@ -121,7 +121,7 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest001, TestSize.Level2)
     std::shared_ptr<TraceJsonParser> jsonParser =
         std::make_shared<TraceJsonParser>(TEST_TAG_UTILS_JSON, TEST_PRODUCT_CONFIG_JSON);
     auto tags = jsonParser->GetAllTagInfos();
-    ASSERT_FALSE(tags.find("sched") == tags.end());
+    ASSERT_NE(tags.find("sched"), tags.end());
     EXPECT_FALSE(tags["sched"].enablePath.empty());
     EXPECT_FALSE(tags["sched"].formatPath.empty());
 
@@ -142,7 +142,7 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest002, TestSize.Level2)
 
     auto tags = jsonParser->GetAllTagInfos();
     ASSERT_FALSE(tags.empty());
-    ASSERT_FALSE(tags.find("sched") == tags.end());
+    ASSERT_NE(tags.find("sched"), tags.end());
     EXPECT_FALSE(tags["sched"].enablePath.empty());
     EXPECT_FALSE(tags["sched"].formatPath.empty());
 }
@@ -178,7 +178,7 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest004, TestSize.Level2)
     EXPECT_FALSE(jsonParser->GetBaseFmtPath().empty());
     auto tags = jsonParser->GetAllTagInfos();
     ASSERT_FALSE(tags.empty());
-    ASSERT_FALSE(tags.find("sched") == tags.end());
+    ASSERT_NE(tags.find("sched"), tags.end());
     EXPECT_FALSE(tags["sched"].enablePath.empty());
     EXPECT_FALSE(tags["sched"].formatPath.empty());
 }
@@ -195,12 +195,12 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest005, TestSize.Level2)
     ASSERT_EQ(jsonParser->GetSnapshotDefaultBufferSizeKb(), 2580);
     auto groups = jsonParser->GetTagGroups();
     ASSERT_FALSE(groups.empty());
-    ASSERT_FALSE(groups.find("default") == groups.end());
-    ASSERT_FALSE(groups.find("scene_performance") == groups.end());
+    ASSERT_NE(groups.find("default"), groups.end());
+    ASSERT_NE(groups.find("scene_performance"), groups.end());
     ASSERT_FALSE(jsonParser->GetBaseFmtPath().empty());
     auto tags = jsonParser->GetAllTagInfos();
     ASSERT_FALSE(tags.empty());
-    ASSERT_FALSE(tags.find("sched") == tags.end());
+    ASSERT_NE(tags.find("sched"), tags.end());
     ASSERT_FALSE(tags["sched"].enablePath.empty());
     ASSERT_FALSE(tags["sched"].formatPath.empty());
 }
@@ -217,12 +217,12 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest006, TestSize.Level2)
     ASSERT_EQ(jsonParser->GetSnapshotDefaultBufferSizeKb(), 2580);
     auto groups = jsonParser->GetTagGroups();
     ASSERT_FALSE(groups.empty());
-    ASSERT_FALSE(groups.find("default") == groups.end());
-    ASSERT_FALSE(groups.find("scene_performance") == groups.end());
+    ASSERT_NE(groups.find("default"), groups.end());
+    ASSERT_NE(groups.find("scene_performance"), groups.end());
     ASSERT_FALSE(jsonParser->GetBaseFmtPath().empty());
     auto tags = jsonParser->GetAllTagInfos();
     ASSERT_FALSE(tags.empty());
-    ASSERT_FALSE(tags.find("sched") == tags.end());
+    ASSERT_NE(tags.find("sched"), tags.end());
     ASSERT_FALSE(tags["sched"].enablePath.empty());
     ASSERT_FALSE(tags["sched"].formatPath.empty());
 }
@@ -246,17 +246,17 @@ HWTEST_F(HitraceUtilsTest, JsonParserTest008, TestSize.Level2)
         std::make_shared<TraceJsonParser>(TEST_TAG_UTILS_JSON, TEST_PRODUCT_CONFIG_JSON);
 
     AgeingParam param = jsonParser->GetAgeingParam(TraceDumpType::TRACE_SNAPSHOT);
-    EXPECT_EQ(param.rootEnable, true);
+    EXPECT_TRUE(param.rootEnable);
     EXPECT_EQ(param.fileNumberLimit, 35);
     EXPECT_EQ(param.fileSizeKbLimit, 1024);
 
     param = jsonParser->GetAgeingParam(TraceDumpType::TRACE_RECORDING);
-    EXPECT_EQ(param.rootEnable, true);
+    EXPECT_TRUE(param.rootEnable);
     EXPECT_EQ(param.fileNumberLimit, 15);
     EXPECT_EQ(param.fileSizeKbLimit, 2048);
 
     param = jsonParser->GetAgeingParam(TraceDumpType::TRACE_CACHE);
-    EXPECT_EQ(param.rootEnable, true);
+    EXPECT_TRUE(param.rootEnable);
     EXPECT_EQ(param.fileNumberLimit, 0);
     EXPECT_EQ(param.fileSizeKbLimit, 0);
 

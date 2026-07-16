@@ -73,9 +73,9 @@ static off_t GetFileSize(const std::string& file)
  */
 HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest001, TestSize.Level2)
 {
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
     std::string appArgs = "tags:sched,binder,ohos bufferSize:102400 overwrite:1";
-    ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(OpenTrace(appArgs)), static_cast<int>(TraceErrorCode::SUCCESS));
     TraceDumpExecutor& traceDumpExecutor = TraceDumpExecutor::GetInstance();
     EXPECT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
     TraceDumpParam param = {
@@ -93,7 +93,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest001, TestSize.Level2)
         EXPECT_GT(GetFileSize(filename), 0);
     }
     traceLoopThread.join();
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
 }
 
 /**
@@ -103,9 +103,9 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest001, TestSize.Level2)
  */
 HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest002, TestSize.Level2)
 {
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
     std::string appArgs = "tags:sched,binder,ohos bufferSize:102400 overwrite:1";
-    ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(OpenTrace(appArgs)), static_cast<int>(TraceErrorCode::SUCCESS));
     TraceDumpExecutor& traceDumpExecutor = TraceDumpExecutor::GetInstance();
     EXPECT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
     TraceDumpParam param = {
@@ -120,7 +120,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest002, TestSize.Level2)
     EXPECT_GT(traceDumpExecutor.StopDumpTraceLoop().size(), 0);
     traceLoopThread.join();
     EXPECT_GT(GetFileSize(TEST_TRACE_TEMP_FILE), 0);
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
     if (remove(TEST_TRACE_TEMP_FILE) != 0) {
         GTEST_LOG_(WARNING) << "Delete test trace file failed.";
     }
@@ -133,16 +133,16 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest002, TestSize.Level2)
  */
 HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest003, TestSize.Level2)
 {
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
     std::string appArgs = "tags:sched,binder,ohos bufferSize:102400 overwrite:1";
-    ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(OpenTrace(appArgs)), static_cast<int>(TraceErrorCode::SUCCESS));
     TraceDumpExecutor& traceDumpExecutor = TraceDumpExecutor::GetInstance();
     TraceDumpParam param;
     auto ret = traceDumpExecutor.DumpTrace(param);
-    EXPECT_EQ(ret.code, TraceErrorCode::SUCCESS);
+    EXPECT_EQ(static_cast<int>(ret.code), static_cast<int>(TraceErrorCode::SUCCESS));
     GTEST_LOG_(INFO) << "snapshot file: " << ret.outputFile;
     EXPECT_GT(GetFileSize(ret.outputFile), 0);
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
 }
 
 /**
@@ -152,9 +152,9 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest003, TestSize.Level2)
  */
 HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest004, TestSize.Level2)
 {
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
     std::string appArgs = "tags:sched,binder,ohos bufferSize:102400 overwrite:1";
-    ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(OpenTrace(appArgs)), static_cast<int>(TraceErrorCode::SUCCESS));
     TraceDumpExecutor& traceDumpExecutor = TraceDumpExecutor::GetInstance();
     traceDumpExecutor.ClearCacheTraceFiles();
     EXPECT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
@@ -176,7 +176,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest004, TestSize.Level2)
         GTEST_LOG_(INFO) << file.filename;
         EXPECT_GT(GetFileSize(file.filename), 0);
     }
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
 }
 
 /**
@@ -186,9 +186,9 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest004, TestSize.Level2)
  */
 HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest005, TestSize.Level2)
 {
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
     std::string appArgs = "tags:sched,binder,ohos bufferSize:102400 overwrite:1";
-    ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(OpenTrace(appArgs)), static_cast<int>(TraceErrorCode::SUCCESS));
     TraceDumpExecutor& traceDumpExecutor = TraceDumpExecutor::GetInstance();
     traceDumpExecutor.ClearCacheTraceFiles();
     EXPECT_TRUE(traceDumpExecutor.PreCheckDumpTraceLoopStatus());
@@ -217,7 +217,7 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest005, TestSize.Level2)
         EXPECT_GT(GetFileSize(file.filename), 0);
     }
     traceLoopThread.join();
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
 }
 
 /**
@@ -227,9 +227,9 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest005, TestSize.Level2)
  */
 HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest006, TestSize.Level2)
 {
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
     std::string appArgs = "tags:sched,binder,ohos bufferSize:102400 overwrite:1";
-    ASSERT_EQ(OpenTrace(appArgs), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(OpenTrace(appArgs)), static_cast<int>(TraceErrorCode::SUCCESS));
     HitraceDumpPipe::ClearTraceDumpPipe();
     ASSERT_TRUE(HitraceDumpPipe::InitTraceDumpPipe());
     std::thread dumpThread([]() {
@@ -250,13 +250,13 @@ HWTEST_F(TraceDumpExecutorTest, TraceDumpExecutorTest006, TestSize.Level2)
     EXPECT_TRUE(dumpPipe1->SubmitTraceDumpTask(task));
     sleep(1);
     EXPECT_TRUE(dumpPipe1->ReadSyncDumpRet(10, task)); // 10 : timeout
-    EXPECT_EQ(task.code, TraceErrorCode::SUCCESS);
+    EXPECT_EQ(static_cast<int>(task.code), static_cast<int>(TraceErrorCode::SUCCESS));
     EXPECT_TRUE(dumpPipe1->ReadAsyncDumpRet(10, task)); // 10 : timeout
-    EXPECT_EQ(task.code, TraceErrorCode::SUCCESS);
+    EXPECT_EQ(static_cast<int>(task.code), static_cast<int>(TraceErrorCode::SUCCESS));
     EXPECT_EQ(task.status, TraceDumpStatus::WRITE_DONE);
     dumpThread.join();
     HitraceDumpPipe::ClearTraceDumpPipe();
-    ASSERT_EQ(CloseTrace(), TraceErrorCode::SUCCESS);
+    ASSERT_EQ(static_cast<int>(CloseTrace()), static_cast<int>(TraceErrorCode::SUCCESS));
 }
 
 /**
