@@ -33,6 +33,7 @@ ohos_shared_library("cj_hitracechain_ffi") {
     "napi:cj_bind_ffi",
   ]
 
+  branch_protector_ret = "pac_ret"
   innerapi_tags = [ "platformsdk" ]
 
   part_name = "hitrace"
@@ -56,6 +57,7 @@ ohos_shared_library("cj_hitracemeter_ffi") {
     "napi:cj_bind_ffi",
   ]
 
+  branch_protector_ret = "pac_ret"
   innerapi_tags = [ "platformsdk" ]
 
   subsystem_name = "hiviewdfx"
