@@ -526,11 +526,9 @@ void SetProcessName(const std::string& processName)
     if (processName.size() > maxNameLen) {
         const auto targetProcess = processName.substr(0, maxNameLen);
         prctl(PR_SET_NAME, targetProcess.c_str(), nullptr, nullptr, nullptr);
-        HILOG_INFO(LOG_CORE, "New process: %{public}s.", targetProcess.c_str());
         return;
     }
     prctl(PR_SET_NAME, processName.c_str(), nullptr, nullptr, nullptr);
-    HILOG_INFO(LOG_CORE, "New process: %{public}s.", processName.c_str());
 }
 
 void TimeoutSignalHandler(int signum)
@@ -570,7 +568,6 @@ void WaitForChildProcess(const pid_t pid)
     while (waitedTime < maxWaitTime) {
         pid_t result = TEMP_FAILURE_RETRY(waitpid(pid, nullptr, WNOHANG));
         if (result > 0) {
-            HILOG_INFO(LOG_CORE, "Child process %d exited successfully.", pid);
             break;
         }
         if (result < 0) {
@@ -582,7 +579,7 @@ void WaitForChildProcess(const pid_t pid)
         waitedTime += checkInterval;
     }
     if (waitedTime >= maxWaitTime) {
-        HILOG_ERROR(LOG_CORE, "Child process %d did not exit within timeout.", pid);
+        HILOG_ERROR(LOG_CORE, "Child process %{public}d did not exit within timeout.", pid);
     }
 }
 
