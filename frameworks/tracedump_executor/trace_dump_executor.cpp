@@ -159,17 +159,13 @@ TraceDumpRet TraceDumpExecutor::DumpTrace(const TraceDumpParam& param, const std
 
 std::vector<TraceFileInfo> TraceDumpExecutor::GetCacheTraceFiles()
 {
-    if (!TraceDumpState::GetInstance().InterruptCache()) {
-        HILOG_WARN(LOG_CORE, "GetCacheTraceFiles: Cache trace loop is not running.");
-    }
+    TraceDumpState::GetInstance().InterruptCache();
     std::vector<TraceFileInfo> cacheFiles;
     {
         std::lock_guard<std::mutex> lock(traceFileMutex_);
         cacheFiles = cacheTraceFiles_;
     }
-    if (!TraceDumpState::GetInstance().ContinueCache()) {
-        HILOG_WARN(LOG_CORE, "GetCacheTraceFiles: failed to continue cache trace loop.");
-    }
+    TraceDumpState::GetInstance().ContinueCache();
     return cacheFiles;
 }
 
