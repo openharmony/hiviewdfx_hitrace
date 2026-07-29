@@ -206,17 +206,14 @@ HiTraceIdStruct HiTraceChainBeginWithDomain(const char* name, int flags, unsigne
 
 void HiTraceChainEndWithDomain(const HiTraceIdStruct* pId, unsigned int domain)
 {
+    HiTraceIdStructInner* pThreadId = GetThreadIdInner();
+    if (!HiTraceChainIsValid(&(pThreadId->id))) {
+        return;
+    }
     if (!HiTraceChainIsValid(pId)) {
         HILOG_WARN(LOG_CORE, "HiTraceEnd failed: invalid end id.");
         return;
     }
-
-    HiTraceIdStructInner* pThreadId = GetThreadIdInner();
-    if (!HiTraceChainIsValid(&(pThreadId->id))) {
-        HILOG_WARN(LOG_CORE, "HiTraceEnd failed: invalid thread id.");
-        return;
-    }
-
     if (HiTraceChainGetChainId(pId) != HiTraceChainGetChainId(&(pThreadId->id))) {
         HILOG_WARN(LOG_CORE, "HiTraceEnd failed: end id(%{public}llx) != thread id(%{public}llx).",
                    (unsigned long long)pId->chainId, (unsigned long long)pThreadId->id.chainId);
@@ -232,7 +229,6 @@ void HiTraceChainEndWithDomain(const HiTraceIdStruct* pId, unsigned int domain)
     }
 
     HiTraceChainInitId(&(pThreadId->id));
-    return;
 }
 
 HiTraceIdStruct HiTraceChainBegin(const char* name, int flags)
