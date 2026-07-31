@@ -452,7 +452,7 @@ __attribute__((always_inline)) bool PrepareTraceMarker()
     }
     if (UNEXPECTANTLY(!g_isHitraceMeterInit)) {
         struct timespec ts = { 0, 0 };
-        if (clock_gettime(CLOCK_MONOTONIC, &ts) == -1 || ts.tv_sec < 25) { // 25 : register after boot 25s
+        if (clock_gettime(CLOCK_MONOTONIC, &ts) == -1 || ts.tv_sec < 8) { // 8 : register after boot 8s
             return false;
         }
         std::call_once(g_onceFlag, OpenTraceMarkerFile);

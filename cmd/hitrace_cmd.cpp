@@ -1444,17 +1444,17 @@ static bool HandleOptTotalsize(const RunningState& setValue)
     if (optarg == nullptr) {
         return false;
     }
-    bool isTrue = true;
+    bool ret = true;
     int totalSizeKB = 0;
     if (!StrToNum(optarg, totalSizeKB)) {
         ConsoleLog("error: total size is illegal input. eg: \"--total_size 1024000\".");
-        isTrue = false;
+        ret = false;
     } else if (totalSizeKB < MAX_FILE_SIZE || totalSizeKB > MAX_FILE_SIZE_MULTIPLIER * MAX_FILE_SIZE) {
         ConsoleLog("error: total size must be from 500 MB to 5000 MB. eg: \"--total_size 1024000\".");
-        isTrue = false;
+        ret = false;
     }
     g_traceArgs.totalSize = totalSizeKB;
-    return isTrue;
+    return ret;
 }
 
 static bool HandleOptTracelevel(const RunningState& setValue)

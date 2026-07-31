@@ -146,7 +146,7 @@ bool RenameTraceFile(const std::string& fileName, std::string& newFileName,
     HILOG_INFO(LOG_CORE, "RenameTraceFile: firstPageTraceTime:(%{public}" PRIu64
         "), lastPageTraceTime:(%{public}" PRIu64 ")", firstPageTraceTime, lastPageTraceTime);
     uint64_t traceDuration = (lastPageTraceTime - firstPageTraceTime) / MS_TO_NS;
-    newFileName = RegenerateTraceFileName(fileName, firstPageTraceTime, traceDuration, outputPath).c_str();
+    newFileName = RegenerateTraceFileName(fileName, firstPageTraceTime, traceDuration, outputPath);
     if (newFileName == "") {
         HILOG_ERROR(LOG_CORE, "RenameTraceFile: RegenerateTraceFileName failed");
         return false;
