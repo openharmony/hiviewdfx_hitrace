@@ -193,7 +193,6 @@ class TestHitraceCmd:
             'hdc shell hitrace sched --trace_begin --raw': 'RECORDING_LONG_BEGIN and RECORDING_SHORT_RAW cannot coexist',
             'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '0',
             'hdc shell hitrace sched --trace_begin --record --raw': 'RECORDING_LONG_BEGIN_RECORD and RECORDING_SHORT_RAW cannot coexist',
-            'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '0',
             'hdc shell hitrace sched -t 10 --raw': 'capture done',
         }
 
@@ -206,7 +205,6 @@ class TestHitraceCmd:
             'hdc shell hitrace sched --trace_begin --text': 'RECORDING_LONG_BEGIN and RECORDING_SHORT_TEXT cannot coexist',
             'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '0',
             'hdc shell hitrace sched --trace_begin --record --text': 'RECORDING_LONG_BEGIN_RECORD and RECORDING_SHORT_TEXT cannot coexist',
-            'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '0',
             'hdc shell hitrace sched -t 10 --text': 'start capture, please wait 10s',
         }
 
