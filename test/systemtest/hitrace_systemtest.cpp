@@ -12,6 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <cstring>
+
 #include "hitrace_dump.h"
 
 #include <dlfcn.h>
@@ -528,6 +530,7 @@ HWTEST_F(HitraceSystemTest, CacheModeTest001, TestSize.Level1)
     TraceRetInfo ret = DumpTrace();
     EXPECT_EQ(ret.errorCode, TraceErrorCode::SUCCESS);
     EXPECT_EQ(ret.mode, TraceMode::OPEN | TraceMode::CACHE);
+    ret = DumpTrace();
     std::vector<FileWithInfo> fileList;
     EXPECT_TRUE(GetFileInfo(TraceDumpType::TRACE_SNAPSHOT, ret.outputFiles, fileList));
     EXPECT_GE(fileList.size(), 2); // cache_trace_ file count > 2
