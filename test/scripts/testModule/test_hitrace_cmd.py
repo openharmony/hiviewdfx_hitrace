@@ -29,7 +29,7 @@ def get_shell_result(cmd, words=''):
 class TestHitraceCmd:
     def setup_method(self, method):
         word_cmds = {
-            'hdc shell hitrace --stop_bgsrv':'CloseSnapshot done',
+            'hdc shell hitrace --stop_bgsrv': 'CloseSnapshot done',
         }
         for word_cmd in word_cmds:
             get_shell_result(word_cmd,word_cmds.get(word_cmd))
@@ -39,9 +39,9 @@ class TestHitraceCmd:
     @pytest.mark.L0
     def test_help1(self):
         word_cmds = {
-            'hdc shell hitrace -h -b 2048':'running_state is SHOW_HELP',
-            'hdc shell hitrace -b 2048 -h':'running_state is SHOW_HELP',
-            'hdc shell hitrace -h -b':'error: parsing args failed',
+            'hdc shell hitrace -h -b 2048': 'running_state is SHOW_HELP',
+            'hdc shell hitrace -b 2048 -h': 'running_state is SHOW_HELP',
+            'hdc shell hitrace -h -b': 'error: parsing args failed',
             'hdc shell hitrace -b -h': 'error: buffer size is illegal input.'
         }
 
@@ -61,7 +61,7 @@ class TestHitraceCmd:
     @pytest.mark.L0
     def test_list1(self):
         word_cmds = {
-            'hdc shell hitrace -l':'running_state is SHOW_LIST_CATEGORY',
+            'hdc shell hitrace -l': 'running_state is SHOW_LIST_CATEGORY',
         }
 
         for word_cmd in word_cmds:
@@ -70,8 +70,8 @@ class TestHitraceCmd:
     @pytest.mark.L0
     def test_list2(self):
         word_cmds = {
-            'hdc shell hitrace -b 102400 -l':'running_state is SHOW_LIST_CATEGORY',
-            'hdc shell hitrace app -l':'running_state is SHOW_LIST_CATEGORY',
+            'hdc shell hitrace -b 102400 -l': 'running_state is SHOW_LIST_CATEGORY',
+            'hdc shell hitrace app -l': 'running_state is SHOW_LIST_CATEGORY',
             'hdc shell hitrace --trace_begin -l': 'cannot coexist.',
         }
 
@@ -90,12 +90,12 @@ class TestHitraceCmd:
     @pytest.mark.L0
     def test_capture_trace(self):
         word_cmds1 = {
-            'hdc shell hitrace -b 256 -t 5 sched --trace_begin':'OpenRecording done',
-            'hdc shell cat /sys/kernel/debug/tracing/tracing_on':'1',
+            'hdc shell hitrace -b 256 -t 5 sched --trace_begin': 'OpenRecording done',
+            'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '1',
         }
         
         word_cmds2 = {
-            'hdc shell hitrace --trace_finish_nodump':'end capture trace',
+            'hdc shell hitrace --trace_finish_nodump': 'end capture trace',
         }
 
         for word_cmd in word_cmds1:
@@ -115,7 +115,7 @@ class TestHitraceCmd:
         }
 
         word_cmds3 = {
-            'hdc shell hitrace --trace_finish_nodump':'end capture trace',
+            'hdc shell hitrace --trace_finish_nodump': 'end capture trace',
         }
 
         for word_cmd in word_cmds1:
@@ -130,11 +130,11 @@ class TestHitraceCmd:
     @pytest.mark.L0
     def test_capture_tags_trace(self):
         word_cmds1 = {
-            'hdc shell hitrace ability accesscontrol accessibility account ace animation sched --trace_begin':'OpenRecording done',
+            'hdc shell hitrace ability accesscontrol accessibility account ace animation sched --trace_begin': 'OpenRecording done',
         }
 
         word_cmds2 = {
-            'hdc shell cat /sys/kernel/debug/tracing/tracing_on':'1',
+            'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '1',
         }
 
         word_cmds3 = {
@@ -142,7 +142,7 @@ class TestHitraceCmd:
         }
 
         word_cmds4 = {
-            "hdc shell hitrace --trace_finish_nodump":'end capture trace',
+            "hdc shell hitrace --trace_finish_nodump": 'end capture trace',
         }
 
         for word_cmd in word_cmds1:
@@ -172,7 +172,7 @@ class TestHitraceCmd:
         }
 
         word_cmds4 = {
-            "hdc shell hitrace --trace_finish_nodump":'end capture trace',
+            "hdc shell hitrace --trace_finish_nodump": 'end capture trace',
         }
 
         for word_cmd in word_cmds1:
@@ -193,7 +193,6 @@ class TestHitraceCmd:
             'hdc shell hitrace sched --trace_begin --raw': 'RECORDING_LONG_BEGIN and RECORDING_SHORT_RAW cannot coexist',
             'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '0',
             'hdc shell hitrace sched --trace_begin --record --raw': 'RECORDING_LONG_BEGIN_RECORD and RECORDING_SHORT_RAW cannot coexist',
-            'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '0',
             'hdc shell hitrace sched -t 10 --raw': 'capture done',
         }
 
@@ -206,7 +205,6 @@ class TestHitraceCmd:
             'hdc shell hitrace sched --trace_begin --text': 'RECORDING_LONG_BEGIN and RECORDING_SHORT_TEXT cannot coexist',
             'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '0',
             'hdc shell hitrace sched --trace_begin --record --text': 'RECORDING_LONG_BEGIN_RECORD and RECORDING_SHORT_TEXT cannot coexist',
-            'hdc shell cat /sys/kernel/debug/tracing/tracing_on': '0',
             'hdc shell hitrace sched -t 10 --text': 'start capture, please wait 10s',
         }
 
@@ -222,7 +220,7 @@ class TestHitraceCmd:
         }
 
         word_cmds2 = {
-            "hdc shell hitrace sched --trace_finish_nodump":'end capture trace',
+            "hdc shell hitrace sched --trace_finish_nodump": 'end capture trace',
         }
 
         for word_cmd in word_cmds1:
@@ -258,7 +256,7 @@ class TestHitraceCmd:
         }
 
         word_cmds2 = {
-            "hdc shell hitrace --trace_finish_nodump":'end capture trace',
+            "hdc shell hitrace --trace_finish_nodump": 'end capture trace',
         }
 
         for word_cmd in word_cmds1:
@@ -295,7 +293,7 @@ class TestHitraceCmd:
         }
 
         word_cmds2 = {
-            "hdc shell hitrace --trace_finish_nodump":'end capture trace',
+            "hdc shell hitrace --trace_finish_nodump": 'end capture trace',
         }
 
         word_cmds4 = {
@@ -304,7 +302,7 @@ class TestHitraceCmd:
         }
 
         word_cmds5 = {
-            "hdc shell hitrace --trace_finish_nodump":'end capture trace',
+            "hdc shell hitrace --trace_finish_nodump": 'end capture trace',
         }
 
         for word_cmd in word_cmds1:
