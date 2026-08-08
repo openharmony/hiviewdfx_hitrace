@@ -366,15 +366,16 @@ bool ITraceFileHdrContent::InitTraceFileHdr(TraceFileHeader& fileHdr)
     } else if (sizeof(void*) == sizeof(uint32_t)) {
         fileHdr.reserved |= 1;
     }
-    HILOG_INFO(LOG_CORE, "InitTraceFileHdr: reserved with arch word info is %{public}d.", fileHdr.reserved);
     const int maxCpuNums = 24;
     int cpuNums = GetCpuProcessors();
     if (cpuNums > maxCpuNums || cpuNums <= 0) {
         HILOG_ERROR(LOG_CORE, "InitTraceFileHdr error: cpu_number is %{public}d.", cpuNums);
         return false;
     }
+    auto archWordInfo = fileHdr.reserved;
     fileHdr.reserved |= (static_cast<uint64_t>(cpuNums) << 1);
-    HILOG_INFO(LOG_CORE, "InitTraceFileHdr: reserved with cpu number info is %{public}d.", fileHdr.reserved);
+    HILOG_INFO(LOG_CORE, "InitTraceFileHdr: reserved with arch word info %{public}d, cpu number info %{public}d.",
+        archWordInfo, fileHdr.reserved);
     return true;
 }
 
@@ -447,14 +448,12 @@ ssize_t TraceBaseInfoContent::WriteKeyValue(const std::string& key, const std::s
 ssize_t TraceBaseInfoContent::WriteKernelVersion()
 {
     std::string kernelVersion = GetKernelVersion();
-    HILOG_INFO(LOG_CORE, "WriteKernelVersion : current version %{public}s", kernelVersion.c_str());
     return WriteKeyValue("KERNEL_VERSION", kernelVersion);
 }
 
 ssize_t TraceBaseInfoContent::WriteUnixTimeMs()
 {
     uint64_t unixTimeMs = GetCurUnixTimeMs();
-    HILOG_INFO(LOG_CORE, "WriteUnixTimeMs : current time %{public}" PRIu64, unixTimeMs);
     std::string timeStr = std::to_string(unixTimeMs);
     return WriteKeyValue("UNIX_TIME_MS", timeStr);
 }
@@ -462,7 +461,6 @@ ssize_t TraceBaseInfoContent::WriteUnixTimeMs()
 ssize_t TraceBaseInfoContent::WriteBootTimeMs()
 {
     uint64_t bootTimeMs = GetCurBootTime() / MS_TO_NS;
-    HILOG_INFO(LOG_CORE, "WriteBootTimeMs : current time %{public}" PRIu64, bootTimeMs);
     std::string timeStr = std::to_string(bootTimeMs);
     return WriteKeyValue("BOOT_TIME_MS", timeStr);
 }

@@ -243,7 +243,6 @@ bool IsTracingOn(const std::string& traceRootPath)
 {
     const std::string enable = "1";
     if (ReadFile(TRACING_ON_NODE, traceRootPath).substr(0, enable.size()) == enable) {
-        HILOG_INFO(LOG_CORE, "tracing_on is 1.");
         return true;
     }
     HILOG_INFO(LOG_CORE, "tracing_on is 0.");
