@@ -34,11 +34,14 @@ namespace {
 #undef LOG_TAG
 #define LOG_TAG "HitraceSource"
 #endif
+#ifndef O_UNCACHE
+#define O_UNCACHE 0x40000000
+#endif
 
 bool UpdateFileFd(const std::string& traceFile, SmartFd& fd)
 {
     std::string path = CanonicalizeSpecPath(traceFile.c_str());
-    SmartFd newFd(open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644)); // 0644 : -rw-r--r--
+    SmartFd newFd(open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC | O_UNCACHE, 0644)); // 0644 : -rw-r--r--
     if (!newFd) {
         HILOG_ERROR(LOG_CORE, "TraceSource: open %{public}s failed, errno(%{public}d).", traceFile.c_str(), errno);
         return false;
@@ -54,7 +57,7 @@ ITraceSourceFactory::ITraceSourceFactory(const std::string& traceFilePath) : tra
         return;
     }
     std::string path = CanonicalizeSpecPath(traceFilePath.c_str());
-    traceFileFd_ = SmartFd(open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644)); // 0644 : -rw-r--r--
+    traceFileFd_ = SmartFd(open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC | O_UNCACHE, 0644)); // 0644 : -rw-r--r--
     if (!traceFileFd_) {
         HILOG_ERROR(LOG_CORE, "TraceSourceFactory: open %{public}s failed.", traceFilePath.c_str());
     }
