@@ -227,7 +227,7 @@ static inline void HiTraceChainSetParentSpanId(HiTraceIdStruct* pId, uint64_t pa
 
 static inline int HiTraceChainIdToBytes(const HiTraceIdStruct* pId, uint8_t* pIdArray, int len)
 {
-    if (!HiTraceChainIsValid(pId) || (len < (int)HITRACE_ID_LEN)) {
+    if (!HiTraceChainIsValid(pId) || (len < (int)HITRACE_ID_LEN) || !pIdArray) {
         return 0;
     }
 
