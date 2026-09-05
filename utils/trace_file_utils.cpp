@@ -286,10 +286,32 @@ bool IsWritable(const std::string& fileName)
     if (fileName.at(length) != '/') {
         return false;
     }
-    return fileName.find("../", length) == std::string::npos &&
-        fileName.find("..\\", length) == std::string::npos &&
-        fileName.find("./", length) == std::string::npos &&
-        fileName.find(".\\", length) == std::string::npos;
+    char resolvedPath[PATH_MAX] = {0};
+    if (realpath(fileName.c_str(), resolvedPath) == nullptr) {
+        // File doesn't exist — resolve parent directory instead
+        std::string parentDir = fileName.substr(0, fileName.find_last_of('/'));
+        if (parentDir.empty()) {
+            parentDir = "/";
+        }
+        if (realpath(parentDir.c_str(), resolvedPath) == nullptr) {
+            HILOG_ERROR(LOG_CORE, "IsWritable: realpath %{public}s failed, errno: %{public}d",
+                parentDir.c_str(), errno);
+            return false;
+        }
+        if (fileName.find("..", length) != std::string::npos) {
+            HILOG_ERROR(LOG_CORE, "IsWritable: %{public}s contains '..' component", fileName.c_str());
+            return false;
+        }
+    }
+    if (strncmp(resolvedPath, TRACE_WRITABLE_PATH, length) != 0) {
+        HILOG_ERROR(LOG_CORE, "IsWritable: %{public}s resolves outside writable path", fileName.c_str());
+        return false;
+    }
+    size_t resolvedLen = strlen(resolvedPath);
+    if (resolvedLen == length) {
+        return true;
+    }
+    return resolvedPath[length] == '/';
 }
 
 bool IsWritableDir(const std::string& fileName)
@@ -298,7 +320,31 @@ bool IsWritableDir(const std::string& fileName)
     if (strncmp(fileName.c_str(), TRACE_WRITABLE_PATH, length) != 0) {
         return false;
     }
-    return fileName.size() == length || (fileName.size() == length  + 1u && fileName.at(length) == '/');
+    if (fileName.size() == length) {
+        return true;
+    }
+    if (fileName.at(length) != '/') {
+        return false;
+    }
+    char resolvedPath[PATH_MAX] = {0};
+    if (realpath(fileName.c_str(), resolvedPath) == nullptr) {
+        HILOG_ERROR(LOG_CORE, "IsWritableDir: realpath %{public}s failed, errno: %{public}d",
+            fileName.c_str(), errno);
+        return false;
+    }
+    struct stat st;
+    if (stat(resolvedPath, &st) != 0 || !S_ISDIR(st.st_mode)) {
+        return false;
+    }
+    if (strncmp(resolvedPath, TRACE_WRITABLE_PATH, length) != 0) {
+        HILOG_ERROR(LOG_CORE, "IsWritableDir: %{public}s resolves outside writable path", fileName.c_str());
+        return false;
+    }
+    size_t resolvedLen = strlen(resolvedPath);
+    if (resolvedLen == length) {
+        return true;
+    }
+    return resolvedPath[length] == '/';
 }
 
 std::string GenerateTraceFileName(TraceDumpType traceType, const std::string& outputPath)

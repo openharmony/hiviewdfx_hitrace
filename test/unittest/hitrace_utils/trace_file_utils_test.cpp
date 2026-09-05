@@ -55,7 +55,7 @@ HWTEST_F(TraceFileUtilsTest, IsWritable01, TestSize.Level2)
 
     ASSERT_FALSE(Hitrace::IsWritable("/system/bin/test.txt"));
     ASSERT_FALSE(Hitrace::IsWritable("/data/local/tmp/../test.txt"));
-    ASSERT_FALSE(Hitrace::IsWritable("/data/local/tmp/./test.txt"));
+    ASSERT_TRUE(Hitrace::IsWritable("/data/local/tmp/./test.txt"));
 }
 
 /**
