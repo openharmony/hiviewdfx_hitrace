@@ -582,6 +582,15 @@ bool TraverseFiles(const std::string &dirPath, bool recursion,
     }
     return TraverseFilesInner(trimmedDirPath.c_str(), recursion, handler);
 }
+
+std::string GetFileNameFromPath(const std::string& filePath)
+{
+    size_t pos = filePath.find_last_of('/');
+    if (pos == std::string::npos) {
+        return filePath;
+    }
+    return filePath.substr(pos + 1);
+}
 } // namespace Hitrace
 } // namespace HiviewDFX
 } // namespace OHOS

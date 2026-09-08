@@ -193,7 +193,7 @@ HiTraceIdStruct HiTraceChainBeginWithDomain(const char* name, int flags, unsigne
     pThreadId->id = id;
 
     if (!HiTraceChainIsFlagEnabled(&id, HITRACE_FLAG_NO_BE_INFO)) {
-        if (domain == 0) {
+        if (domain == 0 || domain == LOG_DOMAIN) {
             HILOG_DEBUG(LOG_CORE, "HiTraceBegin name:%{public}s flags:0x%{public}.2x.",
                 name ? name : "", (int)id.flags);
         } else {
@@ -221,7 +221,7 @@ void HiTraceChainEndWithDomain(const HiTraceIdStruct* pId, unsigned int domain)
     }
 
     if (!HiTraceChainIsFlagEnabled(&(pThreadId->id), HITRACE_FLAG_NO_BE_INFO)) {
-        if (domain == 0) {
+        if (domain == 0 || domain == LOG_DOMAIN) {
             HILOG_DEBUG(LOG_CORE, "HiTraceEnd.");
         } else {
             HITRACE_LOGI(LOG_CORE, domain, "HiTraceEnd.");
@@ -353,7 +353,7 @@ void HiTraceChainTracepointInner(HiTraceCommunicationMode mode, HiTraceTracepoin
         return;
     }
 
-    if (domain == 0) {
+    if (domain == 0 || domain == LOG_DOMAIN) {
         HILOG_DEBUG(LOG_CORE, "<%{public}s,%{public}s,[%{public}llx,%{public}llx,%{public}llx]> %{public}s",
             hiTraceModeStr[mode], hiTraceTypeStr[type], (unsigned long long)pId->chainId,
             (unsigned long long)pId->spanId, (unsigned long long)pId->parentSpanId, buff + hitraceMask);
