@@ -65,6 +65,7 @@ std::string RenameCacheFile(const std::string& cacheFile);
 bool SetFileInfo(const bool isFileExist, const std::string outPath, const TimestampRange& timestampRange,
     TraceFileInfo& traceFileInfo, const std::string& outputPath = "");
 
+std::string GetFileNameFromPath(const std::string& filePath);
 bool TraverseFiles(const std::string &dirPath, bool recursion,
     const std::function<void(const char*, const dirent*)>& handler);
 } // namespace Hitrace

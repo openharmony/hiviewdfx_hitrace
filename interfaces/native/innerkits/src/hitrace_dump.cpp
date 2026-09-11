@@ -190,7 +190,7 @@ bool WriteStrToFile(const std::string& filename, const std::string& str)
     auto targetFilePath = GetTraceRootPath() + filename;
     if (access(targetFilePath.c_str(), W_OK) < 0) {
         HILOG_WARN(LOG_CORE, "WriteStrToFile: Failed to access %{public}s, errno(%{public}d).",
-            targetFilePath.c_str(), errno);
+            filename.c_str(), errno);
         return false;
     }
     return WriteStrToFileInner(targetFilePath, str);
@@ -444,13 +444,15 @@ int32_t GetTraceFileFromVec(const uint64_t& inputTraceStartTime, const uint64_t&
     uint64_t utTargetEndTimeMs = inputTraceEndTime * S_TO_MS;
     for (const auto& it : fileVec) {
         if (access(it.filename.c_str(), F_OK) != 0) {
-            HILOG_WARN(LOG_CORE, "GetTraceFileFromVec: %{public}s is not exist.", it.filename.c_str());
+            std::string fileName = GetFileNameFromPath(it.filename);
+            HILOG_WARN(LOG_CORE, "GetTraceFileFromVec: %{public}s is not exist.", fileName.c_str());
             continue;
         }
-        HILOG_INFO(LOG_CORE, "GetTraceFileFromVec: %{public}s, [%{public}" PRIu64 ", %{public}" PRIu64 "].",
-            it.filename.c_str(), it.traceStartTime, it.traceEndTime);
         if (((it.traceEndTime >= utTargetStartTimeMs && it.traceStartTime <= utTargetEndTimeMs)) &&
             (it.traceEndTime - it.traceStartTime < 2000 * S_TO_MS)) { // 2000 : max trace duration 2000s
+            std::string fileName = GetFileNameFromPath(it.filename);
+            HILOG_INFO(LOG_CORE, "GetTraceFileFromVec: %{public}s, [%{public}" PRIu64 ", %{public}" PRIu64 "].",
+                fileName.c_str(), it.traceStartTime, it.traceEndTime);
             targetFiles.push_back(it);
             coverDuration += static_cast<int32_t>(std::min(it.traceEndTime, utTargetEndTimeMs + DURATION_TOLERANCE) -
                 std::max(it.traceStartTime, utTargetStartTimeMs - DURATION_TOLERANCE));
@@ -462,10 +464,9 @@ int32_t GetTraceFileFromVec(const uint64_t& inputTraceStartTime, const uint64_t&
 void SearchTraceFiles(const uint64_t& inputTraceStartTime, const uint64_t& inputTraceEndTime,
     TraceRetInfo& traceRetInfo)
 {
-    HILOG_INFO(LOG_CORE, "target trace time: [%{public}" PRIu64 ", %{public}" PRIu64 "].",
-        inputTraceStartTime, inputTraceEndTime);
     uint64_t curTime = GetCurUnixTimeMs();
-    HILOG_INFO(LOG_CORE, "current time: %{public}" PRIu64 ".", curTime);
+    HILOG_INFO(LOG_CORE, "current time: %{public}" PRIu64 ", target trace time: [%{public}" PRIu64 ", %{public}"
+        PRIu64 "].", curTime, inputTraceStartTime, inputTraceEndTime);
     int32_t coverDuration = 0;
     std::vector<TraceFileInfo> targetFiles;
     coverDuration += GetTraceFileFromVec(inputTraceStartTime, inputTraceEndTime, g_traceFileVec, targetFiles);
