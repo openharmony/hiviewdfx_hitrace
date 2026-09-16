@@ -71,7 +71,7 @@ FileLock::FileLock(const std::string& filename, int flags)
         HILOG_ERROR(LOG_CORE, "FileLock: %{public}s realpath failed, errno%{public}d", filename.c_str(), errno);
         return;
     }
-    fd_ = SmartFd(open(canonicalPath, flags));
+    fd_ = SmartFd(open(canonicalPath, flags | O_NOFOLLOW));
     if (!fd_) {
         HILOG_ERROR(LOG_CORE, "FileLock: %{public}s open failed, errno%{public}d", filename.c_str(), errno);
         return;
