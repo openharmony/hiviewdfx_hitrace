@@ -139,7 +139,7 @@ bool TraceFilterContext::AddFilterPids(const std::vector<std::string> &filterPid
     if (filterPids.empty()) {
         return false;
     }
-    FileLock fileLock(Hitrace::GetTraceRootPath() + SET_EVENT_PID, O_RDWR);
+    FileLock fileLock(Hitrace::GetTraceRootPath() + SET_EVENT_PID, O_RDWR | O_NOFOLLOW);
     std::string initContent = std::to_string(standInTid_);
     for (const auto& tid : filterPids) {
         initContent += (" " + tid);

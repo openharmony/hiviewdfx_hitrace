@@ -15,7 +15,10 @@
 
 #include <gtest/gtest.h>
 #include <cstring>
+#include <cstdio>
 #include <string>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "trace_file_utils.h"
 
 using namespace testing::ext;
@@ -23,13 +26,31 @@ using namespace std;
 
 namespace OHOS {
 namespace HiviewDFX {
-class TraceFileUtilsTest : public testing::Test {};
+class TraceFileUtilsTest : public testing::Test {
+public:
+    void SetUp() override
+    {
+        FILE* fp = fopen("/data/local/tmp/iswritable_test_file.txt", "w");
+        if (fp != nullptr) {
+            fclose(fp);
+        }
+        constexpr auto mode = 0755;
+        mkdir("/data/local/tmp/subdir", mode);
+        mkdir("/data/local/tmpX_test", mode);
+    }
+    void TearDown() override
+    {
+        (void)remove("/data/local/tmp/iswritable_test_file.txt");
+        rmdir("/data/local/tmp/subdir");
+        rmdir("/data/local/tmpX_test");
+    }
+};
 
 /**
  * @tc.name: TraverseFiles01
  * @tc.desc: Test TraverseFiles(), enter an existing file path.
  * @tc.type: FUNC
-*/
+ */
 HWTEST_F(TraceFileUtilsTest, TraverseFiles01, TestSize.Level2)
 {
     EXPECT_FALSE(Hitrace::TraverseFiles("///", false, nullptr));
@@ -44,9 +65,9 @@ HWTEST_F(TraceFileUtilsTest, TraverseFiles01, TestSize.Level2)
 
 /**
  * @tc.name: IsWritable01
- * @tc.desc: Test IsWritable(), enter an existing file path.
+ * @tc.desc: Test IsWritable() with paths covering realpath-fail branches via parentDir resolution.
  * @tc.type: FUNC
-*/
+ */
 HWTEST_F(TraceFileUtilsTest, IsWritable01, TestSize.Level2)
 {
     ASSERT_TRUE(Hitrace::IsWritable("/data/local/tmp"));
@@ -56,13 +77,53 @@ HWTEST_F(TraceFileUtilsTest, IsWritable01, TestSize.Level2)
     ASSERT_FALSE(Hitrace::IsWritable("/system/bin/test.txt"));
     ASSERT_FALSE(Hitrace::IsWritable("/data/local/tmp/../test.txt"));
     ASSERT_TRUE(Hitrace::IsWritable("/data/local/tmp/./test.txt"));
+    ASSERT_FALSE(Hitrace::IsWritable("/data/local/tmp/.."));
+}
+
+/**
+ * @tc.name: IsWritable04
+ * @tc.desc: Test IsWritable() with existing file under writable path, non-existent file in
+ *           writable subdirectory, path with prefix collision, and filename containing "..".
+ * @tc.type: FUNC
+ */
+HWTEST_F(TraceFileUtilsTest, IsWritable04, TestSize.Level2)
+{
+    ASSERT_TRUE(Hitrace::IsWritable("/data/local/tmp/iswritable_test_file.txt"));
+    ASSERT_FALSE(Hitrace::IsWritable("/data/local/tmpX_test"));
+    ASSERT_TRUE(Hitrace::IsWritable("/data/local/tmp/subdir/nonexist.txt"));
+    ASSERT_TRUE(Hitrace::IsWritable("/data/local/tmp/..hidden"));
+}
+
+/**
+ * @tc.name: IsWritable05
+ * @tc.desc: Test IsWritable() with symbolic link paths.
+ *           realpath resolves symlinks to their target before prefix check.
+ * @tc.type: FUNC
+ */
+HWTEST_F(TraceFileUtilsTest, IsWritable05, TestSize.Level2)
+{
+    const char* linkToWritable = "/data/local/tmp/symlink_to_writable";
+    EXPECT_EQ(symlink("/data/local/tmp/iswritable_test_file.txt", linkToWritable), 0);
+    EXPECT_TRUE(Hitrace::IsWritable(linkToWritable));
+
+    const char* linkToSystem = "/data/local/tmp/symlink_to_system";
+    EXPECT_EQ(symlink("/system/bin", linkToSystem), 0);
+    EXPECT_FALSE(Hitrace::IsWritable(linkToSystem));
+
+    const char* danglingLink = "/data/local/tmp/dangling_symlink";
+    EXPECT_EQ(symlink("/data/local/tmp/nonexist_target.txt", danglingLink), 0);
+    EXPECT_TRUE(Hitrace::IsWritable(danglingLink));
+
+    unlink(linkToWritable);
+    unlink(linkToSystem);
+    unlink(danglingLink);
 }
 
 /**
  * @tc.name: IsWritableDir01
  * @tc.desc: Test IsWritableDir(), enter an existing file path.
  * @tc.type: FUNC
-*/
+ */
 HWTEST_F(TraceFileUtilsTest, IsWritableDir01, TestSize.Level2)
 {
     ASSERT_TRUE(Hitrace::IsWritableDir("/data/local/tmp"));

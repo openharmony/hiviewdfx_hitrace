@@ -41,7 +41,8 @@ namespace {
 bool UpdateFileFd(const std::string& traceFile, SmartFd& fd)
 {
     std::string path = CanonicalizeSpecPath(traceFile.c_str());
-    SmartFd newFd(open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC | O_UNCACHE | O_NOFOLLOW, 0644)); // 0644 : -rw-r--r--
+    constexpr auto mode = 0644; // 0644 : -rw-r--r--
+    SmartFd newFd(open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC | O_UNCACHE | O_NOFOLLOW, mode));
     if (!newFd) {
         HILOG_ERROR(LOG_CORE, "TraceSource: open %{public}s failed, errno(%{public}d).", traceFile.c_str(), errno);
         return false;
@@ -57,7 +58,8 @@ ITraceSourceFactory::ITraceSourceFactory(const std::string& traceFilePath) : tra
         return;
     }
     std::string path = CanonicalizeSpecPath(traceFilePath.c_str());
-    traceFileFd_ = SmartFd(open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC | O_UNCACHE | O_NOFOLLOW, 0644)); // 0644 : -rw-r--r--
+    constexpr auto mode = 0644; // 0644 : -rw-r--r--
+    traceFileFd_ = SmartFd(open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC | O_UNCACHE | O_NOFOLLOW, mode));
     if (!traceFileFd_) {
         HILOG_ERROR(LOG_CORE, "TraceSourceFactory: open %{public}s failed.", traceFilePath.c_str());
     }
