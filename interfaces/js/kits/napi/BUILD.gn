@@ -44,6 +44,8 @@ ohos_shared_library("hitracechain_napi") {
   relative_install_dir = "module"
   part_name = "hitrace"
   subsystem_name = "hiviewdfx"
+
+  version_script = "libhitracechain_napi.map"
 }
 
 ohos_shared_library("hitracemeter_napi") {
@@ -70,4 +72,6 @@ ohos_shared_library("hitracemeter_napi") {
   relative_install_dir = "module"
   subsystem_name = "hiviewdfx"
   part_name = "hitrace"
+
+  version_script = "libhitracemeter_napi.map"
 }
