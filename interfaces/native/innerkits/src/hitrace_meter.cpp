@@ -1616,8 +1616,8 @@ HitracePerfScoped::HitracePerfScoped(bool isDebug, uint64_t tag, const std::stri
     peIns.disabled = 1;
     peIns.exclude_kernel = 0;
     peIns.exclude_hv = 0;
-    fd1st_ = syscall(__NR_perf_event_open, &peIns, 0, -1, -1, 0);
-    if (fd1st_ == -1) {
+    fd1st_ = SmartFd(syscall(__NR_perf_event_open, &peIns, 0, -1, -1, 0));
+    if (!fd1st_) {
         err_ = errno;
         return;
     }
@@ -1632,29 +1632,29 @@ HitracePerfScoped::HitracePerfScoped(bool isDebug, uint64_t tag, const std::stri
     peCycles.disabled = 1;
     peCycles.exclude_kernel = 0;
     peCycles.exclude_hv = 0;
-    fd2nd_ = syscall(__NR_perf_event_open, &peCycles, 0, -1, -1, 0);
-    if (fd2nd_ == -1) {
+    fd2nd_ = SmartFd(syscall(__NR_perf_event_open, &peCycles, 0, -1, -1, 0));
+    if (!fd2nd_) {
         err_ = errno;
         return;
     }
-    ioctl(fd1st_, PERF_EVENT_IOC_RESET, 0);
-    ioctl(fd1st_, PERF_EVENT_IOC_ENABLE, 0);
-    ioctl(fd2nd_, PERF_EVENT_IOC_RESET, 0);
-    ioctl(fd2nd_, PERF_EVENT_IOC_ENABLE, 0);
+    ioctl(fd1st_.GetFd(), PERF_EVENT_IOC_RESET, 0);
+    ioctl(fd1st_.GetFd(), PERF_EVENT_IOC_ENABLE, 0);
+    ioctl(fd2nd_.GetFd(), PERF_EVENT_IOC_RESET, 0);
+    ioctl(fd2nd_.GetFd(), PERF_EVENT_IOC_ENABLE, 0);
 }
 
 HitracePerfScoped::~HitracePerfScoped()
 {
-    if (fd1st_ != -1) {
-        ioctl(fd1st_, PERF_EVENT_IOC_DISABLE, 0);
-        read(fd1st_, &countIns_, sizeof(long long));
-        close(fd1st_);
+    if (fd1st_) {
+        ioctl(fd1st_.GetFd(), PERF_EVENT_IOC_DISABLE, 0);
+        read(fd1st_.GetFd(), &countIns_, sizeof(long long));
+        fd1st_.Reset();
         CountTrace(mTag_, mName_ + "-Ins", countIns_);
     }
-    if (fd2nd_ != -1) {
-        ioctl(fd2nd_, PERF_EVENT_IOC_DISABLE, 0);
-        read(fd2nd_, &countCycles_, sizeof(long long));
-        close(fd2nd_);
+    if (fd2nd_) {
+        ioctl(fd2nd_.GetFd(), PERF_EVENT_IOC_DISABLE, 0);
+        read(fd2nd_.GetFd(), &countCycles_, sizeof(long long));
+        fd2nd_.Reset();
         CountTrace(mTag_, mName_ + "-Cycle", countCycles_);
     }
 }

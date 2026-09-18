@@ -22,6 +22,7 @@
 #include <unordered_map>
 
 #include "hitrace_meter_c.h"
+#include "smart_fd.h"
 #ifdef HITRACE_UNITTEST
 #include <hilog/log.h>
 #include "param/sys_param.h"
@@ -273,26 +274,26 @@ public:
 
     inline long long GetInsCount()
     {
-        if (fd1st_ == -1) {
+        if (!fd1st_) {
             return err_;
         }
-        read(fd1st_, &countIns_, sizeof(long long));
+        read(fd1st_.GetFd(), &countIns_, sizeof(long long));
         return countIns_;
     }
 
     inline long long GetCycleCount()
     {
-        if (fd2nd_ == -1) {
+        if (!fd2nd_) {
             return err_;
         }
-        read(fd2nd_, &countCycles_, sizeof(long long));
+        read(fd2nd_.GetFd(), &countCycles_, sizeof(long long));
         return countCycles_;
     }
 private:
     uint64_t mTag_;
     std::string mName_;
-    int fd1st_ = -1;
-    int fd2nd_ = -1;
+    OHOS::HiviewDFX::SmartFd fd1st_;
+    OHOS::HiviewDFX::SmartFd fd2nd_;
     long long countIns_ = 0;
     long long countCycles_ = 0;
     int err_ = 0;
