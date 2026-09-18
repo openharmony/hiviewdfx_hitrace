@@ -28,6 +28,8 @@ ohos_rust_shared_library("hitracechain_rust") {
   crate_name = "hitracechain"
   crate_type = "dylib"
 
+  version_script = "libhitracechain.map"
+
   part_name = "hitrace"
   subsystem_name = "hiviewdfx"
 }

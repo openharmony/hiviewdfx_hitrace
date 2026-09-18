@@ -21,6 +21,8 @@ ohos_rust_shared_library("hitrace_meter_rust") {
   crate_name = "hitrace_meter_rust"
   crate_type = "dylib"
 
+  version_script = "libhitrace_meter_rust.map"
+
   subsystem_name = "hiviewdfx"
   part_name = "hitrace"
 }
