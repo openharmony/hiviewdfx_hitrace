@@ -25,17 +25,16 @@ namespace HiviewDFX {
 class SmartFd {
 public:
     SmartFd() = default;
-#ifndef is_host
-    explicit SmartFd(int fd, bool fdsan = true) : fd_(fd), fdsan_(fdsan)
+
+    explicit SmartFd(int fd) : fd_(fd)
     {
-        if (fd_ >= 0 && fdsan_) {
+#ifndef is_host
+        if (fd_ >= 0) {
             fdsan_exchange_owner_tag(fd_, 0, fdsan_create_owner_tag(FDSAN_OWNER_TYPE_FILE, DFX_HITRACE_FDSAN_DOMAIN));
         }
-    }
-#else
-    explicit SmartFd(int fd, bool fdsan = true) : fd_(fd) {}
 #endif
-    // is_host
+    }
+
     ~SmartFd()
     {
         Reset();
@@ -49,10 +48,6 @@ public:
     {
         fd_ = rhs.fd_;
         rhs.fd_ = -1;
-#ifndef is_host
-        fdsan_ = rhs.fdsan_;
-        rhs.fdsan_ = false;
-#endif
     }
 
     SmartFd& operator=(SmartFd&& rhs) noexcept
@@ -61,10 +56,6 @@ public:
             Reset();
             fd_ = rhs.fd_;
             rhs.fd_ = -1;
-#ifndef is_host
-            fdsan_ = rhs.fdsan_;
-            rhs.fdsan_ = false;
-#endif
         }
         return *this;
     }
@@ -85,12 +76,7 @@ public:
             return;
         }
 #ifndef is_host
-        if (fdsan_) {
-            fdsan_close_with_tag(fd_, fdsan_create_owner_tag(FDSAN_OWNER_TYPE_FILE, DFX_HITRACE_FDSAN_DOMAIN));
-            fdsan_ = false;
-        } else {
-            close(fd_);
-        }
+        fdsan_close_with_tag(fd_, fdsan_create_owner_tag(FDSAN_OWNER_TYPE_FILE, DFX_HITRACE_FDSAN_DOMAIN));
 #else
         close(fd_);
 #endif
@@ -101,7 +87,6 @@ private:
     int fd_{-1};
 #ifndef is_host
     static constexpr uint64_t DFX_HITRACE_FDSAN_DOMAIN = 0xD002D33;
-    bool fdsan_{false};
 #endif
 };
 }
