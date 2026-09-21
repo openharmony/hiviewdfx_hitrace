@@ -77,6 +77,8 @@ constexpr char SANDBOX_PATH[] = "/data/storage/el2/log/";
 constexpr char PHYSICAL_PATH[] = "/data/app/el2/100/log/";
 constexpr char EMPTY[] = "";
 
+constexpr uint64_t DFX_HITRACE_FDSAN_DOMAIN = 0xD002D33;
+
 constexpr int VAR_NAME_MAX_SIZE = 400;
 constexpr int NAME_NORMAL_LEN = 512;
 constexpr int RECORD_SIZE_MAX = 1024;
@@ -1616,11 +1618,12 @@ HitracePerfScoped::HitracePerfScoped(bool isDebug, uint64_t tag, const std::stri
     peIns.disabled = 1;
     peIns.exclude_kernel = 0;
     peIns.exclude_hv = 0;
-    fd1st_ = SmartFd(syscall(__NR_perf_event_open, &peIns, 0, -1, -1, 0));
-    if (!fd1st_) {
+    fd1st_ = syscall(__NR_perf_event_open, &peIns, 0, -1, -1, 0);
+    if (fd1st_ == -1) {
         err_ = errno;
         return;
     }
+    fdsan_exchange_owner_tag(fd1st_, 0, fdsan_create_owner_tag(FDSAN_OWNER_TYPE_FILE, DFX_HITRACE_FDSAN_DOMAIN));
     struct perf_event_attr peCycles;
     if (memset_s(&peCycles, sizeof(struct perf_event_attr), 0, sizeof(struct perf_event_attr)) != EOK) {
         err_ = errno;
@@ -1632,29 +1635,32 @@ HitracePerfScoped::HitracePerfScoped(bool isDebug, uint64_t tag, const std::stri
     peCycles.disabled = 1;
     peCycles.exclude_kernel = 0;
     peCycles.exclude_hv = 0;
-    fd2nd_ = SmartFd(syscall(__NR_perf_event_open, &peCycles, 0, -1, -1, 0));
-    if (!fd2nd_) {
+    fd2nd_ = syscall(__NR_perf_event_open, &peCycles, 0, -1, -1, 0);
+    if (fd2nd_ == -1) {
         err_ = errno;
         return;
     }
-    ioctl(fd1st_.GetFd(), PERF_EVENT_IOC_RESET, 0);
-    ioctl(fd1st_.GetFd(), PERF_EVENT_IOC_ENABLE, 0);
-    ioctl(fd2nd_.GetFd(), PERF_EVENT_IOC_RESET, 0);
-    ioctl(fd2nd_.GetFd(), PERF_EVENT_IOC_ENABLE, 0);
+    fdsan_exchange_owner_tag(fd2nd_, 0, fdsan_create_owner_tag(FDSAN_OWNER_TYPE_FILE, DFX_HITRACE_FDSAN_DOMAIN));
+    ioctl(fd1st_, PERF_EVENT_IOC_RESET, 0);
+    ioctl(fd1st_, PERF_EVENT_IOC_ENABLE, 0);
+    ioctl(fd2nd_, PERF_EVENT_IOC_RESET, 0);
+    ioctl(fd2nd_, PERF_EVENT_IOC_ENABLE, 0);
 }
 
 HitracePerfScoped::~HitracePerfScoped()
 {
-    if (fd1st_) {
-        ioctl(fd1st_.GetFd(), PERF_EVENT_IOC_DISABLE, 0);
-        read(fd1st_.GetFd(), &countIns_, sizeof(long long));
-        fd1st_.Reset();
+    if (fd1st_ != -1) {
+        ioctl(fd1st_, PERF_EVENT_IOC_DISABLE, 0);
+        read(fd1st_, &countIns_, sizeof(long long));
+        fdsan_close_with_tag(fd1st_, fdsan_create_owner_tag(FDSAN_OWNER_TYPE_FILE, DFX_HITRACE_FDSAN_DOMAIN));
+        fd1st_ = -1;
         CountTrace(mTag_, mName_ + "-Ins", countIns_);
     }
-    if (fd2nd_) {
-        ioctl(fd2nd_.GetFd(), PERF_EVENT_IOC_DISABLE, 0);
-        read(fd2nd_.GetFd(), &countCycles_, sizeof(long long));
-        fd2nd_.Reset();
+    if (fd2nd_ != -1) {
+        ioctl(fd2nd_, PERF_EVENT_IOC_DISABLE, 0);
+        read(fd2nd_, &countCycles_, sizeof(long long));
+        fdsan_close_with_tag(fd2nd_, fdsan_create_owner_tag(FDSAN_OWNER_TYPE_FILE, DFX_HITRACE_FDSAN_DOMAIN));
+        fd2nd_ = -1;
         CountTrace(mTag_, mName_ + "-Cycle", countCycles_);
     }
 }

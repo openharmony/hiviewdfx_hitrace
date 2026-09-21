@@ -61,7 +61,6 @@ config("hitrace_meter_config") {
   visibility = [ ":*" ]
   include_dirs = [
     "include/hitrace_meter",
-    "$hitrace_common_path",
     "$hitrace_utils_path",
   ]
 }
