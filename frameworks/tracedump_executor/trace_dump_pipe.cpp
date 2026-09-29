@@ -90,19 +90,19 @@ void HitraceDumpPipe::ClearTraceDumpPipe()
 void HitraceDumpPipe::InitPipeFd()
 {
     if (isParent_) {
-        taskSubmitFd_ = SmartFd(open(TRACE_TASK_SUBMIT_PIPE, O_RDWR | O_NONBLOCK));
+        taskSubmitFd_ = SmartFd(open(TRACE_TASK_SUBMIT_PIPE, O_RDWR | O_NONBLOCK | O_NOFOLLOW));
         if (!taskSubmitFd_) {
             HILOG_ERROR(LOG_CORE, "parent open %{public}s failed, errno(%{public}d)",
                 TRACE_TASK_SUBMIT_PIPE, errno);
         }
-        syncRetFd_ = SmartFd(open(TRACE_SYNC_RETURN_PIPE, O_RDONLY | O_NONBLOCK));
+        syncRetFd_ = SmartFd(open(TRACE_SYNC_RETURN_PIPE, O_RDONLY | O_NONBLOCK | O_NOFOLLOW));
         if (!syncRetFd_) {
             HILOG_ERROR(LOG_CORE, "parent open %{public}s failed, errno(%{public}d)",
                 TRACE_SYNC_RETURN_PIPE, errno);
         } else {
             AddFdToEpoll(syncRetFd_.GetFd());
         }
-        asyncRetFd_ = SmartFd(open(TRACE_ASYNC_RETURN_PIPE, O_RDONLY | O_NONBLOCK));
+        asyncRetFd_ = SmartFd(open(TRACE_ASYNC_RETURN_PIPE, O_RDONLY | O_NONBLOCK | O_NOFOLLOW));
         if (!asyncRetFd_) {
             HILOG_ERROR(LOG_CORE, "parent open %{public}s failed, errno(%{public}d)",
                 TRACE_ASYNC_RETURN_PIPE, errno);
@@ -110,19 +110,19 @@ void HitraceDumpPipe::InitPipeFd()
             AddFdToEpoll(asyncRetFd_.GetFd());
         }
     } else {
-        taskSubmitFd_ = SmartFd(open(TRACE_TASK_SUBMIT_PIPE, O_RDONLY | O_NONBLOCK));
+        taskSubmitFd_ = SmartFd(open(TRACE_TASK_SUBMIT_PIPE, O_RDONLY | O_NONBLOCK | O_NOFOLLOW));
         if (!taskSubmitFd_) {
             HILOG_ERROR(LOG_CORE, "child open %{public}s failed, errno(%{public}d)",
                 TRACE_TASK_SUBMIT_PIPE, errno);
         } else {
             AddFdToEpoll(taskSubmitFd_.GetFd());
         }
-        syncRetFd_ = SmartFd(open(TRACE_SYNC_RETURN_PIPE, O_WRONLY));
+        syncRetFd_ = SmartFd(open(TRACE_SYNC_RETURN_PIPE, O_WRONLY | O_NOFOLLOW));
         if (!syncRetFd_) {
             HILOG_ERROR(LOG_CORE, "child open %{public}s failed, errno(%{public}d)",
                 TRACE_SYNC_RETURN_PIPE, errno);
         }
-        asyncRetFd_ = SmartFd(open(TRACE_ASYNC_RETURN_PIPE, O_WRONLY));
+        asyncRetFd_ = SmartFd(open(TRACE_ASYNC_RETURN_PIPE, O_WRONLY | O_NOFOLLOW));
         if (!asyncRetFd_) {
             HILOG_ERROR(LOG_CORE, "child open %{public}s failed, errno(%{public}d)",
                 TRACE_ASYNC_RETURN_PIPE, errno);

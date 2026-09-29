@@ -1012,7 +1012,8 @@ bool PreWriteEventsFormat(const std::vector<std::string>& eventFormats)
     DelSavedEventsFormat();
     const std::string savedEventsFormatPath = std::string(TRACE_FILE_DEFAULT_DIR) +
         std::string(TRACE_SAVED_EVENTS_FORMAT);
-    SmartFd fd = SmartFd(open(savedEventsFormatPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644)); // 0644:-rw-r--r--
+    constexpr auto mode = 0644; // 0644:-rw-r--r--
+    SmartFd fd = SmartFd(open(savedEventsFormatPath.c_str(), O_CREAT | O_WRONLY | O_TRUNC | O_NOFOLLOW, mode));
     if (!fd) {
         HILOG_ERROR(LOG_CORE, "PreWriteEventsFormat: open %{public}s failed.", savedEventsFormatPath.c_str());
         return false;

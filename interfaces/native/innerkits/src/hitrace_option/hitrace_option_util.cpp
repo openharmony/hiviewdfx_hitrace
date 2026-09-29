@@ -102,7 +102,7 @@ int FileLock::Fd() const
 
 bool AppendToFile(const std::string& filename, const std::string& str)
 {
-    FileLock fileLock(filename, O_RDWR);
+    FileLock fileLock(filename, O_RDWR | O_NOFOLLOW);
     if (write(fileLock.Fd(), str.c_str(), str.size()) < 0) {
         HILOG_ERROR(LOG_CORE, "AppendToFile: %{public}s write failed %{public}d", filename.c_str(), errno);
         return false;

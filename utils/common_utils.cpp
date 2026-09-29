@@ -86,7 +86,7 @@ bool MarkClockSync(const std::string& traceRootPath)
     constexpr unsigned int bufferSize = 128;
     char buffer[bufferSize] = { 0 };
     std::string resolvedPath = CanonicalizeSpecPath((traceRootPath + TRACE_MARKER_NODE).c_str());
-    SmartFd fd = SmartFd(open(resolvedPath.c_str(), O_WRONLY));
+    SmartFd fd = SmartFd(open(resolvedPath.c_str(), O_WRONLY | O_NOFOLLOW));
     if (!fd) {
         HILOG_ERROR(LOG_CORE, "MarkClockSync: open %{public}s fail, errno(%{public}d)", resolvedPath.c_str(), errno);
         return false;
@@ -305,7 +305,7 @@ void WriteEventFile(const std::string& srcPath, const int fd)
 {
     uint8_t buffer[PAGE_SIZE] = {0};
     std::string srcSpecPath = CanonicalizeSpecPath(srcPath.c_str());
-    SmartFd srcFd = SmartFd(open(srcSpecPath.c_str(), O_RDONLY));
+    SmartFd srcFd = SmartFd(open(srcSpecPath.c_str(), O_RDONLY | O_NOFOLLOW));
     if (!srcFd) {
         HILOG_ERROR(LOG_CORE, "WriteEventFile: open %{public}s failed.", srcPath.c_str());
         return;
